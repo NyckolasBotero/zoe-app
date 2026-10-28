@@ -13,7 +13,7 @@ def entra(b,email,senha,nova=None):
 with sync_playwright() as p:
     b=p.chromium.launch(); adm=entra(b,'admin@zoe.com','SenhaForte123')
     # regra configurável pelo painel
-    adm.evaluate("go('admin')"); adm.wait_for_selector('#afm'); adm.fill('#afm','2'); adm.click('text=Salvar regra'); adm.wait_for_function('S.freqMembro===2')
+    adm.evaluate("go('admin')"); adm.wait_for_selector('#afm'); adm.wait_for_timeout(900); adm.fill('#afm','2'); adm.click('text=Salvar regra'); adm.wait_for_function('S.freqMembro===2')
     adm.evaluate("async()=>{for(const [n,e] of [['Sup Um','sup@zoe.com'],['Lider Um','l1@zoe.com'],['Ana Souza','ana@zoe.com']])await api('createUser',{nome:n,email:e,senha:'Temp12345',papel:'membro'})}")
     ids=adm.evaluate("async()=>Object.fromEntries((await api('listUsers')).map(u=>[u.email,u.membroId]))")
     adm.evaluate("async(i)=>{await api('createCell',{nome:'Semeadores',liderId:i['l1@zoe.com'],supervisorId:i['sup@zoe.com'],dia:'Quinta'})}",ids)

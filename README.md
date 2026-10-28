@@ -76,3 +76,10 @@ Texto: *Almeida 1819 (Bíblia Livre)*, domínio público, fonte github.com/midva
 - **Buscar células** mostra um mapa (Leaflet + OpenStreetMap) com todos os pontos; cada ponto abre um balão com o link "Ver no Google Maps". "Usar minha localização" (ou "Marcar onde moro", tocando no mapa) calcula a distância até cada célula, ordena por proximidade e destaca a mais próxima. A posição fica só no aparelho de quem usa. Na tela inicial, quem ainda não tem célula vê a mais próxima.
 - Privacidade: se a célula não marcou o endereço como público (aba Privacidade), o ponto sai **aproximado** (arredondado, cerca de 1 km); com endereço público, exato.
 - Depois de atualizar: cole o novo `Code.gs`, rode `setup()` (cria as colunas Lat/Lng em Celulas) e publique nova versão da implantação.
+
+## Motion design e acabamento
+- **Tokens** (`:root`): `--d-fast/base/slow` (150/280/480 ms) e curvas `--e-std`, `--e-out`, `--e-in`, `--e-spring`; tudo usa esses valores. "Reduzir movimento" do sistema e o botão de animações do topo desligam tudo.
+- **Botões**: brilho de vitrine ao passar o mouse, elevação suave e **ripple** fluido no clique. Barra lateral expande/recolhe com animação e, recolhida, mostra só os ícones (com dica ao passar o mouse).
+- **Pop**: modais, menu do mouse, alertas e avisos entram e saem com animação. Telas entram em sequência (coreografia) e os cards abaixo da dobra aparecem ao rolar.
+- **Barra de cima**: some ao descer a página, volta ao subir, e tem uma linha de progresso de leitura suavizada.
+- **Saudação** "Olá, <apelido>!" ao entrar; **feedback de arquivo** (nome e tamanho ao escolher, barra "Enviando…" nos envios grandes); troca de tema claro/escuro com transição.
