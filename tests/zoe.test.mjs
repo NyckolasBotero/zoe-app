@@ -36,7 +36,7 @@ test('membro edita só o próprio perfil; e-mail de acesso não muda; batismo au
 });
 test('células: líder só na própria; presença; transferência com aprovação do supervisor', () => {
   const { e, adm, tok, mk } = boot();
-  const sup = mk('sup@zoe.com', 'supervisor'), l1 = mk('lider1@zoe.com', 'lider'), l2 = mk('lider2@zoe.com', 'lider');
+  const sup = mk('sup@zoe.com', 'membro'), l1 = mk('lider1@zoe.com', 'membro'), l2 = mk('lider2@zoe.com', 'membro');
   const c1 = e.call('createCell', { nome: 'Semeadores', liderId: l1, supervisorId: sup, dia: 'Quinta', inicio: '20:00', fim: '21:30', categoria: 'Mulheres e Homens', faixa: 'Jovens', bairro: 'Chácaras Coimbra', cidade: 'Águas Lindas de Goiás', uf: 'GO' }, adm).data.id;
   const c2 = e.call('createCell', { nome: 'Raízes', liderId: l2, supervisorId: sup, dia: 'Segunda', inicio: '19:30', fim: '21:00' }, adm).data.id;
   const L1 = tok('lider1@zoe.com', 'Temp12345'), L2 = tok('lider2@zoe.com', 'Temp12345'), S = tok('sup@zoe.com', 'Temp12345');
@@ -61,7 +61,7 @@ test('células: líder só na própria; presença; transferência com aprovaçã
   assert.equal(e.call('orgTree', {}, S).data[0].celulas.length, 2);
 });
 test('busca de células respeita privacidade; aniversários só dia e apelido', () => {
-  const { e, adm, tok, mk } = boot(); const l = mk('lider@zoe.com', 'lider');
+  const { e, adm, tok, mk } = boot(); const l = mk('lider@zoe.com', 'membro');
   e.call('saveMember', { membro: { Telefone: '61900000000' } }, tok('lider@zoe.com', 'Temp12345'));
   e.call('createCell', { nome: 'Semeadores', liderId: l, dia: 'Quinta', bairro: 'Coimbra', cidade: 'Águas Lindas', uf: 'GO', endereco: 'Rua Secreta 1' }, adm);
   const L = tok('lider@zoe.com', 'Temp12345'); mk('m@zoe.com', 'membro'); const M = tok('m@zoe.com', 'Temp12345');
@@ -89,7 +89,7 @@ test('usuários: desativar encerra sessão; trocar senha; ministérios e config'
   assert.ok(e.call('saveLesson', { titulo: 'Semeando', resumo: 'r', categoria: 'Fé', url: 'https://x.com' }, adm).ok); assert.equal(e.call('saveLesson', { titulo: 'x', url: 'javascript:1' }, adm).error.code, 'VALIDATION'); const A3 = tok('a@zoe.com', 'NovaSenha123'); assert.equal(e.call('listLessons', {}, A3).data[0].titulo, 'Semeando'); assert.equal(e.call('getPerms', {}, adm).data.membro.config, 0); assert.equal(e.call('getPerms', {}, A3).error.code, 'FORBIDDEN');
 });
 test('admin edita tudo que criou: células, eventos, notícias, cursos, vídeos, dinâmicas', () => {
-  const { e, adm, tok, mk } = boot(); mk('maria@zoe.com', 'membro'); const m = tok('maria@zoe.com', 'Temp12345'); const l1 = mk('lider1@zoe.com', 'lider');
+  const { e, adm, tok, mk } = boot(); mk('maria@zoe.com', 'membro'); const m = tok('maria@zoe.com', 'Temp12345'); const l1 = mk('lider1@zoe.com', 'membro');
   for (const a of ['adminList', 'adminSave', 'adminRemove']) assert.equal(e.call(a, { tipo: 'celulas' }, m).error.code, 'FORBIDDEN', a);
   assert.equal(e.call('adminList', { tipo: 'segredo' }, adm).error.code, 'VALIDATION');
   // célula
@@ -138,4 +138,40 @@ test('admin edita membros e ministério com foto (foto mantida quando não alter
   assert.equal(e.call('listMinistries', {}, j).data.find(m => m.id === mid).foto, foto);
   assert.equal(e.call('adminSave', { tipo: 'ministerios', id: mid, valores: { Nome: 'Teatro Zoe', Foto: 'javascript:alert(1)' } }, adm).error.code, 'VALIDATION');
   e.call('adminSave', { tipo: 'ministerios', id: mid, valores: { Nome: 'Teatro Zoe', Foto: '' } }, adm); assert.equal(e.call('listMinistries', {}, j).data.find(m => m.id === mid).foto, '');
+});
+test('cargos de célula são independentes do nível de acesso: admin pode ser líder e supervisor; treinamento; fluxo de transferência', () => {
+  const { e, adm, tok, mk } = boot();
+  const admId = e.call('me', {}, adm).data.membro.MembroID;
+  const sup = mk('sup@zoe.com', 'membro'), l2 = mk('lider2@zoe.com', 'membro'), tr = mk('trein@zoe.com', 'membro'), x = mk('comum@zoe.com', 'membro');
+  // só quem tem permissão de administração cria células; ser líder/supervisor não dá esse poder
+  assert.equal(e.call('createCell', { nome: 'A' }, tok('sup@zoe.com', 'Temp12345')).error.code, 'FORBIDDEN');
+  // o próprio admin é líder da célula A e supervisor da célula B; B é liderada por lider2 com tr em treinamento
+  const cA = e.call('createCell', { nome: 'Célula A', liderId: admId, supervisorId: sup }, adm).data.id;
+  const cB = e.call('createCell', { nome: 'Célula B', liderId: l2, supervisorId: admId, treinamentoId: tr }, adm).data.id;
+  const me = e.call('me', {}, adm).data; assert.equal(me.usuario.papel, 'admin'); assert.equal(me.cargos.lider, true); assert.equal(me.cargos.supervisor, true);
+  const S = tok('sup@zoe.com', 'Temp12345'), L2 = tok('lider2@zoe.com', 'Temp12345'), T = tok('trein@zoe.com', 'Temp12345'), X = tok('comum@zoe.com', 'Temp12345');
+  assert.deepEqual(e.call('me', {}, S).data.cargos, { lider: false, treinamento: false, supervisor: true });
+  assert.equal(e.call('me', {}, T).data.nivelCelula, 'treinamento'); assert.equal(e.call('me', {}, L2).data.nivelCelula, 'lider');
+  // treinamento: vê membros e registra presença; não gerencia nem pede transferência
+  assert.equal(e.call('cellMembers', {}, T).ok, true);
+  assert.equal(e.call('saveAttendance', { data: '2026-10-22', presentes: [] }, T).ok, true);
+  assert.equal(e.call('saveCell', { nome: 'Y' }, T).error.code, 'FORBIDDEN'); assert.equal(e.call('requestTransfer', { membroId: x }, T).error.code, 'FORBIDDEN');
+  // membro comum sem cargo não acessa dados da célula
+  assert.equal(e.call('cellMembers', { celulaId: cB }, X).error.code, 'FORBIDDEN');
+  // líder pede (a pessoa X está sem célula: entra direto; para testar o pedido, X entra na célula A primeiro)
+  assert.equal(e.call('requestTransfer', { membroId: x }, L2).data.status, 'incluido');
+  assert.equal(e.call('requestTransfer', { membroId: x, celulaId: cB }, tok('sup@zoe.com', 'Temp12345')).error.code, 'FORBIDDEN'); // supervisor não é quem pede
+  const y = mk('outro@zoe.com', 'membro'); e.call('adminSave', { tipo: 'membros', id: y, valores: { Nome: 'Outro', CelulaID: cA } }, adm);
+  assert.equal(e.call('requestTransfer', { membroId: y }, L2).data.status, 'pendente');   // de A para B
+  // o supervisor da origem/destino decide; quem pediu e o treinamento não
+  const lista = e.call('listTransfers', {}, adm).data; assert.equal(lista.length, 1);           // admin é supervisor de B (destino)
+  assert.equal(e.call('listTransfers', {}, T).error.code, 'FORBIDDEN');
+  assert.equal(e.call('listTransfers', {}, S).data.length, 1);                                 // sup é supervisor de A (origem)
+  assert.equal(e.call('decideTransfer', { id: lista[0].id, decisao: 'autorizado' }, L2).error.code, 'FORBIDDEN');
+  assert.equal(e.call('decideTransfer', { id: lista[0].id, decisao: 'autorizado' }, S).data.status, 'autorizado');
+  assert.equal(e.call('cellMembers', { celulaId: cB }, adm).data.some(m => m.id === y), true);
+  // pedido feito por quem também supervisiona o destino: precisa de outra pessoa decidir
+  const z = mk('z@zoe.com', 'membro'); e.call('adminSave', { tipo: 'membros', id: z, valores: { Nome: 'Zé', CelulaID: cB } }, adm);
+  assert.equal(e.call('requestTransfer', { membroId: z, celulaId: cA }, adm).data.status, 'pendente');
+  assert.equal(e.call('papelLegado', {}, adm).error.code, 'NOT_FOUND');
 });

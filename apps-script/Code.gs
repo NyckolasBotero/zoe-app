@@ -15,19 +15,19 @@
  *  - Dados pessoais de outros membros só saem no mínimo necessário (nome, apelido, aniversário sem ano).
  */
 const CFG = { TZ: 'America/Sao_Paulo', SESSION_TTL: 21600, MAX_FAILS: 5, LOCK_SECONDS: 900, HASH_ROUNDS: 1500, SHEET_NAME: 'Zoe - Dados' };
-const PAPEIS = ['admin', 'pastor', 'supervisor', 'lider', 'membro'];
+// Nível de acesso ao app (Usuarios.Papel). Cargos de célula (líder, supervisor, líder em treinamento) NÃO são papéis:
+// derivam de Celulas.LiderID / SupervisorID / TreinamentoID e podem somar-se a qualquer nível (ex.: admin + líder).
+const PAPEIS = ['admin', 'pastor', 'membro'];
 const PERMS = ['eventos', 'transf', 'celulas', 'min', 'config'];
 const DEFAULT_PERMS = {
   admin: { eventos: 1, transf: 1, celulas: 1, min: 1, config: 1 },
   pastor: { eventos: 1, transf: 1, celulas: 1, min: 1, config: 0 },
-  supervisor: { eventos: 0, transf: 1, celulas: 1, min: 0, config: 0 },
-  lider: { eventos: 0, transf: 0, celulas: 0, min: 0, config: 0 },
   membro: { eventos: 0, transf: 0, celulas: 0, min: 0, config: 0 }
 };
 const SHEETS = {
   Usuarios: ['Email', 'SenhaHash', 'Salt', 'Papel', 'Status', 'MembroID', 'TrocarSenha', 'CriadoEm', 'UltimoAcesso'],
   Membros: ['MembroID', 'Nome', 'Simples', 'Apelido', 'Sexo', 'Nascimento', 'Nacionalidade', 'Naturalidade', 'Sangue', 'Doador', 'Profissao', 'Telefone', 'Email', 'CEP', 'UF', 'Cidade', 'Endereco', 'Bairro', 'DataDecisao', 'Batizado', 'DataBatismo', 'IgrejaBatismo', 'Mae', 'Pai', 'EstadoCivil', 'Conjuge', 'DataCasamento', 'Filhos', 'Foto', 'CelulaID', 'EhMembro', 'Status', 'Extras', 'AceitePrivacidade', 'AceiteTermos', 'CriadoEm'],
-  Celulas: ['CelulaID', 'Nome', 'Descricao', 'Foto', 'LiderID', 'SupervisorID', 'Dia', 'Inicio', 'Fim', 'Categoria', 'Faixa', 'Bairro', 'Cidade', 'UF', 'Endereco', 'PrivGrupo', 'PrivTel', 'PrivEmail', 'PrivEnd', 'Status'],
+  Celulas: ['CelulaID', 'Nome', 'Descricao', 'Foto', 'LiderID', 'SupervisorID', 'Dia', 'Inicio', 'Fim', 'Categoria', 'Faixa', 'Bairro', 'Cidade', 'UF', 'Endereco', 'TreinamentoID', 'PrivGrupo', 'PrivTel', 'PrivEmail', 'PrivEnd', 'Status'],
   Reunioes: ['ReuniaoID', 'CelulaID', 'Data', 'Presentes', 'PresencaDeDeus', 'Obs'],
   Presencas: ['ReuniaoID', 'CelulaID', 'Data', 'MembroID'],
   Papeis: ['CelulaID', 'MembroID', 'Papel'],
@@ -133,19 +133,29 @@ function auth_(token) {
   const u = table_('Usuarios').rows.filter(function (r) { return String(r.Email).toLowerCase() === s.e; })[0];
   if (!u || u.Status === 'Inativo') throw new ApiError('SESSION', 'Acesso desativado.');
   const m = table_('Membros').rows.filter(function (r) { return r.MembroID === u.MembroID; })[0] || {};
-  return { email: s.e, papel: PAPEIS.indexOf(u.Papel) >= 0 ? u.Papel : 'membro', membroId: u.MembroID, celulaId: m.CelulaID || '', token: token };
+  const cg = cargos_(u.MembroID);
+  return { email: s.e, papel: PAPEIS.indexOf(u.Papel) >= 0 ? u.Papel : 'membro', membroId: u.MembroID, celulaId: m.CelulaID || '', lidera: cg.lidera, treina: cg.treina, supervisiona: cg.supervisiona, token: token };
 }
-function permMatrix_() { const o = {}; table_('Permissoes').rows.forEach(function (r) { o[r.Papel] = {}; PERMS.forEach(function (k) { o[r.Papel][k] = r[k] === '1' || r[k] === 'true' ? 1 : 0; }); }); PAPEIS.forEach(function (p) { if (!o[p]) o[p] = DEFAULT_PERMS[p]; }); o.admin.config = 1; return o; }
+function cargos_(membroId) {
+  const o = { lidera: [], treina: [], supervisiona: [] }; if (!membroId) return o;
+  table_('Celulas').rows.forEach(function (c) { if (c.Status === 'Inativa') return; if (c.LiderID === membroId) o.lidera.push(c.CelulaID); if (c.TreinamentoID === membroId) o.treina.push(c.CelulaID); if (c.SupervisorID === membroId) o.supervisiona.push(c.CelulaID); });
+  return o;
+}
+function permMatrix_() { const o = {}; table_('Permissoes').rows.forEach(function (r) { if (PAPEIS.indexOf(r.Papel) < 0) return; o[r.Papel] = {}; PERMS.forEach(function (k) { o[r.Papel][k] = r[k] === '1' || r[k] === 'true' ? 1 : 0; }); }); PAPEIS.forEach(function (p) { if (!o[p]) o[p] = DEFAULT_PERMS[p]; }); o.admin.config = 1; return o; }
 function can_(u, k) { return !!(permMatrix_()[u.papel] || {})[k]; }
-function cellAccess_(u, celulaId) {
+// nivel: 'ver' e 'presenca' (líder, líder em treinamento, supervisor) · 'gerir' (líder, supervisor) · 'transf' (só o líder pede transferência)
+// Admin/pastor com a permissão "celulas" enxergam e gerem todas. Cargo e nível de acesso se somam.
+function cellAccess_(u, celulaId, nivel) {
   if (!celulaId) throw new ApiError('VALIDATION', 'Você ainda não está em uma célula.');
   if (can_(u, 'celulas')) return true;
   const c = table_('Celulas').rows.filter(function (r) { return r.CelulaID === celulaId; })[0]; if (!c) throw new ApiError('NOT_FOUND', 'Célula não encontrada.');
-  if (u.papel === 'lider' && c.LiderID === u.membroId) return true;
-  if (u.papel === 'supervisor' && c.SupervisorID === u.membroId) return true;
+  const isL = c.LiderID === u.membroId, isS = c.SupervisorID === u.membroId, isT = c.TreinamentoID === u.membroId; nivel = nivel || 'gerir';
+  if (nivel === 'transf' ? isL : nivel === 'gerir' ? (isL || isS) : (isL || isS || isT)) return true;
   throw new ApiError('FORBIDDEN', 'Você não tem permissão sobre esta célula.');
 }
-function cellOf_(u, d) { const id = clip_(d.celulaId, 30) || u.celulaId; cellAccess_(u, id); return id; }
+function celulaAtiva_(u) { return u.lidera[0] || u.treina[0] || u.supervisiona[0] || u.celulaId || ''; }
+function cellOf_(u, d, nivel) { const id = clip_(d.celulaId, 30) || celulaAtiva_(u); cellAccess_(u, id, nivel); return id; }
+function ehSupervisor_(u) { return u.supervisiona.length > 0; }
 
 /* ============================== MEMBROS ============================== */
 const MEMBER_EDIT = ['Nome', 'Simples', 'Apelido', 'Sexo', 'Nascimento', 'Nacionalidade', 'Naturalidade', 'Sangue', 'Doador', 'Profissao', 'Telefone', 'Email', 'CEP', 'UF', 'Cidade', 'Endereco', 'Bairro', 'DataDecisao', 'Batizado', 'DataBatismo', 'IgrejaBatismo', 'Mae', 'Pai', 'EstadoCivil', 'Conjuge', 'DataCasamento', 'Foto'];
@@ -154,8 +164,13 @@ function memberPub_(m) { return { id: m.MembroID, nome: m.Nome, apelido: m.Apeli
 function getMember_(id) { const t = table_('Membros'); const m = t.rows.filter(function (r) { return r.MembroID === id; })[0]; if (!m) throw new ApiError('NOT_FOUND', 'Membro não encontrado.'); return { t: t, m: m }; }
 function dateOk_(s) { return s === '' || /^\d{4}-\d{2}-\d{2}$/.test(s); }
 function me_(d, u) {
-  const mm = getMember_(u.membroId).m, cel = u.celulaId ? table_('Celulas').rows.filter(function (r) { return r.CelulaID === u.celulaId; })[0] : null;
-  return { usuario: { email: u.email, papel: u.papel }, membro: memberFull_(mm), celula: cel ? cellOut_(cel, true) : null, permissoes: permMatrix_()[u.papel], config: publicConfig_() };
+  const mm = getMember_(u.membroId).m, ativa = clip_(d.celulaId, 30) ? (cellAccess_(u, clip_(d.celulaId, 30), 'ver'), clip_(d.celulaId, 30)) : celulaAtiva_(u), todas = table_('Celulas').rows.filter(function (r) { return r.Status !== 'Inativa'; });
+  const cel = ativa ? todas.filter(function (r) { return r.CelulaID === ativa; })[0] : null, full = can_(u, 'celulas');
+  const cargo = function (r) { return r.LiderID === u.membroId ? 'Líder' : r.SupervisorID === u.membroId ? 'Supervisor' : r.TreinamentoID === u.membroId ? 'Líder em treinamento' : ''; };
+  const minhas = todas.filter(function (r) { return full || cargo(r); }).map(function (r) { return { id: r.CelulaID, nome: r.Nome, cargo: cargo(r) || 'Administração' }; });
+  const cg = { lider: u.lidera.length > 0, treinamento: u.treina.length > 0, supervisor: u.supervisiona.length > 0 };
+  const nivelCel = !cel ? '' : (full || (cel.LiderID === u.membroId) ? 'lider' : cel.SupervisorID === u.membroId ? 'supervisor' : cel.TreinamentoID === u.membroId ? 'treinamento' : 'membro');
+  return { usuario: { email: u.email, papel: u.papel }, membro: memberFull_(mm), celula: cel ? cellOut_(cel, nivelCel !== 'membro') : null, nivelCelula: nivelCel, cargos: cg, minhasCelulas: minhas, permissoes: permMatrix_()[u.papel], config: publicConfig_() };
 }
 function saveMember_(d, u) {
   return withLock_(function () {
@@ -201,7 +216,7 @@ function cellOut_(c, own) {
 }
 function saveCell_(d, u) {
   return withLock_(function () {
-    const id = cellOf_(u, d), t = table_('Celulas'), c = t.rows.filter(function (r) { return r.CelulaID === id; })[0], p = {};
+    const id = cellOf_(u, d, 'gerir'), t = table_('Celulas'), c = t.rows.filter(function (r) { return r.CelulaID === id; })[0], p = {};
     ['Nome', 'Descricao', 'Dia', 'Inicio', 'Fim', 'Categoria', 'Faixa', 'Bairro', 'Cidade', 'UF', 'Endereco'].forEach(function (k) { const kk = k.charAt(0).toLowerCase() + k.slice(1); if (d[kk] !== undefined) p[k] = clip_(d[kk], k === 'Descricao' ? 500 : 150); });
     if (d.foto !== undefined) p.Foto = String(d.foto).slice(0, 45000);
     if (d.priv) { p.PrivGrupo = d.priv.grupo ? '1' : '0'; p.PrivTel = d.priv.tel ? '1' : '0'; p.PrivEmail = d.priv.email ? '1' : '0'; p.PrivEnd = d.priv.end ? '1' : '0'; }
@@ -212,12 +227,13 @@ function saveCell_(d, u) {
 function createCell_(d, u) {
   return withLock_(function () {
     const nome = clip_(d.nome, 100); if (!nome) throw new ApiError('VALIDATION', 'Informe o nome da célula.');
-    const id = id_('C'); appendRow_(table_('Celulas'), { CelulaID: id, Nome: nome, Descricao: clip_(d.descricao, 500), LiderID: clip_(d.liderId, 30), SupervisorID: clip_(d.supervisorId, 30), Dia: clip_(d.dia, 20), Inicio: clip_(d.inicio, 5), Fim: clip_(d.fim, 5), Categoria: clip_(d.categoria, 30), Faixa: clip_(d.faixa, 30), Bairro: clip_(d.bairro, 80), Cidade: clip_(d.cidade, 80), UF: clip_(d.uf, 2), Endereco: clip_(d.endereco, 150), PrivGrupo: '1', PrivTel: '0', PrivEmail: '0', PrivEnd: '0', Status: 'Ativa' });
+    const id = id_('C'); appendRow_(table_('Celulas'), { CelulaID: id, Nome: nome, Descricao: clip_(d.descricao, 500), LiderID: clip_(d.liderId, 30), SupervisorID: clip_(d.supervisorId, 30), TreinamentoID: clip_(d.treinamentoId, 30), Dia: clip_(d.dia, 20), Inicio: clip_(d.inicio, 5), Fim: clip_(d.fim, 5), Categoria: clip_(d.categoria, 30), Faixa: clip_(d.faixa, 30), Bairro: clip_(d.bairro, 80), Cidade: clip_(d.cidade, 80), UF: clip_(d.uf, 2), Endereco: clip_(d.endereco, 150), PrivGrupo: '1', PrivTel: '0', PrivEmail: '0', PrivEnd: '0', Status: 'Ativa' });
     if (d.liderId) { const g = getMember_(d.liderId); writeRow_(g.t, g.m._row, { CelulaID: id }); }
+    if (d.treinamentoId) { const g = getMember_(d.treinamentoId); if (!g.m.CelulaID) writeRow_(g.t, g.m._row, { CelulaID: id }); }
     audit_(u.email, 'CELULA_CRIADA', id, 'OK'); return { id: id };
   });
 }
-function cellMembers_(d, u) { const id = cellOf_(u, d); return table_('Membros').rows.filter(function (m) { return m.CelulaID === id && m.Status !== 'Inativo'; }).map(memberPub_); }
+function cellMembers_(d, u) { const id = cellOf_(u, d, 'ver'); return table_('Membros').rows.filter(function (m) { return m.CelulaID === id && m.Status !== 'Inativo'; }).map(memberPub_); }
 function searchCells_(d) {
   const f = d || {}, q = norm_(f.q || '');
   const l = table_('Celulas').rows.filter(function (c) { return c.Status !== 'Inativa' && c.PrivGrupo === '1'; }).filter(function (c) {
@@ -234,7 +250,7 @@ function searchCells_(d) {
 }
 function saveAttendance_(d, u) {
   return withLock_(function () {
-    const id = cellOf_(u, d), data = clip_(d.data, 10) || today_(); if (!dateOk_(data) || !data) throw new ApiError('VALIDATION', 'Data inválida.');
+    const id = cellOf_(u, d, 'presenca'), data = clip_(d.data, 10) || today_(); if (!dateOk_(data) || !data) throw new ApiError('VALIDATION', 'Data inválida.');
     const mem = table_('Membros').rows.filter(function (m) { return m.CelulaID === id; }).map(function (m) { return m.MembroID; });
     const pres = (d.presentes || []).filter(function (x) { return mem.indexOf(x) >= 0; });
     const pt = table_('Presencas'); for (let i = pt.rows.length - 1; i >= 0; i--) if (pt.rows[i].CelulaID === id && pt.rows[i].Data === data) pt.sh.deleteRow(pt.rows[i]._row);
@@ -246,7 +262,7 @@ function saveAttendance_(d, u) {
   });
 }
 function history_(d, u) {
-  const id = cellOf_(u, d), total = table_('Membros').rows.filter(function (m) { return m.CelulaID === id && m.Status !== 'Inativo'; }).length;
+  const id = cellOf_(u, d, 'ver'), total = table_('Membros').rows.filter(function (m) { return m.CelulaID === id && m.Status !== 'Inativo'; }).length;
   const l = table_('Reunioes').rows.filter(function (r) { return r.CelulaID === id; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; });
   const media = l.length ? Math.min(100, Math.round(l.reduce(function (a, r) { return a + Number(r.Presentes || 0); }, 0) / l.length / Math.max(1, total) * 100)) : 0;
   const tr = table_('Transferencias').rows.filter(function (t) { return t.DeCelulaID === id && t.Status === 'autorizado'; }).length;
@@ -254,7 +270,7 @@ function history_(d, u) {
   return { reunioes: l.map(function (r) { return { data: r.Data, presentes: Number(r.Presentes || 0), deus: r.PresencaDeDeus === '1' }; }), indicadores: { participantes: total, exParticipantes: tr + inat, reunioes: l.length, presencaDeDeus: l.filter(function (r) { return r.PresencaDeDeus === '1'; }).length, mediaPresenca: media } };
 }
 function indicators_(d, u) {
-  const id = cellOf_(u, d), mem = table_('Membros').rows.filter(function (m) { return m.CelulaID === id; }), ids = {}; mem.forEach(function (m) { ids[m.MembroID] = m.Apelido || m.Simples || m.Nome; });
+  const id = cellOf_(u, d, 'ver'), mem = table_('Membros').rows.filter(function (m) { return m.CelulaID === id; }), ids = {}; mem.forEach(function (m) { ids[m.MembroID] = m.Apelido || m.Simples || m.Nome; });
   const cursos = {}; table_('Cursos').rows.forEach(function (c) { cursos[c.CursoID] = c.Nome; });
   const ev = {}; table_('Eventos').rows.forEach(function (e) { ev[e.EventoID] = e.Titulo; });
   const byC = {}, byE = {};
@@ -262,20 +278,21 @@ function indicators_(d, u) {
   table_('Inscricoes').rows.forEach(function (r) { if (ids[r.MembroID] && ev[r.EventoID]) (byE[ev[r.EventoID]] = byE[ev[r.EventoID]] || []).push(ids[r.MembroID]); });
   return { cursos: byC, eventos: byE };
 }
-function getPapeis_(d, u) { const id = cellOf_(u, d); return table_('Papeis').rows.filter(function (r) { return r.CelulaID === id; }).map(function (r) { return { membroId: r.MembroID, papel: r.Papel }; }); }
+function getPapeis_(d, u) { const id = cellOf_(u, d, 'ver'); return table_('Papeis').rows.filter(function (r) { return r.CelulaID === id; }).map(function (r) { return { membroId: r.MembroID, papel: r.Papel }; }); }
 function savePapeis_(d, u) {
   return withLock_(function () {
-    const id = cellOf_(u, d), t = table_('Papeis'); for (let i = t.rows.length - 1; i >= 0; i--) if (t.rows[i].CelulaID === id) t.sh.deleteRow(t.rows[i]._row);
+    const id = cellOf_(u, d, 'gerir'), t = table_('Papeis'); for (let i = t.rows.length - 1; i >= 0; i--) if (t.rows[i].CelulaID === id) t.sh.deleteRow(t.rows[i]._row);
     const mem = table_('Membros').rows.filter(function (m) { return m.CelulaID === id; }).map(function (m) { return m.MembroID; }), t2 = table_('Papeis');
     (d.itens || []).slice(0, 200).forEach(function (x) { if (mem.indexOf(x.membroId) >= 0) appendRow_(t2, { CelulaID: id, MembroID: x.membroId, Papel: clip_(x.papel, 60) }); }); return { ok: true };
   });
 }
 function addPrayer_(d, u) {
   const texto = clip_(d.texto, 1000); if (!texto) throw new ApiError('VALIDATION', 'Escreva o pedido de oração.');
-  const id = u.celulaId; if (!id) throw new ApiError('VALIDATION', 'Você ainda não está em uma célula.');
+  const id = prayerCell_(u, d); if (!id) throw new ApiError('VALIDATION', 'Você ainda não está em uma célula.');
   appendRow_(table_('Oracoes'), { OracaoID: id_('O'), CelulaID: id, MembroID: u.membroId, Tema: clip_(d.tema, 80), Titulo: clip_(d.titulo, 100), Texto: texto, Data: now_() }); return { ok: true };
 }
-function listPrayers_(d, u) { const id = u.celulaId; if (!id) return []; return table_('Oracoes').rows.filter(function (o) { return o.CelulaID === id; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).slice(0, 50).map(function (o) { return { tema: o.Tema, titulo: o.Titulo, texto: o.Texto, data: o.Data }; }); }
+function prayerCell_(u, d) { const id = clip_(d.celulaId, 30) || u.celulaId || celulaAtiva_(u); if (id && id !== u.celulaId) cellAccess_(u, id, 'ver'); return id; }
+function listPrayers_(d, u) { const id = prayerCell_(u, d); if (!id) return []; return table_('Oracoes').rows.filter(function (o) { return o.CelulaID === id; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).slice(0, 50).map(function (o) { return { tema: o.Tema, titulo: o.Titulo, texto: o.Texto, data: o.Data }; }); }
 function orgTree_(d, u) {
   const mem = {}; table_('Membros').rows.forEach(function (m) { mem[m.MembroID] = m.Apelido || m.Simples || m.Nome; });
   const cs = table_('Celulas').rows.filter(function (c) { return c.Status !== 'Inativa' && (can_(u, 'celulas') || c.SupervisorID === u.membroId || c.LiderID === u.membroId); }), g = {};
@@ -285,13 +302,13 @@ function orgTree_(d, u) {
 
 /* ===== presença: pessoa já está em outra célula? transferência, novo cadastro ===== */
 function lookup_(d, u) {
-  const id = cellOf_(u, d), q = norm_(d.nome); if (q.length < 3) throw new ApiError('VALIDATION', 'Digite ao menos 3 letras do nome.');
+  const id = cellOf_(u, d, 'presenca'), q = norm_(d.nome); if (q.length < 3) throw new ApiError('VALIDATION', 'Digite ao menos 3 letras do nome.');
   const cels = {}; table_('Celulas').rows.forEach(function (c) { cels[c.CelulaID] = c.Nome; });
   return table_('Membros').rows.filter(function (m) { return norm_(m.Nome + ' ' + m.Apelido).indexOf(q) >= 0; }).slice(0, 8).map(function (m) { return { id: m.MembroID, nome: m.Nome, situacao: m.CelulaID === id ? 'aqui' : m.CelulaID ? 'outra' : 'sem', celula: cels[m.CelulaID] || '' }; });
 }
 function requestTransfer_(d, u) {
   return withLock_(function () {
-    const para = cellOf_(u, d), g = getMember_(clip_(d.membroId, 30)); if (g.m.CelulaID === para) throw new ApiError('VALIDATION', 'Essa pessoa já está na sua célula.');
+    const para = cellOf_(u, d, 'transf'), g = getMember_(clip_(d.membroId, 30)); if (g.m.CelulaID === para) throw new ApiError('VALIDATION', 'Essa pessoa já está na sua célula.');
     const t = table_('Transferencias'); if (t.rows.some(function (r) { return r.MembroID === g.m.MembroID && r.ParaCelulaID === para && r.Status === 'pendente'; })) throw new ApiError('VALIDATION', 'Já existe um pedido pendente.');
     if (!g.m.CelulaID) { writeRow_(g.t, g.m._row, { CelulaID: para }); audit_(u.email, 'ENTRADA_CELULA', g.m.MembroID + '>' + para, 'OK'); return { status: 'incluido' }; }
     appendRow_(t, { TransfID: id_('T'), MembroID: g.m.MembroID, DeCelulaID: g.m.CelulaID, ParaCelulaID: para, SolicitadoPor: u.membroId, Status: 'pendente', Data: now_() });
@@ -300,7 +317,8 @@ function requestTransfer_(d, u) {
 }
 function listTransfers_(d, u) {
   const mem = {}; table_('Membros').rows.forEach(function (m) { mem[m.MembroID] = m.Nome; }); const cel = {}; table_('Celulas').rows.forEach(function (c) { cel[c.CelulaID] = c; });
-  return table_('Transferencias').rows.filter(function (t) { return can_(u, 'celulas') && (u.papel === 'admin' || u.papel === 'pastor') || (cel[t.ParaCelulaID] && cel[t.ParaCelulaID].SupervisorID === u.membroId) || (cel[t.DeCelulaID] && cel[t.DeCelulaID].SupervisorID === u.membroId); })
+  if (!can_(u, 'transf') && !ehSupervisor_(u)) throw new ApiError('FORBIDDEN', 'Só supervisores e a administração veem as transferências.');
+  return table_('Transferencias').rows.filter(function (t) { return can_(u, 'transf') || (cel[t.ParaCelulaID] && cel[t.ParaCelulaID].SupervisorID === u.membroId) || (cel[t.DeCelulaID] && cel[t.DeCelulaID].SupervisorID === u.membroId); })
     .sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).slice(0, 100).map(function (t) { return { id: t.TransfID, nome: mem[t.MembroID], de: (cel[t.DeCelulaID] || {}).Nome, para: (cel[t.ParaCelulaID] || {}).Nome, status: t.Status, data: t.Data }; });
 }
 function decideTransfer_(d, u) {
@@ -308,7 +326,8 @@ function decideTransfer_(d, u) {
     const t = table_('Transferencias'), r = t.rows.filter(function (x) { return x.TransfID === d.id; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Pedido não encontrado.'); if (r.Status !== 'pendente') throw new ApiError('VALIDATION', 'Esse pedido já foi decidido.');
     const cel = {}; table_('Celulas').rows.forEach(function (c) { cel[c.CelulaID] = c; });
     const okSup = (cel[r.ParaCelulaID] && cel[r.ParaCelulaID].SupervisorID === u.membroId) || (cel[r.DeCelulaID] && cel[r.DeCelulaID].SupervisorID === u.membroId);
-    if (!(u.papel === 'admin' || u.papel === 'pastor' || okSup)) throw new ApiError('FORBIDDEN', 'Só o supervisor responsável decide.');
+    if (!(can_(u, 'transf') || okSup)) throw new ApiError('FORBIDDEN', 'Só o supervisor responsável decide.');
+    if (r.SolicitadoPor === u.membroId && !can_(u, 'transf')) throw new ApiError('FORBIDDEN', 'Um pedido feito por você precisa ser decidido por outro supervisor ou pela administração.');
     const st = d.decisao === 'autorizado' ? 'autorizado' : 'negado'; writeRow_(t, r._row, { Status: st, DecididoPor: u.membroId, DataDecisao: now_() });
     if (st === 'autorizado') { const g = getMember_(r.MembroID); writeRow_(g.t, g.m._row, { CelulaID: r.ParaCelulaID }); }
     audit_(u.email, 'TRANSFERENCIA_' + st.toUpperCase(), r.TransfID, 'OK'); return { status: st };
@@ -316,7 +335,7 @@ function decideTransfer_(d, u) {
 }
 function addNewMember_(d, u) {
   return withLock_(function () {
-    const id = cellOf_(u, d), nome = clip_(d.nome, 150); if (!nome) throw new ApiError('VALIDATION', 'Informe o nome.');
+    const id = cellOf_(u, d, 'presenca'), nome = clip_(d.nome, 150); if (!nome) throw new ApiError('VALIDATION', 'Informe o nome.');
     const colunas = jparse_(cfgMap_().ColunasExtras, []), ex = {}; colunas.forEach(function (c) { if (d.extras && d.extras[c] !== undefined) ex[c] = clip_(d.extras[c], 150); });
     const mid = id_('M'); appendRow_(table_('Membros'), { MembroID: mid, Nome: nome, Simples: nome, Apelido: nome.split(' ')[0], Endereco: clip_(d.endereco, 200), Telefone: clip_(d.celular, 25), CelulaID: id, EhMembro: '0', Status: 'Ativo', Extras: JSON.stringify(ex), CriadoEm: now_() });
     audit_(u.email, 'MEMBRO_NOVO', mid, 'OK'); return { id: mid };
@@ -338,7 +357,7 @@ function createEvent_(d, u) {
 }
 function createCellEvent_(d, u) {
   return withLock_(function () {
-    const id = cellOf_(u, d), t = clip_(d.titulo, 120), data = clip_(d.data, 10); if (!t || !data || !dateOk_(data)) throw new ApiError('VALIDATION', 'Informe título e data válida.');
+    const id = cellOf_(u, d, 'gerir'), t = clip_(d.titulo, 120), data = clip_(d.data, 10); if (!t || !data || !dateOk_(data)) throw new ApiError('VALIDATION', 'Informe título e data válida.');
     appendRow_(table_('Eventos'), { EventoID: id_('E'), Titulo: t, Data: data, Hora: clip_(d.hora, 5), Local: clip_(d.local, 150), Descricao: clip_(d.descricao, 500), Programacao: '[]', Escopo: 'celula', CelulaID: id, CriadoPor: u.membroId, Status: 'Ativo' }); return { ok: true };
   });
 }
@@ -424,7 +443,7 @@ const DIAS_ = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Dom
 const ENT = {
   celulas: { titulo: 'Células', aba: 'Celulas', id: 'CelulaID', pre: 'C', perm: 'celulas', rotulo: 'Nome', status: { col: 'Status', ativo: 'Ativa', off: 'Inativa' }, campos: [
     { k: 'Nome', l: 'Nome', t: 'text', max: 100, req: 1 }, { k: 'Descricao', l: 'Descrição', t: 'area', max: 500 }, { k: 'LiderID', l: 'Líder', t: 'membro' }, { k: 'SupervisorID', l: 'Supervisor', t: 'membro' },
-    { k: 'Dia', l: 'Dia da semana', t: 'sel', op: DIAS_ }, { k: 'Inicio', l: 'Início', t: 'time' }, { k: 'Fim', l: 'Fim', t: 'time' }, { k: 'Categoria', l: 'Categoria', t: 'text', max: 30 }, { k: 'Faixa', l: 'Faixa etária', t: 'text', max: 30 },
+    { k: 'TreinamentoID', l: 'Líder em treinamento', t: 'membro' }, { k: 'Dia', l: 'Dia da semana', t: 'sel', op: DIAS_ }, { k: 'Inicio', l: 'Início', t: 'time' }, { k: 'Fim', l: 'Fim', t: 'time' }, { k: 'Categoria', l: 'Categoria', t: 'text', max: 30 }, { k: 'Faixa', l: 'Faixa etária', t: 'text', max: 30 },
     { k: 'Bairro', l: 'Bairro', t: 'text', max: 80 }, { k: 'Cidade', l: 'Cidade', t: 'text', max: 80 }, { k: 'UF', l: 'UF', t: 'text', max: 2 }, { k: 'Endereco', l: 'Endereço', t: 'text', max: 200 },
     { k: 'Status', l: 'Situação', t: 'sel', op: [['Ativa', 'Ativa'], ['Inativa', 'Inativa']] }] },
   eventos: { titulo: 'Eventos', aba: 'Eventos', id: 'EventoID', pre: 'E', perm: 'eventos', rotulo: 'Titulo', sub: 'Data', status: { col: 'Status', ativo: 'Ativo', off: 'Cancelado' }, defaults: { Escopo: 'igreja' }, campos: [
@@ -497,6 +516,7 @@ function adminSave_(d, u) {
       if (e.aba === 'Videos' && !novo.Ordem) novo.Ordem = String(t.rows.length + 1);
       appendRow_(t, novo);
     }
+    if (e.aba === 'Celulas' && patch.TreinamentoID) { const tg = table_('Membros').rows.filter(function (m) { return m.MembroID === patch.TreinamentoID; })[0]; if (tg && !tg.CelulaID) writeRow_(table_('Membros'), tg._row, { CelulaID: id }); }
     if (e.aba === 'Celulas' && patch.LiderID) { const g = table_('Membros').rows.filter(function (m) { return m.MembroID === patch.LiderID; })[0]; if (g) writeRow_(table_('Membros'), g._row, { CelulaID: id }); }
     audit_(u.email, 'ADMIN_SALVAR:' + d.tipo, id, 'OK'); return { id: id };
   });
@@ -522,7 +542,7 @@ const ROUTES = {
   cellMembers: { auth: 'any', fn: cellMembers_ }, saveCell: { auth: 'any', write: 1, fn: saveCell_ }, saveAttendance: { auth: 'any', write: 1, fn: saveAttendance_ }, history: { auth: 'any', fn: history_ },
   indicators: { auth: 'any', fn: indicators_ }, getPapeis: { auth: 'any', fn: getPapeis_ }, savePapeis: { auth: 'any', write: 1, fn: savePapeis_ }, createCellEvent: { auth: 'any', write: 1, fn: createCellEvent_ },
   lookup: { auth: 'any', fn: lookup_ }, requestTransfer: { auth: 'any', write: 1, fn: requestTransfer_ }, addNewMember: { auth: 'any', write: 1, fn: addNewMember_ }, orgTree: { auth: 'any', fn: orgTree_ },
-  listTransfers: { auth: 'transf', fn: listTransfers_ }, decideTransfer: { auth: 'transf', write: 1, fn: decideTransfer_ },
+  listTransfers: { auth: 'any', fn: listTransfers_ }, decideTransfer: { auth: 'any', write: 1, fn: decideTransfer_ },
   createEvent: { auth: 'eventos', write: 1, fn: createEvent_ }, postNews: { auth: 'eventos', write: 1, fn: postNews_ },
   saveMinistry: { auth: 'min', write: 1, fn: saveMinistry_ }, deleteMinistry: { auth: 'min', write: 1, fn: deleteMinistry_ }, listInterests: { auth: 'min', fn: listInterests_ },
   saveConfig: { auth: 'config', write: 1, fn: saveConfig_ }, saveVideo: { auth: 'config', write: 1, fn: saveVideo_ }, deleteVideo: { auth: 'config', write: 1, fn: deleteVideo_ },

@@ -16,7 +16,7 @@ with sync_playwright() as p:
     pg.evaluate("go('admin')"); pg.wait_for_selector('#nu_e')
     pg.fill('#nu_n','Digitando durante o carregamento')  # não pode ser apagado pela atualização dos dados
     pg.wait_for_selector("td:has-text('admin@zoe.com')"); assert pg.input_value('#nu_n')=='Digitando durante o carregamento'
-    pg.fill('#nu_n','Lider Um'); pg.fill('#nu_e','lider@zoe.com'); pg.select_option('#nu_p','lider'); pg.fill('#nu_s','Temp12345'); pg.click("text=Criar usuário"); pg.wait_for_timeout(600)
+    pg.fill('#nu_n','Lider Um'); pg.fill('#nu_e','lider@zoe.com'); pg.select_option('#nu_p','membro'); pg.fill('#nu_s','Temp12345'); pg.click("text=Criar usuário"); pg.wait_for_timeout(600)
     pg.wait_for_selector("td:has-text('lider@zoe.com')")
     pg.fill('#nc_n','Semeadores'); pg.select_option('#nc_l',label='Lider Um'); pg.fill('#nc_ci','Águas Lindas'); pg.fill('#nc_u','GO'); pg.click("text=Criar célula"); pg.wait_for_timeout(600)
     pg.evaluate("go('buscar')"); pg.wait_for_selector("h3:has-text('Semeadores')")
@@ -44,7 +44,7 @@ with sync_playwright() as p:
     assert '1 de 2' in pg.inner_text('#view'), pg.inner_text('#view')[:300]
     pg.evaluate("go('celula','oracao')"); pg.fill('#ox','Peço oração pela minha família'); pg.click("text=Enviar pedido"); pg.wait_for_timeout(500)
     assert 'minha família' in pg.inner_text('#view')
-    pg.evaluate("go('celula','org')"); pg.wait_for_selector('.tree'); pg.screenshot(path='/tmp/shot_org.png')
+    pg.evaluate("go('celula','freq')"); tabs=pg.inner_text('.tabs'); assert 'Organograma' not in tabs and 'Presença' in tabs, tabs  # líder não vê organograma; supervisor vê
     # tentativa de ação proibida direto na API
     r=pg.evaluate("api('createEvent',{titulo:'x',data:'2026-12-01'}).then(()=>'ok').catch(e=>e.code)"); assert r=='FORBIDDEN', r
     pg.evaluate("go('celula','mural')"); pg.wait_for_selector('#board'); pg.screenshot(path='/tmp/shot_mural.png')
