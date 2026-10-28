@@ -18,7 +18,8 @@ with sync_playwright() as p:
     pg.once('dialog',lambda d:d.accept()); pg.click("#adl >> text=Remover"); pg.wait_for_selector("#adl >> text=inativo"); pg.wait_for_timeout(1500)
     pg.click(".tabs button:has-text('Ministérios')"); pg.wait_for_selector("#adl")
     pg.click("button[onclick=\"admForm('')\"]"); pg.fill('#adf0','Teatro'); pg.set_input_files(".box input[type=file]",'/home/claude/zoe-app/assets/img/icon-192.png'); pg.wait_for_selector("text=Nova foto escolhida"); pg.click(".box >> text=Salvar"); pg.wait_for_selector("#adl >> text=Teatro")
-    pg.evaluate("go('ministerios')"); pg.wait_for_selector(".pic-ph[style*='background']")
+    pg.evaluate("go('ministerios')"); pg.wait_for_selector("img.minimg[src^='data:image/jpeg']"); assert pg.query_selector("img.minimg[src^='data:image/svg+xml']")  # foto enviada + ilustração padrão dos demais
+    pg.evaluate("go('admin')"); pg.wait_for_selector("text=Usar padrão"); pg.set_input_files("input[onchange='minFoto(0,this)']",'/home/claude/zoe-app/assets/img/icon-192.png'); pg.wait_for_function("S.minFotos[0]&&S.minFotos[0].startsWith('data:image/jpeg')")
     pg.evaluate("go('admin')"); pg.click(".tabs button:has-text('Membros')"); pg.wait_for_selector("#adl >> text=Pastor Admin")
     pg.click("#adl >> text=Editar >> nth=0"); pg.fill('#adf2','Pastor'); pg.click(".box >> text=Salvar"); pg.wait_for_selector("#adl >> text=Pastor Admin")
     # evento com foto personalizada

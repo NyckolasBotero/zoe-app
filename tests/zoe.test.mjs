@@ -186,3 +186,9 @@ test('evento com foto personalizada: criar, listar, editar e validar', () => {
   assert.ok(e.call('adminSave', { tipo: 'eventos', id: it.id, valores: { Titulo: 'Retiro Zoe', Data: '2026-11-20', Foto: '__keep' } }, adm).ok); assert.equal(e.call('listEvents', {}, m).data[0].foto, foto);
   e.call('adminSave', { tipo: 'eventos', id: it.id, valores: { Titulo: 'Retiro Zoe', Data: '2026-11-20', Foto: '' } }, adm); assert.equal(e.call('listEvents', {}, m).data[0].foto, '');
 });
+test('horário que o Sheets converteu em Date (1899-12-30) volta como HH:mm, não como data', () => {
+  const { e } = boot();
+  assert.equal(e.run(`str_(new Date('1899-12-30T23:06:28Z'))`), '20:00');
+  assert.equal(e.run(`str_(new Date('2026-10-22T12:00:00Z'))`), '2026-10-22');
+  assert.equal(e.run(`str_('20:00')`), '20:00');
+});

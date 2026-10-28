@@ -20,7 +20,7 @@ export function makeEnv() {
     PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k] ?? null, setProperty: (k, v) => { props[k] = v; } }) },
     Utilities: { getUuid: () => crypto.randomUUID(), base64Encode: b => Buffer.from(b).toString('base64'), DigestAlgorithm: { SHA_256: 'sha256' },
       computeDigest: (a, s) => [...crypto.createHash('sha256').update(s).digest()],
-      formatDate: (d, tz, f) => { const p = new Intl.DateTimeFormat('sv-SE', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(d); const [D, T] = p.split(' '); return f === 'yyyy-MM-dd' ? D : D + ' ' + T; } },
+      formatDate: (d, tz, f) => { const p = new Intl.DateTimeFormat('sv-SE', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(d); const [D, T] = p.split(' '); return f === 'yyyy-MM-dd' ? D : f === 'HH:mm' ? T.slice(0, 5) : D + ' ' + T; } },
     ContentService: { MimeType: { JSON: 'json' }, createTextOutput: t => ({ t, setMimeType() { return this; }, getContent() { return t; } }) } };
   vm.createContext(ctx); vm.runInContext(fs.readFileSync(CODE, 'utf8'), ctx); vm.runInContext('setup()', ctx);
   const call = (action, data = {}, token) => { ctx.__req = JSON.stringify({ action, data, token }); return JSON.parse(vm.runInContext('doPost({postData:{contents:__req}}).getContent()', ctx)); };
