@@ -233,6 +233,7 @@ html{scroll-behavior:smooth}
 @keyframes fadeIn{from{opacity:0}}@keyframes fadeOut{to{opacity:0}}
 .popA{animation:slideIn var(--d-slow) var(--e-spring)}.popA.out{animation:slideOut 220ms var(--e-in) forwards}
 @keyframes slideIn{from{transform:translateX(30px) scale(.94);opacity:0}}@keyframes slideOut{to{transform:translateX(30px) scale(.94);opacity:0}}
+.pop .pbar{position:sticky;top:-14px;display:block;height:4px;margin:-14px -14px 12px;border-radius:0;background:linear-gradient(90deg,var(--verde),var(--vermelho));transform-origin:0 50%;animation:pdrain 3s linear forwards;z-index:2}@keyframes pdrain{from{transform:scaleX(1)}to{transform:scaleX(0)}}.pop.out{animation:slideOut 220ms var(--e-in) forwards}
 .ctxm{animation:pop var(--d-base) var(--e-spring);transform-origin:top left}
 .toast.out{animation:tout 220ms var(--e-in) forwards}@keyframes tout{to{opacity:0;transform:translate(-50%,10px) scale(.96)}}
 /* coreografia da entrada das telas e revelação ao rolar */
@@ -571,10 +572,15 @@ function cursoTxt(x){return typeof x==='string'?esc(x):esc(x.nome)+(x.status?` <
 async function matricular(id){const r=await push('enrollCourse',{cursoId:id},'Matrícula solicitada');if(r===undefined)return;mapCourses(await api('listCourses'));render()}
 function bell(){const l=alertas();const a=S.alerts;const L=[['aniv','Aniversários'],['celula','Lembretes de célula'],['eventos','Eventos'],['cursos','Cursos e matrículas'],['oracao','Pedidos de oração'],['transf','Aprovações pendentes']];
  const el=$('#layer');if(el.querySelector('.pop')){closeL();return}
- el.innerHTML=`<div class="pop" role="dialog" aria-label="Alertas"><h3 style="margin-bottom:8px">Alertas</h3>
+ el.innerHTML=`<div class="pop" role="dialog" aria-label="Alertas"><i class="pbar" aria-hidden="true"></i><h3 style="margin-bottom:8px">Alertas</h3>
  ${l.length?l.map(x=>`<div class="opt" ${x.go?`style="cursor:pointer" role="button" tabindex="0" onclick="closeL();go('${x.go}')"`:''}><span class="mini" style="width:34px;height:34px">${ic(x.i,16)}</span><div><b class="sm">${esc(x.t)}</b><div class="muted sm">${esc(x.s)}</div></div></div>`).join(''):'<p class="muted sm">Nenhum alerta agora.</p>'}
  <h3 style="margin:14px 0 4px">Quais alertas mostrar</h3>${L.map(([k,t])=>`<div class="opt"><div>${t}</div>${sw(a[k],`togA('${k}')`)}</div>`).join('')}
- <button class="btn ghost sm" style="margin-top:8px" onclick="closeL()">Fechar</button></div>`}
+ <button class="btn ghost sm" style="margin-top:8px" onclick="closeL()">Fechar</button></div>`;bellAuto()}
+const BELL={t:null,left:3000,start:0,on:false};
+function bellPause(){const p=$('#layer .pop');if(!p||!BELL.on)return;BELL.on=false;clearTimeout(BELL.t);BELL.left=Math.max(300,BELL.left-(Date.now()-BELL.start));const b=p.querySelector('.pbar');if(b)b.style.animationPlayState='paused'}
+function bellResume(){const p=$('#layer .pop');if(!p||BELL.on)return;BELL.on=true;BELL.start=Date.now();clearTimeout(BELL.t);BELL.t=setTimeout(bellFecha,BELL.left);const b=p.querySelector('.pbar');if(b)b.style.animationPlayState='running'}
+function bellFecha(){clearTimeout(BELL.t);BELL.on=false;const p=$('#layer .pop');if(!p)return;if(!S.anim){closeL();return}p.classList.add('out');setTimeout(()=>{const q=$('#layer .pop');if(q&&q.classList.contains('out'))closeL()},220)}
+function bellAuto(){const p=$('#layer .pop');if(!p)return;clearTimeout(BELL.t);BELL.left=3000;BELL.on=false;p.addEventListener('mouseenter',bellPause);p.addEventListener('mouseleave',bellResume);p.addEventListener('focusin',bellPause);p.addEventListener('focusout',bellResume);p.addEventListener('touchstart',()=>{bellPause();p.removeEventListener('mouseleave',bellResume)},{passive:true});if(p.matches(':hover')){BELL.on=true;bellPause()}else bellResume()}
 function togA(k){S.alerts[k]=!S.alerts[k];save();shell();bell();bell()}
 
 /* ---------- views ---------- */

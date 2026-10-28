@@ -31,6 +31,11 @@ with sync_playwright() as p:
     pg.mouse.down(); assert pg.evaluate("!!document.querySelector('.rip')"); pg.mouse.up()
     # feedback de arquivo selecionado
     pg.set_input_files('#bk_p','/tmp/demo.pdf'); pg.wait_for_selector('.toast >> text=Arquivo selecionado')
+    # sininho: fecha sozinho em 3 s, pausa com o mouse em cima
+    pg.evaluate("go('feed')"); pg.wait_for_timeout(500); pg.click('#bb'); pg.wait_for_selector('.pop .pbar'); pg.wait_for_timeout(700); pg.screenshot(path=OUT+'/m_bell.png')
+    pg.wait_for_selector('.pop',state='detached',timeout=5500)
+    pg.click('#bb'); pg.wait_for_selector('.pop'); pg.hover('.pop h3'); pg.wait_for_timeout(4200); assert pg.query_selector('.pop'), 'deve ficar aberto com o mouse em cima'
+    pg.mouse.move(5,400); pg.wait_for_selector('.pop',state='detached',timeout=5000)
     # tema escuro
     pg.click('#bt'); pg.wait_for_timeout(900); assert pg.evaluate("document.documentElement.getAttribute('data-theme')")=='dark'
     pg.evaluate("go('feed')"); pg.wait_for_timeout(1200); pg.screenshot(path=OUT+'/m_home_dark.png')
