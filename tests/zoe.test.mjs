@@ -58,7 +58,7 @@ test('células: líder só na própria; presença; transferência com aprovaçã
   assert.equal(e.call('decideTransfer', { id: tr[0].id, decisao: 'autorizado' }, S).data.status, 'autorizado');
   assert.equal(e.call('cellMembers', {}, L2).data.length, 2); assert.equal(e.call('cellMembers', {}, L1).data.length, 1);
   assert.equal(e.call('decideTransfer', { id: tr[0].id, decisao: 'negado' }, S).error.code, 'VALIDATION');
-  assert.equal(e.call('orgTree', {}, S).data[0].celulas.length, 2);
+  assert.equal(e.call('orgTree', {}, S).data.grupos[0].celulas.length, 2);
 });
 test('busca de células respeita privacidade; aniversários só dia e apelido', () => {
   const { e, adm, tok, mk } = boot(); const l = mk('lider@zoe.com', 'membro');
@@ -255,8 +255,19 @@ test('organograma: todos veem a árvore; célula gerada de outra', () => {
   const { e, adm, tok, mk } = boot(); const sup = mk('sup@zoe.com', 'membro'), l1 = mk('l1@zoe.com', 'membro'), l2 = mk('l2@zoe.com', 'membro');
   const c1 = e.call('createCell', { nome: 'Semeadores', liderId: l1, supervisorId: sup }, adm).data.id;
   e.call('createCell', { nome: 'Seara', liderId: l2, supervisorId: sup, maeId: c1 }, adm);
-  const X = (mk('x@zoe.com', 'membro'), tok('x@zoe.com', 'Temp12345')); const o = e.call('orgTree', {}, X).data;
+  const X = (mk('x@zoe.com', 'membro'), tok('x@zoe.com', 'Temp12345')); assert.equal(e.call('orgTree', {}, X).error.code, 'FORBIDDEN'); assert.equal(e.call('orgTree', {}, tok('l1@zoe.com', 'Temp12345')).error.code, 'FORBIDDEN');
+  const SU = tok('sup@zoe.com', 'Temp12345'), o = e.call('orgTree', {}, SU).data.grupos;
   assert.equal(o.length, 1); assert.equal(o[0].celulas.length, 2); assert.equal(o[0].celulas.find(c => c.nome === 'Seara').maeId, c1); assert.equal(o[0].celulas[0].membros, 1);
+  // mover célula para outro supervisor muda quem recebe os pedidos
+  const sup2 = mk('sup2@zoe.com', 'membro'), seara = o[0].celulas.find(c => c.nome === 'Seara').id, SU2 = tok('sup2@zoe.com', 'Temp12345');
+  assert.equal(e.call('orgMove', { celulaId: seara, supervisorId: sup2 }, X).error.code, 'FORBIDDEN');
+  assert.equal(e.call('orgMove', { celulaId: seara, supervisorId: sup2 }, SU2).error.code, 'FORBIDDEN'); // ainda não supervisiona esta
+  assert.equal(e.call('orgMove', { celulaId: seara, supervisorId: sup2 }, SU).ok, true);
+  assert.equal(e.call('orgTree', {}, SU2).data.grupos.find(g => g.supervisorId === sup2).celulas[0].editavel, true);
+  assert.equal(e.call('orgMove', { celulaId: c1, maeId: seara }, adm).error.code, 'VALIDATION'); // ciclo (Seara já é filha de Semeadores)
+  assert.equal(e.call('orgMove', { celulaId: seara, supervisorId: '' }, adm).ok, true);
+  assert.equal(e.call('saveOrgLayout', { layout: { [seara]: { x: 10, y: 20 } } }, SU).ok, true); assert.equal(e.call('orgTree', {}, adm).data.layout[seara].x, 10);
+  assert.equal(e.call('saveOrgLayout', { layout: {} }, X).error.code, 'FORBIDDEN');
 });
 test('aprovações: central única, membresia por frequência configurável, desfazer', () => {
   const { e, adm, tok, mk } = boot();
@@ -317,4 +328,19 @@ test('interesse em ministério aprovado aparece no perfil do membro; uso da plat
   assert.equal(e.call('usageReport', {}, A).error.code, 'FORBIDDEN');
   // senha e acesso pelo painel
   assert.ok(e.call('setUser', { email: 'ana@zoe.com', senha: 'NovaSenha999', papel: 'pastor' }, adm).ok); assert.equal(e.call('login', { email: 'ana@zoe.com', senha: 'NovaSenha999' }).ok, true); assert.equal(e.call('login', { email: 'ana@zoe.com', senha: 'Temp12345' }).error.code, 'AUTH');
+});
+
+test('nota de 1 a 10 nos livros e fotos de perfil sob demanda', () => {
+  const { e, adm, tok, mk } = boot(); mk('ana@zoe.com', 'membro'); mk('beto@zoe.com', 'membro'); const A = tok('ana@zoe.com', 'Temp12345'), B = tok('beto@zoe.com', 'Temp12345');
+  const id = e.call('saveBook', { titulo: 'L', pdf: Buffer.from('%PDF-1.4 x').toString('base64') }, adm).data.id;
+  assert.equal(e.call('rateBook', { livroId: id, nota: 11 }, A).error.code, 'VALIDATION'); assert.equal(e.call('rateBook', { livroId: id, nota: 0 }, A).error.code, 'VALIDATION');
+  e.call('rateBook', { livroId: id, nota: 10 }, A); const r = e.call('rateBook', { livroId: id, nota: 7 }, B).data; assert.equal(r.nota, 8.5); assert.equal(r.votos, 2);
+  e.call('rateBook', { livroId: id, nota: 6 }, B); const l = e.call('listBooks', {}, B).data[0]; assert.equal(l.nota, 8); assert.equal(l.minhaNota, 6); assert.equal(l.votos, 2);
+  const ana = e.call('me', {}, A).data.membro.MembroID; e.run(`writeRow_(table_('Membros'), table_('Membros').rows.filter(function(x){return x.MembroID==='${ana}'})[0]._row, {Foto:'data:image/jpeg;base64,AAAA'})`);
+  const f = e.call('fotos', { ids: [ana, 'x'] }, B).data; assert.equal(f[ana], 'data:image/jpeg;base64,AAAA'); assert.equal(f.x, '');
+  const c = e.call('addBookComment', { livroId: id, texto: 'oi' }, A).data.id; assert.ok(c); assert.equal(e.call('listBookComments', { livroId: id }, B).data[0].membroId, ana);
+  // envio grande: só saveBook passa de 1,5 MB
+  const big = Buffer.alloc(1200000, 65); const pdf = Buffer.concat([Buffer.from('%PDF-1.4 '), big]).toString('base64');
+  assert.equal(e.call('saveBook', { titulo: 'Grande', pdf }, adm).ok, true);
+  assert.equal(e.call('addTestimony', { texto: 'x'.repeat(10), padding: 'y'.repeat(1600000) }, A).error.code, 'BAD_REQUEST');
 });

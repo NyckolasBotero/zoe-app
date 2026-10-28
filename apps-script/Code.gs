@@ -42,6 +42,7 @@ const SHEETS = {
   Livros: ['LivroID', 'Titulo', 'Autor', 'Descricao', 'Capa', 'ArquivoID', 'Tamanho', 'Status', 'CriadoEm'],
   LivroComentarios: ['ComentarioID', 'LivroID', 'MembroID', 'Texto', 'Pagina', 'Data', 'Status'],
   Testemunhos: ['TestemunhoID', 'MembroID', 'Titulo', 'Texto', 'Data', 'Status'],
+  LivroNotas: ['LivroID', 'MembroID', 'Nota', 'Data'],
   Curtidas: ['Tipo', 'AlvoID', 'MembroID', 'Data'],
   Saidas: ['SaidaID', 'MembroID', 'CelulaID', 'Motivo', 'SolicitadoPor', 'Status', 'DecididoPor', 'Data', 'DataDecisao'],
   Transferencias: ['TransfID', 'MembroID', 'DeCelulaID', 'ParaCelulaID', 'SolicitadoPor', 'Status', 'DecididoPor', 'Data', 'DataDecisao'],
@@ -200,7 +201,7 @@ function saveMember_(d, u) {
 function acceptLegal_(d, u) { return withLock_(function () { const g = getMember_(u.membroId), k = d.tipo === 'termos' ? 'AceiteTermos' : 'AceitePrivacidade'; writeRow_(g.t, g.m._row, (function () { const o = {}; o[k] = now_(); return o; })()); return { ok: true }; }); }
 function birthdays_(d, u) {
   const hoje = today_(), mes = hoje.slice(5, 7), dia = hoje.slice(8, 10);
-  const l = table_('Membros').rows.filter(function (m) { return m.Nascimento && m.Nascimento.slice(5, 7) === mes && m.Status !== 'Inativo'; }).map(function (m) { return { apelido: m.Apelido || m.Simples || m.Nome.split(' ')[0], dia: m.Nascimento.slice(8, 10), hoje: m.Nascimento.slice(8, 10) === dia }; });
+  const l = table_('Membros').rows.filter(function (m) { return m.Nascimento && m.Nascimento.slice(5, 7) === mes && m.Status !== 'Inativo'; }).map(function (m) { return { id: m.MembroID, apelido: m.Apelido || m.Simples || m.Nome.split(' ')[0], dia: m.Nascimento.slice(8, 10), hoje: m.Nascimento.slice(8, 10) === dia }; });
   l.sort(function (a, b) { return a.dia < b.dia ? -1 : 1; }); return { mes: mes, lista: l };
 }
 
@@ -322,12 +323,40 @@ function addPrayer_(d, u) {
 }
 function prayerCell_(u, d) { const id = clip_(d.celulaId, 30) || u.celulaId || celulaAtiva_(u); if (id && id !== u.celulaId) cellAccess_(u, id, 'ver'); return id; }
 function listPrayers_(d, u) { const id = prayerCell_(u, d); if (!id) return []; return table_('Oracoes').rows.filter(function (o) { return o.CelulaID === id; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).slice(0, 50).map(function (o) { return { tema: o.Tema, titulo: o.Titulo, texto: o.Texto, data: o.Data }; }); }
+function canOrg_(u) { return can_(u, 'celulas') || ehSupervisor_(u); }
 function orgTree_(d, u) {
+  if (!canOrg_(u)) throw new ApiError('FORBIDDEN', 'O organograma é visível apenas para supervisores e administradores.');
   const mem = {}; table_('Membros').rows.forEach(function (m) { mem[m.MembroID] = m.Apelido || m.Simples || m.Nome; });
   const qtd = {}; table_('Membros').rows.forEach(function (m) { if (m.CelulaID && m.Status !== 'Inativo') qtd[m.CelulaID] = (qtd[m.CelulaID] || 0) + 1; });
-  const cs = table_('Celulas').rows.filter(function (c) { return c.Status !== 'Inativa'; }), g = {};
-  cs.forEach(function (c) { const k = c.SupervisorID || '-'; (g[k] = g[k] || []).push({ id: c.CelulaID, nome: c.Nome, dia: c.Dia, inicio: c.Inicio, lider: mem[c.LiderID] || '', treinamento: mem[c.TreinamentoID] || '', membros: qtd[c.CelulaID] || 0, maeId: c.MaeID || '' }); });
-  return Object.keys(g).map(function (k) { return { supervisorId: k === '-' ? '' : k, supervisor: k === '-' ? 'Sem supervisor' : mem[k] || 'Supervisor', celulas: g[k] }; });
+  const full = can_(u, 'celulas'), cs = table_('Celulas').rows.filter(function (c) { return c.Status !== 'Inativa'; }), g = {};
+  cs.forEach(function (c) { const k = c.SupervisorID || '-'; (g[k] = g[k] || []).push({ id: c.CelulaID, nome: c.Nome, dia: c.Dia, inicio: c.Inicio, lider: mem[c.LiderID] || '', liderId: c.LiderID || '', treinamento: mem[c.TreinamentoID] || '', membros: qtd[c.CelulaID] || 0, maeId: c.MaeID || '', editavel: full || c.SupervisorID === u.membroId }); });
+  const grupos = Object.keys(g).map(function (k) { return { supervisorId: k === '-' ? '' : k, supervisor: k === '-' ? 'Sem supervisor' : mem[k] || 'Supervisor', celulas: g[k] }; });
+  const pessoas = table_('Usuarios').rows.filter(function (x) { return x.Status !== 'Inativo' && x.MembroID; }).map(function (x) { return { id: x.MembroID, nome: mem[x.MembroID] || x.Email }; }).sort(function (a, b) { return a.nome < b.nome ? -1 : 1; });
+  return { grupos: grupos, pessoas: pessoas, layout: jparse_(cfgMap_().OrgLayout, {}), admin: full };
+}
+function orgMove_(d, u) {
+  return withLock_(function () {
+    if (!canOrg_(u)) throw new ApiError('FORBIDDEN', 'Só supervisores e administradores alteram o organograma.');
+    const t = table_('Celulas'), c = t.rows.filter(function (x) { return x.CelulaID === clip_(d.celulaId, 30) && x.Status !== 'Inativa'; })[0]; if (!c) throw new ApiError('NOT_FOUND', 'Célula não encontrada.');
+    if (!can_(u, 'celulas') && c.SupervisorID !== u.membroId) throw new ApiError('FORBIDDEN', 'Você só move células que você supervisiona.');
+    const p = {};
+    if (d.supervisorId !== undefined) { const sid = clip_(d.supervisorId, 30); if (sid) getMember_(sid); p.SupervisorID = sid; }
+    if (d.maeId !== undefined) {
+      const mid = clip_(d.maeId, 30);
+      if (mid) { if (mid === c.CelulaID) throw new ApiError('VALIDATION', 'Uma célula não pode ser mãe dela mesma.'); const cel = {}; t.rows.forEach(function (x) { cel[x.CelulaID] = x; }); if (!cel[mid]) throw new ApiError('NOT_FOUND', 'Célula-mãe não encontrada.'); let k = cel[mid], n = 0; while (k && n < 60) { if (k.CelulaID === c.CelulaID) throw new ApiError('VALIDATION', 'Isso criaria um ciclo entre as células.'); k = k.MaeID ? cel[k.MaeID] : null; n++; } }
+      p.MaeID = mid;
+    }
+    if (!Object.keys(p).length) throw new ApiError('VALIDATION', 'Nada para alterar.');
+    writeRow_(t, c._row, p); audit_(u.email, 'ORGANOGRAMA_MOVE', c.CelulaID + ' ' + JSON.stringify(p), 'OK'); return { ok: true };
+  });
+}
+function saveOrgLayout_(d, u) {
+  return withLock_(function () {
+    if (!canOrg_(u)) throw new ApiError('FORBIDDEN', 'Só supervisores e administradores alteram o organograma.');
+    const src = d.layout && typeof d.layout === 'object' ? d.layout : {}, out = {}; Object.keys(src).slice(0, 400).forEach(function (k) { const v = src[k]; if (!/^[A-Za-z0-9:_-]{1,40}$/.test(k) || !v) return; const x = Math.round(Number(v.x)), y = Math.round(Number(v.y)); if (isFinite(x) && isFinite(y) && Math.abs(x) < 20000 && Math.abs(y) < 20000) out[k] = { x: x, y: y }; });
+    const t = table_('Config'), r = t.rows.filter(function (x) { return x.Chave === 'OrgLayout'; })[0], v = JSON.stringify(out); if (r) writeRow_(t, r._row, { Valor: v }); else appendRow_(t, { Chave: 'OrgLayout', Valor: v });
+    return { ok: true };
+  });
 }
 
 /* ===== aprovações (central única), membresia por frequência e uso da plataforma ===== */
@@ -364,19 +393,19 @@ function aprovItens_(u) {
   };
   table_('Transferencias').rows.forEach(function (t) {
     if (!(adm || meu(cel[t.ParaCelulaID]) || meu(cel[t.DeCelulaID]))) return;
-    add({ tipo: 'transferencia', id: t.TransfID, titulo: 'Transferência de ' + nm(t.MembroID), detalhe: ((cel[t.DeCelulaID] || {}).Nome || '?') + ' para ' + ((cel[t.ParaCelulaID] || {}).Nome || '?'), status: t.Status, data: t.Data, solicitante: nm(t.SolicitadoPor), decididoPorId: t.DecididoPor, decididoPor: nm(t.DecididoPor), dataDecisao: t.DataDecisao, pode: adm || t.SolicitadoPor !== u.membroId, admOk: adm });
+    add({ tipo: 'transferencia', id: t.TransfID, pessoaId: t.MembroID, titulo: 'Transferência de ' + nm(t.MembroID), detalhe: ((cel[t.DeCelulaID] || {}).Nome || '?') + ' para ' + ((cel[t.ParaCelulaID] || {}).Nome || '?'), status: t.Status, data: t.Data, solicitante: nm(t.SolicitadoPor), decididoPorId: t.DecididoPor, decididoPor: nm(t.DecididoPor), dataDecisao: t.DataDecisao, pode: adm || t.SolicitadoPor !== u.membroId, admOk: adm });
   });
   table_('Saidas').rows.forEach(function (x) {
     if (!(adm || meu(cel[x.CelulaID]))) return;
-    add({ tipo: 'saida', id: x.SaidaID, titulo: nm(x.MembroID) + ' saiu da congregação', detalhe: 'Célula ' + ((cel[x.CelulaID] || {}).Nome || '?') + (x.Motivo ? ' · ' + x.Motivo : ''), status: x.Status, data: x.Data, solicitante: nm(x.SolicitadoPor), decididoPorId: x.DecididoPor, decididoPor: nm(x.DecididoPor), dataDecisao: x.DataDecisao, pode: adm || x.SolicitadoPor !== u.membroId, admOk: adm });
+    add({ tipo: 'saida', id: x.SaidaID, pessoaId: x.MembroID, titulo: nm(x.MembroID) + ' saiu da congregação', detalhe: 'Célula ' + ((cel[x.CelulaID] || {}).Nome || '?') + (x.Motivo ? ' · ' + x.Motivo : ''), status: x.Status, data: x.Data, solicitante: nm(x.SolicitadoPor), decididoPorId: x.DecididoPor, decididoPor: nm(x.DecididoPor), dataDecisao: x.DataDecisao, pode: adm || x.SolicitadoPor !== u.membroId, admOk: adm });
   });
   if (min) table_('Interesses').rows.forEach(function (i) {
     const m = mem[i.MembroID] || {};
-    add({ tipo: 'interesse', id: i.InteresseID, titulo: nm(i.MembroID) + ' quer participar do ministério ' + (mi[i.MinisterioID] || '?'), detalhe: m.Telefone ? 'Telefone ' + m.Telefone : 'Sem telefone cadastrado', status: stN_(i.Status), data: i.Data, solicitante: nm(i.MembroID), decididoPorId: i.DecididoPor, decididoPor: nm(i.DecididoPor), dataDecisao: i.DataDecisao, pode: true, admOk: true });
+    add({ tipo: 'interesse', id: i.InteresseID, pessoaId: i.MembroID, titulo: nm(i.MembroID) + ' quer participar do ministério ' + (mi[i.MinisterioID] || '?'), detalhe: m.Telefone ? 'Telefone ' + m.Telefone : 'Sem telefone cadastrado', status: stN_(i.Status), data: i.Data, solicitante: nm(i.MembroID), decididoPorId: i.DecididoPor, decididoPor: nm(i.DecididoPor), dataDecisao: i.DataDecisao, pode: true, admOk: true });
   });
   table_('Membresias').rows.forEach(function (b) {
     if (!(adm || meu(cel[b.CelulaID]))) return; const m = mem[b.MembroID] || {};
-    add({ tipo: 'membresia', id: b.MembresiaID, titulo: nm(b.MembroID) + ' pode se tornar membro', detalhe: 'Frequentou ' + b.Frequencias + ' células seguidas em ' + ((cel[b.CelulaID] || {}).Nome || '?') + '. Revise o cadastro antes de aprovar.', status: b.Status, data: b.Data, solicitante: 'Sistema', decididoPorId: b.DecididoPor, decididoPor: nm(b.DecididoPor), dataDecisao: b.DataDecisao, pode: true, admOk: adm,
+    add({ tipo: 'membresia', id: b.MembresiaID, pessoaId: b.MembroID, titulo: nm(b.MembroID) + ' pode se tornar membro', detalhe: 'Frequentou ' + b.Frequencias + ' células seguidas em ' + ((cel[b.CelulaID] || {}).Nome || '?') + '. Revise o cadastro antes de aprovar.', status: b.Status, data: b.Data, solicitante: 'Sistema', decididoPorId: b.DecididoPor, decididoPor: nm(b.DecididoPor), dataDecisao: b.DataDecisao, pode: true, admOk: adm,
       revisar: { nome: m.Nome, telefone: m.Telefone, email: m.Email, nascimento: m.Nascimento, endereco: [m.Endereco, m.Bairro, m.Cidade].filter(String).join(', ') } });
   });
   return out.sort(function (a, b) { return a.data < b.data ? 1 : -1; });
@@ -466,8 +495,9 @@ function nomes_() { const o = {}; table_('Membros').rows.forEach(function (m) { 
 function curtidas_(tipo, u) { const n = {}, eu = {}; table_('Curtidas').rows.forEach(function (c) { if (c.Tipo !== tipo) return; n[c.AlvoID] = (n[c.AlvoID] || 0) + 1; if (c.MembroID === u.membroId) eu[c.AlvoID] = 1; }); return { n: n, eu: eu }; }
 function listBooks_(d, u) {
   const com = {}; table_('LivroComentarios').rows.forEach(function (c) { if (c.Status !== 'Removido') com[c.LivroID] = (com[c.LivroID] || 0) + 1; });
+  const notas = {}; table_('LivroNotas').rows.forEach(function (r) { const o = notas[r.LivroID] = notas[r.LivroID] || { soma: 0, n: 0, minha: 0 }; o.soma += Number(r.Nota || 0); o.n++; if (r.MembroID === u.membroId) o.minha = Number(r.Nota || 0); });
   return table_('Livros').rows.filter(function (l) { return l.Status !== 'Removido'; }).sort(function (a, b) { return a.CriadoEm < b.CriadoEm ? 1 : -1; })
-    .map(function (l) { return { id: l.LivroID, titulo: l.Titulo, autor: l.Autor, descricao: l.Descricao, capa: l.Capa, tamanho: Number(l.Tamanho || 0), comentarios: com[l.LivroID] || 0, temPdf: !!l.ArquivoID }; });
+    .map(function (l) { const nt = notas[l.LivroID] || { soma: 0, n: 0, minha: 0 }; return { id: l.LivroID, titulo: l.Titulo, autor: l.Autor, descricao: l.Descricao, capa: l.Capa, tamanho: Number(l.Tamanho || 0), comentarios: com[l.LivroID] || 0, temPdf: !!l.ArquivoID, nota: nt.n ? Math.round(nt.soma / nt.n * 10) / 10 : 0, votos: nt.n, minhaNota: nt.minha }; });
 }
 function saveBook_(d, u) {
   if (!canMod_(u)) throw new ApiError('FORBIDDEN', 'Sem permissão para gerenciar a biblioteca.');
@@ -489,6 +519,22 @@ function saveBook_(d, u) {
     const id = id_('L'); appendRow_(t, Object.assign({ LivroID: id, Status: 'Ativo', CriadoEm: now_() }, patch)); audit_(u.email, 'LIVRO_NOVO', id, 'OK'); return { id: id };
   });
 }
+function rateBook_(d, u) {
+  return withLock_(function () {
+    const nota = Math.round(Number(d.nota)); if (!isFinite(nota) || nota < 1 || nota > 10) throw new ApiError('VALIDATION', 'A nota vai de 1 a 10.');
+    const id = clip_(d.livroId, 30); if (!table_('Livros').rows.some(function (l) { return l.LivroID === id && l.Status !== 'Removido'; })) throw new ApiError('NOT_FOUND', 'Livro não encontrado.');
+    const t = table_('LivroNotas'), ex = t.rows.filter(function (r) { return r.LivroID === id && r.MembroID === u.membroId; })[0];
+    if (ex) writeRow_(t, ex._row, { Nota: String(nota), Data: now_() }); else appendRow_(t, { LivroID: id, MembroID: u.membroId, Nota: String(nota), Data: now_() });
+    const todas = t.rows.filter(function (r) { return r.LivroID === id && r.MembroID !== u.membroId; }).map(function (r) { return Number(r.Nota || 0); }).concat([nota]);
+    return { nota: Math.round(todas.reduce(function (a, b) { return a + b; }, 0) / todas.length * 10) / 10, votos: todas.length, minhaNota: nota };
+  });
+}
+// fotos de perfil sob demanda (evita repetir a imagem em cada comentário ou lista)
+function fotos_(d, u) {
+  const ids = (Array.isArray(d.ids) ? d.ids : []).slice(0, 25).map(function (x) { return clip_(x, 30); }), o = {}; ids.forEach(function (i) { o[i] = ''; });
+  table_('Membros').rows.forEach(function (m) { if (Object.prototype.hasOwnProperty.call(o, m.MembroID)) o[m.MembroID] = m.Foto || ''; });
+  return o;
+}
 function deleteBook_(d, u) {
   if (!canMod_(u)) throw new ApiError('FORBIDDEN', 'Sem permissão para gerenciar a biblioteca.');
   return withLock_(function () {
@@ -502,7 +548,7 @@ function getBookFile_(d, u) {
   return { pdf: Utilities.base64Encode(DriveApp.getFileById(r.ArquivoID).getBlob().getBytes()) };
 }
 function feed_(rows, tipo, nm, lk, u, idc, extra) {
-  return rows.map(function (r) { const o = { id: r[idc], autor: nm[r.MembroID] || 'Membro', meu: r.MembroID === u.membroId, data: r.Data, texto: r.Texto, curtidas: lk.n[r[idc]] || 0, curti: !!lk.eu[r[idc]] }; return extra(o, r); });
+  return rows.map(function (r) { const o = { id: r[idc], membroId: r.MembroID, autor: nm[r.MembroID] || 'Membro', meu: r.MembroID === u.membroId, data: r.Data, texto: r.Texto, curtidas: lk.n[r[idc]] || 0, curti: !!lk.eu[r[idc]] }; return extra(o, r); });
 }
 function listBookComments_(d, u) {
   const nm = nomes_(), lk = curtidas_('comentario', u), id = clip_(d.livroId, 30);
@@ -821,6 +867,7 @@ const ROUTES = {
   listTransfers: { auth: 'any', fn: listTransfers_ }, decideTransfer: { auth: 'any', write: 1, fn: decideTransfer_ },
   createEvent: { auth: 'eventos', write: 1, fn: createEvent_ }, postNews: { auth: 'eventos', write: 1, fn: postNews_ },
   listApprovals: { auth: 'any', fn: listApprovals_ }, decideApproval: { auth: 'any', fn: decideApproval_ }, undoApproval: { auth: 'any', fn: undoApproval_ }, track: { auth: 'any', fn: track_ }, usageReport: { auth: 'config', fn: usageReport_ },
+  orgMove: { auth: 'any', write: 1, fn: orgMove_ }, saveOrgLayout: { auth: 'any', write: 1, fn: saveOrgLayout_ }, rateBook: { auth: 'any', write: 1, fn: rateBook_ }, fotos: { auth: 'any', fn: fotos_ },
   listBooks: { auth: 'any', fn: listBooks_ }, saveBook: { auth: 'any', write: 1, fn: saveBook_ }, deleteBook: { auth: 'any', write: 1, fn: deleteBook_ }, getBookFile: { auth: 'any', fn: getBookFile_ },
   listBookComments: { auth: 'any', fn: listBookComments_ }, addBookComment: { auth: 'any', write: 1, fn: addBookComment_ }, deleteBookComment: { auth: 'any', write: 1, fn: deleteBookComment_ },
   listTestimonies: { auth: 'any', fn: listTestimonies_ }, addTestimony: { auth: 'any', write: 1, fn: addTestimony_ }, deleteTestimony: { auth: 'any', write: 1, fn: deleteTestimony_ }, toggleLike: { auth: 'any', write: 1, fn: toggleLike_ },
@@ -835,8 +882,9 @@ function doGet() { return json_({ ok: true, data: { servico: 'Zoe API', status: 
 function doPost(e) {
   let out, user = null, route = null, action = '';
   try {
-    const raw = e && e.postData && e.postData.contents; if (!raw || raw.length > 1500000) throw new ApiError('BAD_REQUEST', 'Requisição inválida.');
-    const req = JSON.parse(raw); action = String(req.action || ''); route = Object.prototype.hasOwnProperty.call(ROUTES, action) ? ROUTES[action] : null; if (!route) throw new ApiError('NOT_FOUND', 'Ação desconhecida.');
+    const raw = e && e.postData && e.postData.contents; if (!raw || raw.length > 16000000) throw new ApiError('BAD_REQUEST', 'Requisição inválida.');
+    const req = JSON.parse(raw); action = String(req.action || '');
+    if (raw.length > 1500000 && action !== 'saveBook') throw new ApiError('BAD_REQUEST', 'Requisição grande demais.'); route = Object.prototype.hasOwnProperty.call(ROUTES, action) ? ROUTES[action] : null; if (!route) throw new ApiError('NOT_FOUND', 'Ação desconhecida.');
     if (route.auth) { user = auth_(req.token); if (route.auth !== 'any' && !can_(user, route.auth)) { audit_(user.email, 'NEGADO:' + action, '', 'NEGADO'); throw new ApiError('FORBIDDEN', 'Você não tem permissão para esta operação.'); } }
     out = { ok: true, data: route.fn(req.data || {}, user) };
   } catch (err) {

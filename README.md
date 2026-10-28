@@ -62,3 +62,11 @@ Texto: *Almeida 1819 (Bíblia Livre)*, domínio público, fonte github.com/midva
 - **Acessos**: em Administração → Usuários, *Editar acesso e senha* troca nível de acesso, situação e senha (a pessoa troca a senha no próximo acesso).
 - **Uso da plataforma**: logins, tempo online, % de uso por pessoa e telas mais acessadas (por mês). O tempo só conta com o app aberto e visível.
 - Atualização do backend: cole o novo `Code.gs`, rode `setup()` (cria as abas Membresias, AprovLog e Uso e as colunas novas) e publique uma nova versão da implantação.
+
+## Organograma modular, fotos, notas e carrossel
+- **Organograma** (Célula → aba Organograma): visível **apenas** para supervisores e administradores; os demais não veem a aba e a API recusa (`FORBIDDEN`). Os cards das células são arrastáveis; a posição fica salva para todos (Config `OrgLayout`). **Botão direito** (no celular, segurar o dedo) numa célula: *Vincular a outro supervisor*, *Retirar do supervisor atual*, *Definir/Remover célula-mãe*. Também dá para soltar o card sobre um supervisor (ou outra célula, para definir a mãe). A mudança grava `SupervisorID`/`MaeID` da célula, então transferências, saídas e aprovações passam a ir para o novo supervisor. Administrador move qualquer célula; supervisor só as suas. "Reorganizar automaticamente" limpa as posições.
+- **Fotos de perfil** aparecem em todo lugar com avatar (chamada, papéis, membros, aniversariantes, testemunhos, comentários dos livros, aprovações, organograma). As fotos são buscadas sob demanda (`fotos`, lotes de 25) e guardadas em cache na página.
+- **Nota do livro**: cada pessoa dá de 1 a 10 (pode mudar); a média e o número de avaliações aparecem na biblioteca (aba `LivroNotas`).
+- **Tela inicial**: carrossel com os próximos eventos (troca a cada 3 s; pausa ao passar o mouse/tocar; setas e pontos). Sem eventos, passam versículos.
+- **PDF grande**: o limite do corpo da requisição subiu para 16 MB apenas para `saveBook`; as demais ações continuam limitadas a 1,5 MB.
+- Depois de atualizar: cole o novo `Code.gs`, rode `setup()` (cria a aba `LivroNotas`) e publique uma **nova versão** da implantação.

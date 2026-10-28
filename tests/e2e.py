@@ -44,7 +44,7 @@ with sync_playwright() as p:
     assert '1 de 2' in pg.inner_text('#view'), pg.inner_text('#view')[:300]
     pg.evaluate("go('celula','oracao')"); pg.fill('#ox','Peço oração pela minha família'); pg.click("text=Enviar pedido"); pg.wait_for_timeout(500)
     assert 'minha família' in pg.inner_text('#view')
-    pg.evaluate("go('celula','freq')"); tabs=pg.inner_text('.tabs'); assert 'Organograma' in tabs and 'Presença' in tabs, tabs  # organograma é visível a todos
+    pg.evaluate("go('celula','freq')"); tabs=pg.inner_text('.tabs'); assert 'Organograma' not in tabs and 'Presença' in tabs, tabs  # organograma só para supervisores e administradores
     # tentativa de ação proibida direto na API
     r=pg.evaluate("api('createEvent',{titulo:'x',data:'2026-12-01'}).then(()=>'ok').catch(e=>e.code)"); assert r=='FORBIDDEN', r
     pg.evaluate("go('celula','mural')"); pg.wait_for_selector('#board'); pg.screenshot(path='/tmp/shot_mural.png')
