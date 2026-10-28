@@ -438,7 +438,7 @@ function renderKeep(){const v={};document.querySelectorAll('#view [id]').forEach
 /* ===== Bíblia (Almeida 1819 - domínio público), arquivos em assets/bible/ ===== */
 const BIB={idx:null,cache:{},all:false,res:null,q:'',fs:0,msg:'',rc:{},codes:null};
 /* versões: 'AL' = Almeida 1819 (arquivos locais, funciona offline); as demais são buscadas no serviço bolls.life na hora de ler */
-const BVER={AL:{n:'Almeida 1819',c:null},ARC:{n:'ARC',c:'ARC'},NVT:{n:'NVT',c:'NVT'}};
+const BVER={AL:{n:'Almeida 1819',c:null},ARC:{n:'ARC',c:'ARC'},ARA:{n:'ARA',c:'ARA'},NTLH:{n:'NTLH',c:'NTLH'},NVT:{n:'NVT',c:'NVT'}};
 function bibPos(){S.bib=Object.assign({b:43,c:1,ver:'AL',cmp:false,ver2:'NVT',v1:0,v2:0},S.bib||{});if(!BVER[S.bib.ver])S.bib.ver='AL';if(!BVER[S.bib.ver2])S.bib.ver2='NVT';return S.bib}
 const bibClean=h=>{const d=document.createElement('div');d.innerHTML=String(h||'').replace(/<br\s*\/?>/gi,' ').replace(/<(s|S)[^>]*>[^<]*<\/(s|S)>/g,'');return (d.textContent||'').replace(/\s+/g,' ').trim()};
 /* devolve {nº do versículo: texto} do capítulo na versão pedida */
@@ -465,7 +465,7 @@ function bibView(){const p=bibPos();
  <div class="row"><button class="btn sm ghost" onclick="bibNav(-1)">${ic('chev',14)} Anterior</button><button class="btn sm ghost" onclick="bibNav(1)">Próximo ${ic('chevr',14)}</button><span class="sp"></span><button class="btn sm ghost" onclick="bibFont(-1)" aria-label="Diminuir letra">A-</button><button class="btn sm ghost" onclick="bibFont(1)" aria-label="Aumentar letra">A+</button></div>
  <div class="row"><input id="bq" placeholder="Buscar palavra ou frase (texto Almeida 1819)" value="${esc(BIB.q)}" style="flex:1" onkeydown="if(event.key==='Enter')bibBusca()"><button class="btn" onclick="bibBusca()">Buscar</button></div></div>
  <div class="card flat" id="bibtxt">${BIB.res?bibRes():'<p class="muted">Carregando…</p>'}</div>
- <p class="muted sm">Almeida 1819: domínio público, funciona offline. ARC e NVT são lidas do serviço bolls.life e precisam de internet; os textos pertencem aos respectivos detentores de direitos.</p>`}
+ <p class="muted sm">Almeida 1819: domínio público, funciona offline. ARC, ARA, NTLH e NVT são lidas do serviço bolls.life e precisam de internet; os textos pertencem aos respectivos detentores de direitos.</p>`}
 function bibSet(k,v){const p=bibPos();p[k]=v;if(k==='v1'&&p.v2&&v&&p.v2<v)p.v2=0;BIB.res=null;save();if(k==='cmp'||k==='v1'||k==='ver'||k==='ver2'){render();bibShow()}else bibShow()}
 async function bibLoadIdx(){if(BIB.loading)return;BIB.loading=1;try{const r=await fetch('assets/bible/index.json');if(!r.ok)throw 0;BIB.idx=await r.json()}catch(e){BIB.idx='erro';BIB.msg='O texto da Bíblia fica na pasta do site publicado (assets/bible). Abra o app pelo endereço oficial da igreja para ler.'}BIB.loading=0;if(R.r==='membro'&&R.sub.membro==='biblia'){render();if(BIB.idx!=='erro')bibShow()}}
 async function bibBook(id){if(!BIB.cache[id]){const r=await fetch('assets/bible/'+id+'.json');if(!r.ok)throw new Error('Livro indisponível');BIB.cache[id]=await r.json()}return BIB.cache[id]}

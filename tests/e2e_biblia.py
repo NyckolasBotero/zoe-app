@@ -15,7 +15,7 @@ print('ERROS:',errs); print('E2E BIBLIA OK' if not errs else 'FALHOU')
 import json,re
 def fake(route):
     m=re.search(r'get-text/(\w+)/(\d+)/(\d+)/',route.request.url); tr=m.group(1)
-    v={'NVT':['Porque Deus amou tanto o mundo','Deus enviou seu Filho ao mundo'],'ARC':['Porque Deus amou o mundo de tal maneira','Porque Deus enviou o seu Filho'],'NVIPT':['Biblica, Inc. me proibiu de usar a tradução NIV/NVI '+'x'*1000]}[tr]
+    v={'NVT':['Porque Deus amou tanto o mundo','Deus enviou seu Filho ao mundo'],'ARC':['Porque Deus amou o mundo de tal maneira','Porque Deus enviou o seu Filho'],'ARA':['Porque Deus amou ao mundo de tal maneira','Porque Deus enviou o seu Filho'],'NVIPT':['Biblica, Inc. me proibiu de usar a tradução NIV/NVI '+'x'*1000]}[tr]
     route.fulfill(status=200,content_type='application/json',headers={'access-control-allow-origin':'*'},body=json.dumps([{'pk':i,'verse':16+i,'text':'<b>x</b>'+t+'<br>'} for i,t in enumerate(v)]))
 errs2=[]
 with sync_playwright() as p:
