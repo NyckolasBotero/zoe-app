@@ -45,7 +45,7 @@ test('células: líder só na própria; presença; transferência com aprovaçã
   assert.equal(e.call('cellMembers', { celulaId: c2 }, S).ok, true);
   const novo = e.call('addNewMember', { nome: 'Carlos Pereira', endereco: 'Rua 1', celular: '61999990000', extras: { 'Quem convidou': 'Lari', 'Outra': 'x' } }, L1); assert.ok(novo.ok);
   const mems = e.call('cellMembers', {}, L1).data; assert.equal(mems.length, 2);
-  assert.ok(e.sheets.Membros.rows.some(r => String(r[32]).includes('Quem convidou') && !String(r[32]).includes('Outra')));
+  assert.ok(e.sheets.Membros.rows.some(r => r.some(x => String(x).includes('Quem convidou')) && !r.some(x => String(x).includes('Outra'))));
   const att = e.call('saveAttendance', { data: '2026-10-22', presentes: mems.map(m => m.id), deus: true }, L1); assert.equal(att.data.presentes, 2);
   e.call('saveAttendance', { data: '2026-10-22', presentes: [mems[0].id], deus: false }, L1);
   const h = e.call('history', {}, L1).data; assert.equal(h.reunioes.length, 1); assert.equal(h.reunioes[0].presentes, 1); assert.equal(h.indicadores.presencaDeDeus, 0);
@@ -191,4 +191,37 @@ test('horário que o Sheets converteu em Date (1899-12-30) volta como HH:mm, nã
   assert.equal(e.run(`str_(new Date('1899-12-30T23:06:28Z'))`), '20:00');
   assert.equal(e.run(`str_(new Date('2026-10-22T12:00:00Z'))`), '2026-10-22');
   assert.equal(e.run(`str_('20:00')`), '20:00');
+});
+test('fluxo: frequência confere o dia da célula; saída só com líder + supervisor; histórico com nomes', () => {
+  const { e, adm, tok, mk } = boot();
+  const sup = mk('sup@zoe.com', 'membro'), l1 = mk('lider1@zoe.com', 'membro');
+  const c1 = e.call('createCell', { nome: 'Semeadores', liderId: l1, supervisorId: sup, dia: 'Quinta', inicio: '20:00' }, adm).data.id;
+  const a = e.call('createUser', { email: 'ana@zoe.com', nome: 'Ana', senha: 'Temp12345', papel: 'membro', celulaId: c1 }, adm).data.membroId;
+  const b = e.call('createUser', { email: 'beto@zoe.com', nome: 'Beto', senha: 'Temp12345', papel: 'membro', celulaId: c1 }, adm).data.membroId;
+  const L = tok('lider1@zoe.com', 'Temp12345'), S = tok('sup@zoe.com', 'Temp12345');
+  const mems = e.call('cellMembers', {}, L).data; assert.ok(mems.some(m => m.id === a) && mems.some(m => m.id === b));
+  // 2026-10-22 é quinta; 2026-10-21 é quarta; futuro bloqueado
+  assert.equal(e.call('saveAttendance', { data: '2099-01-01', presentes: [] }, L).error.code, 'VALIDATION');
+  const r = e.call('saveAttendance', { data: '2026-10-21', presentes: [a] }, L); assert.equal(r.error.code, 'DIA_DIFERENTE');
+  assert.equal(e.call('history', {}, L).data.reunioes.length, 0);
+  assert.equal(e.call('saveAttendance', { data: '2026-10-21', presentes: [a], confirmaDia: true }, L).data.foraDoDia, true);
+  assert.equal(e.call('saveAttendance', { data: '2026-10-22', presentes: [a] }, L).data.foraDoDia, false);
+  const h = e.call('history', {}, L).data; assert.equal(h.reunioes.length, 2);
+  assert.equal(h.reunioes[0].dia, 'Quinta'); assert.deepEqual(h.reunioes[0].nomesPresentes, ['Ana']); assert.ok(h.reunioes[0].nomesAusentes.includes('Beto') && !h.reunioes[0].nomesAusentes.includes('Ana'));
+  assert.equal(h.reunioes[1].foraDoDia, true); assert.equal(h.indicadores.exParticipantes, 0);
+  // saída: líder pede, supervisor decide; antes disso Beto continua na lista
+  assert.equal(e.call('requestExit', { membroId: b }, S).error.code, 'FORBIDDEN');
+  assert.equal(e.call('requestExit', { membroId: b, motivo: 'Mudou de igreja' }, L).data.status, 'pendente');
+  assert.equal(e.call('requestExit', { membroId: b }, L).error.code, 'VALIDATION');
+  const n0 = e.call('cellMembers', {}, L).data.length; assert.equal(e.call('history', {}, L).data.indicadores.exParticipantes, 0);
+  const pend = e.call('listTransfers', {}, S).data.filter(x => x.tipo === 'saida'); assert.equal(pend.length, 1); assert.equal(pend[0].motivo, 'Mudou de igreja');
+  assert.equal(e.call('decideExit', { id: pend[0].id, decisao: 'autorizado' }, L).error.code, 'FORBIDDEN');
+  assert.equal(e.call('decideExit', { id: pend[0].id, decisao: 'autorizado' }, S).data.status, 'autorizado');
+  assert.equal(e.call('cellMembers', {}, L).data.length, n0 - 1);
+  const h2 = e.call('history', {}, L).data; assert.equal(h2.indicadores.exParticipantes, 1); assert.equal(h2.indicadores.exNomes[0].nome, 'Beto'); assert.equal(h2.indicadores.participantes, n0 - 1);
+  // transferência não conta como ex-participante
+  const l2 = mk('lider2@zoe.com', 'membro'), c2 = e.call('createCell', { nome: 'Raízes', liderId: l2, supervisorId: sup, dia: 'Segunda' }, adm).data.id; assert.ok(c2);
+  const L2 = tok('lider2@zoe.com', 'Temp12345'); e.call('requestTransfer', { membroId: a }, L2);
+  const t = e.call('listTransfers', {}, S).data.find(x => x.tipo === 'transferencia'); e.call('decideTransfer', { id: t.id, decisao: 'autorizado' }, S);
+  assert.equal(e.call('history', {}, L).data.indicadores.exParticipantes, 1);
 });
