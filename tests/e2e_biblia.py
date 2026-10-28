@@ -15,7 +15,7 @@ print('ERROS:',errs); print('E2E BIBLIA OK' if not errs else 'FALHOU')
 import json,re
 def fake(route):
     m=re.search(r'get-text/(\w+)/(\d+)/(\d+)/',route.request.url); tr=m.group(1)
-    v={'NVT':['Porque Deus amou tanto o mundo','Deus enviou seu Filho ao mundo'],'ARC':['Porque Deus amou o mundo de tal maneira','Porque Deus enviou o seu Filho'],'NVIPT':['Pois Deus amou o mundo','Pois Deus enviou o seu Filho']}[tr]
+    v={'NVT':['Porque Deus amou tanto o mundo','Deus enviou seu Filho ao mundo'],'ARC':['Porque Deus amou o mundo de tal maneira','Porque Deus enviou o seu Filho'],'NVIPT':['Biblica, Inc. me proibiu de usar a tradução NIV/NVI '+'x'*1000]}[tr]
     route.fulfill(status=200,content_type='application/json',headers={'access-control-allow-origin':'*'},body=json.dumps([{'pk':i,'verse':16+i,'text':'<b>x</b>'+t+'<br>'} for i,t in enumerate(v)]))
 errs2=[]
 with sync_playwright() as p:
@@ -32,3 +32,11 @@ with sync_playwright() as p:
     pg.select_option('#bib_v1','17'); pg.wait_for_selector("#bibtxt h3:has-text('João 3:17')"); t=pg.inner_text('#bibtxt'); assert 'amou tanto' not in t and 'enviou seu Filho' in t
     pg.screenshot(path='/tmp/bib_cmp.png'); b.close()
 print('E2E BIBLIA VERSOES OK' if not errs2 else 'ERROS %s'%errs2)
+
+# versão que devolve aviso em vez de versículo não pode aparecer como texto bíblico
+with sync_playwright() as p:
+    b=p.chromium.launch(); pg=b.new_page(viewport={'width':1100,'height':900}); pg.route('**/bolls.life/**',lambda r:r.fulfill(status=200,content_type='application/json',headers={'access-control-allow-origin':'*'},body=json.dumps([{'pk':1,'verse':1,'text':'Biblica, Inc. me proibiu de usar a tradução'}])))
+    pg.goto(URL); pg.wait_for_selector('#lg_e'); pg.fill('#lg_e','admin@zoe.com'); pg.fill('#lg_s','SenhaForte123'); pg.click('#lg_b'); pg.wait_for_selector('#view h1'); pg.wait_for_selector('#splash',state='detached',timeout=8000)
+    pg.evaluate("go('membro')"); pg.wait_for_selector('#bibtxt h3'); assert 'NVI' not in pg.inner_text('#bib_v')
+    pg.select_option('#bib_v','ARC'); pg.wait_for_selector('#bibtxt >> text=Não foi possível carregar'); assert 'proibiu' not in pg.inner_text('#bibtxt'); b.close()
+print('E2E BIBLIA AVISO OK')

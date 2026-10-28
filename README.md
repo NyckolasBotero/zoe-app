@@ -101,10 +101,10 @@ Na página de Administração, a barra lateral mostra, abaixo de "Administraçã
 
 ## Bíblia e Anotações
 - "Área do Membro" virou **Bíblia e Anotações**. Filtros: versão, livro, capítulo, versículo (de/até).
-- Versões: Almeida 1819 (local, offline), **NVI**, **ARC** e **NVT** (lidas de `bolls.life/get-text/<versão>/<livro>/<cap>/` na hora, cache em sessionStorage; códigos em `BVER` no app.html). Precisam de internet.
+- Versões: Almeida 1819 (local, offline), **ARC** e **NVT** (lidas de `bolls.life/get-text/<versão>/<livro>/<cap>/` na hora, cache em sessionStorage; códigos em `BVER` no app.html). Precisam de internet.
 - **Comparar com outra versão**: mostra cada versículo seguido da outra versão (ex.: 16 NVT, 16 ARC, 17 NVT, 17 ARC).
 - A busca por palavra continua no texto local (Almeida 1819). Teste: `tests/e2e_biblia.py`.
-- Atenção: NVI e NVT têm direitos autorais; para uso público/oficial, avaliar licença junto às editoras.
+- Atenção: NVT tem direitos autorais; para uso público/oficial, avaliar licença junto às editoras.
 
 ## Loja Zoe
 - Nova aba **Loja Zoe**: produtos (camisetas, pulseiras, bonés, garrafas, marca-texto, marcador de página, porta-copos, outros) com filtros por categoria, busca e ordenação por nome/preço.
