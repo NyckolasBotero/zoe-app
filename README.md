@@ -70,3 +70,9 @@ Texto: *Almeida 1819 (Bíblia Livre)*, domínio público, fonte github.com/midva
 - **Tela inicial**: carrossel com os próximos eventos (troca a cada 3 s; pausa ao passar o mouse/tocar; setas e pontos). Sem eventos, passam versículos.
 - **PDF grande**: o limite do corpo da requisição subiu para 16 MB apenas para `saveBook`; as demais ações continuam limitadas a 1,5 MB.
 - Depois de atualizar: cole o novo `Code.gs`, rode `setup()` (cria a aba `LivroNotas`) e publique uma **nova versão** da implantação.
+
+## Mapa das células e célula mais próxima
+- Ao criar a célula (Administração) ou em Célula → Perfil da célula, informe **latitude, longitude** (ex.: `-15.765417, -48.267880`; no Google Maps, toque e segure no local e copie os números).
+- **Buscar células** mostra um mapa (Leaflet + OpenStreetMap) com todos os pontos; cada ponto abre um balão com o link "Ver no Google Maps". "Usar minha localização" (ou "Marcar onde moro", tocando no mapa) calcula a distância até cada célula, ordena por proximidade e destaca a mais próxima. A posição fica só no aparelho de quem usa. Na tela inicial, quem ainda não tem célula vê a mais próxima.
+- Privacidade: se a célula não marcou o endereço como público (aba Privacidade), o ponto sai **aproximado** (arredondado, cerca de 1 km); com endereço público, exato.
+- Depois de atualizar: cole o novo `Code.gs`, rode `setup()` (cria as colunas Lat/Lng em Celulas) e publique nova versão da implantação.

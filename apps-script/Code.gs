@@ -27,7 +27,7 @@ const DEFAULT_PERMS = {
 const SHEETS = {
   Usuarios: ['Email', 'SenhaHash', 'Salt', 'Papel', 'Status', 'MembroID', 'TrocarSenha', 'CriadoEm', 'UltimoAcesso'],
   Membros: ['MembroID', 'Nome', 'Simples', 'Apelido', 'Sexo', 'Nascimento', 'Nacionalidade', 'Naturalidade', 'Sangue', 'Doador', 'Profissao', 'Telefone', 'Email', 'CEP', 'UF', 'Cidade', 'Endereco', 'Bairro', 'DataDecisao', 'Batizado', 'DataBatismo', 'IgrejaBatismo', 'Mae', 'Pai', 'EstadoCivil', 'Conjuge', 'DataCasamento', 'Filhos', 'Foto', 'CelulaID', 'EhMembro', 'Status', 'DataSaida', 'Extras', 'AceitePrivacidade', 'AceiteTermos', 'CriadoEm'],
-  Celulas: ['CelulaID', 'Nome', 'Descricao', 'Foto', 'LiderID', 'SupervisorID', 'Dia', 'Inicio', 'Fim', 'Categoria', 'Faixa', 'Bairro', 'Cidade', 'UF', 'Endereco', 'TreinamentoID', 'MaeID', 'PrivGrupo', 'PrivTel', 'PrivEmail', 'PrivEnd', 'Status'],
+  Celulas: ['CelulaID', 'Nome', 'Descricao', 'Foto', 'LiderID', 'SupervisorID', 'Dia', 'Inicio', 'Fim', 'Categoria', 'Faixa', 'Bairro', 'Cidade', 'UF', 'Endereco', 'TreinamentoID', 'MaeID', 'PrivGrupo', 'PrivTel', 'PrivEmail', 'PrivEnd', 'Status', 'Lat', 'Lng'],
   Reunioes: ['ReuniaoID', 'CelulaID', 'Data', 'Presentes', 'PresencaDeDeus', 'Obs', 'ForaDoDia'],
   Presencas: ['ReuniaoID', 'CelulaID', 'Data', 'MembroID'],
   Papeis: ['CelulaID', 'MembroID', 'Papel'],
@@ -226,10 +226,19 @@ function saveConfig_(d, u) {
 }
 
 /* ============================== CÉLULAS ============================== */
+function parseCoord_(v) {
+  if (v === undefined) return undefined;
+  const t = String(v).trim(); if (!t) return { Lat: '', Lng: '' };
+  const m = t.replace(/,/g, ' ').match(/-?\d+(?:\.\d+)?/g);
+  if (!m || m.length !== 2) throw new ApiError('VALIDATION', 'Informe as coordenadas como "latitude, longitude". Ex.: -15.765417, -48.267880');
+  const a = Number(m[0]), b = Number(m[1]);
+  if (!isFinite(a) || !isFinite(b) || Math.abs(a) > 90 || Math.abs(b) > 180) throw new ApiError('VALIDATION', 'Coordenadas fora do intervalo válido.');
+  return { Lat: String(Math.round(a * 1e6) / 1e6), Lng: String(Math.round(b * 1e6) / 1e6) };
+}
 function cellOut_(c, own) {
   const l = c.LiderID ? table_('Membros').rows.filter(function (m) { return m.MembroID === c.LiderID; })[0] : null;
   const o = { id: c.CelulaID, nome: c.Nome, descricao: c.Descricao, dia: c.Dia, inicio: c.Inicio, fim: c.Fim, categoria: c.Categoria, faixa: c.Faixa, bairro: c.Bairro, cidade: c.Cidade, uf: c.UF, lider: l ? (l.Apelido || l.Simples || l.Nome) : '' };
-  if (own) { o.foto = c.Foto; o.endereco = c.Endereco; o.priv = { grupo: c.PrivGrupo === '1', tel: c.PrivTel === '1', email: c.PrivEmail === '1', end: c.PrivEnd === '1' }; }
+  if (own) { o.foto = c.Foto; o.endereco = c.Endereco; o.coordenadas = c.Lat !== '' && c.Lat !== undefined && c.Lng !== '' ? c.Lat + ', ' + c.Lng : ''; o.priv = { grupo: c.PrivGrupo === '1', tel: c.PrivTel === '1', email: c.PrivEmail === '1', end: c.PrivEnd === '1' }; }
   return o;
 }
 function saveCell_(d, u) {
@@ -237,6 +246,7 @@ function saveCell_(d, u) {
     const id = cellOf_(u, d, 'gerir'), t = table_('Celulas'), c = t.rows.filter(function (r) { return r.CelulaID === id; })[0], p = {};
     ['Nome', 'Descricao', 'Dia', 'Inicio', 'Fim', 'Categoria', 'Faixa', 'Bairro', 'Cidade', 'UF', 'Endereco'].forEach(function (k) { const kk = k.charAt(0).toLowerCase() + k.slice(1); if (d[kk] !== undefined) p[k] = clip_(d[kk], k === 'Descricao' ? 500 : 150); });
     if (d.foto !== undefined) p.Foto = String(d.foto).slice(0, 45000);
+    const co = parseCoord_(d.coordenadas); if (co) { p.Lat = co.Lat; p.Lng = co.Lng; }
     if (d.priv) { p.PrivGrupo = d.priv.grupo ? '1' : '0'; p.PrivTel = d.priv.tel ? '1' : '0'; p.PrivEmail = d.priv.email ? '1' : '0'; p.PrivEnd = d.priv.end ? '1' : '0'; }
     if (p.Nome === '') throw new ApiError('VALIDATION', 'Dê um nome à célula.');
     writeRow_(t, c._row, p); audit_(u.email, 'CELULA_SALVA', id, 'OK'); return cellOut_(Object.assign({}, c, p), true);
@@ -244,8 +254,8 @@ function saveCell_(d, u) {
 }
 function createCell_(d, u) {
   return withLock_(function () {
-    const nome = clip_(d.nome, 100); if (!nome) throw new ApiError('VALIDATION', 'Informe o nome da célula.');
-    const id = id_('C'); appendRow_(table_('Celulas'), { CelulaID: id, Nome: nome, Descricao: clip_(d.descricao, 500), LiderID: clip_(d.liderId, 30), SupervisorID: clip_(d.supervisorId, 30), TreinamentoID: clip_(d.treinamentoId, 30), MaeID: clip_(d.maeId, 30), Dia: clip_(d.dia, 20), Inicio: clip_(d.inicio, 5), Fim: clip_(d.fim, 5), Categoria: clip_(d.categoria, 30), Faixa: clip_(d.faixa, 30), Bairro: clip_(d.bairro, 80), Cidade: clip_(d.cidade, 80), UF: clip_(d.uf, 2), Endereco: clip_(d.endereco, 150), PrivGrupo: '1', PrivTel: '0', PrivEmail: '0', PrivEnd: '0', Status: 'Ativa' });
+    const nome = clip_(d.nome, 100); if (!nome) throw new ApiError('VALIDATION', 'Informe o nome da célula.'); const co = parseCoord_(d.coordenadas);
+    const id = id_('C'); appendRow_(table_('Celulas'), { CelulaID: id, Nome: nome, Descricao: clip_(d.descricao, 500), LiderID: clip_(d.liderId, 30), SupervisorID: clip_(d.supervisorId, 30), TreinamentoID: clip_(d.treinamentoId, 30), MaeID: clip_(d.maeId, 30), Dia: clip_(d.dia, 20), Inicio: clip_(d.inicio, 5), Fim: clip_(d.fim, 5), Categoria: clip_(d.categoria, 30), Faixa: clip_(d.faixa, 30), Bairro: clip_(d.bairro, 80), Cidade: clip_(d.cidade, 80), UF: clip_(d.uf, 2), Endereco: clip_(d.endereco, 150), PrivGrupo: '1', PrivTel: '0', PrivEmail: '0', PrivEnd: '0', Status: 'Ativa', Lat: co ? co.Lat : '', Lng: co ? co.Lng : '' });
     if (d.liderId) { const g = getMember_(d.liderId); writeRow_(g.t, g.m._row, { CelulaID: id }); }
     if (d.treinamentoId) { const g = getMember_(d.treinamentoId); if (!g.m.CelulaID) writeRow_(g.t, g.m._row, { CelulaID: id }); }
     audit_(u.email, 'CELULA_CRIADA', id, 'OK'); return { id: id };
@@ -263,6 +273,7 @@ function searchCells_(d) {
   return l.map(function (c) {
     const o = cellOut_(c, false), lid = mem.filter(function (m) { return m.MembroID === c.LiderID; })[0] || {};
     if (c.PrivTel === '1') o.telefone = lid.Telefone || ''; if (c.PrivEmail === '1') o.email = lid.Email || '';
+    if (c.Lat !== '' && c.Lat !== undefined && c.Lng !== '') { const exato = c.PrivEnd === '1', k = function (x) { return exato ? Number(x) : Math.round(Number(x) * 100) / 100; }; o.lat = k(c.Lat); o.lng = k(c.Lng); o.aprox = !exato; }
     o.local = c.PrivEnd === '1' ? [c.Endereco, c.Bairro, c.Cidade, c.UF].filter(String).join(', ') : [c.Bairro, c.Cidade, c.UF].filter(String).join(', '); return o;
   });
 }

@@ -344,3 +344,15 @@ test('nota de 1 a 10 nos livros e fotos de perfil sob demanda', () => {
   assert.equal(e.call('saveBook', { titulo: 'Grande', pdf }, adm).ok, true);
   assert.equal(e.call('addTestimony', { texto: 'x'.repeat(10), padding: 'y'.repeat(1600000) }, A).error.code, 'BAD_REQUEST');
 });
+
+test('coordenadas da célula: validação, mapa e privacidade do endereço', () => {
+  const { e, adm } = boot();
+  assert.equal(e.call('createCell', { nome: 'X', coordenadas: 'abc' }, adm).error.code, 'VALIDATION');
+  assert.equal(e.call('createCell', { nome: 'X', coordenadas: '-95, 10' }, adm).error.code, 'VALIDATION');
+  const id = e.call('createCell', { nome: 'Norte', dia: 'Quinta', coordenadas: '-15.765417, -48.267880' }, adm).data.id;
+  let c = e.call('searchCells', {}, adm).data.find(x => x.id === id); assert.equal(c.lat, -15.77); assert.equal(c.lng, -48.27); assert.equal(c.aprox, true); // endereço privado: ponto aproximado
+  e.call('saveCell', { celulaId: id, priv: { grupo: true, tel: false, email: false, end: true } }, adm);
+  c = e.call('searchCells', {}, adm).data.find(x => x.id === id); assert.equal(c.lat, -15.765417); assert.equal(c.lng, -48.26788); assert.equal(c.aprox, false);
+  assert.equal(e.call('saveCell', { celulaId: id, coordenadas: '-15.8,-48.1' }, adm).data.coordenadas, '-15.8, -48.1');
+  assert.equal(e.call('saveCell', { celulaId: id, coordenadas: '' }, adm).data.coordenadas, '');
+});
