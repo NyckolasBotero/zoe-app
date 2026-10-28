@@ -356,3 +356,13 @@ test('coordenadas da célula: validação, mapa e privacidade do endereço', () 
   assert.equal(e.call('saveCell', { celulaId: id, coordenadas: '-15.8,-48.1' }, adm).data.coordenadas, '-15.8, -48.1');
   assert.equal(e.call('saveCell', { celulaId: id, coordenadas: '' }, adm).data.coordenadas, '');
 });
+
+test('vídeos e transmissões: tipo e ao vivo', () => {
+  const { e, adm } = boot();
+  assert.equal(e.call('saveVideo', { titulo: 'Culto', url: 'https://youtu.be/abcdefghijk', tipo: 'live', aoVivo: true }, adm).ok, true);
+  assert.equal(e.call('saveVideo', { titulo: 'Aula', url: 'https://youtu.be/abcdefghijl' }, adm).ok, true);
+  let l = e.call('listVideos', {}, adm).data; assert.equal(l[0].tipo, 'live'); assert.equal(l[0].aoVivo, true); assert.equal(l[1].tipo, 'video'); assert.equal(l[1].aoVivo, false);
+  assert.equal(e.call('updateVideo', { id: l[0].id, aoVivo: false }, adm).ok, true); assert.equal(e.call('listVideos', {}, adm).data[0].aoVivo, false);
+  e.call('updateVideo', { id: l[1].id, aoVivo: true }, adm); assert.equal(e.call('listVideos', {}, adm).data[1].aoVivo, false); // só transmissão pode estar ao vivo
+  assert.equal(e.call('updateVideo', { id: 'x', aoVivo: true }, adm).error.code, 'NOT_FOUND');
+});

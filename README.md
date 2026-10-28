@@ -92,3 +92,9 @@ Na página de Administração, a barra lateral mostra, abaixo de "Administraçã
 - **Arrastar e soltar**: dentro do cartão Biblioteca virtual (Administração) é só soltar o PDF e/ou a imagem da capa; as áreas tracejadas pulsam quando você arrasta um arquivo pela tela.
 - **Leitor**: abre com a **página inteira** visível (sem cortar), com botões −/+ (30% a 400%), "Página inteira"/"Largura" e tela cheia; reajusta ao redimensionar a janela.
 - **Capa automática**: ao adicionar um livro sem enviar imagem, a capa é a primeira página do PDF. Se você enviar uma imagem, ela vale no lugar. Livros que já estão sem capa ganham o botão **Capa do PDF** na lista da Administração.
+
+## Lives e Vídeos
+- A aba "Tutoriais" agora se chama **Lives e Vídeos**: carrossel de vídeos do YouTube (avança sozinho a cada 4 s, pausa com mouse/toque, setas), abas **Transmissões** / **Todos os vídeos** abaixo e player do YouTube **dentro do site** (modal, `youtube-nocookie`).
+- Admin → "Vídeos e transmissões": campo Tipo (Vídeo/Transmissão) e "Ao vivo agora"; botão "Está ao vivo / Encerrar ao vivo" por linha (`updateVideo`).
+- Backend: colunas novas `Tipo` e `AoVivo` na aba Videos — cole o novo `Code.gs`, rode `setup()` e publique nova versão da implantação.
+- Teste: `tests/e2e_videos.py`.

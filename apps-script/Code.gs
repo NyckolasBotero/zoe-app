@@ -51,7 +51,7 @@ const SHEETS = {
   Noticias: ['NoticiaID', 'Titulo', 'Texto', 'Data', 'CriadoPor', 'Status'],
   Licoes: ['LicaoID', 'Titulo', 'Resumo', 'Categoria', 'Url', 'Status'],
   Dinamicas: ['DinamicaID', 'Titulo', 'Descricao', 'Minutos', 'MembroID', 'Data'],
-  Videos: ['VideoID', 'Titulo', 'Url', 'Ordem', 'Status'],
+  Videos: ['VideoID', 'Titulo', 'Url', 'Ordem', 'Status', 'Tipo', 'AoVivo'],
   Permissoes: ['Papel'].concat(PERMS),
   Config: ['Chave', 'Valor'],
   Auditoria: ['Data', 'Usuario', 'Acao', 'Alvo', 'Resultado']
@@ -731,8 +731,9 @@ function listLessons_() { return table_('Licoes').rows.filter(function (l) { ret
 function listDyn_() { return table_('Dinamicas').rows.map(function (x) { return { id: x.DinamicaID, titulo: x.Titulo, descricao: x.Descricao, minutos: Number(x.Minutos || 10), meu: false, membroId: x.MembroID }; }); }
 function addDyn_(d, u) { const t = clip_(d.titulo, 100); if (!t) throw new ApiError('VALIDATION', 'Dê um nome à dinâmica.'); appendRow_(table_('Dinamicas'), { DinamicaID: id_('D'), Titulo: t, Descricao: clip_(d.descricao, 800), Minutos: String(Math.max(1, Math.min(240, Number(d.minutos) || 10))), MembroID: u.membroId, Data: now_() }); return { ok: true }; }
 function saveLesson_(d, u) { const t = clip_(d.titulo, 120), url = clip_(d.url, 300); if (!t) throw new ApiError('VALIDATION', 'Informe o título da lição.'); if (url && !/^https:\/\//.test(url)) throw new ApiError('VALIDATION', 'O link precisa começar com https://.'); appendRow_(table_('Licoes'), { LicaoID: id_('L'), Titulo: t, Resumo: clip_(d.resumo, 400), Categoria: clip_(d.categoria, 40), Url: url, Status: 'Ativa' }); audit_(u.email, 'LICAO', t, 'OK'); return { ok: true }; }
-function listVideos_() { return table_('Videos').rows.filter(function (v) { return v.Status !== 'Removido'; }).sort(function (a, b) { return Number(a.Ordem) - Number(b.Ordem); }).map(function (v) { return { id: v.VideoID, titulo: v.Titulo, url: v.Url }; }); }
-function saveVideo_(d, u) { const t = clip_(d.titulo, 120), url = clip_(d.url, 300); if (!t || !/^https:\/\//.test(url)) throw new ApiError('VALIDATION', 'Informe título e link https.'); const v = table_('Videos'); appendRow_(v, { VideoID: id_('V'), Titulo: t, Url: url, Ordem: String(v.rows.length + 1), Status: 'Ativo' }); audit_(u.email, 'VIDEO', t, 'OK'); return { ok: true }; }
+function listVideos_() { return table_('Videos').rows.filter(function (v) { return v.Status !== 'Removido'; }).sort(function (a, b) { return Number(a.Ordem) - Number(b.Ordem); }).map(function (v) { return { id: v.VideoID, titulo: v.Titulo, url: v.Url, tipo: v.Tipo === 'live' ? 'live' : 'video', aoVivo: v.AoVivo === '1' }; }); }
+function saveVideo_(d, u) { const t = clip_(d.titulo, 120), url = clip_(d.url, 300); if (!t || !/^https:\/\//.test(url)) throw new ApiError('VALIDATION', 'Informe título e link https.'); const v = table_('Videos'); appendRow_(v, { VideoID: id_('V'), Titulo: t, Url: url, Ordem: String(v.rows.length + 1), Status: 'Ativo', Tipo: d.tipo === 'live' ? 'live' : 'video', AoVivo: d.tipo === 'live' && d.aoVivo ? '1' : '0' }); audit_(u.email, 'VIDEO', t, 'OK'); return { ok: true }; }
+function updateVideo_(d, u) { return withLock_(function () { const t = table_('Videos'), r = t.rows.filter(function (x) { return x.VideoID === d.id && x.Status !== 'Removido'; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Vídeo não encontrado.'); const p = {}; if (d.titulo !== undefined) { p.Titulo = clip_(d.titulo, 120); if (!p.Titulo) throw new ApiError('VALIDATION', 'Informe o título.'); } if (d.tipo !== undefined) p.Tipo = d.tipo === 'live' ? 'live' : 'video'; if (d.aoVivo !== undefined) p.AoVivo = d.aoVivo ? '1' : '0'; if ((p.Tipo || r.Tipo) !== 'live') p.AoVivo = '0'; writeRow_(t, r._row, p); audit_(u.email, 'VIDEO_EDIT', r.Titulo, 'OK'); return { ok: true }; }); }
 function deleteVideo_(d, u) { return withLock_(function () { const t = table_('Videos'), r = t.rows.filter(function (x) { return x.VideoID === d.id; })[0]; if (r) writeRow_(t, r._row, { Status: 'Removido' }); return { ok: true }; }); }
 
 /* ============================== USUÁRIOS / PERMISSÕES ============================== */
@@ -883,7 +884,7 @@ const ROUTES = {
   listBookComments: { auth: 'any', fn: listBookComments_ }, addBookComment: { auth: 'any', write: 1, fn: addBookComment_ }, deleteBookComment: { auth: 'any', write: 1, fn: deleteBookComment_ },
   listTestimonies: { auth: 'any', fn: listTestimonies_ }, addTestimony: { auth: 'any', write: 1, fn: addTestimony_ }, deleteTestimony: { auth: 'any', write: 1, fn: deleteTestimony_ }, toggleLike: { auth: 'any', write: 1, fn: toggleLike_ },
   saveMinistry: { auth: 'min', write: 1, fn: saveMinistry_ }, deleteMinistry: { auth: 'min', write: 1, fn: deleteMinistry_ }, listInterests: { auth: 'min', fn: listInterests_ },
-  saveConfig: { auth: 'config', write: 1, fn: saveConfig_ }, saveVideo: { auth: 'config', write: 1, fn: saveVideo_ }, deleteVideo: { auth: 'config', write: 1, fn: deleteVideo_ },
+  saveConfig: { auth: 'config', write: 1, fn: saveConfig_ }, saveVideo: { auth: 'config', write: 1, fn: saveVideo_ }, deleteVideo: { auth: 'config', write: 1, fn: deleteVideo_ }, updateVideo: { auth: 'config', write: 1, fn: updateVideo_ },
   listUsers: { auth: 'config', fn: listUsers_ }, createUser: { auth: 'config', write: 1, fn: createUser_ }, setUser: { auth: 'config', write: 1, fn: setUser_ }, savePerms: { auth: 'config', write: 1, fn: savePerms_ },
   saveLesson: { auth: 'config', write: 1, fn: saveLesson_ }, getPerms: { auth: 'config', fn: function () { return permMatrix_(); } },
   createCell: { auth: 'celulas', write: 1, fn: createCell_ },
