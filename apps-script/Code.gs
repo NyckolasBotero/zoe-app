@@ -32,7 +32,7 @@ const SHEETS = {
   Presencas: ['ReuniaoID', 'CelulaID', 'Data', 'MembroID'],
   Papeis: ['CelulaID', 'MembroID', 'Papel'],
   Oracoes: ['OracaoID', 'CelulaID', 'MembroID', 'Tema', 'Titulo', 'Texto', 'Data'],
-  Eventos: ['EventoID', 'Titulo', 'Data', 'Hora', 'Local', 'Descricao', 'Programacao', 'Escopo', 'CelulaID', 'CriadoPor', 'Status'],
+  Eventos: ['EventoID', 'Titulo', 'Data', 'Hora', 'Local', 'Descricao', 'Programacao', 'Escopo', 'CelulaID', 'CriadoPor', 'Status', 'Foto'],
   Inscricoes: ['EventoID', 'MembroID', 'Data'],
   Ministerios: ['MinisterioID', 'Nome', 'Ordem', 'Ativo', 'Descricao', 'Foto'],
   Interesses: ['InteresseID', 'MinisterioID', 'MembroID', 'Data', 'Status'],
@@ -346,12 +346,13 @@ function addNewMember_(d, u) {
 function listEvents_(d, u) {
   const ins = {}; table_('Inscricoes').rows.forEach(function (r) { if (r.MembroID === u.membroId) ins[r.EventoID] = 1; }); const lim = Utilities.formatDate(new Date(Date.now() - 30 * 86400000), CFG.TZ, 'yyyy-MM-dd');
   return table_('Eventos').rows.filter(function (e) { return e.Status !== 'Cancelado' && e.Data >= lim && (e.Escopo !== 'celula' || e.CelulaID === u.celulaId || can_(u, 'celulas')); }).sort(function (a, b) { return a.Data < b.Data ? -1 : 1; })
-    .map(function (e) { return { id: e.EventoID, titulo: e.Titulo, data: e.Data, hora: e.Hora, local: e.Local, descricao: e.Descricao, programacao: jparse_(e.Programacao, []), escopo: e.Escopo, celulaId: e.CelulaID, inscrito: !!ins[e.EventoID], adm: e.Escopo !== 'celula' }; });
+    .map(function (e) { return { id: e.EventoID, titulo: e.Titulo, data: e.Data, hora: e.Hora, local: e.Local, descricao: e.Descricao, programacao: jparse_(e.Programacao, []), escopo: e.Escopo, celulaId: e.CelulaID, foto: e.Foto || '', inscrito: !!ins[e.EventoID], adm: e.Escopo !== 'celula' }; });
 }
+function fotoOk_(v) { v = String(v || ''); if (v && (!/^data:image\/(jpeg|png|webp);base64,/.test(v) || v.length > 45000)) throw new ApiError('VALIDATION', 'Foto inválida ou muito grande.'); return v; }
 function createEvent_(d, u) {
   return withLock_(function () {
     const t = clip_(d.titulo, 120), data = clip_(d.data, 10); if (!t || !data || !dateOk_(data)) throw new ApiError('VALIDATION', 'Informe título e data válida.');
-    appendRow_(table_('Eventos'), { EventoID: id_('E'), Titulo: t, Data: data, Hora: clip_(d.hora, 5), Local: clip_(d.local, 150), Descricao: clip_(d.descricao, 1000), Programacao: JSON.stringify((d.programacao || []).slice(0, 30).map(function (x) { return clip_(x, 120); })), Escopo: 'igreja', CriadoPor: u.membroId, Status: 'Ativo' });
+    appendRow_(table_('Eventos'), { EventoID: id_('E'), Titulo: t, Data: data, Hora: clip_(d.hora, 5), Local: clip_(d.local, 150), Descricao: clip_(d.descricao, 1000), Programacao: JSON.stringify((d.programacao || []).slice(0, 30).map(function (x) { return clip_(x, 120); })), Escopo: 'igreja', CriadoPor: u.membroId, Status: 'Ativo', Foto: fotoOk_(d.foto) });
     audit_(u.email, 'EVENTO_CRIADO', t, 'OK'); return { ok: true };
   });
 }
@@ -448,7 +449,7 @@ const ENT = {
     { k: 'Status', l: 'Situação', t: 'sel', op: [['Ativa', 'Ativa'], ['Inativa', 'Inativa']] }] },
   eventos: { titulo: 'Eventos', aba: 'Eventos', id: 'EventoID', pre: 'E', perm: 'eventos', rotulo: 'Titulo', sub: 'Data', status: { col: 'Status', ativo: 'Ativo', off: 'Cancelado' }, defaults: { Escopo: 'igreja' }, campos: [
     { k: 'Titulo', l: 'Título', t: 'text', max: 120, req: 1 }, { k: 'Data', l: 'Data', t: 'date', req: 1 }, { k: 'Hora', l: 'Hora', t: 'time' }, { k: 'Local', l: 'Local', t: 'text', max: 150 },
-    { k: 'Descricao', l: 'Descrição', t: 'area', max: 1000 }, { k: 'Programacao', l: 'Programação (uma linha por item)', t: 'lines' },
+    { k: 'Descricao', l: 'Descrição', t: 'area', max: 1000 }, { k: 'Programacao', l: 'Programação (uma linha por item)', t: 'lines' }, { k: 'Foto', l: 'Foto do evento', t: 'foto' },
     { k: 'Status', l: 'Situação', t: 'sel', op: [['Ativo', 'Ativo'], ['Cancelado', 'Cancelado']] }] },
   noticias: { titulo: 'Notícias', aba: 'Noticias', id: 'NoticiaID', pre: 'N', perm: 'eventos', rotulo: 'Titulo', sub: 'Data', status: { col: 'Status', ativo: 'Ativo', off: 'Removida' }, defaults: {}, campos: [
     { k: 'Titulo', l: 'Título', t: 'text', max: 120, req: 1 }, { k: 'Texto', l: 'Texto', t: 'area', max: 1500 }, { k: 'Status', l: 'Situação', t: 'sel', op: [['Ativo', 'Publicada'], ['Removida', 'Removida']] }] },

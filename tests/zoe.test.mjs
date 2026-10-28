@@ -175,3 +175,14 @@ test('cargos de célula são independentes do nível de acesso: admin pode ser l
   assert.equal(e.call('requestTransfer', { membroId: z, celulaId: cA }, adm).data.status, 'pendente');
   assert.equal(e.call('papelLegado', {}, adm).error.code, 'NOT_FOUND');
 });
+test('evento com foto personalizada: criar, listar, editar e validar', () => {
+  const { e, adm, tok, mk } = boot(); mk('m@zoe.com', 'membro'); const m = tok('m@zoe.com', 'Temp12345');
+  const foto = 'data:image/jpeg;base64,/9j/4AAQSkZJRg==';
+  assert.equal(e.call('createEvent', { titulo: 'Retiro', data: '2026-11-20', foto: 'http://evil/x.png' }, adm).error.code, 'VALIDATION');
+  assert.equal(e.call('createEvent', { titulo: 'Retiro', data: '2026-11-20', foto: 'data:image/jpeg;base64,' + 'A'.repeat(46000) }, adm).error.code, 'VALIDATION');
+  assert.ok(e.call('createEvent', { titulo: 'Retiro', data: '2026-11-20', foto }, adm).ok);
+  assert.equal(e.call('listEvents', {}, m).data[0].foto, foto);
+  const it = e.call('adminList', { tipo: 'eventos' }, adm).data.itens[0]; assert.equal(it.valores.Foto, '__keep');
+  assert.ok(e.call('adminSave', { tipo: 'eventos', id: it.id, valores: { Titulo: 'Retiro Zoe', Data: '2026-11-20', Foto: '__keep' } }, adm).ok); assert.equal(e.call('listEvents', {}, m).data[0].foto, foto);
+  e.call('adminSave', { tipo: 'eventos', id: it.id, valores: { Titulo: 'Retiro Zoe', Data: '2026-11-20', Foto: '' } }, adm); assert.equal(e.call('listEvents', {}, m).data[0].foto, '');
+});
