@@ -67,6 +67,11 @@ function setup() {
   if (!m.rows.length) DEFAULT_MIN.forEach(function (n, i) { appendRow_(m, { MinisterioID: id_('MIN'), Nome: n, Ordem: i + 1, Ativo: '1' }); });
   Logger.log('Setup concluído. Planilha: https://docs.google.com/spreadsheets/d/' + id + '  (mantenha o compartilhamento RESTRITO)');
 }
+// Rode ESTA função no editor (o botão Executar não passa argumentos para criarAdmin).
+// 1) Troque os 3 valores abaixo  2) Executar  3) Depois APAGUE a senha daqui.
+function criarAdminInicial() {
+  criarAdmin('SEU_EMAIL@exemplo.com', 'TROQUE-POR-UMA-SENHA-FORTE', 'Seu Nome');
+}
 function criarAdmin(email, senha, nome) {
   email = String(email || '').trim().toLowerCase(); if (!email || String(senha || '').length < 8) throw new Error('Informe e-mail e senha com 8+ caracteres.');
   const u = table_('Usuarios'); if (u.rows.some(function (r) { return String(r.Email).toLowerCase() === email; })) throw new Error('Usuário já existe.');
