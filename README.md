@@ -105,3 +105,10 @@ Na página de Administração, a barra lateral mostra, abaixo de "Administraçã
 - **Comparar com outra versão**: mostra cada versículo seguido da outra versão (ex.: 16 NVT, 16 ARC, 17 NVT, 17 ARC).
 - A busca por palavra continua no texto local (Almeida 1819). Teste: `tests/e2e_biblia.py`.
 - Atenção: NVI e NVT têm direitos autorais; para uso público/oficial, avaliar licença junto às editoras.
+
+## Loja Zoe
+- Nova aba **Loja Zoe**: produtos (camisetas, pulseiras, bonés, garrafas, marca-texto, marcador de página, porta-copos, outros) com filtros por categoria, busca e ordenação por nome/preço.
+- **Nenhum pedido é fechado no site**: "Tenho interesse" abre o WhatsApp com a mensagem pronta (produto, descrição, opção, quantidade, valor unitário e total, nome de quem pediu).
+- Contato: Administração → "Loja Zoe: produtos e contato". Em branco usa o WhatsApp da igreja (Dados da igreja). Números com 10/11 dígitos recebem o 55 automaticamente.
+- Administração: cadastrar/editar/remover produtos (nome, categoria, preço, opções, descrição, foto, disponível/esgotado).
+- Backend: aba `Produtos` e chave `LojaWhatsApp` em Config. Rotas `listProducts` (qualquer logado), `saveProduct`/`deleteProduct` (permissão "config"). Teste: `tests/e2e_loja.py`.

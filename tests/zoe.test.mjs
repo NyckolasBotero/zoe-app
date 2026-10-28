@@ -366,3 +366,17 @@ test('vídeos e transmissões: tipo e ao vivo', () => {
   e.call('updateVideo', { id: l[1].id, aoVivo: true }, adm); assert.equal(e.call('listVideos', {}, adm).data[1].aoVivo, false); // só transmissão pode estar ao vivo
   assert.equal(e.call('updateVideo', { id: 'x', aoVivo: true }, adm).error.code, 'NOT_FOUND');
 });
+test('loja: produtos só pela administração, validação e número da loja', () => {
+  const { e, adm, tok, mk } = boot(); mk('maria@zoe.com', 'membro'); const m = tok('maria@zoe.com', 'Temp12345');
+  assert.equal(e.call('saveProduct', { nome: 'Boné', preco: 30 }, m).error.code, 'FORBIDDEN');
+  assert.equal(e.call('saveProduct', { nome: '', preco: 30 }, adm).error.code, 'VALIDATION');
+  assert.equal(e.call('saveProduct', { nome: 'X', preco: -1 }, adm).error.code, 'VALIDATION');
+  assert.equal(e.call('saveProduct', { nome: 'X', preco: 5, foto: 'http://x/a.jpg' }, adm).error.code, 'VALIDATION');
+  const r = e.call('saveProduct', { nome: 'Camiseta Zoe', categoria: 'Camisetas', preco: 49.9, opcoes: 'P, M, G', descricao: 'Algodão', foto: 'data:image/jpeg;base64,AAAA' }, adm); assert.ok(r.ok);
+  e.call('saveProduct', { nome: 'Coisa', categoria: 'Inventada', preco: 1 }, adm);
+  const l = e.call('listProducts', {}, m).data; assert.equal(l.length, 2); assert.equal(l[0].preco, 49.9); assert.equal(l[0].opcoes, 'P, M, G'); assert.equal(l[1].categoria, 'Outros');
+  assert.ok(e.call('saveProduct', { id: r.data.id, nome: 'Camiseta Zoe', categoria: 'Camisetas', preco: 55, disponivel: false }, adm).ok);
+  const a = e.call('listProducts', {}, m).data[0]; assert.equal(a.preco, 55); assert.equal(a.disponivel, false); assert.equal(a.foto, 'data:image/jpeg;base64,AAAA');
+  assert.ok(e.call('deleteProduct', { id: r.data.id }, adm).ok); assert.equal(e.call('listProducts', {}, m).data.length, 1);
+  assert.equal(e.call('saveConfig', { LojaWhatsApp: '+55 (61) 90000-0000' }, adm).data.lojaWhatsapp, '5561900000000');
+});

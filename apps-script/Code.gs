@@ -51,12 +51,13 @@ const SHEETS = {
   Noticias: ['NoticiaID', 'Titulo', 'Texto', 'Data', 'CriadoPor', 'Status'],
   Licoes: ['LicaoID', 'Titulo', 'Resumo', 'Categoria', 'Url', 'Status'],
   Dinamicas: ['DinamicaID', 'Titulo', 'Descricao', 'Minutos', 'MembroID', 'Data'],
+  Produtos: ['ProdutoID', 'Nome', 'Categoria', 'Preco', 'Descricao', 'Foto', 'Opcoes', 'Ativo', 'Ordem', 'Disponivel'],
   Videos: ['VideoID', 'Titulo', 'Url', 'Ordem', 'Status', 'Tipo', 'AoVivo'],
   Permissoes: ['Papel'].concat(PERMS),
   Config: ['Chave', 'Valor'],
   Auditoria: ['Data', 'Usuario', 'Acao', 'Alvo', 'Resultado']
 };
-const DEFAULT_CONFIG = { NomeIgreja: 'Ministério Cristão Zoe', WhatsApp: '', LocalNome: 'Templo Zoe', LocalEndereco: '', LinkMapa: 'https://maps.app.goo.gl/RZWqr2FkSz8aux2t7', ColunasExtras: '["Quem convidou"]', CanalYoutube: 'https://youtube.com/@zoe.digital.1', FrequenciasParaMembro: '4' };
+const DEFAULT_CONFIG = { NomeIgreja: 'Ministério Cristão Zoe', WhatsApp: '', LocalNome: 'Templo Zoe', LocalEndereco: '', LinkMapa: 'https://maps.app.goo.gl/RZWqr2FkSz8aux2t7', ColunasExtras: '["Quem convidou"]', CanalYoutube: 'https://youtube.com/@zoe.digital.1', FrequenciasParaMembro: '4', LojaWhatsApp: '' };
 const DEFAULT_MIN = ['Gourmet', 'Infantil', 'Mídia', 'Música', 'Som', 'Limpeza', 'Recepção'];
 
 class ApiError extends Error { constructor(code, msg) { super(msg); this.code = code; } }
@@ -207,16 +208,16 @@ function birthdays_(d, u) {
 
 /* ============================== CONFIG PÚBLICA ============================== */
 function cfgMap_() { const o = {}; table_('Config').rows.forEach(function (r) { o[r.Chave] = r.Valor; }); return o; }
-function publicConfig_() { const c = cfgMap_(); return { nomeIgreja: c.NomeIgreja, whatsapp: c.WhatsApp, localNome: c.LocalNome, localEndereco: c.LocalEndereco, linkMapa: c.LinkMapa || '', colunasExtras: jparse_(c.ColunasExtras, []), canalYoutube: c.CanalYoutube || '', frequenciasParaMembro: freqMembro_() }; }
+function publicConfig_() { const c = cfgMap_(); return { nomeIgreja: c.NomeIgreja, whatsapp: c.WhatsApp, localNome: c.LocalNome, localEndereco: c.LocalEndereco, linkMapa: c.LinkMapa || '', colunasExtras: jparse_(c.ColunasExtras, []), canalYoutube: c.CanalYoutube || '', lojaWhatsapp: c.LojaWhatsApp || '', frequenciasParaMembro: freqMembro_() }; }
 function saveConfig_(d, u) {
   return withLock_(function () {
-    const t = table_('Config'), allow = { NomeIgreja: 120, WhatsApp: 20, LocalNome: 120, LocalEndereco: 250, LinkMapa: 300 };
+    const t = table_('Config'), allow = { NomeIgreja: 120, WhatsApp: 20, LojaWhatsApp: 20, LocalNome: 120, LocalEndereco: 250, LinkMapa: 300 };
     if (d.FrequenciasParaMembro !== undefined) {
       const n = Number(d.FrequenciasParaMembro); if (!isFinite(n) || n < 1 || n > 50 || Math.round(n) !== n) throw new ApiError('VALIDATION', 'Informe um número inteiro de 1 a 50.');
       const r0 = t.rows.filter(function (x) { return x.Chave === 'FrequenciasParaMembro'; })[0]; if (r0) writeRow_(t, r0._row, { Valor: String(n) }); else appendRow_(t, { Chave: 'FrequenciasParaMembro', Valor: String(n) });
     }
     Object.keys(allow).forEach(function (k) {
-      if (d[k] === undefined) return; let v = clip_(d[k], allow[k]); if (k === 'WhatsApp') v = v.replace(/\D/g, '');
+      if (d[k] === undefined) return; let v = clip_(d[k], allow[k]); if (k === 'WhatsApp' || k === 'LojaWhatsApp') v = v.replace(/\D/g, '');
       if (k === 'LinkMapa' && v && !/^https:\/\/(maps\.app\.goo\.gl|goo\.gl\/maps|www\.google\.com\/maps|google\.com\/maps|maps\.google\.com)\//.test(v)) throw new ApiError('VALIDATION', 'Use um link do Google Maps (https://maps.app.goo.gl/...).');
       const r = t.rows.filter(function (x) { return x.Chave === k; })[0]; if (r) writeRow_(t, r._row, { Valor: v }); else appendRow_(t, { Chave: k, Valor: v });
     });
@@ -734,6 +735,24 @@ function saveLesson_(d, u) { const t = clip_(d.titulo, 120), url = clip_(d.url, 
 function listVideos_() { return table_('Videos').rows.filter(function (v) { return v.Status !== 'Removido'; }).sort(function (a, b) { return Number(a.Ordem) - Number(b.Ordem); }).map(function (v) { return { id: v.VideoID, titulo: v.Titulo, url: v.Url, tipo: v.Tipo === 'live' ? 'live' : 'video', aoVivo: v.AoVivo === '1' }; }); }
 function saveVideo_(d, u) { const t = clip_(d.titulo, 120), url = clip_(d.url, 300); if (!t || !/^https:\/\//.test(url)) throw new ApiError('VALIDATION', 'Informe título e link https.'); const v = table_('Videos'); appendRow_(v, { VideoID: id_('V'), Titulo: t, Url: url, Ordem: String(v.rows.length + 1), Status: 'Ativo', Tipo: d.tipo === 'live' ? 'live' : 'video', AoVivo: d.tipo === 'live' && d.aoVivo ? '1' : '0' }); audit_(u.email, 'VIDEO', t, 'OK'); return { ok: true }; }
 function updateVideo_(d, u) { return withLock_(function () { const t = table_('Videos'), r = t.rows.filter(function (x) { return x.VideoID === d.id && x.Status !== 'Removido'; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Vídeo não encontrado.'); const p = {}; if (d.titulo !== undefined) { p.Titulo = clip_(d.titulo, 120); if (!p.Titulo) throw new ApiError('VALIDATION', 'Informe o título.'); } if (d.tipo !== undefined) p.Tipo = d.tipo === 'live' ? 'live' : 'video'; if (d.aoVivo !== undefined) p.AoVivo = d.aoVivo ? '1' : '0'; if ((p.Tipo || r.Tipo) !== 'live') p.AoVivo = '0'; writeRow_(t, r._row, p); audit_(u.email, 'VIDEO_EDIT', r.Titulo, 'OK'); return { ok: true }; }); }
+/* ============================== LOJA ZOE ============================== */
+const CATEGORIAS_LOJA = ['Camisetas', 'Pulseiras', 'Bonés', 'Garrafas', 'Marca-texto', 'Marcador de página', 'Porta-copos', 'Outros'];
+function prodOut_(p) { return { id: p.ProdutoID, nome: p.Nome, categoria: p.Categoria || 'Outros', preco: Number(p.Preco) || 0, descricao: p.Descricao || '', foto: p.Foto || '', opcoes: p.Opcoes || '', disponivel: p.Disponivel !== '0' }; }
+function listProducts_() { return table_('Produtos').rows.filter(function (p) { return p.Ativo !== '0'; }).sort(function (a, b) { return Number(a.Ordem) - Number(b.Ordem); }).map(prodOut_); }
+function saveProduct_(d, u) {
+  return withLock_(function () {
+    const nome = clip_(d.nome, 80); if (!nome) throw new ApiError('VALIDATION', 'Informe o nome do produto.');
+    const preco = Number(d.preco); if (!isFinite(preco) || preco < 0 || preco > 100000) throw new ApiError('VALIDATION', 'Informe um preço válido.');
+    const cat = CATEGORIAS_LOJA.indexOf(d.categoria) >= 0 ? d.categoria : 'Outros';
+    const row = { Nome: nome, Categoria: cat, Preco: String(Math.round(preco * 100) / 100), Descricao: clip_(d.descricao, 600), Opcoes: clip_(d.opcoes, 120), Disponivel: d.disponivel === false ? '0' : '1' };
+    if (d.foto !== undefined) { const f = String(d.foto || ''); if (f && (!/^data:image\/(jpeg|png|webp);base64,/.test(f) || f.length > 45000)) throw new ApiError('VALIDATION', 'Foto inválida ou grande demais.'); row.Foto = f; }
+    const t = table_('Produtos');
+    if (d.id) { const r = t.rows.filter(function (x) { return x.ProdutoID === d.id && x.Ativo !== '0'; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Produto não encontrado.'); writeRow_(t, r._row, row); audit_(u.email, 'PRODUTO_EDITADO', nome, 'OK'); return { id: d.id }; }
+    row.ProdutoID = id_('PRD'); row.Ativo = '1'; row.Ordem = String(t.rows.length + 1); if (row.Foto === undefined) row.Foto = '';
+    appendRow_(t, row); audit_(u.email, 'PRODUTO', nome, 'OK'); return { id: row.ProdutoID };
+  });
+}
+function deleteProduct_(d, u) { return withLock_(function () { const t = table_('Produtos'), r = t.rows.filter(function (x) { return x.ProdutoID === d.id; })[0]; if (r) writeRow_(t, r._row, { Ativo: '0' }); audit_(u.email, 'PRODUTO_REMOVIDO', d.id, 'OK'); return { ok: true }; }); }
 function deleteVideo_(d, u) { return withLock_(function () { const t = table_('Videos'), r = t.rows.filter(function (x) { return x.VideoID === d.id; })[0]; if (r) writeRow_(t, r._row, { Status: 'Removido' }); return { ok: true }; }); }
 
 /* ============================== USUÁRIOS / PERMISSÕES ============================== */
@@ -871,7 +890,7 @@ const ROUTES = {
   listEvents: { auth: 'any', fn: listEvents_ }, enroll: { auth: 'any', write: 1, fn: enroll_ }, listNews: { auth: 'any', fn: listNews_ },
   listMinistries: { auth: 'any', fn: listMin_ }, interest: { auth: 'any', write: 1, fn: interest_ },
   listCourses: { auth: 'any', fn: listCourses_ }, enrollCourse: { auth: 'any', write: 1, fn: enrollCourse_ },
-  listLessons: { auth: 'any', fn: listLessons_ }, listDynamics: { auth: 'any', fn: listDyn_ }, addDynamic: { auth: 'any', write: 1, fn: addDyn_ }, listVideos: { auth: 'any', fn: listVideos_ },
+  listLessons: { auth: 'any', fn: listLessons_ }, listDynamics: { auth: 'any', fn: listDyn_ }, addDynamic: { auth: 'any', write: 1, fn: addDyn_ }, listVideos: { auth: 'any', fn: listVideos_ }, listProducts: { auth: 'any', fn: listProducts_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
   searchCells: { auth: 'any', fn: searchCells_ }, addPrayer: { auth: 'any', write: 1, fn: addPrayer_ }, listPrayers: { auth: 'any', fn: listPrayers_ },
   cellMembers: { auth: 'any', fn: cellMembers_ }, saveCell: { auth: 'any', write: 1, fn: saveCell_ }, saveAttendance: { auth: 'any', write: 1, fn: saveAttendance_ }, history: { auth: 'any', fn: history_ },
   indicators: { auth: 'any', fn: indicators_ }, getPapeis: { auth: 'any', fn: getPapeis_ }, savePapeis: { auth: 'any', write: 1, fn: savePapeis_ }, createCellEvent: { auth: 'any', write: 1, fn: createCellEvent_ },
