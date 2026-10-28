@@ -48,7 +48,7 @@ with sync_playwright() as p:
     # --- foto de perfil da Ana aparece no comentário do livro; nota 1 a 10
     ana.set_input_files('input[type=file]',[]) if False else None
     ana.evaluate("async()=>{S.foto='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';FOTOS[S.membroId]=S.foto;await pushMember('x')}")
-    adm.evaluate("go('admin')"); adm.wait_for_selector('#bk_t'); adm.fill('#bk_t','Propósito'); adm.set_input_files('#bk_p','/tmp/demo.pdf'); adm.click('text=Adicionar livro'); adm.wait_for_selector("text=Livro adicionado")
+    adm.evaluate("go('admin')"); adm.wait_for_selector('#bk_t'); adm.fill('#bk_t','Propósito'); adm.set_input_files('#bk_p','/tmp/demo.pdf'); adm.click('text=Adicionar livro'); adm.wait_for_function('S.livros&&S.livros.length>0',timeout=20000)
     ana.evaluate("go('biblioteca')"); ana.click("text=Ler e comentar"); ana.wait_for_selector('#lb_nota'); ana.click('#lb_nota button:text-is("8")'); ana.wait_for_selector("#lb_nota >> text=★ 8")
     ana.fill('#lc_t','Muito bom'); ana.click('text=Publicar comentário'); ana.wait_for_selector("#lc_lista >> text=Muito bom"); ana.wait_for_selector('#lc_lista .fa img')
     adm=entra(b,'admin@zoe.com','SenhaForte123'); adm.evaluate("go('biblioteca')"); adm.wait_for_selector('.livro'); adm.click("text=Ler e comentar"); adm.click('#lb_nota button:text-is("6")'); adm.wait_for_selector("#lb_nota >> text=★ 7")

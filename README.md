@@ -83,3 +83,6 @@ Texto: *Almeida 1819 (Bíblia Livre)*, domínio público, fonte github.com/midva
 - **Pop**: modais, menu do mouse, alertas e avisos entram e saem com animação. Telas entram em sequência (coreografia) e os cards abaixo da dobra aparecem ao rolar.
 - **Barra de cima**: some ao descer a página, volta ao subir, e tem uma linha de progresso de leitura suavizada.
 - **Saudação** "Olá, <apelido>!" ao entrar; **feedback de arquivo** (nome e tamanho ao escolher, barra "Enviando…" nos envios grandes); troca de tema claro/escuro com transição.
+
+## Índice da Administração
+Na página de Administração, a barra lateral mostra, abaixo de "Administração", um submenu com todas as seções (Níveis de acesso, Usuários, Biblioteca…). Clicar rola suavemente até a seção e a destaca; a seção atual fica marcada enquanto você rola. No celular (ou com a barra recolhida) aparece o botão flutuante **Seções** com a mesma lista.
