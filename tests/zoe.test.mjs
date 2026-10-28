@@ -118,3 +118,24 @@ test('admin edita tudo que criou: células, eventos, notícias, cursos, vídeos,
   e.call('adminRemove', { tipo: 'dinamicas', id: d.itens[0].id }, adm); assert.equal(e.call('adminList', { tipo: 'dinamicas' }, adm).data.itens.length, 0);
   assert.ok(e.call('adminSave', { tipo: 'ministerios', valores: { Nome: 'Teatro', Ordem: '9' } }, adm).ok);
 });
+test('admin edita membros e ministério com foto (foto mantida quando não alterada)', () => {
+  const { e, adm, tok, mk } = boot(); mk('joao@zoe.com', 'membro'); const j = tok('joao@zoe.com', 'Temp12345');
+  const c = e.call('createCell', { nome: 'Semeadores' }, adm).data.id;
+  assert.equal(e.call('adminList', { tipo: 'membros' }, j).error.code, 'FORBIDDEN');
+  let L = e.call('adminList', { tipo: 'membros' }, adm).data; assert.ok(L.itens.length >= 2); assert.equal(L.celulas[0].id, c);
+  const it = L.itens.find(i => i.valores.Nome === 'joao'); assert.ok(it);
+  assert.ok(e.call('adminSave', { tipo: 'membros', id: it.id, valores: { Nome: 'João da Silva', Telefone: '61999990000', CelulaID: c, Nascimento: '1990-05-01' } }, adm).ok);
+  L = e.call('adminList', { tipo: 'membros' }, adm).data; const v = L.itens.find(i => i.id === it.id).valores; assert.equal(v.Nome, 'João da Silva'); assert.equal(v.CelulaID, c); assert.equal(v.Email, undefined);
+  assert.equal(e.call('adminSave', { tipo: 'membros', id: it.id, valores: { Nome: 'x', Nascimento: '01/05/1990' } }, adm).error.code, 'VALIDATION');
+  assert.equal(e.call('cellMembers', { celulaId: c }, adm).data.some(m => m.Nome === 'João da Silva' || m.nome === 'João da Silva'), true);
+  e.call('adminRemove', { tipo: 'membros', id: it.id }, adm); assert.equal(e.call('adminList', { tipo: 'membros' }, adm).data.itens.find(i => i.id === it.id).off, true);
+  // ministério com foto
+  const foto = 'data:image/jpeg;base64,/9j/4AAQSkZJRg==';
+  const mid = e.call('adminSave', { tipo: 'ministerios', valores: { Nome: 'Teatro', Descricao: 'Artes', Foto: foto } }, adm).data.id;
+  assert.equal(e.call('listMinistries', {}, j).data.find(m => m.id === mid).foto, foto);
+  assert.equal(e.call('adminList', { tipo: 'ministerios' }, adm).data.itens.find(i => i.id === mid).valores.Foto, '__keep');
+  assert.ok(e.call('adminSave', { tipo: 'ministerios', id: mid, valores: { Nome: 'Teatro Zoe', Foto: '__keep' } }, adm).ok);
+  assert.equal(e.call('listMinistries', {}, j).data.find(m => m.id === mid).foto, foto);
+  assert.equal(e.call('adminSave', { tipo: 'ministerios', id: mid, valores: { Nome: 'Teatro Zoe', Foto: 'javascript:alert(1)' } }, adm).error.code, 'VALIDATION');
+  e.call('adminSave', { tipo: 'ministerios', id: mid, valores: { Nome: 'Teatro Zoe', Foto: '' } }, adm); assert.equal(e.call('listMinistries', {}, j).data.find(m => m.id === mid).foto, '');
+});

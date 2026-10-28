@@ -254,7 +254,7 @@ async function hydrate(){
  const cel=me.celula;S.celulaId=cel?cel.id:'';
  S.cell=cel?{nome:cel.nome,desc:cel.descricao,foto:cel.foto,dia:cel.dia,inicio:cel.inicio,priv:cel.priv}:{nome:'Sem célula',desc:'',foto:'',dia:'',inicio:'',priv:{grupo:false,tel:false,email:false,end:false}};
  const[ev,mi,nw,vd,cu,li,di,an,sc,og]=await Promise.all([api('listEvents'),api('listMinistries'),api('listNews'),api('listVideos'),api('listCourses'),api('listLessons'),api('listDynamics'),api('birthdays'),api('searchCells'),api('orgTree')]);
- mapEvents(ev);S.ministerios=mi.map(x=>x.nome);S.minIds=mi.map(x=>x.id);mapNews(nw);S.videos=vd.map(x=>({t:x.titulo,u:x.url,id:x.id}));mapCourses(cu);mapLessons(li);mapDyn(di);S.aniv=an;mapCells(sc);S.org=og;
+ mapEvents(ev);S.ministerios=mi.map(x=>x.nome);S.minIds=mi.map(x=>x.id);S.minFotos=mi.map(x=>x.foto||'');S.minDesc=mi.map(x=>x.descricao||'');mapNews(nw);S.videos=vd.map(x=>({t:x.titulo,u:x.url,id:x.id}));mapCourses(cu);mapLessons(li);mapDyn(di);S.aniv=an;mapCells(sc);S.org=og;
  S.membros=[];S.historico=[];S.ind=null;S.papeis={};S.oracoes=[];S.indC=[];S.indE=[];S.transf=[];
  if(cel){const[mb,h,pp,or,ind]=await Promise.all([api('cellMembers'),api('history'),api('getPapeis'),api('listPrayers'),api('indicators')]);S.membros=mb.map(mapM);setHist(h);mapPapeis(pp);S.oracoes=or.map(o=>({tema:o.tema,t:o.titulo,x:o.texto}));S.indC=Object.entries(ind.cursos).map(([k,v])=>[k,v.join(', ')]);S.indE=Object.entries(ind.eventos).map(([k,v])=>[k,v.join(', ')])}
  if(me.permissoes.transf){S.transf=(await api('listTransfers')).map(x=>({id:x.id,n:x.nome,de:x.de,para:x.para,st:x.status}))}
@@ -262,9 +262,41 @@ async function hydrate(){
  save()}
 function renderKeep(){const v={};document.querySelectorAll('#view [id]').forEach(el=>{if('value' in el)v[el.id]=el.value});const y=scrollY;render();Object.keys(v).forEach(id=>{const el=document.getElementById(id);if(el&&el.tagName!=='BUTTON'&&v[id]!==undefined&&!el.value)el.value=v[id]});scrollTo(0,y)}
 
+
+/* ===== Bíblia (Almeida 1819 - domínio público), arquivos em assets/bible/ ===== */
+const BIB={idx:null,cache:{},all:false,res:null,q:'',fs:0,msg:''};
+function bibPos(){S.bib=S.bib||{b:43,c:1};return S.bib}
+function bibView(){const p=bibPos();
+ if(!BIB.idx){bibLoadIdx();return '<div class="card flat"><h2>Bíblia</h2><p class="muted">Carregando…</p></div>'}
+ if(BIB.idx==='erro')return `<div class="card flat col"><h2>Bíblia</h2><p class="muted">${BIB.msg||'Não foi possível carregar o texto.'}</p></div>`;
+ const L=BIB.idx.livros,bk=L.find(x=>x.id===p.b)||L[42];
+ const opt=t=>L.filter(x=>x.t===t).map(x=>`<option value="${x.id}" ${x.id===bk.id?'selected':''}>${esc(x.n)}</option>`).join('');
+ return `<div class="card flat col"><h2>Bíblia</h2>
+ <div class="form"><label class="f">Livro<select id="bib_l" onchange="bibGo(+this.value,1)"><optgroup label="Antigo Testamento">${opt('OT')}</optgroup><optgroup label="Novo Testamento">${opt('NT')}</optgroup></select></label>
+ <label class="f">Capítulo<select id="bib_c" onchange="bibGo(${bk.id},+this.value)">${Array.from({length:bk.c},(_,i)=>`<option ${i+1===p.c?'selected':''}>${i+1}</option>`).join('')}</select></label></div>
+ <div class="row"><button class="btn sm ghost" onclick="bibNav(-1)">${ic('chev',14)} Anterior</button><button class="btn sm ghost" onclick="bibNav(1)">Próximo ${ic('chevr',14)}</button><span class="sp"></span><button class="btn sm ghost" onclick="bibFont(-1)" aria-label="Diminuir letra">A-</button><button class="btn sm ghost" onclick="bibFont(1)" aria-label="Aumentar letra">A+</button></div>
+ <div class="row"><input id="bq" placeholder="Buscar palavra ou frase na Bíblia" value="${esc(BIB.q)}" style="flex:1" onkeydown="if(event.key==='Enter')bibBusca()"><button class="btn" onclick="bibBusca()">Buscar</button></div></div>
+ <div class="card flat" id="bibtxt">${BIB.res?bibRes():'<p class="muted">Carregando…</p>'}</div>
+ <p class="muted sm">Versão: ${esc(BIB.idx.versao)} · ${esc(BIB.idx.licenca)}.</p>`}
+async function bibLoadIdx(){if(BIB.loading)return;BIB.loading=1;try{const r=await fetch('assets/bible/index.json');if(!r.ok)throw 0;BIB.idx=await r.json()}catch(e){BIB.idx='erro';BIB.msg='O texto da Bíblia fica na pasta do site publicado (assets/bible). Abra o app pelo endereço oficial da igreja para ler.'}BIB.loading=0;if(R.r==='membro'&&R.sub.membro==='biblia'){render();if(BIB.idx!=='erro')bibShow()}}
+async function bibBook(id){if(!BIB.cache[id]){const r=await fetch('assets/bible/'+id+'.json');if(!r.ok)throw new Error('Livro indisponível');BIB.cache[id]=await r.json()}return BIB.cache[id]}
+async function bibShow(){const p=bibPos(),el=$('#bibtxt');if(!el||BIB.res)return;
+ try{const d=await bibBook(p.b),L=BIB.idx.livros.find(x=>x.id===p.b),v=d[p.c-1]||[];const sz=[16,18,21][BIB.fs+1]||18;
+  el.innerHTML=`<h3 style="margin-bottom:8px">${esc(L.n)} ${p.c}</h3><div style="font-size:${sz}px;line-height:1.7">${v.map((t,i)=>`<p style="margin:0 0 6px"><sup style="color:var(--vermelho);font-weight:700;margin-right:4px">${i+1}</sup>${esc(t)}</p>`).join('')}</div>`}
+ catch(e){el.innerHTML='<p class="muted">Não foi possível carregar este livro. Verifique a internet.</p>'}}
+function bibGo(b,c){S.bib={b,c};BIB.res=null;save();render();bibShow();scrollTo(0,0)}
+function bibNav(d){const p=bibPos(),L=BIB.idx.livros;let i=L.findIndex(x=>x.id===p.b),c=p.c+d;if(c<1){if(i===0)return;i--;c=L[i].c}else if(c>L[i].c){if(i===L.length-1)return;i++;c=1}bibGo(L[i].id,c)}
+function bibFont(d){BIB.fs=Math.max(-1,Math.min(1,BIB.fs+d));bibShow()}
+const bibNorm=t=>t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+async function bibBusca(){const q=$('#bq').value.trim();BIB.q=q;if(q.length<3){toast('Digite ao menos 3 letras');return}
+ const el=$('#bibtxt');el.innerHTML='<p class="muted">Buscando em toda a Bíblia…</p>';
+ try{const L=BIB.idx.livros;await Promise.all(L.filter(x=>!BIB.cache[x.id]).map(x=>bibBook(x.id)));const n=bibNorm(q),out=[];
+  for(const x of L){const d=BIB.cache[x.id];d.forEach((cap,ci)=>cap.forEach((t,vi)=>{if(out.length<80&&bibNorm(t).includes(n))out.push({b:x.id,n:x.n,c:ci+1,v:vi+1,t})}))}
+  BIB.res=out;el.innerHTML=bibRes()}catch(e){el.innerHTML='<p class="muted">Não foi possível buscar. Verifique a internet.</p>'}}
+function bibRes(){const r=BIB.res;return `<div class="row"><h3 class="sp">${r.length?r.length+(r.length>=80?'+':'')+' resultado(s)':'Nenhum resultado'}</h3><button class="btn sm ghost" onclick="BIB.res=null;render();bibShow()">Voltar à leitura</button></div>`+r.map((x,i)=>`<div class="opt" style="display:block"><b>${esc(x.n)} ${x.c}:${x.v}</b><div>${esc(x.t)}</div><button class="btn sm ghost" style="margin-top:6px" data-b="${x.b}" data-c="${x.c}" onclick="bibGo(+this.dataset.b,+this.dataset.c)">Ler capítulo</button></div>`).join('')}
 /* ===== Administração: editar tudo que foi criado ===== */
 let ADM={tipo:'',d:null,busca:''};
-const ADM_T=[['celulas','Células','celulas'],['eventos','Eventos','eventos'],['noticias','Notícias','eventos'],['ministerios','Ministérios','min'],['cursos','Cursos','config'],['licoes','Lições / Extras','config'],['dinamicas','Dinâmicas','config'],['videos','Vídeos','config']];
+const ADM_T=[['celulas','Células','celulas'],['eventos','Eventos','eventos'],['noticias','Notícias','eventos'],['ministerios','Ministérios','min'],['membros','Membros','config'],['cursos','Cursos','config'],['licoes','Lições / Extras','config'],['dinamicas','Dinâmicas','config'],['videos','Vídeos','config']];
 function editarTudoCard(){const ts=ADM_T.filter(t=>can(t[2]));if(!ts.length)return '';
  let b='';
  if(ADM.d){const q=ADM.busca.toLowerCase();const it=ADM.d.itens.filter(i=>!q||(i.rotulo+' '+i.sub).toLowerCase().includes(q));
@@ -279,11 +311,14 @@ async function admCarregar(){try{ADM.d=await api('adminList',{tipo:ADM.tipo});re
 function admForm(id){const D=ADM.d,it=id?D.itens.find(i=>i.id===id):null,v=it?it.valores:{};
  const inp=(f,i)=>{const val=v[f.k]??'',n='adf'+i;
   if(f.t==='area'||f.t==='lines')return `<label class="f full">${esc(f.l)}<textarea id="${n}">${esc(val)}</textarea></label>`;
+  if(f.t==='foto')return `<div class="f full">${esc(f.l)}<div class="row"><span class="chip" id="adfs${i}">${val?'Foto cadastrada':'Sem foto'}</span><label class="btn sm ghost">${ic('camera',14)} Escolher foto<input type="file" accept="image/*" hidden onchange="admFoto(this,${i})"></label><button type="button" class="btn sm ghost" onclick="document.getElementById('adf${i}').value='';document.getElementById('adfs${i}').textContent='Sem foto'">Remover</button></div><input id="${n}" type="hidden" value="${esc(val)}"></div>`;
+  if(f.t==='celula')return `<label class="f">${esc(f.l)}<select id="${n}"><option value="">Sem célula</option>${(D.celulas||[]).map(m=>`<option value="${esc(m.id)}" ${m.id===val?'selected':''}>${esc(m.nome)}</option>`).join('')}</select></label>`;
   if(f.t==='membro')return `<label class="f">${esc(f.l)}<select id="${n}"><option value="">—</option>${D.membros.map(m=>`<option value="${esc(m.id)}" ${m.id===val?'selected':''}>${esc(m.nome)}</option>`).join('')}</select></label>`;
   if(f.t==='sel')return `<label class="f">${esc(f.l)}<select id="${n}">${f.t==='sel'&&!f.op.some(o=>String(Array.isArray(o)?o[0]:o)===val)?'<option value="">—</option>':''}${f.op.map(o=>{const a=Array.isArray(o)?o:[o,o];return `<option value="${esc(a[0])}" ${a[0]===val?'selected':''}>${esc(a[1])}</option>`}).join('')}</select></label>`;
   const ty={date:'date',time:'time',num:'number',url:'url'}[f.t]||'text';
   return `<label class="f">${esc(f.l)}<input id="${n}" type="${ty}" value="${esc(val)}" ${f.max?`maxlength="${f.max}"`:''}></label>`};
  modal(`<h2>${it?'Editar':'Novo'}: ${esc(D.titulo)}</h2><div class="form">${D.campos.map(inp).join('')}</div><div class="row"><button class="btn" data-id="${esc(id)}" onclick="admSalvar(this.dataset.id)">Salvar</button><button class="btn ghost" onclick="closeL()">Cancelar</button></div>`)}
+function admFoto(inp,i){const f=inp.files[0];if(!f)return;redim(f,256,d=>{document.getElementById('adf'+i).value=d;document.getElementById('adfs'+i).textContent='Nova foto escolhida'})}
 async function admSalvar(id){const valores={};ADM.d.campos.forEach((f,i)=>{valores[f.k]=document.getElementById('adf'+i).value});
  const r=await push('adminSave',{tipo:ADM.tipo,id:id||undefined,valores},id?'Alterações salvas':'Criado com sucesso');if(r===undefined)return;closeL();await admCarregar();await hydrate();render()}
 async function admRem(id,off){const it=ADM.d.itens.find(i=>i.id===id);if(!ADM.d.podeApagar&&off){}else if(!confirm((ADM.d.podeApagar?'Apagar':'Remover')+' "'+(it?it.rotulo:'')+'"?'))return;
@@ -315,7 +350,7 @@ let S;
 try{S=JSON.parse(localStorage.getItem(ONLINE?'zoe-prefs':'zoe-app')||'null')}catch(e){S=null}
 S=S?Object.assign({},DEF,S):JSON.parse(JSON.stringify(DEF));
 for(const k of Object.keys(DEF)){if(S[k]===undefined)S[k]=DEF[k]}
-const PREF=['theme','anim','collapsed','notas','fav','favD','mural','muralItems','alerts'];
+const PREF=['theme','anim','collapsed','notas','fav','favD','mural','muralItems','alerts','bib'];
 function save(){try{if(ONLINE){const o={};PREF.forEach(k=>o[k]=S[k]);localStorage.setItem('zoe-prefs',JSON.stringify(o))}else localStorage.setItem('zoe-app',JSON.stringify(S))}catch(e){}}
 const CELULAS=[
  {n:'Semeadores',dia:'Quinta',ini:'20:00',fim:'21:30',cat:'Mulheres e Homens',faixa:'Jovens',bairro:'Chácaras Coimbra',cid:'Águas Lindas de Goiás',uf:'GO',lider:'Fábio Botero',x:34,y:42,sup:'Supervisão Norte'},
@@ -370,7 +405,7 @@ function toggleAnim(){S.anim=!S.anim;save();shell();toast(S.anim?'Animações li
 function toggleTheme(){const dark=document.documentElement.getAttribute('data-theme')==='dark'||(!S.theme&&matchMedia('(prefers-color-scheme: dark)').matches);S.theme=dark?'light':'dark';save();shell()}
 function go(r,s){R.r=r;if(s){const k=r;R.sub[k]=s}menu(false);history.replaceState(null,'','#'+r);shell();render();scrollTo(0,0);if(r==='admin'&&ONLINE)loadAdmin()}
 function sub(k,v){R.sub[k]=v;render()}
-function render(){const v=VIEWS[R.r]||VIEWS.feed;$('#view').innerHTML=v();if(R.r==='celula'&&R.sub.celula==='mural')muralInit()}
+function render(){const v=VIEWS[R.r]||VIEWS.feed;$('#view').innerHTML=v();if(R.r==='celula'&&R.sub.celula==='mural')muralInit();if(R.r==='membro'&&R.sub.membro==='biblia'&&BIB.idx&&BIB.idx!=='erro')bibShow()}
 function modal(html){$('#layer').innerHTML=`<div class="modal" onclick="if(event.target===this)closeL()"><div class="box" role="dialog" aria-modal="true">${html}</div></div>`}
 function closeL(){$('#layer').innerHTML=''}
 
@@ -455,8 +490,7 @@ perfil(){const s=R.sub.perfil;const p=S.perfil;
  return tabs(T,s,'perfil')+b},
 
 membro(){const s=R.sub.membro;let b='';
- if(s==='biblia')b=`<div class="card flat col"><h2>Bíblia</h2><div class="form"><label class="f">Livro<select id="bk">${['Gênesis','Salmos','Provérbios','Mateus','João','Romanos','Tiago'].map(x=>`<option>${x}</option>`).join('')}</select></label><label class="f">Capítulo<select>${Array.from({length:12},(_,i)=>`<option>${i+1}</option>`).join('')}</select></label><label class="f">Versão<select><option>Almeida Revista e Corrigida</option><option>Nova Versão Internacional</option></select></label></div>
-  <div class="card flat" style="border-style:dashed"><p class="muted">Aqui o texto bíblico aparece em leitura contínua, com marcação de versículos e busca. Nesta prévia o conteúdo não está carregado: na versão final ele vem de uma fonte de texto licenciada ou de domínio público.</p></div></div>`;
+ if(s==='biblia')b=bibView();
  else b=`<div class="card flat col"><h2>Anotações do culto</h2><div class="form"><label class="f">Título<input id="nt" placeholder="Ex.: Culto de domingo, 25/10"></label><label class="f full">Anotação<textarea id="nx" placeholder="O que Deus falou com você hoje?"></textarea></label></div><div><button class="btn" onclick="addNota()">Salvar anotação</button></div></div>
   <div class="grid w">${S.notas.map((n,i)=>`<div class="card"><div class="row"><b class="sp">${esc(n.t)}</b><button class="heart" onclick="S.notas.splice(${i},1);save();render()" aria-label="Apagar">${ic('trash',16)}</button></div><p class="muted sm">${n.d}</p><p style="margin-top:6px;white-space:pre-wrap">${esc(n.x)}</p></div>`).join('')||'<p class="muted">Nenhuma anotação ainda.</p>'}</div>`;
  return tabs([['biblia','Bíblia'],['notas','Anotações do culto']],s,'membro')+b},
@@ -495,7 +529,7 @@ familia(){const s=R.sub.familia;const T=[['fale','Fale com a Igreja'],['noticias
  if(s==='onde')b=`<div class="card flat col"><h2>Onde estamos</h2><p>${S.local?esc(S.local):'<span class="muted">O endereço é cadastrado em Administração.</span>'}</p>${S.local?`<div><a class="btn" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(S.local)}">${ic('pin',16)} Abrir no Google Maps</a></div>`:''}</div>`;
  return tabs(T,s,'familia')+b},
 
-ministerios(){return `<div class="grid">${S.ministerios.map((m,i)=>`<div class="card col"><div class="pic-ph ${i%3===1?'r':''}">${ic(['cross','heart','play','spark','users','star','home2'][i%7],34)}</div><h3>${esc(m)}</h3><button class="btn sm" onclick="envolva(${i})">Envolva-se</button></div>`).join('')}</div>`},
+ministerios(){return `<div class="grid">${S.ministerios.map((m,i)=>`<div class="card col"><div class="pic-ph ${i%3===1?'r':''}" ${(S.minFotos||[])[i]?`style="background:url(${esc(S.minFotos[i])}) center/cover"`:''}>${(S.minFotos||[])[i]?'':ic(['cross','heart','play','spark','users','star','home2'][i%7],34)}</div><h3>${esc(m)}</h3>${(S.minDesc||[])[i]?`<p class="muted sm">${esc(S.minDesc[i])}</p>`:''}<button class="btn sm" onclick="envolva(${i})">Envolva-se</button></div>`).join('')}</div>`},
 
 buscar(){const f=R.f||{};const fl=CELULAS.filter(c=>(!f.dia||c.dia===f.dia)&&(!f.cat||c.cat===f.cat)&&(!f.ini||c.ini>=f.ini)&&(!f.fim||c.fim<=f.fim)&&(!f.faixa||c.faixa===f.faixa)&&(!f.q||(c.bairro+c.cid+c.uf).toLowerCase().includes(f.q.toLowerCase())));
  const ord=f.ord||'dia';const di=DIAS;fl.sort((a,b)=>ord==='dia'?di.indexOf(a.dia)-di.indexOf(b.dia):ord==='ini'?a.ini.localeCompare(b.ini):a.cat.localeCompare(b.cat));
@@ -591,7 +625,7 @@ async function addD(){const t=$('#dn').value.trim();if(!t)return toast('Dê um n
 async function inscrever(id){const e=EVENTOS.find(x=>x.id===id),t=e.t,i=S.inscr.indexOf(t);const r=await push('enroll',{eventoId:e.sid,on:i<0});if(r===undefined)return;i<0?S.inscr.push(t):S.inscr.splice(i,1);save();render();toast(i<0?'Inscrição feita':'Inscrição cancelada')}
 function fale(a){const m=`Olá, igreja! Assunto: ${$('#fa').value}. Sou ${$('#fn').value}. ${$('#fm').value}`;a.href=`https://wa.me/${S.whats}?text=${encodeURIComponent(m)}`;return true}
 async function addM(){const v=$('#am').value.trim();if(!v)return;const r=await push('saveMinistry',{nome:v});if(r===undefined)return;if(ONLINE)await reloadMin();else S.ministerios.push(v);save();render()}
-async function reloadMin(){const mi=await api('listMinistries');S.ministerios=mi.map(x=>x.nome);S.minIds=mi.map(x=>x.id)}
+async function reloadMin(){const mi=await api('listMinistries');S.minFotos=mi.map(x=>x.foto||'');S.minDesc=mi.map(x=>x.descricao||'');S.ministerios=mi.map(x=>x.nome);S.minIds=mi.map(x=>x.id)}
 async function delMin(i){const r=await push('deleteMinistry',{id:(S.minIds||[])[i]});if(r===undefined)return;if(ONLINE)await reloadMin();else S.ministerios.splice(i,1);save();render()}
 async function delCol(i){const n=S.colunas.filter((_,k)=>k!==i);const r=await push('saveConfig',{colunasExtras:n});if(r===undefined)return;S.colunas=n;save();render()}
 async function delVid(i){const v=S.videos[i];const r=await push('deleteVideo',{id:v.id});if(r===undefined)return;S.videos.splice(i,1);save();render()}

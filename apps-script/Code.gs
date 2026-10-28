@@ -34,7 +34,7 @@ const SHEETS = {
   Oracoes: ['OracaoID', 'CelulaID', 'MembroID', 'Tema', 'Titulo', 'Texto', 'Data'],
   Eventos: ['EventoID', 'Titulo', 'Data', 'Hora', 'Local', 'Descricao', 'Programacao', 'Escopo', 'CelulaID', 'CriadoPor', 'Status'],
   Inscricoes: ['EventoID', 'MembroID', 'Data'],
-  Ministerios: ['MinisterioID', 'Nome', 'Ordem', 'Ativo'],
+  Ministerios: ['MinisterioID', 'Nome', 'Ordem', 'Ativo', 'Descricao', 'Foto'],
   Interesses: ['InteresseID', 'MinisterioID', 'MembroID', 'Data', 'Status'],
   Transferencias: ['TransfID', 'MembroID', 'DeCelulaID', 'ParaCelulaID', 'SolicitadoPor', 'Status', 'DecididoPor', 'Data', 'DataDecisao'],
   Cursos: ['CursoID', 'Nome', 'Ativo'],
@@ -352,7 +352,7 @@ function postNews_(d, u) { const t = clip_(d.titulo, 120); if (!t) throw new Api
 function listNews_() { return table_('Noticias').rows.filter(function (n) { return n.Status !== 'Removida'; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).slice(0, 30).map(function (n) { return { id: n.NoticiaID, titulo: n.Titulo, texto: n.Texto, data: n.Data }; }); }
 
 /* ============================== MINISTÉRIOS / CURSOS / EXTRAS ============================== */
-function listMin_() { return table_('Ministerios').rows.filter(function (m) { return m.Ativo !== '0'; }).sort(function (a, b) { return Number(a.Ordem) - Number(b.Ordem); }).map(function (m) { return { id: m.MinisterioID, nome: m.Nome }; }); }
+function listMin_() { return table_('Ministerios').rows.filter(function (m) { return m.Ativo !== '0'; }).sort(function (a, b) { return Number(a.Ordem) - Number(b.Ordem); }).map(function (m) { return { id: m.MinisterioID, nome: m.Nome, descricao: m.Descricao || '', foto: m.Foto || '' }; }); }
 function interest_(d, u) {
   return withLock_(function () {
     const m = table_('Ministerios').rows.filter(function (r) { return r.MinisterioID === d.ministerioId && r.Ativo !== '0'; })[0]; if (!m) throw new ApiError('NOT_FOUND', 'Ministério não encontrado.');
@@ -433,7 +433,13 @@ const ENT = {
   noticias: { titulo: 'Notícias', aba: 'Noticias', id: 'NoticiaID', pre: 'N', perm: 'eventos', rotulo: 'Titulo', sub: 'Data', status: { col: 'Status', ativo: 'Ativo', off: 'Removida' }, defaults: {}, campos: [
     { k: 'Titulo', l: 'Título', t: 'text', max: 120, req: 1 }, { k: 'Texto', l: 'Texto', t: 'area', max: 1500 }, { k: 'Status', l: 'Situação', t: 'sel', op: [['Ativo', 'Publicada'], ['Removida', 'Removida']] }] },
   ministerios: { titulo: 'Ministérios', aba: 'Ministerios', id: 'MinisterioID', pre: 'MIN', perm: 'min', rotulo: 'Nome', status: { col: 'Ativo', ativo: '1', off: '0' }, campos: [
-    { k: 'Nome', l: 'Nome', t: 'text', max: 60, req: 1 }, { k: 'Ordem', l: 'Ordem', t: 'num' }, { k: 'Ativo', l: 'Situação', t: 'sel', op: [['1', 'Ativo'], ['0', 'Inativo']] }] },
+    { k: 'Nome', l: 'Nome', t: 'text', max: 60, req: 1 }, { k: 'Descricao', l: 'Descrição curta', t: 'area', max: 300 }, { k: 'Foto', l: 'Foto do ministério', t: 'foto' }, { k: 'Ordem', l: 'Ordem', t: 'num' }, { k: 'Ativo', l: 'Situação', t: 'sel', op: [['1', 'Ativo'], ['0', 'Inativo']] }] },
+  membros: { titulo: 'Membros', aba: 'Membros', id: 'MembroID', pre: 'M', perm: 'config', rotulo: 'Nome', sub: 'Telefone', status: { col: 'Status', ativo: 'Ativo', off: 'Inativo' }, defaults: { EhMembro: '1' }, campos: [
+    { k: 'Nome', l: 'Nome completo', t: 'text', max: 120, req: 1 }, { k: 'Simples', l: 'Nome simplificado', t: 'text', max: 60 }, { k: 'Apelido', l: 'Apelido', t: 'text', max: 40 }, { k: 'Sexo', l: 'Sexo', t: 'sel', op: ['Feminino', 'Masculino'] },
+    { k: 'Nascimento', l: 'Nascimento', t: 'date' }, { k: 'Telefone', l: 'Celular', t: 'text', max: 25 }, { k: 'Profissao', l: 'Profissão', t: 'text', max: 60 }, { k: 'CEP', l: 'CEP', t: 'text', max: 9 }, { k: 'Endereco', l: 'Endereço', t: 'text', max: 200 },
+    { k: 'Bairro', l: 'Bairro', t: 'text', max: 80 }, { k: 'Cidade', l: 'Cidade', t: 'text', max: 80 }, { k: 'UF', l: 'UF', t: 'text', max: 2 }, { k: 'EstadoCivil', l: 'Estado civil', t: 'text', max: 30 },
+    { k: 'DataBatismo', l: 'Data do batismo', t: 'date' }, { k: 'CelulaID', l: 'Célula', t: 'celula' }, { k: 'Foto', l: 'Foto', t: 'foto' },
+    { k: 'Status', l: 'Situação', t: 'sel', op: [['Ativo', 'Ativo'], ['Inativo', 'Inativo']] }] },
   cursos: { titulo: 'Cursos', aba: 'Cursos', id: 'CursoID', pre: 'CUR', perm: 'config', rotulo: 'Nome', status: { col: 'Ativo', ativo: '1', off: '0' }, campos: [
     { k: 'Nome', l: 'Nome do curso', t: 'text', max: 100, req: 1 }, { k: 'Ativo', l: 'Situação', t: 'sel', op: [['1', 'Ativo'], ['0', 'Inativo']] }] },
   licoes: { titulo: 'Lições / Extras', aba: 'Licoes', id: 'LicaoID', pre: 'L', perm: 'config', rotulo: 'Titulo', status: { col: 'Status', ativo: 'Ativa', off: 'Removida' }, campos: [
@@ -453,6 +459,7 @@ function ent_(d, u) {
 function adminCampo_(f, v) {
   v = f.t === 'lines' ? (Array.isArray(v) ? v : String(v || '').split('\n')).map(function (x) { return clip_(x, 120); }).filter(String).slice(0, 30) : v;
   if (f.t === 'lines') return JSON.stringify(v);
+  if (f.t === 'foto') { v = String(v || ''); if (v && (!/^data:image\/(jpeg|png|webp);base64,/.test(v) || v.length > 45000)) throw new ApiError('VALIDATION', 'Foto inválida ou muito grande.'); return v; }
   v = clip_(v, f.max || 200);
   if (f.req && !v) throw new ApiError('VALIDATION', 'Preencha: ' + f.l + '.');
   if (f.t === 'date' && v && !dateOk_(v)) throw new ApiError('VALIDATION', 'Data inválida em: ' + f.l + '.');
@@ -464,18 +471,19 @@ function adminCampo_(f, v) {
 function adminList_(d, u) {
   const e = ent_(d, u), t = table_(e.aba), mem = {};
   const membros = (e.campos.some(function (f) { return f.t === 'membro'; }) ? table_('Membros').rows.filter(function (m) { return m.Status !== 'Inativo'; }).map(function (m) { mem[m.MembroID] = m.Simples || m.Nome; return { id: m.MembroID, nome: m.Simples || m.Nome || m.Email }; }).sort(function (a, b) { return a.nome < b.nome ? -1 : 1; }) : []);
+  const celulas = e.campos.some(function (f) { return f.t === 'celula'; }) ? table_('Celulas').rows.filter(function (x) { return x.Status !== 'Inativa'; }).map(function (x) { return { id: x.CelulaID, nome: x.Nome }; }) : [];
   const itens = t.rows.map(function (r) {
-    const v = {}; e.campos.forEach(function (f) { v[f.k] = f.t === 'lines' ? jparse_(r[f.k], []).join('\n') : r[f.k]; });
+    const v = {}; e.campos.forEach(function (f) { v[f.k] = f.t === 'lines' ? jparse_(r[f.k], []).join('\n') : f.t === 'foto' ? (r[f.k] ? '__keep' : '') : r[f.k]; });
     const off = e.status ? r[e.status.col] === e.status.off : false;
     return { id: r[e.id], rotulo: r[e.rotulo] || '(sem nome)', sub: e.sub ? r[e.sub] : '', off: off, valores: v };
   });
   if (e.sub === 'Data') itens.sort(function (a, b) { return a.sub < b.sub ? 1 : -1; });
-  return { titulo: e.titulo, campos: e.campos, membros: membros, itens: itens, podeApagar: !!e.apagar };
+  return { titulo: e.titulo, campos: e.campos, membros: membros, celulas: celulas, itens: itens, podeApagar: !!e.apagar };
 }
 function adminSave_(d, u) {
   return withLock_(function () {
     const e = ent_(d, u), t = table_(e.aba), dados = d.valores || {}, patch = {};
-    e.campos.forEach(function (f) { if (dados[f.k] !== undefined || f.req) patch[f.k] = f.t === 'membro' ? clip_(dados[f.k], 30) : adminCampo_(f, dados[f.k]); });
+    e.campos.forEach(function (f) { if (f.t === 'foto' && (dados[f.k] === undefined || dados[f.k] === '__keep')) return; if (dados[f.k] !== undefined || f.req) patch[f.k] = (f.t === 'membro' || f.t === 'celula') ? clip_(dados[f.k], 30) : adminCampo_(f, dados[f.k]); });
     if (e.aba === 'Videos' && patch.Url === undefined) throw new ApiError('VALIDATION', 'Informe o link.');
     const row = d.id ? t.rows.filter(function (r) { return r[e.id] === d.id; })[0] : null;
     if (d.id && !row) throw new ApiError('NOT_FOUND', 'Item não encontrado.');

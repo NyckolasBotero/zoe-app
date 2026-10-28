@@ -27,3 +27,6 @@ Líder só mexe na própria célula; supervisor nas que supervisiona.
 - Aprovação de matrículas em cursos e cadastro de cursos pelo painel.
 - Busca de CEP automática, mapa com pinos reais, ícones do app, service worker (uso offline).
 - Cores e logo definitivas (trocar `--verde` e `--vermelho` no `:root`).
+
+## Bíblia
+Texto: *Almeida 1819 (Bíblia Livre)*, domínio público, fonte github.com/midvash/bible-data. Arquivos em `assets/bible/` (um por livro + `index.json`). Funciona só quando o app é aberto pelo site publicado (GitHub Pages), pois lê esses arquivos.
