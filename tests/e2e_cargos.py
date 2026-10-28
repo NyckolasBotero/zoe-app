@@ -27,6 +27,6 @@ with sync_playwright() as p:
     # líder pede transferência, supervisor aprova na Administração (supervisor não tem permissão de administração)
     l2=entra(b,'l2@zoe.com','Temp12345','NovaSenha123')
     l2.evaluate("go('celula','pres')"); l2.wait_for_selector('#pq')
-    sp=entra(b,'sup@zoe.com','Temp12345','NovaSenha123'); assert 'Administração' in sp.inner_text('.nav'); sp.evaluate("go('admin')"); sp.wait_for_selector("text=Pedidos de transferência")
+    sp=entra(b,'sup@zoe.com','Temp12345','NovaSenha123'); assert 'Administração' in sp.inner_text('.nav'); sp.evaluate("go('admin')"); sp.wait_for_selector("text=Aprovações pendentes")
     assert 'Dados da igreja' not in sp.inner_text('#view')
     print('ERROS:',errs); print('E2E CARGOS OK' if not errs else 'FALHOU')

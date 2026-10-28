@@ -52,3 +52,13 @@ Texto: *Almeida 1819 (Bíblia Livre)*, domínio público, fonte github.com/midva
 - **Mural**: as fotos aparecem inteiras, com a proporção original. Em *Mover e ajustar*, a bolinha do canto redimensiona e o X remove. *Salvar e compartilhar* gera uma imagem PNG do mural, abre a folha de compartilhamento (WhatsApp) ou baixa a imagem.
 - **Organograma** (aba após o Mural, visível a todos): árvore invertida, com a supervisão na base e as células crescendo para cima. Ao criar ou editar uma célula, o campo *Gerada da célula* coloca a nova acima da célula de origem.
 - Atualização do backend: cole o novo `Code.gs`, rode `setup()` (autorize o acesso ao Google Drive quando o Google pedir) e publique uma nova versão da implantação.
+
+## Aprovações, membresia e uso da plataforma
+
+- **Aprovações** (menu, acima de Administração; aparece para quem decide algo): central única de transferências, saídas de participantes, interesses em ministérios e novos membros. Os pedidos pendentes geram pop-up ao entrar, aparecem no sino e levam a essa página. Cada decisão fica registrada com quem decidiu e quando.
+- **Desfazer**: ao aprovar ou recusar aparece uma barra com contagem de 10 segundos e o botão *Desfazer*. Depois disso, em *Histórico geral* ou *Minhas decisões*, o botão *Reverter decisão* devolve o pedido a pendente e desfaz o efeito (pessoa volta à célula de origem, volta a ser visitante etc.) para decidir de novo.
+- **Ministérios**: o interesse do membro chega em Aprovações para quem tem a permissão de ministérios. Aprovado, aparece na linha do tempo (roadmap) do membro.
+- **Novo membro**: em Administração → *Regra para virar membro* define-se quantas células seguidas um visitante precisa frequentar (padrão 4). Ao atingir o número, o supervisor recebe o pedido, revisa o cadastro e aprova.
+- **Acessos**: em Administração → Usuários, *Editar acesso e senha* troca nível de acesso, situação e senha (a pessoa troca a senha no próximo acesso).
+- **Uso da plataforma**: logins, tempo online, % de uso por pessoa e telas mais acessadas (por mês). O tempo só conta com o app aberto e visível.
+- Atualização do backend: cole o novo `Code.gs`, rode `setup()` (cria as abas Membresias, AprovLog e Uso e as colunas novas) e publique uma nova versão da implantação.

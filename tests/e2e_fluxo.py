@@ -29,6 +29,6 @@ with sync_playwright() as p:
     # informar saída
     l1.evaluate("go('celula','membros')"); l1.wait_for_selector("text=Informar saída"); 
     l1.click("text=Informar saída >> nth=0"); l1.wait_for_selector('#sm'); l1.fill('#sm','Mudou de cidade'); l1.click("text=Enviar ao supervisor"); l1.wait_for_selector("text=Saída aguardando supervisor")
-    sp=entra(b,'sup@zoe.com','Temp12345','NovaSenha123'); sp.evaluate("go('admin')"); sp.wait_for_selector("text=Saída da congregação"); sp.click("text=Autorizar >> nth=0"); sp.wait_for_selector("text=Saída autorizada")
+    sp=entra(b,'sup@zoe.com','Temp12345','NovaSenha123'); sp.wait_for_selector('.popA'); sp.click('.popA'); sp.wait_for_selector("text=saiu da congregação"); sp.click("button:has-text('Aprovar') >> nth=0"); sp.wait_for_selector(".ubar")
     l1=entra(b,'l1@zoe.com','NovaSenha123'); l1.evaluate("go('celula','hist')"); l1.wait_for_selector("text=Ex-participantes")
     print('ERROS:',errs); print('E2E FLUXO OK' if not errs else 'FALHOU')

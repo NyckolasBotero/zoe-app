@@ -258,3 +258,63 @@ test('organograma: todos veem a árvore; célula gerada de outra', () => {
   const X = (mk('x@zoe.com', 'membro'), tok('x@zoe.com', 'Temp12345')); const o = e.call('orgTree', {}, X).data;
   assert.equal(o.length, 1); assert.equal(o[0].celulas.length, 2); assert.equal(o[0].celulas.find(c => c.nome === 'Seara').maeId, c1); assert.equal(o[0].celulas[0].membros, 1);
 });
+test('aprovações: central única, membresia por frequência configurável, desfazer', () => {
+  const { e, adm, tok, mk } = boot();
+  const sup = mk('sup@zoe.com', 'membro'), l1 = mk('lider1@zoe.com', 'membro'), l2 = mk('lider2@zoe.com', 'membro'), ana = mk('ana@zoe.com', 'membro');
+  const c1 = e.call('createCell', { nome: 'Semeadores', liderId: l1, supervisorId: sup, dia: 'Quinta' }, adm).data.id;
+  const c2 = e.call('createCell', { nome: 'Raízes', liderId: l2, supervisorId: sup, dia: 'Segunda' }, adm).data.id; assert.ok(c2);
+  const L1 = tok('lider1@zoe.com', 'Temp12345'), S = tok('sup@zoe.com', 'Temp12345'), A = tok('ana@zoe.com', 'Temp12345'), L2 = tok('lider2@zoe.com', 'Temp12345');
+  // parâmetro de frequências para virar membro
+  assert.equal(e.call('saveConfig', { FrequenciasParaMembro: 0 }, adm).error.code, 'VALIDATION');
+  assert.equal(e.call('saveConfig', { FrequenciasParaMembro: 2 }, adm).data.frequenciasParaMembro, 2);
+  // visitante vai a 2 células seguidas (quintas 15 e 22/10/2026) e gera pedido para o supervisor
+  const v = e.call('addNewMember', { nome: 'Visitante Silva', celular: '61999990000' }, L1).data.id;
+  e.call('saveAttendance', { data: '2026-10-15', presentes: [v] }, L1); assert.equal(e.call('listApprovals', {}, S).data.itens.filter(x => x.tipo === 'membresia').length, 0);
+  e.call('saveAttendance', { data: '2026-10-22', presentes: [v] }, L1);
+  const m = e.call('listApprovals', {}, S).data.itens.find(x => x.tipo === 'membresia'); assert.ok(m); assert.equal(m.status, 'pendente'); assert.equal(m.revisar.telefone, '61999990000'); assert.equal(e.call('listApprovals', {}, S).data.pendentes, 1);
+  assert.equal(e.call('listApprovals', {}, L1).data.itens.length, 0); // líder não vê pedidos de supervisor
+  e.call('saveAttendance', { data: '2026-10-22', presentes: [v] }, L1); assert.equal(e.call('listApprovals', {}, S).data.itens.filter(x => x.tipo === 'membresia').length, 1); // não duplica
+  assert.equal(e.call('decideApproval', { tipo: 'membresia', id: m.id, decisao: 'autorizado' }, L1).error.code, 'FORBIDDEN');
+  assert.equal(e.call('decideApproval', { tipo: 'membresia', id: m.id, decisao: 'autorizado' }, S).data.status, 'autorizado');
+  assert.equal(e.run(`table_('Membros').rows.filter(function(x){return x.MembroID==='${v}'})[0].EhMembro`), '1');
+  let it = e.call('listApprovals', {}, S).data.itens.find(x => x.id === m.id); assert.equal(it.minha, true); assert.equal(it.podeReverter, true); assert.equal(it.decididoPor, 'Visitante Silva' === it.decididoPor ? '' : it.decididoPor);
+  assert.equal(e.call('undoApproval', { tipo: 'membresia', id: m.id }, L1).error.code, 'FORBIDDEN');
+  assert.equal(e.call('undoApproval', { tipo: 'membresia', id: m.id }, S).data.status, 'pendente');
+  assert.equal(e.run(`table_('Membros').rows.filter(function(x){return x.MembroID==='${v}'})[0].EhMembro`), '0');
+  assert.equal(e.call('decideApproval', { tipo: 'membresia', id: m.id, decisao: 'negado' }, S).data.status, 'negado');
+  it = e.call('listApprovals', {}, S).data.itens.find(x => x.id === m.id); assert.deepEqual(it.hist.map(h => h.acao), ['autorizado', 'revertido', 'negado']);
+  // transferência autorizada e desfeita volta a pessoa para a célula de origem
+  const mb = e.call('cellMembers', {}, L1).data.find(x => x.id === ana) || null; assert.equal(mb, null);
+  e.run(`writeRow_(table_('Membros'), table_('Membros').rows.filter(function(x){return x.MembroID==='${ana}'})[0]._row, {CelulaID:'${c1}'})`);
+  e.call('requestTransfer', { membroId: ana }, L2);
+  const tr = e.call('listApprovals', {}, S).data.itens.find(x => x.tipo === 'transferencia' && x.status === 'pendente'); assert.ok(tr);
+  assert.equal(e.call('decideApproval', { tipo: 'transferencia', id: tr.id, decisao: 'autorizado' }, S).data.status, 'autorizado');
+  assert.equal(e.call('cellMembers', {}, L2).data.some(x => x.id === ana), true);
+  e.call('undoApproval', { tipo: 'transferencia', id: tr.id }, S); assert.equal(e.call('cellMembers', {}, L2).data.some(x => x.id === ana), false); assert.equal(e.call('cellMembers', {}, L1).data.some(x => x.id === ana), true);
+  // saída autorizada e desfeita
+  e.call('requestExit', { membroId: ana }, L1); const sx = e.call('listApprovals', {}, S).data.itens.find(x => x.tipo === 'saida');
+  e.call('decideApproval', { tipo: 'saida', id: sx.id, decisao: 'autorizado' }, S); assert.equal(e.call('cellMembers', {}, L1).data.some(x => x.id === ana), false);
+  e.call('undoApproval', { tipo: 'saida', id: sx.id }, S); assert.equal(e.call('cellMembers', {}, L1).data.some(x => x.id === ana), true);
+  // interesse em ministério: só quem gerencia ministérios decide; aparece no roadmap do membro
+  const minId = e.call('listMinistries', {}, A).data[0].id; assert.ok(e.call('interest', { ministerioId: minId }, A).ok);
+});
+test('interesse em ministério aprovado aparece no perfil do membro; uso da plataforma', () => {
+  const { e, adm, tok, mk } = boot(); mk('ana@zoe.com', 'membro'); const A = tok('ana@zoe.com', 'Temp12345'); const mid = e.call('listMinistries', {}, A).data[0].id;
+  const route = Object.keys(e.ctx.ROUTES || {}).find(k => /interest/i.test(k)) || e.run(`Object.keys(ROUTES).filter(function(k){return /nterest|nvolva/i.test(k)})[0]`);
+  assert.ok(route); assert.ok(e.call(route, { ministerioId: mid }, A).ok);
+  assert.equal(e.call('listApprovals', {}, A).data.itens.length, 0);
+  const it = e.call('listApprovals', {}, adm).data.itens.find(x => x.tipo === 'interesse'); assert.equal(it.status, 'pendente');
+  assert.equal(e.call('me', {}, A).data.interesses[0].status, 'pendente');
+  assert.equal(e.call('decideApproval', { tipo: 'interesse', id: it.id, decisao: 'autorizado' }, A).error.code, 'FORBIDDEN');
+  e.call('decideApproval', { tipo: 'interesse', id: it.id, decisao: 'autorizado' }, adm);
+  const me = e.call('me', {}, A).data; assert.equal(me.interesses[0].status, 'autorizado'); assert.ok(me.interesses[0].dataDecisao);
+  assert.equal(e.call(route, { ministerioId: mid }, A).error.code, 'VALIDATION'); // já participa
+  e.call('undoApproval', { tipo: 'interesse', id: it.id }, adm); assert.equal(e.call('me', {}, A).data.interesses[0].status, 'pendente');
+  // uso
+  e.call('track', { tela: 'feed', seg: 120, visita: 1 }, A); e.call('track', { tela: 'biblioteca', seg: 60 }, A); e.call('track', { tela: 'feed', seg: 30 }, A); e.call('track', { tela: '_login', seg: 5 }, A);
+  const rep = e.call('usageReport', {}, adm).data; assert.equal(rep.totalSegundos, 210); assert.equal(rep.telas[0].tela, 'feed'); assert.equal(rep.telas[0].pct, 71.4);
+  const ru = rep.usuarios.find(x => x.email === 'ana@zoe.com'); assert.equal(ru.segundos, 210); assert.equal(ru.logins >= 1, true);
+  assert.equal(e.call('usageReport', {}, A).error.code, 'FORBIDDEN');
+  // senha e acesso pelo painel
+  assert.ok(e.call('setUser', { email: 'ana@zoe.com', senha: 'NovaSenha999', papel: 'pastor' }, adm).ok); assert.equal(e.call('login', { email: 'ana@zoe.com', senha: 'NovaSenha999' }).ok, true); assert.equal(e.call('login', { email: 'ana@zoe.com', senha: 'Temp12345' }).error.code, 'AUTH');
+});
