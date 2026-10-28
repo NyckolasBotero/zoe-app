@@ -270,6 +270,7 @@ body.filedrag .dzb{border-color:var(--verde);animation:dzp 1.1s ease-in-out infi
 .vpl{position:absolute;left:50%;top:50%;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;display:grid;place-items:center;backdrop-filter:blur(4px);transition:transform var(--d-base) var(--e-spring),background var(--d-base)}.vc:hover .vpl{transform:scale(1.15);background:var(--vermelho)}
 .vlive{display:inline-block;background:var(--vermelho);color:#fff;font-size:11px;font-weight:800;letter-spacing:.05em;padding:3px 9px;border-radius:99px;animation:livep 1.6s ease-in-out infinite}.vth .vlive{position:absolute;left:10px;top:10px}.vlive.off{background:rgba(0,0,0,.6);animation:none}@keyframes livep{50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--vermelho) 28%,transparent)}}
 .modal .box.wide{width:min(900px,100%)}.vplayer{position:relative;aspect-ratio:16/9;border-radius:16px;overflow:hidden;background:#000}.vplayer iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.chk{display:flex;gap:8px;align-items:center;font-weight:600;cursor:pointer}.chk input{width:auto}
 /* troca de tema suave */
 html.theming *,html.theming *::before,html.theming *::after{transition:background-color .45s var(--e-std),color .45s var(--e-std),border-color .45s var(--e-std),box-shadow .45s var(--e-std)!important}
 .ib.rot svg{animation:rot .7s var(--e-spring)}@keyframes rot{from{transform:rotate(-200deg) scale(.4);opacity:0}}
@@ -416,27 +417,54 @@ function renderKeep(){const v={};document.querySelectorAll('#view [id]').forEach
 
 
 /* ===== Bíblia (Almeida 1819 - domínio público), arquivos em assets/bible/ ===== */
-const BIB={idx:null,cache:{},all:false,res:null,q:'',fs:0,msg:''};
-function bibPos(){S.bib=S.bib||{b:43,c:1};return S.bib}
+const BIB={idx:null,cache:{},all:false,res:null,q:'',fs:0,msg:'',rc:{},codes:null};
+/* versões: 'AL' = Almeida 1819 (arquivos locais, funciona offline); as demais são buscadas no serviço bolls.life na hora de ler */
+const BVER={AL:{n:'Almeida 1819',c:null},NVI:{n:'NVI',c:'NVIPT'},ARC:{n:'ARC',c:'ARC'},NVT:{n:'NVT',c:'NVT'}};
+function bibPos(){S.bib=Object.assign({b:43,c:1,ver:'AL',cmp:false,ver2:'NVT',v1:0,v2:0},S.bib||{});if(!BVER[S.bib.ver])S.bib.ver='ARC';if(!BVER[S.bib.ver2])S.bib.ver2='NVT';return S.bib}
+const bibClean=h=>{const d=document.createElement('div');d.innerHTML=String(h||'').replace(/<br\s*\/?>/gi,' ').replace(/<(s|S)[^>]*>[^<]*<\/(s|S)>/g,'');return (d.textContent||'').replace(/\s+/g,' ').trim()};
+/* devolve {nº do versículo: texto} do capítulo na versão pedida */
+async function bibText(ver,b,c){
+ if(ver==='AL'){const d=await bibBook(b),o={};(d[c-1]||[]).forEach((t,i)=>o[i+1]=t);return o}
+ const k=ver+'|'+b+'|'+c;if(BIB.rc[k])return BIB.rc[k];
+ try{const j=sessionStorage.getItem('zbib:'+k);if(j){BIB.rc[k]=JSON.parse(j);return BIB.rc[k]}}catch(e){}
+ const r=await fetch('https://bolls.life/get-text/'+BVER[ver].c+'/'+b+'/'+c+'/');if(!r.ok)throw new Error('http '+r.status);
+ const a=await r.json(),o={};if(!Array.isArray(a)||!a.length)throw new Error('vazio');a.forEach(x=>{o[x.verse]=bibClean(x.text)});BIB.rc[k]=o;try{sessionStorage.setItem('zbib:'+k,JSON.stringify(o))}catch(e){}return o}
 function bibView(){const p=bibPos();
  if(!BIB.idx){bibLoadIdx();return '<div class="card flat"><h2>Bíblia</h2><p class="muted">Carregando…</p></div>'}
  if(BIB.idx==='erro')return `<div class="card flat col"><h2>Bíblia</h2><p class="muted">${BIB.msg||'Não foi possível carregar o texto.'}</p></div>`;
  const L=BIB.idx.livros,bk=L.find(x=>x.id===p.b)||L[42];
  const opt=t=>L.filter(x=>x.t===t).map(x=>`<option value="${x.id}" ${x.id===bk.id?'selected':''}>${esc(x.n)}</option>`).join('');
+ const vo=k=>Object.keys(BVER).map(x=>`<option value="${x}" ${x===p[k]?'selected':''}>${esc(BVER[x].n)}</option>`).join('');
+ const nv=BIB.nv||40,vs=(cur,vazio)=>`<option value="0" ${!cur?'selected':''}>${vazio}</option>`+Array.from({length:nv},(_,i)=>`<option value="${i+1}" ${cur===i+1?'selected':''}>${i+1}</option>`).join('');
  return `<div class="card flat col"><h2>Bíblia</h2>
- <div class="form"><label class="f">Livro<select id="bib_l" onchange="bibGo(+this.value,1)"><optgroup label="Antigo Testamento">${opt('OT')}</optgroup><optgroup label="Novo Testamento">${opt('NT')}</optgroup></select></label>
- <label class="f">Capítulo<select id="bib_c" onchange="bibGo(${bk.id},+this.value)">${Array.from({length:bk.c},(_,i)=>`<option ${i+1===p.c?'selected':''}>${i+1}</option>`).join('')}</select></label></div>
+ <div class="form"><label class="f">Versão<select id="bib_v" onchange="bibSet('ver',this.value)">${vo('ver')}</select></label>
+ <label class="f">Livro<select id="bib_l" onchange="bibGo(+this.value,1)"><optgroup label="Antigo Testamento">${opt('OT')}</optgroup><optgroup label="Novo Testamento">${opt('NT')}</optgroup></select></label>
+ <label class="f">Capítulo<select id="bib_c" onchange="bibGo(${bk.id},+this.value)">${Array.from({length:bk.c},(_,i)=>`<option ${i+1===p.c?'selected':''}>${i+1}</option>`).join('')}</select></label>
+ <label class="f">Versículo (de)<select id="bib_v1" onchange="bibSet('v1',+this.value)">${vs(p.v1,'Todos')}</select></label>
+ <label class="f">Versículo (até)<select id="bib_v2" onchange="bibSet('v2',+this.value)">${vs(p.v2,'Mesmo / fim')}</select></label></div>
+ <div class="row"><label class="chk"><input type="checkbox" id="bib_cmp" ${p.cmp?'checked':''} onchange="bibSet('cmp',this.checked)"> Comparar com outra versão</label>${p.cmp?`<select id="bib_vv" onchange="bibSet('ver2',this.value)" aria-label="Versão para comparar">${vo('ver2')}</select>`:''}</div>
  <div class="row"><button class="btn sm ghost" onclick="bibNav(-1)">${ic('chev',14)} Anterior</button><button class="btn sm ghost" onclick="bibNav(1)">Próximo ${ic('chevr',14)}</button><span class="sp"></span><button class="btn sm ghost" onclick="bibFont(-1)" aria-label="Diminuir letra">A-</button><button class="btn sm ghost" onclick="bibFont(1)" aria-label="Aumentar letra">A+</button></div>
- <div class="row"><input id="bq" placeholder="Buscar palavra ou frase na Bíblia" value="${esc(BIB.q)}" style="flex:1" onkeydown="if(event.key==='Enter')bibBusca()"><button class="btn" onclick="bibBusca()">Buscar</button></div></div>
+ <div class="row"><input id="bq" placeholder="Buscar palavra ou frase (texto Almeida 1819)" value="${esc(BIB.q)}" style="flex:1" onkeydown="if(event.key==='Enter')bibBusca()"><button class="btn" onclick="bibBusca()">Buscar</button></div></div>
  <div class="card flat" id="bibtxt">${BIB.res?bibRes():'<p class="muted">Carregando…</p>'}</div>
- <p class="muted sm">Versão: ${esc(BIB.idx.versao)} · ${esc(BIB.idx.licenca)}.</p>`}
+ <p class="muted sm">Almeida 1819: domínio público, funciona offline. NVI, ARC e NVT são lidas do serviço bolls.life e precisam de internet; os textos pertencem aos respectivos detentores de direitos.</p>`}
+function bibSet(k,v){const p=bibPos();p[k]=v;if(k==='v1'&&p.v2&&v&&p.v2<v)p.v2=0;BIB.res=null;save();if(k==='cmp'||k==='v1'||k==='ver'||k==='ver2'){render();bibShow()}else bibShow()}
 async function bibLoadIdx(){if(BIB.loading)return;BIB.loading=1;try{const r=await fetch('assets/bible/index.json');if(!r.ok)throw 0;BIB.idx=await r.json()}catch(e){BIB.idx='erro';BIB.msg='O texto da Bíblia fica na pasta do site publicado (assets/bible). Abra o app pelo endereço oficial da igreja para ler.'}BIB.loading=0;if(R.r==='membro'&&R.sub.membro==='biblia'){render();if(BIB.idx!=='erro')bibShow()}}
 async function bibBook(id){if(!BIB.cache[id]){const r=await fetch('assets/bible/'+id+'.json');if(!r.ok)throw new Error('Livro indisponível');BIB.cache[id]=await r.json()}return BIB.cache[id]}
 async function bibShow(){const p=bibPos(),el=$('#bibtxt');if(!el||BIB.res)return;
- try{const d=await bibBook(p.b),L=BIB.idx.livros.find(x=>x.id===p.b),v=d[p.c-1]||[];const sz=[16,18,21][BIB.fs+1]||18;
-  el.innerHTML=`<h3 style="margin-bottom:8px">${esc(L.n)} ${p.c}</h3><div style="font-size:${sz}px;line-height:1.7">${v.map((t,i)=>`<p style="margin:0 0 6px"><sup style="color:var(--vermelho);font-weight:700;margin-right:4px">${i+1}</sup>${esc(t)}</p>`).join('')}</div>`}
+ const vers=[p.ver].concat(p.cmp&&p.ver2!==p.ver?[p.ver2]:[]),ch=p.b+':'+p.c;
+ try{const L=BIB.idx.livros.find(x=>x.id===p.b);
+  const rs=await Promise.allSettled(vers.map(v=>bibText(v,p.b,p.c)));if(ch!==bibPos().b+':'+bibPos().c||!$('#bibtxt'))return;
+  const ok=rs.map(r=>r.status==='fulfilled'?r.value:null);
+  if(!ok.some(Boolean)){el.innerHTML='<p class="muted">Não foi possível carregar esta versão. Verifique a internet'+(p.ver!=='AL'?' ou troque para Almeida 1819 (funciona offline)':'')+'.</p>';return}
+  const todos=[...new Set(ok.filter(Boolean).flatMap(o=>Object.keys(o).map(Number)))].sort((a,b)=>a-b),mx=todos[todos.length-1]||0;
+  if(mx&&mx!==BIB.nv){BIB.nv=mx;const a=$('#bib_v1'),b=$('#bib_v2');if(a&&a.options.length-1!==mx){const f=(cur,vz)=>`<option value="0" ${!cur?'selected':''}>${vz}</option>`+Array.from({length:mx},(_,i)=>`<option value="${i+1}" ${cur===i+1?'selected':''}>${i+1}</option>`).join('');a.innerHTML=f(p.v1,'Todos');b.innerHTML=f(p.v2,'Mesmo / fim')}}
+  const de=p.v1||1,ate=p.v1?(p.v2||p.v1):mx,lista=todos.filter(n=>n>=de&&n<=ate),sz=[16,18,21][BIB.fs+1]||18;
+  const faixa=p.v1?(ate>de?':'+de+'-'+ate:':'+de):'';
+  const tit=`<h3 style="margin-bottom:4px">${esc(L.n)} ${p.c}${faixa}</h3><p class="muted sm" style="margin:0 0 10px">${vers.map(v=>esc(BVER[v].n)).join(' | ')}</p>`;
+  const linha=(n,v,i)=>{const t=ok[i]&&ok[i][n];return t?`<p style="margin:0 0 8px"><sup style="color:var(--vermelho);font-weight:700;margin-right:4px">${n}</sup>${esc(t)}${vers.length>1?` <b class="muted sm" style="white-space:nowrap">- ${esc(BVER[v].n)}</b>`:''}</p>`:(ok[i]===null?`<p class="muted sm" style="margin:0 0 8px">${n} - ${esc(BVER[v].n)}: indisponível (sem internet)</p>`:'')};
+  el.innerHTML=tit+`<div style="font-size:${sz}px;line-height:1.7">${lista.length?lista.map(n=>vers.map((v,i)=>linha(n,v,i)).join('')).join(''):'<p class="muted">Versículo não encontrado neste capítulo.</p>'}</div>`}
  catch(e){el.innerHTML='<p class="muted">Não foi possível carregar este livro. Verifique a internet.</p>'}}
-function bibGo(b,c){S.bib={b,c};BIB.res=null;save();render();bibShow();scrollTo(0,0)}
+function bibGo(b,c){Object.assign(bibPos(),{b,c,v1:0,v2:0});BIB.res=null;BIB.nv=0;save();render();bibShow();scrollTo(0,0)}
 function bibNav(d){const p=bibPos(),L=BIB.idx.livros;let i=L.findIndex(x=>x.id===p.b),c=p.c+d;if(c<1){if(i===0)return;i--;c=L[i].c}else if(c>L[i].c){if(i===L.length-1)return;i++;c=1}bibGo(L[i].id,c)}
 function bibFont(d){BIB.fs=Math.max(-1,Math.min(1,BIB.fs+d));bibShow()}
 const bibNorm=t=>t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
@@ -522,7 +550,7 @@ const DINAMICAS=[{t:'Quebra-gelo: duas verdades e uma mentira',s:'Cada um conta 
 const NOTICIAS=[{t:'Aniversário Zoe será em 31/10',d:'Hoje',s:'Venha celebrar com a família. Inscrições abertas no app.',r:0},{t:'Turma EL1 concluiu a Escola de Líderes',d:'Há 5 horas',s:'Parabéns aos novos líderes. Em breve abrem as matrículas do EL2.',r:1},{t:'Semana de oração pelas células',d:'Há 3 dias',s:'Cada célula recebeu um tema de oração. Participe com seu grupo.',r:0}];
 const PAPEIS=['Louvor','Recepcionar visitantes','Dinâmica e quebra-gelo','Registro semanal de presença','Eventos do grupo'];
 const TEMAS=['Proteção e Livramento','Direção de Deus e sabedoria para decisões','Agradecimentos','Liderança e Ministério'];
-const NAV=[['feed','home','Início'],['perfil','user','Editar perfil'],['membro','book','Área do Membro'],['biblioteca','lib','Biblioteca virtual'],['celula','users','Células'],['familia','heart','Família Zoe'],['ministerios','grid','Ministérios'],['buscar','pin','Buscar células'],['licoes','file','Lições / Extras'],['dinamicas','bulb','Dinâmicas'],['cursos','grad','Cursos'],['eventos','cal','Eventos'],['aniversarios','cake','Aniversariantes'],['tutoriais','play','Lives e Vídeos'],['aprovacoes','check','Aprovações'],['admin','gear','Administração']];
+const NAV=[['feed','home','Início'],['perfil','user','Editar perfil'],['membro','book','Bíblia e Anotações'],['biblioteca','lib','Biblioteca virtual'],['celula','users','Células'],['familia','heart','Família Zoe'],['ministerios','grid','Ministérios'],['buscar','pin','Buscar células'],['licoes','file','Lições / Extras'],['dinamicas','bulb','Dinâmicas'],['cursos','grad','Cursos'],['eventos','cal','Eventos'],['aniversarios','cake','Aniversariantes'],['tutoriais','play','Lives e Vídeos'],['aprovacoes','check','Aprovações'],['admin','gear','Administração']];
 const R={r:'feed',sub:{aprovacoes:'pend',perfil:'info',membro:'biblia',celula:'freq',familia:'fale',licoes:'todas',dinamicas:'buscar'},mi:null};
 const can=k=>!!(S.perm[S.role]&&S.perm[S.role][k]);
 // Cargos de célula ≠ nível de acesso: um administrador também pode ser líder e/ou supervisor.

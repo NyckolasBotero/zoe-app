@@ -98,3 +98,10 @@ Na página de Administração, a barra lateral mostra, abaixo de "Administraçã
 - Admin → "Vídeos e transmissões": campo Tipo (Vídeo/Transmissão) e "Ao vivo agora"; botão "Está ao vivo / Encerrar ao vivo" por linha (`updateVideo`).
 - Backend: colunas novas `Tipo` e `AoVivo` na aba Videos — cole o novo `Code.gs`, rode `setup()` e publique nova versão da implantação.
 - Teste: `tests/e2e_videos.py`.
+
+## Bíblia e Anotações
+- "Área do Membro" virou **Bíblia e Anotações**. Filtros: versão, livro, capítulo, versículo (de/até).
+- Versões: Almeida 1819 (local, offline), **NVI**, **ARC** e **NVT** (lidas de `bolls.life/get-text/<versão>/<livro>/<cap>/` na hora, cache em sessionStorage; códigos em `BVER` no app.html). Precisam de internet.
+- **Comparar com outra versão**: mostra cada versículo seguido da outra versão (ex.: 16 NVT, 16 ARC, 17 NVT, 17 ARC).
+- A busca por palavra continua no texto local (Almeida 1819). Teste: `tests/e2e_biblia.py`.
+- Atenção: NVI e NVT têm direitos autorais; para uso público/oficial, avaliar licença junto às editoras.
