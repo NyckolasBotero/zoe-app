@@ -86,3 +86,8 @@ Texto: *Almeida 1819 (Bíblia Livre)*, domínio público, fonte github.com/midva
 
 ## Índice da Administração
 Na página de Administração, a barra lateral mostra, abaixo de "Administração", um submenu com todas as seções (Níveis de acesso, Usuários, Biblioteca…). Clicar rola suavemente até a seção e a destaca; a seção atual fica marcada enquanto você rola. No celular (ou com a barra recolhida) aparece o botão flutuante **Seções** com a mesma lista.
+
+## Envio de livros: compressor e arrastar-e-soltar; leitor
+- **Compressor**: PDFs acima de 10 MB são reduzidos automaticamente no navegador (cada página vira JPEG e o PDF é remontado, tentando qualidades cada vez menores até caber em ~9 MB). Mostra o progresso "Comprimindo página X de N". Atenção: o PDF comprimido deixa de ter texto selecionável (é como um escaneado). Se nem na menor qualidade couber, o app avisa para dividir o arquivo.
+- **Arrastar e soltar**: dentro do cartão Biblioteca virtual (Administração) é só soltar o PDF e/ou a imagem da capa; as áreas tracejadas pulsam quando você arrasta um arquivo pela tela.
+- **Leitor**: abre com a **página inteira** visível (sem cortar), com botões −/+ (30% a 400%), "Página inteira"/"Largura" e tela cheia; reajusta ao redimensionar a janela.

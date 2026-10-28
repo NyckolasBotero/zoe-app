@@ -187,7 +187,7 @@ td select{min-width:120px;padding:6px 8px}
 .btn,a.btn{text-decoration:none}.capa{aspect-ratio:2/3;width:100%;border-radius:12px;overflow:hidden;background:linear-gradient(160deg,var(--verde),#0F3F26);display:grid;place-items:center;color:#fff;text-align:center;padding:12px;font-weight:700;border:1px solid var(--line)}.capa img{width:100%;height:100%;object-fit:cover;display:block}
 .livro{display:flex;flex-direction:column;gap:8px}.livro .capa{max-width:200px;align-self:center}.clamp3{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .fd{display:flex;flex-direction:column;gap:6px;padding:12px 0;border-top:1px solid var(--line)}.fd:first-child{border-top:0}.fd .hd{display:flex;gap:10px;align-items:center}
-.pdfwrap{overflow:auto;max-height:78vh;border:1px solid var(--line);border-radius:12px;background:#777;display:flex;justify-content:center;padding:2px}.pdfwrap canvas{display:block;background:#fff;max-width:none}
+.pdfwrap{overflow:auto;max-height:78vh;border:1px solid var(--line);border-radius:12px;background:#777;display:flex;padding:4px}.pdfwrap canvas{margin:auto;flex:none}#pdfbox:fullscreen{background:var(--bg);padding:12px;overflow:auto}.pdfwrap canvas{display:block;background:#fff;max-width:none}
 .orgwrap{overflow:auto;max-height:78vh;border-radius:18px;border:1px solid var(--line);background:linear-gradient(180deg,rgba(30,158,90,.05),rgba(30,158,90,.14))}.orgcv{position:relative;margin:0 auto}.orgcv svg{position:absolute;left:0;top:0;pointer-events:none}
 .oc{position:absolute;box-sizing:border-box;border-radius:16px;padding:10px 12px;display:flex;flex-direction:column;gap:3px;background:var(--glass-2);border:1.5px solid #1E9E5A;font-size:13px;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;color:var(--fg)}.oc.sup{background:#1E9E5A;color:#fff}.oc.igreja{background:#0F6F3E;color:#fff}.oc.sup .mini{border:2px solid #fff}.oc .row{justify-content:flex-start;text-align:left}.oc.sup,.oc.igreja{justify-content:center}
 .oc.ed{cursor:grab}.oc.ed:hover{box-shadow:0 6px 18px rgba(0,0,0,.18)}.oc.dr{cursor:grabbing;z-index:20;box-shadow:0 12px 28px rgba(0,0,0,.3);opacity:.92}.oc.me{border:4px solid #E8A200}.orgcv.mv .oc.ed{touch-action:none}
@@ -256,6 +256,14 @@ html{scroll-behavior:smooth}
 @media (min-width:861px){body:not(.collapsed) #secfab{display:none}}
 [id^="sec-"]{scroll-margin-top:86px}.flash{animation:flash 1.5s var(--e-out)}@keyframes flash{0%,100%{box-shadow:var(--shadow)}30%{box-shadow:0 0 0 4px color-mix(in srgb,var(--verde) 55%,transparent),0 12px 30px rgba(15,111,62,.25)}}
 @media (max-width:860px){.collapsed .subnav{display:flex}}
+/* área de arrastar e soltar */
+.dz{display:flex;flex-direction:column;gap:6px}.dzb{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-align:center;padding:18px 14px;border:2px dashed color-mix(in srgb,var(--verde) 45%,var(--line));border-radius:18px;background:color-mix(in srgb,var(--verde) 5%,transparent);color:var(--verde-2);cursor:pointer;transition:background var(--d-base) var(--e-std),border-color var(--d-base),transform var(--d-base) var(--e-spring)}
+.dzb input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}.dzb small{color:var(--muted);font-size:12px}.dzb:hover{background:color-mix(in srgb,var(--verde) 11%,transparent);transform:translateY(-2px)}
+body.filedrag .dzb{border-color:var(--verde);animation:dzp 1.1s ease-in-out infinite}.dz.over .dzb,#bk_zone.over .dzb{background:color-mix(in srgb,var(--verde) 22%,transparent);border-style:solid;transform:scale(1.02)}#bk_zone.over{outline:3px dashed var(--verde);outline-offset:4px}
+@keyframes dzp{50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--verde) 18%,transparent)}}
+#cmpfb{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:92;display:flex;flex-direction:column;gap:8px;min-width:min(380px,calc(100vw - 32px));padding:14px 18px;border-radius:18px;background:var(--fg);color:var(--bg);box-shadow:0 16px 40px rgba(0,0,0,.35);animation:tin var(--d-base) var(--e-spring)}
+#cmpfb .r{display:flex;align-items:center;gap:10px;font-weight:600}#cmpfb .sp2{flex:none;width:16px;height:16px;border-radius:50%;border:2px solid color-mix(in srgb,var(--bg) 35%,transparent);border-top-color:var(--bg);animation:spin .8s linear infinite}
+#cmpfb .bar{height:5px;border-radius:5px;background:color-mix(in srgb,var(--bg) 25%,transparent);overflow:hidden}#cmpfb .bar i{display:block;height:100%;width:3%;border-radius:5px;background:var(--bg);transition:width .25s var(--e-out)}
 /* troca de tema suave */
 html.theming *,html.theming *::before,html.theming *::after{transition:background-color .45s var(--e-std),color .45s var(--e-std),border-color .45s var(--e-std),box-shadow .45s var(--e-std)!important}
 .ib.rot svg{animation:rot .7s var(--e-spring)}@keyframes rot{from{transform:rotate(-200deg) scale(.4);opacity:0}}
@@ -289,6 +297,7 @@ const I={
 home:'<path d="M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',
 bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/>',
 book:'<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5"/>',
+expand:'<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
 lib:'<path d="M4 4h4v16H4zM10 4h4v16h-4z"/><path d="M16.5 5.5l3.8-1 3 14.5-3.8 1z"/>',
 share:'<circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 11l7.6-3.8M8.2 13l7.6 3.8"/>',
 users:'<circle cx="9" cy="8" r="3.5"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14c3 0 5 2 5 5"/>',
@@ -904,6 +913,44 @@ const LB={open:null,loaded:false,com:[],doc:null,n:0,page:1,zoom:1,bytes:null,ur
 const canMod=()=>can('min')||can('config');
 const fmtDT=d=>{d=String(d||'');return d.length>=10?fmt(d.slice(0,10))+(d.length>=16?' · '+d.slice(11,16):''):''};
 const b64ToBytes=b=>{const bin=atob(b),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return u};
+/* ---------- compressor de PDF (rasteriza as páginas em JPEG e remonta o PDF) ---------- */
+function montaPdf(pages){const enc=new TextEncoder(),parts=[],off=[];let len=0;const push=b=>{parts.push(b);len+=b.length},str=s=>push(enc.encode(s));
+ str('%PDF-1.4\n');const N=pages.length;
+ off[1]=len;str('1 0 obj\n<</Type/Catalog/Pages 2 0 R>>\nendobj\n');
+ off[2]=len;str(`2 0 obj\n<</Type/Pages/Count ${N}/Kids[${pages.map((_,k)=>`${3+3*k} 0 R`).join(' ')}]>>\nendobj\n`);
+ pages.forEach((p,k)=>{const a=3+3*k,b=a+1,c=a+2,W=p.w.toFixed(2),H=p.h.toFixed(2);
+  off[a]=len;str(`${a} 0 obj\n<</Type/Page/Parent 2 0 R/MediaBox[0 0 ${W} ${H}]/Resources<</XObject<</Im ${b} 0 R>>>>/Contents ${c} 0 R>>\nendobj\n`);
+  off[b]=len;str(`${b} 0 obj\n<</Type/XObject/Subtype/Image/Width ${p.pw}/Height ${p.ph}/ColorSpace/DeviceRGB/BitsPerComponent 8/Filter/DCTDecode/Length ${p.jpg.length}>>\nstream\n`);push(p.jpg);str('\nendstream\nendobj\n');
+  const cs=`q ${W} 0 0 ${H} 0 0 cm /Im Do Q`;off[c]=len;str(`${c} 0 obj\n<</Length ${cs.length}>>\nstream\n${cs}\nendstream\nendobj\n`)});
+ const xr=len,tot=3+3*N;let x=`xref\n0 ${tot}\n0000000000 65535 f \n`;for(let i=1;i<tot;i++)x+=String(off[i]).padStart(10,'0')+' 00000 n \n';
+ x+=`trailer\n<</Size ${tot}/Root 1 0 R>>\nstartxref\n${xr}\n%%EOF\n`;str(x);return new Blob(parts,{type:'application/pdf'})}
+function progShow(msg,pct){let d=$('#cmpfb');if(!d){d=document.createElement('div');d.id='cmpfb';d.setAttribute('role','status');d.className='upfb';d.innerHTML='<div class="r"><span class="sp2"></span><span class="t"></span></div><div class="bar det"><i></i></div>';document.body.appendChild(d)}d.querySelector('.t').textContent=msg;d.querySelector('.bar i').style.width=Math.max(3,Math.min(100,pct||0))+'%'}
+function progHide(){const d=$('#cmpfb');if(d){d.style.transition='opacity .2s,transform .2s';d.style.opacity='0';d.style.transform='translateX(-50%) translateY(10px)';setTimeout(()=>d.remove(),220)}}
+async function comprimirPdf(file,alvo){alvo=alvo||9.3*1024*1024;if(file.size>120*1024*1024)throw new Error('Arquivo grande demais para comprimir aqui (máximo 120 MB).');
+ progShow('Preparando a compressão…',2);await loadPdfJs();const doc=await window.pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise,n=doc.numPages;
+ const niveis=[[1400,.62],[1200,.54],[1000,.47],[820,.42],[680,.36],[560,.32]];
+ for(let li=0;li<niveis.length;li++){const[tw,q]=niveis[li],pages=[];let total=0,ok=true;
+  for(let i=1;i<=n;i++){const pg=await doc.getPage(i),v1=pg.getViewport({scale:1}),k=tw/Math.max(v1.width,1),vp=pg.getViewport({scale:Math.min(k,3)}),cv=document.createElement('canvas');cv.width=Math.round(vp.width);cv.height=Math.round(vp.height);
+   const cx=cv.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,cv.width,cv.height);await pg.render({canvasContext:cx,viewport:vp}).promise;
+   const bl=await new Promise(r=>cv.toBlob(r,'image/jpeg',q)),jpg=new Uint8Array(await bl.arrayBuffer());cv.width=cv.height=1;pages.push({w:v1.width,h:v1.height,pw:Math.round(vp.width),ph:Math.round(vp.height),jpg});total+=jpg.length+400;
+   progShow(`Comprimindo o PDF… página ${i} de ${n}${li?` (tentativa ${li+1})`:''}`,(i/n)*100);
+   if(total>alvo*1.15){ok=false;break}if(i%4===0)await new Promise(r=>setTimeout(r,0))}
+  if(!ok)continue;const out=montaPdf(pages);if(out.size<=alvo){try{doc.destroy()}catch(e){}return out}}
+ try{doc.destroy()}catch(e){}throw new Error('Não consegui reduzir este PDF para menos de 10 MB. Tente dividi-lo em partes.')}
+/* arrastar e soltar arquivos na área de envio */
+function dzAttach(root){root.addEventListener('dragover',e=>{if(!e.dataTransfer||![...e.dataTransfer.types].includes('Files'))return;e.preventDefault();root.classList.add('over')});
+ root.addEventListener('dragleave',e=>{if(!root.contains(e.relatedTarget))root.classList.remove('over')});
+ root.addEventListener('drop',e=>{root.classList.remove('over','dragging');document.body.classList.remove('filedrag');const fs=[...(e.dataTransfer&&e.dataTransfer.files||[])];if(!fs.length)return;e.preventDefault();e.stopPropagation();
+  for(const f of fs){const isPdf=/pdf$/i.test(f.type||f.name),isImg=/^image\//.test(f.type),id=isPdf?'bk_p':isImg?'bk_c':'';const inp=id&&document.getElementById(id);if(!inp){toast('Tipo de arquivo não aceito aqui: '+f.name,'err');continue}
+   const dt=new DataTransfer();dt.items.add(f);inp.files=dt.files;inp.dispatchEvent(new Event('change',{bubbles:true}));dzNome(id)}})}
+function dzNome(id){const i=document.getElementById(id),n=document.getElementById(id+'_n');if(i&&n)n.textContent=i.files[0]?i.files[0].name+' · '+bytesTxt(i.files[0].size)+(id==='bk_p'&&i.files[0].size>10485760?' · será comprimido':''):''}
+addEventListener('dragenter',e=>{if(e.dataTransfer&&[...e.dataTransfer.types].includes('Files'))document.body.classList.add('filedrag')});
+addEventListener('dragend',()=>document.body.classList.remove('filedrag'));
+addEventListener('dragover',e=>{if(e.dataTransfer&&[...e.dataTransfer.types].includes('Files'))e.preventDefault()});
+addEventListener('drop',e=>{document.body.classList.remove('filedrag');if(e.dataTransfer&&e.dataTransfer.files.length)e.preventDefault()});
+addEventListener('dragleave',e=>{if(!e.relatedTarget)document.body.classList.remove('filedrag')});
+new MutationObserver(()=>{const c=document.getElementById('bk_zone');if(c&&!c._dz){c._dz=1;dzAttach(c)}}).observe(document.documentElement,{childList:true,subtree:true});
+
 function fileB64(f){return new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result).split(',')[1]||'');r.onerror=()=>no(new Error('Não foi possível ler o arquivo'));r.readAsDataURL(f)})}
 function conf(msg,fn){modal(`<h2>Confirmar</h2><p>${esc(msg)}</p><div class="row"><button class="btn red" onclick="closeL();${fn}">Sim, apagar</button><button class="btn ghost" onclick="closeL()">Cancelar</button></div>`)}
 async function loadLivros(){if(!ONLINE){LB.loaded=true;return}try{S.livros=await api('listBooks');LB.loaded=true;if(R.r==='biblioteca'&&!LB.open)render();else if(R.r==='admin')renderKeep()}catch(e){toast(e.message,'err')}}
@@ -922,7 +969,7 @@ function notaBoxHTML(l){const m=l.minhaNota||0;return `<div class="row"><b class
 async function notar(n){const l=LB.open;if(!l)return;if(ONLINE){const r=await push('rateBook',{livroId:l.id,nota:n},'Nota registrada');if(!r)return;Object.assign(l,{nota:r.nota,votos:r.votos,minhaNota:r.minhaNota})}else{l.minhaNota=n;l.nota=n;l.votos=1;save();toast('Nota registrada')}const b=$('#lb_nota');if(b)b.innerHTML=notaBoxHTML(l)}
 function pdfBoxHTML(){if(LB.err==='iframe'&&LB.url)return `<iframe src="${LB.url}" title="${esc(LB.open.titulo)}" style="width:100%;height:75vh;border:1px solid var(--line);border-radius:12px"></iframe><a class="btn ghost sm" href="${LB.url}" target="_blank" rel="noopener">Abrir o PDF em outra aba</a>`;
  if(LB.err)return `<p class="chip r">${esc(LB.err)}</p>`;if(!LB.doc)return '<p class="muted">Carregando o livro…</p>';
- return `<div class="row"><button class="btn sm ghost" onclick="pdfPag(LB.page-1)" aria-label="Página anterior">◀</button><span class="sm">Página <input id="pgn" type="number" min="1" max="${LB.n}" value="${LB.page}" style="width:64px;display:inline-block" onchange="pdfPag(+this.value)"> de ${LB.n}</span><button class="btn sm ghost" onclick="pdfPag(LB.page+1)" aria-label="Próxima página">▶</button><span class="sp"></span><button class="btn sm ghost" onclick="pdfZoom(-.2)" aria-label="Diminuir">−</button><button class="btn sm ghost" onclick="pdfZoom(.2)" aria-label="Aumentar">+</button></div><div class="pdfwrap" id="pdfwrap"><canvas id="pdfcv"></canvas></div>`}
+ return `<div class="row"><button class="btn sm ghost" onclick="pdfPag(LB.page-1)" aria-label="Página anterior">◀</button><span class="sm">Página <input id="pgn" type="number" min="1" max="${LB.n}" value="${LB.page}" style="width:64px;display:inline-block" onchange="pdfPag(+this.value)"> de ${LB.n}</span><button class="btn sm ghost" onclick="pdfPag(LB.page+1)" aria-label="Próxima página">▶</button><span class="sp"></span><button class="btn sm ghost" onclick="pdfZoom(-.15)" aria-label="Diminuir">−</button><span class="sm muted" id="pdfz">${Math.round(LB.zoom*100)}%</span><button class="btn sm ghost" onclick="pdfZoom(.15)" aria-label="Aumentar">+</button><button class="btn sm ghost" onclick="pdfFit()" id="pdff">${LB.fit==='width'?'Largura':'Página inteira'}</button><button class="btn sm ghost" onclick="pdfTela()" aria-label="Tela cheia">${ic('expand',16)}</button></div><div class="pdfwrap" id="pdfwrap"><canvas id="pdfcv"></canvas></div>`}
 function comListaHTML(){const L=LB.com;if(!L.length)return '<h3>Comentários</h3><p class="muted sm">Seja o primeiro a comentar.</p>';
  return `<h3>Comentários (${L.length})</h3>`+L.map(c=>`<div class="fd"><div class="hd">${av(c.membroId,c.autor)}<div class="sp"><b>${esc(c.autor)}</b><div class="muted sm">${fmtDT(c.data)}</div></div>${c.pagina?`<button class="chip" onclick="pdfPag(${+c.pagina});scrollTo({top:0,behavior:'smooth'})">pág. ${esc(c.pagina)}</button>`:''}</div><p style="white-space:pre-wrap">${esc(c.texto)}</p><div class="row"><button class="btn sm ${c.curti?'':'ghost'}" onclick="curtir('comentario','${esc(c.id)}')">${ic('heart',14)} Amém${c.curtidas?' · '+c.curtidas:''}</button>${c.meu||canMod()?`<button class="heart" onclick="conf('Apagar este comentário?','apagarCom(\\'${esc(c.id)}\\')')" aria-label="Apagar">${ic('trash',16)}</button>`:''}</div></div>`).join('')}
 async function abrirLivro(id){const l=S.livros.find(x=>x.id===id);if(!l)return;Object.assign(LB,{open:l,doc:null,n:0,page:1,zoom:1,bytes:null,err:'',com:[],tok:LB.tok+1});if(LB.url){URL.revokeObjectURL(LB.url);LB.url=''}render();scrollTo(0,0);const tk=LB.tok;
@@ -933,11 +980,14 @@ async function abrirLivro(id){const l=S.livros.find(x=>x.id===id);if(!l)return;O
  catch(e){if(tk!==LB.tok)return;LB.err=e.message||'Não foi possível abrir o livro.';const bx=$('#pdfbox');if(bx)bx.innerHTML=pdfBoxHTML()}}
 function loadPdfJs(){if(window.pdfjsLib)return Promise.resolve();return new Promise((ok,no)=>{const sc=document.createElement('script');sc.src='assets/lib/pdf.js';sc.onload=()=>{try{window.pdfjsLib.GlobalWorkerOptions.workerSrc='assets/lib/pdf.worker.js';ok()}catch(e){no(e)}};sc.onerror=()=>no(new Error('leitor indisponível'));document.head.appendChild(sc)})}
 async function pdfPag(n){if(!LB.doc)return;n=Math.max(1,Math.min(LB.n,Math.round(n)||1));LB.page=n;const t=++LB.tok2||(LB.tok2=1);const pg=await LB.doc.getPage(n),wrap=$('#pdfwrap'),cv=$('#pdfcv');if(!wrap||!cv)return;
- const w=Math.max(200,wrap.clientWidth-6),v1=pg.getViewport({scale:1}),sc=w/v1.width*LB.zoom,dpr=Math.min(2,window.devicePixelRatio||1),vp=pg.getViewport({scale:sc*dpr});
- cv.width=vp.width;cv.height=vp.height;cv.style.width=vp.width/dpr+'px';cv.style.height=vp.height/dpr+'px';if(LB.task){try{LB.task.cancel()}catch(e){}}
+ const w=Math.max(200,wrap.clientWidth-8),H=Math.max(320,innerHeight-(document.fullscreenElement?120:210)),v1=pg.getViewport({scale:1}),base=LB.fit==='width'?w/v1.width:Math.min(w/v1.width,(H-8)/v1.height),sc=base*LB.zoom,dpr=Math.min(2,window.devicePixelRatio||1),vp=pg.getViewport({scale:sc*dpr});
+ wrap.style.maxHeight=H+'px';cv.width=vp.width;cv.height=vp.height;cv.style.width=vp.width/dpr+'px';cv.style.height=vp.height/dpr+'px';if(LB.task){try{LB.task.cancel()}catch(e){}}
  LB.task=pg.render({canvasContext:cv.getContext('2d'),viewport:vp});try{await LB.task.promise}catch(e){return}
  const pn=$('#pgn');if(pn)pn.value=n;const lp=$('#lc_p');if(lp&&document.activeElement!==lp)lp.value=n;wrap.scrollTop=0}
-function pdfZoom(d){LB.zoom=Math.max(.6,Math.min(3,+(LB.zoom+d).toFixed(2)));pdfPag(LB.page)}
+function pdfZoom(d){LB.zoom=Math.max(.3,Math.min(4,+(LB.zoom+d).toFixed(2)));const z=$('#pdfz');if(z)z.textContent=Math.round(LB.zoom*100)+'%';pdfPag(LB.page)}
+function pdfFit(){LB.fit=LB.fit==='width'?'page':'width';LB.zoom=1;const b=$('#pdff');if(b)b.textContent=LB.fit==='width'?'Largura':'Página inteira';const z=$('#pdfz');if(z)z.textContent='100%';pdfPag(LB.page)}
+function pdfTela(){const b=$('#pdfbox');if(!b)return;if(document.fullscreenElement)document.exitFullscreen();else if(b.requestFullscreen)b.requestFullscreen().catch(()=>toast('Seu navegador não permite tela cheia aqui','err'));else toast('Seu navegador não permite tela cheia aqui','err')}
+document.addEventListener('fullscreenchange',()=>{if(LB.doc&&$('#pdfwrap'))setTimeout(()=>pdfPag(LB.page),120)});let _rsT;addEventListener('resize',()=>{clearTimeout(_rsT);_rsT=setTimeout(()=>{if(LB.open&&LB.doc&&$('#pdfwrap'))pdfPag(LB.page)},200)});
 function fecharLivro(){LB.open=null;LB.tok++;if(LB.url){URL.revokeObjectURL(LB.url);LB.url=''}LB.doc=null;render();if(ONLINE)loadLivros()}
 async function carregarCom(id){try{LB.com=ONLINE?await api('listBookComments',{livroId:id}):(S.livroCom[id]||[]);const el=$('#lc_lista');if(el&&LB.open&&LB.open.id===id)el.innerHTML=comListaHTML()}catch(e){toast(e.message,'err')}}
 async function publicarCom(){const t=$('#lc_t').value.trim(),pg=$('#lc_p').value.trim();if(!t)return toast('Escreva seu comentário','err');const id=LB.open.id;
@@ -962,16 +1012,16 @@ async function publicarTest(){const t=$('#tm_t').value.trim(),x=$('#tm_x').value
 async function apagarTest(id){if(ONLINE){const r=await push('deleteTestimony',{id},'Testemunho apagado');if(r===undefined)return;S.testemunhos=await api('listTestimonies')}else{S.testemunhos=S.testemunhos.filter(t=>t.id!==id);save();toast('Testemunho apagado')}redesenhaFeed('testemunho')}
 /* administração da biblioteca */
 function bibAdmCard(){const e=LB.edit?S.livros.find(x=>x.id===LB.edit):null;
- return `<div class="card flat col"><h3>Biblioteca virtual</h3><p class="muted sm">Envie o PDF (até 10 MB), o nome, a capa e a descrição. Os membros leem e comentam na aba Biblioteca virtual.</p>
+ return `<div class="card flat col" id="bk_zone"><h3>Biblioteca virtual</h3><p class="muted sm">Envie o PDF (acima de 10 MB o app comprime sozinho), o nome, a capa e a descrição. Também dá para arrastar os arquivos para dentro deste cartão. Os membros leem e comentam na aba Biblioteca virtual.</p>
  ${S.livros.length?S.livros.map(l=>`<div class="opt"><div class="capa" style="width:42px;aspect-ratio:2/3;padding:0;border-radius:6px;flex:none;font-size:9px">${l.capa?`<img src="${esc(l.capa)}" alt="">`:''}</div><div class="sp"><b>${esc(l.titulo)}</b><div class="muted sm">${esc(l.autor||'')} · ${l.comentarios||0} comentário(s)</div></div><button class="btn sm ghost" onclick="LB.edit='${esc(l.id)}';renderKeep();scrollToId('bk_t')">Editar</button><button class="heart" onclick="conf('Remover o livro ${esc(l.titulo).replace(/'/g,'')} e o PDF?','removerLivro(\\'${esc(l.id)}\\')')" aria-label="Remover">${ic('trash',16)}</button></div>`).join(''):'<p class="muted sm">Nenhum livro ainda.</p>'}
- <b>${e?'Editando: '+esc(e.titulo):'Novo livro'}</b><div class="form"><label class="f">Nome do livro<input id="bk_t" maxlength="150" value="${e?esc(e.titulo):''}"></label><label class="f">Autor<input id="bk_a" maxlength="120" value="${e?esc(e.autor||''):''}"></label><label class="f full">Descrição<textarea id="bk_d" rows="3" maxlength="1500">${e?esc(e.descricao||''):''}</textarea></label><label class="f">Capa (imagem)<input id="bk_c" type="file" accept="image/*"></label><label class="f">Arquivo PDF${e?' (deixe vazio para manter o atual)':''}<input id="bk_p" type="file" accept="application/pdf"></label></div>
+ <b>${e?'Editando: '+esc(e.titulo):'Novo livro'}</b><div class="form"><label class="f">Nome do livro<input id="bk_t" maxlength="150" value="${e?esc(e.titulo):''}"></label><label class="f">Autor<input id="bk_a" maxlength="120" value="${e?esc(e.autor||''):''}"></label><label class="f full">Descrição<textarea id="bk_d" rows="3" maxlength="1500">${e?esc(e.descricao||''):''}</textarea></label><div class="f dz"><span>Capa (imagem)</span><label class="dzb">${ic('image',22)}<b>Solte a imagem aqui</b><small>ou clique para escolher</small><input id="bk_c" type="file" accept="image/*" onchange="dzNome('bk_c')"></label><em id="bk_c_n" class="muted sm"></em></div><div class="f dz"><span>Arquivo PDF${e?' (deixe vazio para manter o atual)':''}</span><label class="dzb">${ic('book',22)}<b>Arraste o PDF para cá</b><small>ou clique para escolher · acima de 10 MB é comprimido automaticamente</small><input id="bk_p" type="file" accept="application/pdf" onchange="dzNome('bk_p')"></label><em id="bk_p_n" class="muted sm"></em></div></div>
  <div class="row"><button class="btn" onclick="salvarLivro()">${e?'Salvar alterações':'Adicionar livro'}</button>${e?`<button class="btn ghost" onclick="LB.edit=null;renderKeep()">Cancelar edição</button>`:''}</div></div>`}
 function scrollToId(id){setTimeout(()=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:'smooth',block:'center'})},60)}
 async function salvarLivro(){const t=$('#bk_t').value.trim();if(!t)return toast('Informe o nome do livro','err');const cf=$('#bk_c').files[0],pf=$('#bk_p').files[0];
- if(!LB.edit&&!pf)return toast('Escolha o arquivo PDF do livro','err');if(pf&&pf.size>10*1024*1024)return toast('PDF muito grande. O máximo é 10 MB','err');if(pf&&!/pdf$/i.test(pf.type||pf.name))return toast('O arquivo precisa ser um PDF','err');
+ if(!LB.edit&&!pf)return toast('Escolha o arquivo PDF do livro','err');if(pf&&!/pdf$/i.test(pf.type||pf.name))return toast('O arquivo precisa ser um PDF','err');
  const d={id:LB.edit||undefined,titulo:t,autor:$('#bk_a').value.trim(),descricao:$('#bk_d').value.trim()};
  if(cf)d.capa=await new Promise(r=>redimMax(cf,r));
- if(pf){toast('Enviando o PDF, aguarde…');d.pdf=await fileB64(pf)}
+ if(pf){let blob=pf;if(pf.size>10*1024*1024){try{blob=await comprimirPdf(pf);progHide();toast('PDF reduzido de '+bytesTxt(pf.size)+' para '+bytesTxt(blob.size),'info')}catch(e){progHide();return toast(e.message||'Falha ao comprimir o PDF','err')}}d.pdf=await fileB64(blob)}
  if(ONLINE){const r=await push('saveBook',d,LB.edit?'Livro atualizado':'Livro adicionado à biblioteca');if(r===undefined)return;S.livros=await api('listBooks')}
  else{const o=LB.edit?S.livros.find(x=>x.id===LB.edit):null;if(o){Object.assign(o,{titulo:t,autor:d.autor,descricao:d.descricao});if(d.capa)o.capa=d.capa;if(d.pdf)LB.demoPdf[o.id]=d.pdf;o.demo=0}else{const id='d'+Date.now();S.livros.unshift({id,titulo:t,autor:d.autor,descricao:d.descricao,capa:d.capa||'',comentarios:0});LB.demoPdf[id]=d.pdf}save();toast(LB.edit?'Livro atualizado':'Livro adicionado à biblioteca')}
  LB.edit=null;render()}
