@@ -416,6 +416,89 @@ function savePerms_(d, u) {
 }
 
 /* ============================== ROTAS ============================== */
+
+/* ============================== ADMIN: EDITAR TUDO (genérico) ============================== */
+// Cada entidade descreve: aba, prefixo do ID, permissão exigida, campos editáveis, coluna de status e como "remover".
+const DIAS_ = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+const ENT = {
+  celulas: { titulo: 'Células', aba: 'Celulas', id: 'CelulaID', pre: 'C', perm: 'celulas', rotulo: 'Nome', status: { col: 'Status', ativo: 'Ativa', off: 'Inativa' }, campos: [
+    { k: 'Nome', l: 'Nome', t: 'text', max: 100, req: 1 }, { k: 'Descricao', l: 'Descrição', t: 'area', max: 500 }, { k: 'LiderID', l: 'Líder', t: 'membro' }, { k: 'SupervisorID', l: 'Supervisor', t: 'membro' },
+    { k: 'Dia', l: 'Dia da semana', t: 'sel', op: DIAS_ }, { k: 'Inicio', l: 'Início', t: 'time' }, { k: 'Fim', l: 'Fim', t: 'time' }, { k: 'Categoria', l: 'Categoria', t: 'text', max: 30 }, { k: 'Faixa', l: 'Faixa etária', t: 'text', max: 30 },
+    { k: 'Bairro', l: 'Bairro', t: 'text', max: 80 }, { k: 'Cidade', l: 'Cidade', t: 'text', max: 80 }, { k: 'UF', l: 'UF', t: 'text', max: 2 }, { k: 'Endereco', l: 'Endereço', t: 'text', max: 200 },
+    { k: 'Status', l: 'Situação', t: 'sel', op: [['Ativa', 'Ativa'], ['Inativa', 'Inativa']] }] },
+  eventos: { titulo: 'Eventos', aba: 'Eventos', id: 'EventoID', pre: 'E', perm: 'eventos', rotulo: 'Titulo', sub: 'Data', status: { col: 'Status', ativo: 'Ativo', off: 'Cancelado' }, defaults: { Escopo: 'igreja' }, campos: [
+    { k: 'Titulo', l: 'Título', t: 'text', max: 120, req: 1 }, { k: 'Data', l: 'Data', t: 'date', req: 1 }, { k: 'Hora', l: 'Hora', t: 'time' }, { k: 'Local', l: 'Local', t: 'text', max: 150 },
+    { k: 'Descricao', l: 'Descrição', t: 'area', max: 1000 }, { k: 'Programacao', l: 'Programação (uma linha por item)', t: 'lines' },
+    { k: 'Status', l: 'Situação', t: 'sel', op: [['Ativo', 'Ativo'], ['Cancelado', 'Cancelado']] }] },
+  noticias: { titulo: 'Notícias', aba: 'Noticias', id: 'NoticiaID', pre: 'N', perm: 'eventos', rotulo: 'Titulo', sub: 'Data', status: { col: 'Status', ativo: 'Ativo', off: 'Removida' }, defaults: {}, campos: [
+    { k: 'Titulo', l: 'Título', t: 'text', max: 120, req: 1 }, { k: 'Texto', l: 'Texto', t: 'area', max: 1500 }, { k: 'Status', l: 'Situação', t: 'sel', op: [['Ativo', 'Publicada'], ['Removida', 'Removida']] }] },
+  ministerios: { titulo: 'Ministérios', aba: 'Ministerios', id: 'MinisterioID', pre: 'MIN', perm: 'min', rotulo: 'Nome', status: { col: 'Ativo', ativo: '1', off: '0' }, campos: [
+    { k: 'Nome', l: 'Nome', t: 'text', max: 60, req: 1 }, { k: 'Ordem', l: 'Ordem', t: 'num' }, { k: 'Ativo', l: 'Situação', t: 'sel', op: [['1', 'Ativo'], ['0', 'Inativo']] }] },
+  cursos: { titulo: 'Cursos', aba: 'Cursos', id: 'CursoID', pre: 'CUR', perm: 'config', rotulo: 'Nome', status: { col: 'Ativo', ativo: '1', off: '0' }, campos: [
+    { k: 'Nome', l: 'Nome do curso', t: 'text', max: 100, req: 1 }, { k: 'Ativo', l: 'Situação', t: 'sel', op: [['1', 'Ativo'], ['0', 'Inativo']] }] },
+  licoes: { titulo: 'Lições / Extras', aba: 'Licoes', id: 'LicaoID', pre: 'L', perm: 'config', rotulo: 'Titulo', status: { col: 'Status', ativo: 'Ativa', off: 'Removida' }, campos: [
+    { k: 'Titulo', l: 'Título', t: 'text', max: 120, req: 1 }, { k: 'Resumo', l: 'Resumo', t: 'area', max: 400 }, { k: 'Categoria', l: 'Categoria', t: 'text', max: 40 }, { k: 'Url', l: 'Link (https://)', t: 'url' },
+    { k: 'Status', l: 'Situação', t: 'sel', op: [['Ativa', 'Ativa'], ['Removida', 'Removida']] }] },
+  dinamicas: { titulo: 'Dinâmicas', aba: 'Dinamicas', id: 'DinamicaID', pre: 'D', perm: 'config', rotulo: 'Titulo', apagar: 1, campos: [
+    { k: 'Titulo', l: 'Título', t: 'text', max: 100, req: 1 }, { k: 'Descricao', l: 'Descrição', t: 'area', max: 800 }, { k: 'Minutos', l: 'Minutos', t: 'num' }] },
+  videos: { titulo: 'Vídeos (Célula in Class)', aba: 'Videos', id: 'VideoID', pre: 'V', perm: 'config', rotulo: 'Titulo', status: { col: 'Status', ativo: 'Ativo', off: 'Removido' }, campos: [
+    { k: 'Titulo', l: 'Título', t: 'text', max: 120, req: 1 }, { k: 'Url', l: 'Link do YouTube (https://)', t: 'url', req: 1 }, { k: 'Ordem', l: 'Ordem', t: 'num' },
+    { k: 'Status', l: 'Situação', t: 'sel', op: [['Ativo', 'Ativo'], ['Removido', 'Removido']] }] }
+};
+function ent_(d, u) {
+  const e = Object.prototype.hasOwnProperty.call(ENT, d.tipo) ? ENT[d.tipo] : null; if (!e) throw new ApiError('VALIDATION', 'Tipo inválido.');
+  if (!can_(u, e.perm)) { audit_(u.email, 'NEGADO:admin_' + d.tipo, '', 'NEGADO'); throw new ApiError('FORBIDDEN', 'Você não tem permissão para esta área.'); }
+  return e;
+}
+function adminCampo_(f, v) {
+  v = f.t === 'lines' ? (Array.isArray(v) ? v : String(v || '').split('\n')).map(function (x) { return clip_(x, 120); }).filter(String).slice(0, 30) : v;
+  if (f.t === 'lines') return JSON.stringify(v);
+  v = clip_(v, f.max || 200);
+  if (f.req && !v) throw new ApiError('VALIDATION', 'Preencha: ' + f.l + '.');
+  if (f.t === 'date' && v && !dateOk_(v)) throw new ApiError('VALIDATION', 'Data inválida em: ' + f.l + '.');
+  if (f.t === 'url' && v && !/^https:\/\//.test(v)) throw new ApiError('VALIDATION', 'O link precisa começar com https:// (' + f.l + ').');
+  if (f.t === 'num') v = v === '' ? '' : String(Math.max(0, Math.min(100000, Math.floor(Number(v) || 0))));
+  if (f.t === 'sel') { const ok = f.op.some(function (o) { return String(Array.isArray(o) ? o[0] : o) === v; }); if (v && !ok) throw new ApiError('VALIDATION', 'Opção inválida em: ' + f.l + '.'); }
+  return v;
+}
+function adminList_(d, u) {
+  const e = ent_(d, u), t = table_(e.aba), mem = {};
+  const membros = (e.campos.some(function (f) { return f.t === 'membro'; }) ? table_('Membros').rows.filter(function (m) { return m.Status !== 'Inativo'; }).map(function (m) { mem[m.MembroID] = m.Simples || m.Nome; return { id: m.MembroID, nome: m.Simples || m.Nome || m.Email }; }).sort(function (a, b) { return a.nome < b.nome ? -1 : 1; }) : []);
+  const itens = t.rows.map(function (r) {
+    const v = {}; e.campos.forEach(function (f) { v[f.k] = f.t === 'lines' ? jparse_(r[f.k], []).join('\n') : r[f.k]; });
+    const off = e.status ? r[e.status.col] === e.status.off : false;
+    return { id: r[e.id], rotulo: r[e.rotulo] || '(sem nome)', sub: e.sub ? r[e.sub] : '', off: off, valores: v };
+  });
+  if (e.sub === 'Data') itens.sort(function (a, b) { return a.sub < b.sub ? 1 : -1; });
+  return { titulo: e.titulo, campos: e.campos, membros: membros, itens: itens, podeApagar: !!e.apagar };
+}
+function adminSave_(d, u) {
+  return withLock_(function () {
+    const e = ent_(d, u), t = table_(e.aba), dados = d.valores || {}, patch = {};
+    e.campos.forEach(function (f) { if (dados[f.k] !== undefined || f.req) patch[f.k] = f.t === 'membro' ? clip_(dados[f.k], 30) : adminCampo_(f, dados[f.k]); });
+    if (e.aba === 'Videos' && patch.Url === undefined) throw new ApiError('VALIDATION', 'Informe o link.');
+    const row = d.id ? t.rows.filter(function (r) { return r[e.id] === d.id; })[0] : null;
+    if (d.id && !row) throw new ApiError('NOT_FOUND', 'Item não encontrado.');
+    let id = d.id;
+    if (row) writeRow_(t, row._row, patch);
+    else {
+      id = id_(e.pre); const novo = Object.assign({}, e.defaults || {}, patch); novo[e.id] = id;
+      if (e.status && novo[e.status.col] === undefined) novo[e.status.col] = e.status.ativo;
+      if (e.aba === 'Eventos') novo.CriadoPor = u.membroId; if (e.aba === 'Noticias') { novo.Data = now_(); novo.CriadoPor = u.membroId; } if (e.aba === 'Dinamicas') { novo.MembroID = u.membroId; novo.Data = now_(); }
+      if (e.aba === 'Videos' && !novo.Ordem) novo.Ordem = String(t.rows.length + 1);
+      appendRow_(t, novo);
+    }
+    if (e.aba === 'Celulas' && patch.LiderID) { const g = table_('Membros').rows.filter(function (m) { return m.MembroID === patch.LiderID; })[0]; if (g) writeRow_(table_('Membros'), g._row, { CelulaID: id }); }
+    audit_(u.email, 'ADMIN_SALVAR:' + d.tipo, id, 'OK'); return { id: id };
+  });
+}
+function adminRemove_(d, u) {
+  return withLock_(function () {
+    const e = ent_(d, u), t = table_(e.aba), row = t.rows.filter(function (r) { return r[e.id] === d.id; })[0]; if (!row) throw new ApiError('NOT_FOUND', 'Item não encontrado.');
+    if (e.apagar) t.sh.deleteRow(row._row); else { const p = {}; p[e.status.col] = d.reativar ? e.status.ativo : e.status.off; writeRow_(t, row._row, p); }
+    audit_(u.email, (d.reativar ? 'ADMIN_REATIVAR:' : 'ADMIN_REMOVER:') + d.tipo, d.id, 'OK'); return { ok: true };
+  });
+}
 const ROUTES = {
   ping: { fn: function () { return { servico: 'Zoe API', status: 'online' }; } },
   login: { fn: login_ },
@@ -436,7 +519,8 @@ const ROUTES = {
   saveConfig: { auth: 'config', write: 1, fn: saveConfig_ }, saveVideo: { auth: 'config', write: 1, fn: saveVideo_ }, deleteVideo: { auth: 'config', write: 1, fn: deleteVideo_ },
   listUsers: { auth: 'config', fn: listUsers_ }, createUser: { auth: 'config', write: 1, fn: createUser_ }, setUser: { auth: 'config', write: 1, fn: setUser_ }, savePerms: { auth: 'config', write: 1, fn: savePerms_ },
   saveLesson: { auth: 'config', write: 1, fn: saveLesson_ }, getPerms: { auth: 'config', fn: function () { return permMatrix_(); } },
-  createCell: { auth: 'celulas', write: 1, fn: createCell_ }
+  createCell: { auth: 'celulas', write: 1, fn: createCell_ },
+  adminList: { auth: 'any', fn: adminList_ }, adminSave: { auth: 'any', write: 1, fn: adminSave_ }, adminRemove: { auth: 'any', write: 1, fn: adminRemove_ }
 };
 function doGet() { return json_({ ok: true, data: { servico: 'Zoe API', status: 'online' } }); }
 function doPost(e) {

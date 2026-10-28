@@ -88,3 +88,33 @@ test('usuários: desativar encerra sessão; trocar senha; ministérios e config'
   assert.equal(e.call('saveVideo', { titulo: 'x', url: 'http://x' }, adm).error.code, 'VALIDATION'); assert.ok(e.call('saveVideo', { titulo: 'Aula', url: 'https://youtube.com/x' }, adm).ok);
   assert.ok(e.call('saveLesson', { titulo: 'Semeando', resumo: 'r', categoria: 'Fé', url: 'https://x.com' }, adm).ok); assert.equal(e.call('saveLesson', { titulo: 'x', url: 'javascript:1' }, adm).error.code, 'VALIDATION'); const A3 = tok('a@zoe.com', 'NovaSenha123'); assert.equal(e.call('listLessons', {}, A3).data[0].titulo, 'Semeando'); assert.equal(e.call('getPerms', {}, adm).data.membro.config, 0); assert.equal(e.call('getPerms', {}, A3).error.code, 'FORBIDDEN');
 });
+test('admin edita tudo que criou: células, eventos, notícias, cursos, vídeos, dinâmicas', () => {
+  const { e, adm, tok, mk } = boot(); mk('maria@zoe.com', 'membro'); const m = tok('maria@zoe.com', 'Temp12345'); const l1 = mk('lider1@zoe.com', 'lider');
+  for (const a of ['adminList', 'adminSave', 'adminRemove']) assert.equal(e.call(a, { tipo: 'celulas' }, m).error.code, 'FORBIDDEN', a);
+  assert.equal(e.call('adminList', { tipo: 'segredo' }, adm).error.code, 'VALIDATION');
+  // célula
+  const c = e.call('createCell', { nome: 'Semeadores', dia: 'Quinta' }, adm).data.id;
+  let L = e.call('adminList', { tipo: 'celulas' }, adm).data; assert.equal(L.itens.length, 1); assert.ok(L.membros.length >= 2);
+  assert.ok(e.call('adminSave', { tipo: 'celulas', id: c, valores: { Nome: 'Semeadores 2', Dia: 'Sexta', LiderID: l1, Status: 'Ativa' } }, adm).ok);
+  L = e.call('adminList', { tipo: 'celulas' }, adm).data; assert.equal(L.itens[0].valores.Nome, 'Semeadores 2'); assert.equal(L.itens[0].valores.Dia, 'Sexta');
+  assert.equal(e.call('adminSave', { tipo: 'celulas', id: c, valores: { Nome: '' } }, adm).error.code, 'VALIDATION');
+  assert.equal(e.call('adminSave', { tipo: 'celulas', id: c, valores: { Nome: 'x', Dia: 'Feriado' } }, adm).error.code, 'VALIDATION');
+  assert.ok(e.call('adminRemove', { tipo: 'celulas', id: c }, adm).ok); assert.equal(e.call('adminList', { tipo: 'celulas' }, adm).data.itens[0].off, true);
+  assert.ok(e.call('adminRemove', { tipo: 'celulas', id: c, reativar: true }, adm).ok); assert.equal(e.call('adminList', { tipo: 'celulas' }, adm).data.itens[0].off, false);
+  // evento
+  assert.ok(e.call('createEvent', { titulo: 'Culto', data: '2026-11-01' }, adm).ok);
+  const ev = e.call('adminList', { tipo: 'eventos' }, adm).data.itens[0];
+  assert.ok(e.call('adminSave', { tipo: 'eventos', id: ev.id, valores: { Titulo: 'Culto Especial', Data: '2026-11-02', Programacao: 'Louvor\nPalavra' } }, adm).ok);
+  assert.equal(e.call('listEvents', {}, m).data[0].titulo, 'Culto Especial'); assert.deepEqual(e.call('listEvents', {}, m).data[0].programacao, ['Louvor', 'Palavra']);
+  assert.equal(e.call('adminSave', { tipo: 'eventos', id: ev.id, valores: { Data: '02/11/2026' } }, adm).error.code, 'VALIDATION');
+  e.call('adminRemove', { tipo: 'eventos', id: ev.id }, adm); assert.equal(e.call('listEvents', {}, m).data.length, 0);
+  // criar do zero por cada tipo + vídeo exige https
+  assert.ok(e.call('adminSave', { tipo: 'noticias', valores: { Titulo: 'Aviso', Texto: 'Olá' } }, adm).ok); assert.equal(e.call('listNews', {}, m).data[0].titulo, 'Aviso');
+  assert.ok(e.call('adminSave', { tipo: 'cursos', valores: { Nome: 'Escola de Líderes' } }, adm).ok); assert.equal(e.call('listCourses', {}, m).data[0].nome, 'Escola de Líderes');
+  assert.equal(e.call('adminSave', { tipo: 'videos', valores: { Titulo: 'V', Url: 'http://x' } }, adm).error.code, 'VALIDATION');
+  assert.ok(e.call('adminSave', { tipo: 'videos', valores: { Titulo: 'V', Url: 'https://youtu.be/abc' } }, adm).ok);
+  assert.ok(e.call('adminSave', { tipo: 'dinamicas', valores: { Titulo: 'Quebra-gelo', Minutos: '15' } }, adm).ok);
+  const d = e.call('adminList', { tipo: 'dinamicas' }, adm).data; assert.equal(d.podeApagar, true);
+  e.call('adminRemove', { tipo: 'dinamicas', id: d.itens[0].id }, adm); assert.equal(e.call('adminList', { tipo: 'dinamicas' }, adm).data.itens.length, 0);
+  assert.ok(e.call('adminSave', { tipo: 'ministerios', valores: { Nome: 'Teatro', Ordem: '9' } }, adm).ok);
+});

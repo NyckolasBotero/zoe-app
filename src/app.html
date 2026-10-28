@@ -248,6 +248,33 @@ async function hydrate(){
  if(me.permissoes.config){S.perm=await api('getPerms')}
  save()}
 function renderKeep(){const v={};document.querySelectorAll('#view [id]').forEach(el=>{if('value' in el)v[el.id]=el.value});const y=scrollY;render();Object.keys(v).forEach(id=>{const el=document.getElementById(id);if(el&&el.tagName!=='BUTTON'&&v[id]!==undefined&&!el.value)el.value=v[id]});scrollTo(0,y)}
+
+/* ===== Administração: editar tudo que foi criado ===== */
+let ADM={tipo:'',d:null,busca:''};
+const ADM_T=[['celulas','Células','celulas'],['eventos','Eventos','eventos'],['noticias','Notícias','eventos'],['ministerios','Ministérios','min'],['cursos','Cursos','config'],['licoes','Lições / Extras','config'],['dinamicas','Dinâmicas','config'],['videos','Vídeos','config']];
+function editarTudoCard(){const ts=ADM_T.filter(t=>can(t[2]));if(!ts.length)return '';
+ let b='';
+ if(ADM.d){const q=ADM.busca.toLowerCase();const it=ADM.d.itens.filter(i=>!q||(i.rotulo+' '+i.sub).toLowerCase().includes(q));
+  b=`<div class="row"><input id="adq" placeholder="Buscar" value="${esc(ADM.busca)}" oninput="ADM.busca=this.value;admLista()" style="flex:1"><button class="btn" onclick="admForm('')">${ic('plus',16)} Novo</button></div><div id="adl">${admItens(it)}</div>`}
+ else if(ADM.tipo)b='<p class="muted sm">Carregando…</p>';
+ else b='<p class="muted sm">Escolha o que deseja ver ou editar.</p>';
+ return `<div class="card flat col"><h3>Editar tudo que foi criado</h3><div class="tabs">${ts.map(t=>`<button class="${ADM.tipo===t[0]?'on':''}" onclick="admAbrir('${t[0]}')">${t[1]}</button>`).join('')}</div>${b}</div>`}
+function admItens(it){return it.length?it.map(i=>`<div class="opt" style="${i.off?'opacity:.55':''}"><div style="flex:1;min-width:0"><b>${esc(i.rotulo)}</b>${i.off?' <span class="chip r">inativo</span>':''}<div class="muted sm">${esc(i.sub||'')}</div></div><button class="btn sm ghost" data-id="${esc(i.id)}" onclick="admForm(this.dataset.id)">${ic('pen',14)} Editar</button><button class="btn sm ${i.off?'':'red'}" data-id="${esc(i.id)}" onclick="admRem(this.dataset.id,${i.off?1:0})">${ADM.d.podeApagar?'Apagar':i.off?'Reativar':'Remover'}</button></div>`).join(''):'<p class="muted sm">Nada cadastrado ainda.</p>'}
+function admLista(){const q=ADM.busca.toLowerCase();const el=$('#adl');if(el)el.innerHTML=admItens(ADM.d.itens.filter(i=>!q||(i.rotulo+' '+i.sub).toLowerCase().includes(q)))}
+async function admAbrir(t){ADM={tipo:t,d:null,busca:''};renderKeep();await admCarregar()}
+async function admCarregar(){try{ADM.d=await api('adminList',{tipo:ADM.tipo});renderKeep()}catch(e){toast(e.message);ADM.tipo='';renderKeep()}}
+function admForm(id){const D=ADM.d,it=id?D.itens.find(i=>i.id===id):null,v=it?it.valores:{};
+ const inp=(f,i)=>{const val=v[f.k]??'',n='adf'+i;
+  if(f.t==='area'||f.t==='lines')return `<label class="f full">${esc(f.l)}<textarea id="${n}">${esc(val)}</textarea></label>`;
+  if(f.t==='membro')return `<label class="f">${esc(f.l)}<select id="${n}"><option value="">—</option>${D.membros.map(m=>`<option value="${esc(m.id)}" ${m.id===val?'selected':''}>${esc(m.nome)}</option>`).join('')}</select></label>`;
+  if(f.t==='sel')return `<label class="f">${esc(f.l)}<select id="${n}">${f.t==='sel'&&!f.op.some(o=>String(Array.isArray(o)?o[0]:o)===val)?'<option value="">—</option>':''}${f.op.map(o=>{const a=Array.isArray(o)?o:[o,o];return `<option value="${esc(a[0])}" ${a[0]===val?'selected':''}>${esc(a[1])}</option>`}).join('')}</select></label>`;
+  const ty={date:'date',time:'time',num:'number',url:'url'}[f.t]||'text';
+  return `<label class="f">${esc(f.l)}<input id="${n}" type="${ty}" value="${esc(val)}" ${f.max?`maxlength="${f.max}"`:''}></label>`};
+ modal(`<h2>${it?'Editar':'Novo'}: ${esc(D.titulo)}</h2><div class="form">${D.campos.map(inp).join('')}</div><div class="row"><button class="btn" data-id="${esc(id)}" onclick="admSalvar(this.dataset.id)">Salvar</button><button class="btn ghost" onclick="closeL()">Cancelar</button></div>`)}
+async function admSalvar(id){const valores={};ADM.d.campos.forEach((f,i)=>{valores[f.k]=document.getElementById('adf'+i).value});
+ const r=await push('adminSave',{tipo:ADM.tipo,id:id||undefined,valores},id?'Alterações salvas':'Criado com sucesso');if(r===undefined)return;closeL();await admCarregar();await hydrate();render()}
+async function admRem(id,off){const it=ADM.d.itens.find(i=>i.id===id);if(!ADM.d.podeApagar&&off){}else if(!confirm((ADM.d.podeApagar?'Apagar':'Remover')+' "'+(it?it.rotulo:'')+'"?'))return;
+ const r=await push('adminRemove',{tipo:ADM.tipo,id,reativar:!!off&&!ADM.d.podeApagar},'Feito');if(r===undefined)return;await admCarregar();await hydrate();render()}
 async function loadAdmin(){try{if(can('config'))S.users=await api('listUsers');if(can('min'))S.interests=await api('listInterests');renderKeep()}catch(e){toast(e.message)}}
 const fmt=d=>{const[a,m,x]=d.split('-');return `${x}/${m}/${a}`};
 function toast(t){document.querySelectorAll('.toast').forEach(x=>x.remove());const e=document.createElement('div');e.className='toast';e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),2400)}
@@ -497,7 +524,7 @@ admin(){const P=S.perm;const rolesN={admin:'Administrador',pastor:'Pastor',super
  ${can('config')?`<div class="card flat col"><h3>Colunas extras do cadastro de novo membro</h3><div class="row">${S.colunas.map((c,i)=>`<span class="chip">${esc(c)} <button class="heart" style="padding:0" onclick="delCol(${i})" aria-label="Remover">${ic('x',12)}</button></span>`).join('')}</div><div class="row"><input id="ac" placeholder="Nova coluna" style="flex:1"><button class="btn" onclick="addC()">Adicionar</button></div>
  <h3 style="margin-top:8px">Vídeos do Célula in Class</h3>${S.videos.map((v,i)=>`<div class="opt"><div>${esc(v.t)}<div class="muted sm">${esc(v.u)}</div></div><button class="heart" onclick="delVid(${i})" aria-label="Remover">${ic('trash',16)}</button></div>`).join('')}<div class="form"><input id="vt" placeholder="Título do vídeo"><input id="vu" placeholder="Link do YouTube"></div><div><button class="btn" onclick="addV()">Adicionar vídeo</button></div></div>`:''}
  ${can('eventos')?`<div class="card flat col"><h3>Lançar evento</h3><div class="form"><label class="f">Nome<input id="ev1"></label><label class="f">Data<input id="ev2" type="date"></label><label class="f">Horário<input id="ev3" type="time"></label><label class="f">Local<input id="ev4"></label></div><div><button class="btn" onclick="addEv()">Publicar evento</button></div></div>`:''}
- ${ONLINE&&can('config')?usersCard():''}${ONLINE&&can('min')?interestsCard():''}${can('config')?lessonCard():''}
+ ${ONLINE?editarTudoCard():''}${ONLINE&&can('config')?usersCard():''}${ONLINE&&can('min')?interestsCard():''}${can('config')?lessonCard():''}
  ${can('config')?`<div class="card flat col"><h3>Matriz de permissões</h3><div class="tw"><table><tr><th>Papel</th>${ps.map(p=>`<th>${p[1]}</th>`).join('')}</tr>${Object.keys(P).map(r=>`<tr><td><b>${rolesN[r]}</b></td>${ps.map(([k])=>`<td><input type="checkbox" ${P[r][k]?'checked':''} ${r==='admin'&&k==='config'?'disabled':''} onchange="setPerm('${r}','${k}',this.checked)" style="width:20px;height:20px"></td>`).join('')}</tr>`).join('')}</table></div></div>`:''}`}
 };
 
