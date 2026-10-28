@@ -810,7 +810,7 @@ function checaPop(){if(!canAprov())return;const novos=apPend().filter(x=>!POPSEE
  novos.slice(0,3).forEach(x=>{const el=document.createElement('div');el.className='popA';el.setAttribute('role','alert');el.tabIndex=0;el.innerHTML=`<span class="mini">${ic(AP_ICO[x.tipo]||'check',18)}</span><div class="sp"><b class="sm"></b><div class="muted sm"></div></div><button class="heart" aria-label="Fechar">${ic('x',14)}</button>`;el.querySelector('b').textContent=x.titulo;el.querySelector('.muted').textContent=x.detalhe||'Toque para abrir Aprovações';
   el.onclick=e=>{c.innerHTML='';if(!e.target.closest('button'))go('aprovacoes')};c.appendChild(el)});
  if(novos.length>3){const m=document.createElement('div');m.className='popA more';m.textContent=`+ ${novos.length-3} pedido(s) aguardando`;m.onclick=()=>{c.innerHTML='';go('aprovacoes')};c.appendChild(m)}
- setTimeout(()=>{if(c&&c.parentNode)c.innerHTML=''},20000)}
+ const fecha=()=>{if(!c||!c.parentNode)return;if(c.matches(':hover')||c.contains(document.activeElement))return setTimeout(fecha,1000);c.innerHTML=''};setTimeout(fecha,3000)}
 function iniciaApos(){trkStart();if(!canAprov())return;checaPop();clearInterval(window._apT);window._apT=setInterval(()=>{if(document.visibilityState==='visible')refreshAprov()},60000)}
 /* rastreio de uso: telas mais acessadas e tempo online (soma por tela, enviado em lotes) */
 const TRK={tela:'',last:Date.now(),buf:{},vis:{},on:false};
