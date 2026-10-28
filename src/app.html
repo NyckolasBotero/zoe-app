@@ -372,7 +372,8 @@ async function api(action,data){
   PEND++;topbar();const tm=setInterval(topbar,500);if(btn){btn.classList.add('ld');btn.setAttribute('aria-busy','true')}
   let okk=false;try{const r=await apiRaw(action,data);okk=true;return r}finally{PEND--;clearInterval(tm);topbar();if(big)upHide();if(btn){btn.classList.remove('ld');btn.removeAttribute('aria-busy');btn.classList.add(okk?'done':'fail');setTimeout(()=>btn.classList.remove('done','fail'),900)}}}
 async function apiRaw(action,data){
-  let res;try{res=await fetch(ZC.apiUrl,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action,data:data||{},token:TOKEN}),redirect:'follow'})}catch(e){throw new Error('Sem conexão com o servidor. Verifique a internet.')}
+  let res,tent=0;const leitura=/^(list|get|me|birthdays|search|cellMembers|history|indicators|orgTree|fotos|lookup|track|usageReport)/.test(action);
+  for(;;){try{res=await fetch(ZC.apiUrl,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action,data:data||{},token:TOKEN}),redirect:'follow'});break}catch(e){if(leitura&&tent<2){await sleep(700*(++tent));continue}console.warn('[zoe] falha de rede em',action,e);throw new Error('Sem conexão com o servidor ('+action+'). Verifique a internet e tente de novo.')}}
   let j;try{j=await res.json()}catch(e){throw new Error('Resposta inesperada do servidor. Tente novamente.')}
   if(!j.ok){const er=j.error||{};const x=new Error(er.message||'Erro inesperado.');x.code=er.code;if(er.code==='SESSION'&&TOKEN&&action!=='logout')sair(true);throw x}
   return j.data}
