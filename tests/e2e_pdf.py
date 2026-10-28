@@ -16,8 +16,17 @@ with sync_playwright() as p:
     pg.fill('#bk_t','Livro Grande'); pg.set_input_files('#bk_p','/tmp/big.pdf'); assert 'comprimido' in pg.inner_text('#bk_p_n')
     pg.click('text=Adicionar livro'); pg.wait_for_selector('#cmpfb'); pg.screenshot(path=OUT+'/m_cmp.png')
     pg.wait_for_function('S.livros&&S.livros.some(l=>l.titulo==="Livro Grande")',timeout=100000)
+    # capa automática: sem imagem enviada, a capa vem da 1ª página do PDF
+    cap=pg.evaluate("S.livros.find(l=>l.titulo==='Livro Grande').capa"); assert cap.startswith('data:image/jpeg') and len(cap)<=44000, cap[:40]
+    # livro sem capa -> botão "Capa do PDF" (usa a 1ª página) e depois a imagem enviada substitui
+    pg.evaluate("go('admin')"); pg.wait_for_selector('#bk_t'); pg.wait_for_timeout(1500); pg.fill('#bk_t','Sem Capa'); pg.fill('#bk_a','Autor X'); pg.set_input_files('#bk_p','/tmp/demo.pdf'); pg.set_input_files('#bk_c','/tmp/capa.png'); pg.click('text=Adicionar livro')
+    pg.wait_for_function('S.livros.some(l=>l.titulo==="Sem Capa")',timeout=30000); capa2=pg.evaluate("S.livros.find(l=>l.titulo==='Sem Capa').capa"); assert capa2 and capa2!=cap
+    pg.evaluate("go('admin')"); pg.wait_for_selector('#bk_t'); pg.wait_for_timeout(1500); pg.fill('#bk_t','Outro'); pg.set_input_files('#bk_p','/tmp/demo.pdf'); pg.click('text=Adicionar livro')
+    pg.wait_for_function('S.livros.some(l=>l.titulo==="Outro"&&l.capa)',timeout=30000)
+    pg.evaluate("async()=>{const l=S.livros.find(x=>x.titulo==='Outro');await api('saveBook',{id:l.id,titulo:l.titulo,capa:''});S.livros=await api('listBooks')}"); assert pg.evaluate("S.livros.find(l=>l.titulo==='Outro').capa")==''
+    pg.evaluate("go('admin')"); pg.wait_for_selector("button:text-is('Capa do PDF')"); pg.wait_for_timeout(1200); pg.click("button:text-is('Capa do PDF')"); pg.wait_for_function("S.livros.find(l=>l.titulo==='Outro').capa.startsWith('data:image/jpeg')",timeout=30000)
     # leitor: página inteira visível, sem cortar
-    pg.evaluate("go('biblioteca')"); pg.wait_for_selector('.livro'); pg.click('.livro >> text=Ler e comentar'); pg.wait_for_selector('#pdfcv'); pg.wait_for_function("document.querySelector('#pgn')"); pg.wait_for_timeout(1500)
+    pg.evaluate("go('biblioteca')"); pg.wait_for_selector('.livro'); pg.click('.livro:has-text("Livro Grande") >> text=Ler e comentar'); pg.wait_for_selector('#pdfcv'); pg.wait_for_function("document.querySelector('#pgn')"); pg.wait_for_timeout(1500)
     r=pg.evaluate("(()=>{const c=document.querySelector('#pdfcv').getBoundingClientRect(),w=document.querySelector('#pdfwrap').getBoundingClientRect();return [c.height,w.height,c.width,w.width,document.querySelector('#pdfwrap').scrollHeight,document.querySelector('#pdfwrap').clientHeight]})()"); print('LEITOR',r)
     assert r[0]<=r[1]+2 and r[4]<=r[5]+12, r
     assert 'de 7' in pg.inner_text('#pdfbox'), pg.inner_text('#pdfbox')[:200]
