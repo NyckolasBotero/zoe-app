@@ -7,7 +7,7 @@ with sync_playwright() as p:
     pg.evaluate("go('admin')"); pg.wait_for_selector("text=Editar tudo que foi criado")
     # cria célula pelo formulário genérico
     pg.click(".tabs button:has-text('Células')"); pg.wait_for_selector("text=Nada cadastrado ainda.")
-    pg.click("button[onclick=\"admForm('')\"]"); pg.fill('#adf0','Semeadores'); pg.select_option('#adf5','Quinta'); pg.click(".box >> text=Salvar"); pg.wait_for_selector("#adl >> text=Semeadores")
+    pg.click("button[onclick=\"admForm('')\"]"); pg.fill('#adf0','Semeadores'); pg.select_option('#adf6','Quinta'); pg.click(".box >> text=Salvar"); pg.wait_for_selector("#adl >> text=Semeadores")
     # edita
     pg.click("#adl >> text=Editar"); pg.fill('#adf0','Semeadores Renovados'); pg.click(".box >> text=Salvar"); pg.wait_for_selector("#adl >> text=Semeadores Renovados")
     # evento e vídeo

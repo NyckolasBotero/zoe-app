@@ -27,7 +27,7 @@ const DEFAULT_PERMS = {
 const SHEETS = {
   Usuarios: ['Email', 'SenhaHash', 'Salt', 'Papel', 'Status', 'MembroID', 'TrocarSenha', 'CriadoEm', 'UltimoAcesso'],
   Membros: ['MembroID', 'Nome', 'Simples', 'Apelido', 'Sexo', 'Nascimento', 'Nacionalidade', 'Naturalidade', 'Sangue', 'Doador', 'Profissao', 'Telefone', 'Email', 'CEP', 'UF', 'Cidade', 'Endereco', 'Bairro', 'DataDecisao', 'Batizado', 'DataBatismo', 'IgrejaBatismo', 'Mae', 'Pai', 'EstadoCivil', 'Conjuge', 'DataCasamento', 'Filhos', 'Foto', 'CelulaID', 'EhMembro', 'Status', 'DataSaida', 'Extras', 'AceitePrivacidade', 'AceiteTermos', 'CriadoEm'],
-  Celulas: ['CelulaID', 'Nome', 'Descricao', 'Foto', 'LiderID', 'SupervisorID', 'Dia', 'Inicio', 'Fim', 'Categoria', 'Faixa', 'Bairro', 'Cidade', 'UF', 'Endereco', 'TreinamentoID', 'PrivGrupo', 'PrivTel', 'PrivEmail', 'PrivEnd', 'Status'],
+  Celulas: ['CelulaID', 'Nome', 'Descricao', 'Foto', 'LiderID', 'SupervisorID', 'Dia', 'Inicio', 'Fim', 'Categoria', 'Faixa', 'Bairro', 'Cidade', 'UF', 'Endereco', 'TreinamentoID', 'MaeID', 'PrivGrupo', 'PrivTel', 'PrivEmail', 'PrivEnd', 'Status'],
   Reunioes: ['ReuniaoID', 'CelulaID', 'Data', 'Presentes', 'PresencaDeDeus', 'Obs', 'ForaDoDia'],
   Presencas: ['ReuniaoID', 'CelulaID', 'Data', 'MembroID'],
   Papeis: ['CelulaID', 'MembroID', 'Papel'],
@@ -36,6 +36,10 @@ const SHEETS = {
   Inscricoes: ['EventoID', 'MembroID', 'Data'],
   Ministerios: ['MinisterioID', 'Nome', 'Ordem', 'Ativo', 'Descricao', 'Foto'],
   Interesses: ['InteresseID', 'MinisterioID', 'MembroID', 'Data', 'Status'],
+  Livros: ['LivroID', 'Titulo', 'Autor', 'Descricao', 'Capa', 'ArquivoID', 'Tamanho', 'Status', 'CriadoEm'],
+  LivroComentarios: ['ComentarioID', 'LivroID', 'MembroID', 'Texto', 'Pagina', 'Data', 'Status'],
+  Testemunhos: ['TestemunhoID', 'MembroID', 'Titulo', 'Texto', 'Data', 'Status'],
+  Curtidas: ['Tipo', 'AlvoID', 'MembroID', 'Data'],
   Saidas: ['SaidaID', 'MembroID', 'CelulaID', 'Motivo', 'SolicitadoPor', 'Status', 'DecididoPor', 'Data', 'DataDecisao'],
   Transferencias: ['TransfID', 'MembroID', 'DeCelulaID', 'ParaCelulaID', 'SolicitadoPor', 'Status', 'DecididoPor', 'Data', 'DataDecisao'],
   Cursos: ['CursoID', 'Nome', 'Ativo'],
@@ -66,6 +70,7 @@ function setup() {
   Object.keys(DEFAULT_CONFIG).forEach(function (k) { if (!hc[k]) appendRow_(c, { Chave: k, Valor: DEFAULT_CONFIG[k] }); });
   const m = table_('Ministerios');
   if (!m.rows.length) DEFAULT_MIN.forEach(function (n, i) { appendRow_(m, { MinisterioID: id_('MIN'), Nome: n, Ordem: i + 1, Ativo: '1' }); });
+  pastaLivros_(); // pede a autorização do Google Drive (PDFs da biblioteca)
   Logger.log('Setup concluído. Planilha: https://docs.google.com/spreadsheets/d/' + id + '  (mantenha o compartilhamento RESTRITO)');
 }
 // Rode ESTA função no editor (o botão Executar não passa argumentos para criarAdmin).
@@ -231,7 +236,7 @@ function saveCell_(d, u) {
 function createCell_(d, u) {
   return withLock_(function () {
     const nome = clip_(d.nome, 100); if (!nome) throw new ApiError('VALIDATION', 'Informe o nome da célula.');
-    const id = id_('C'); appendRow_(table_('Celulas'), { CelulaID: id, Nome: nome, Descricao: clip_(d.descricao, 500), LiderID: clip_(d.liderId, 30), SupervisorID: clip_(d.supervisorId, 30), TreinamentoID: clip_(d.treinamentoId, 30), Dia: clip_(d.dia, 20), Inicio: clip_(d.inicio, 5), Fim: clip_(d.fim, 5), Categoria: clip_(d.categoria, 30), Faixa: clip_(d.faixa, 30), Bairro: clip_(d.bairro, 80), Cidade: clip_(d.cidade, 80), UF: clip_(d.uf, 2), Endereco: clip_(d.endereco, 150), PrivGrupo: '1', PrivTel: '0', PrivEmail: '0', PrivEnd: '0', Status: 'Ativa' });
+    const id = id_('C'); appendRow_(table_('Celulas'), { CelulaID: id, Nome: nome, Descricao: clip_(d.descricao, 500), LiderID: clip_(d.liderId, 30), SupervisorID: clip_(d.supervisorId, 30), TreinamentoID: clip_(d.treinamentoId, 30), MaeID: clip_(d.maeId, 30), Dia: clip_(d.dia, 20), Inicio: clip_(d.inicio, 5), Fim: clip_(d.fim, 5), Categoria: clip_(d.categoria, 30), Faixa: clip_(d.faixa, 30), Bairro: clip_(d.bairro, 80), Cidade: clip_(d.cidade, 80), UF: clip_(d.uf, 2), Endereco: clip_(d.endereco, 150), PrivGrupo: '1', PrivTel: '0', PrivEmail: '0', PrivEnd: '0', Status: 'Ativa' });
     if (d.liderId) { const g = getMember_(d.liderId); writeRow_(g.t, g.m._row, { CelulaID: id }); }
     if (d.treinamentoId) { const g = getMember_(d.treinamentoId); if (!g.m.CelulaID) writeRow_(g.t, g.m._row, { CelulaID: id }); }
     audit_(u.email, 'CELULA_CRIADA', id, 'OK'); return { id: id };
@@ -310,9 +315,107 @@ function prayerCell_(u, d) { const id = clip_(d.celulaId, 30) || u.celulaId || c
 function listPrayers_(d, u) { const id = prayerCell_(u, d); if (!id) return []; return table_('Oracoes').rows.filter(function (o) { return o.CelulaID === id; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).slice(0, 50).map(function (o) { return { tema: o.Tema, titulo: o.Titulo, texto: o.Texto, data: o.Data }; }); }
 function orgTree_(d, u) {
   const mem = {}; table_('Membros').rows.forEach(function (m) { mem[m.MembroID] = m.Apelido || m.Simples || m.Nome; });
-  const cs = table_('Celulas').rows.filter(function (c) { return c.Status !== 'Inativa' && (can_(u, 'celulas') || c.SupervisorID === u.membroId || c.LiderID === u.membroId); }), g = {};
-  cs.forEach(function (c) { const k = c.SupervisorID || '-'; (g[k] = g[k] || []).push({ id: c.CelulaID, nome: c.Nome, dia: c.Dia, inicio: c.Inicio, lider: mem[c.LiderID] || '' }); });
-  return Object.keys(g).map(function (k) { return { supervisor: k === '-' ? 'Sem supervisor' : mem[k] || 'Supervisor', celulas: g[k] }; });
+  const qtd = {}; table_('Membros').rows.forEach(function (m) { if (m.CelulaID && m.Status !== 'Inativo') qtd[m.CelulaID] = (qtd[m.CelulaID] || 0) + 1; });
+  const cs = table_('Celulas').rows.filter(function (c) { return c.Status !== 'Inativa'; }), g = {};
+  cs.forEach(function (c) { const k = c.SupervisorID || '-'; (g[k] = g[k] || []).push({ id: c.CelulaID, nome: c.Nome, dia: c.Dia, inicio: c.Inicio, lider: mem[c.LiderID] || '', treinamento: mem[c.TreinamentoID] || '', membros: qtd[c.CelulaID] || 0, maeId: c.MaeID || '' }); });
+  return Object.keys(g).map(function (k) { return { supervisorId: k === '-' ? '' : k, supervisor: k === '-' ? 'Sem supervisor' : mem[k] || 'Supervisor', celulas: g[k] }; });
+}
+
+/* ===== biblioteca virtual (PDFs no Google Drive) e testemunhos ===== */
+const MAX_PDF_B64 = 14000000; // ~10 MB de PDF
+function canMod_(u) { return can_(u, 'min') || can_(u, 'config'); }
+function pastaLivros_() {
+  const p = PropertiesService.getScriptProperties(), fid = p.getProperty('LIVROS_FOLDER');
+  if (fid) { try { return DriveApp.getFolderById(fid); } catch (e) { /* recria */ } }
+  const f = DriveApp.createFolder('Zoe - Biblioteca Virtual (PDFs)'); p.setProperty('LIVROS_FOLDER', f.getId()); return f;
+}
+function nomes_() { const o = {}; table_('Membros').rows.forEach(function (m) { o[m.MembroID] = m.Apelido || m.Simples || m.Nome; }); return o; }
+function curtidas_(tipo, u) { const n = {}, eu = {}; table_('Curtidas').rows.forEach(function (c) { if (c.Tipo !== tipo) return; n[c.AlvoID] = (n[c.AlvoID] || 0) + 1; if (c.MembroID === u.membroId) eu[c.AlvoID] = 1; }); return { n: n, eu: eu }; }
+function listBooks_(d, u) {
+  const com = {}; table_('LivroComentarios').rows.forEach(function (c) { if (c.Status !== 'Removido') com[c.LivroID] = (com[c.LivroID] || 0) + 1; });
+  return table_('Livros').rows.filter(function (l) { return l.Status !== 'Removido'; }).sort(function (a, b) { return a.CriadoEm < b.CriadoEm ? 1 : -1; })
+    .map(function (l) { return { id: l.LivroID, titulo: l.Titulo, autor: l.Autor, descricao: l.Descricao, capa: l.Capa, tamanho: Number(l.Tamanho || 0), comentarios: com[l.LivroID] || 0, temPdf: !!l.ArquivoID }; });
+}
+function saveBook_(d, u) {
+  if (!canMod_(u)) throw new ApiError('FORBIDDEN', 'Sem permissão para gerenciar a biblioteca.');
+  return withLock_(function () {
+    const titulo = clip_(d.titulo, 150); if (!titulo) throw new ApiError('VALIDATION', 'Informe o nome do livro.');
+    const t = table_('Livros'), ex = d.id ? t.rows.filter(function (r) { return r.LivroID === d.id && r.Status !== 'Removido'; })[0] : null; if (d.id && !ex) throw new ApiError('NOT_FOUND', 'Livro não encontrado.');
+    const patch = { Titulo: titulo, Autor: clip_(d.autor, 120), Descricao: clip_(d.descricao, 1500) };
+    if (d.capa !== undefined && d.capa !== '__keep') patch.Capa = fotoOk_(d.capa);
+    const pdf = String(d.pdf || '');
+    if (!ex && !pdf) throw new ApiError('VALIDATION', 'Envie o arquivo PDF do livro.');
+    if (pdf) {
+      if (pdf.length > MAX_PDF_B64) throw new ApiError('VALIDATION', 'PDF muito grande (máximo ~10 MB).');
+      if (pdf.slice(0, 5) !== 'JVBER') throw new ApiError('VALIDATION', 'O arquivo precisa ser um PDF.');
+      const bytes = Utilities.base64Decode(pdf), file = pastaLivros_().createFile(Utilities.newBlob(bytes, 'application/pdf', titulo + '.pdf'));
+      if (ex && ex.ArquivoID) { try { DriveApp.getFileById(ex.ArquivoID).setTrashed(true); } catch (e) { /* já removido */ } }
+      patch.ArquivoID = file.getId(); patch.Tamanho = String(bytes.length);
+    }
+    if (ex) { writeRow_(t, ex._row, patch); audit_(u.email, 'LIVRO_EDITADO', ex.LivroID, 'OK'); return { id: ex.LivroID }; }
+    const id = id_('L'); appendRow_(t, Object.assign({ LivroID: id, Status: 'Ativo', CriadoEm: now_() }, patch)); audit_(u.email, 'LIVRO_NOVO', id, 'OK'); return { id: id };
+  });
+}
+function deleteBook_(d, u) {
+  if (!canMod_(u)) throw new ApiError('FORBIDDEN', 'Sem permissão para gerenciar a biblioteca.');
+  return withLock_(function () {
+    const t = table_('Livros'), r = t.rows.filter(function (x) { return x.LivroID === d.id; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Livro não encontrado.');
+    writeRow_(t, r._row, { Status: 'Removido' }); if (r.ArquivoID) { try { DriveApp.getFileById(r.ArquivoID).setTrashed(true); } catch (e) { /* ok */ } }
+    audit_(u.email, 'LIVRO_REMOVIDO', r.LivroID, 'OK'); return { ok: true };
+  });
+}
+function getBookFile_(d, u) {
+  const r = table_('Livros').rows.filter(function (x) { return x.LivroID === d.id && x.Status !== 'Removido'; })[0]; if (!r || !r.ArquivoID) throw new ApiError('NOT_FOUND', 'Livro não encontrado.');
+  return { pdf: Utilities.base64Encode(DriveApp.getFileById(r.ArquivoID).getBlob().getBytes()) };
+}
+function feed_(rows, tipo, nm, lk, u, idc, extra) {
+  return rows.map(function (r) { const o = { id: r[idc], autor: nm[r.MembroID] || 'Membro', meu: r.MembroID === u.membroId, data: r.Data, texto: r.Texto, curtidas: lk.n[r[idc]] || 0, curti: !!lk.eu[r[idc]] }; return extra(o, r); });
+}
+function listBookComments_(d, u) {
+  const nm = nomes_(), lk = curtidas_('comentario', u), id = clip_(d.livroId, 30);
+  const rows = table_('LivroComentarios').rows.filter(function (c) { return c.LivroID === id && c.Status !== 'Removido'; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).slice(0, 200);
+  return feed_(rows, 'comentario', nm, lk, u, 'ComentarioID', function (o, r) { o.pagina = r.Pagina; return o; });
+}
+function addBookComment_(d, u) {
+  return withLock_(function () {
+    const id = clip_(d.livroId, 30), texto = clip_(d.texto, 1500); if (!texto) throw new ApiError('VALIDATION', 'Escreva seu comentário.');
+    if (!table_('Livros').rows.some(function (l) { return l.LivroID === id && l.Status !== 'Removido'; })) throw new ApiError('NOT_FOUND', 'Livro não encontrado.');
+    const pg = clip_(d.pagina, 6); if (pg && !/^\d{1,5}$/.test(pg)) throw new ApiError('VALIDATION', 'Página inválida.');
+    const cid = id_('LC'); appendRow_(table_('LivroComentarios'), { ComentarioID: cid, LivroID: id, MembroID: u.membroId, Texto: texto, Pagina: pg, Data: now_(), Status: 'Ativo' }); return { id: cid };
+  });
+}
+function deleteBookComment_(d, u) {
+  return withLock_(function () {
+    const t = table_('LivroComentarios'), r = t.rows.filter(function (x) { return x.ComentarioID === d.id; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Comentário não encontrado.');
+    if (r.MembroID !== u.membroId && !canMod_(u)) throw new ApiError('FORBIDDEN', 'Só o autor ou a administração apaga.');
+    writeRow_(t, r._row, { Status: 'Removido' }); return { ok: true };
+  });
+}
+function listTestimonies_(d, u) {
+  const nm = nomes_(), lk = curtidas_('testemunho', u);
+  const rows = table_('Testemunhos').rows.filter(function (t) { return t.Status !== 'Removido'; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).slice(0, 100);
+  return feed_(rows, 'testemunho', nm, lk, u, 'TestemunhoID', function (o, r) { o.titulo = r.Titulo; return o; });
+}
+function addTestimony_(d, u) {
+  return withLock_(function () {
+    const texto = clip_(d.texto, 2000); if (texto.length < 10) throw new ApiError('VALIDATION', 'Conte seu testemunho com um pouco mais de detalhes.');
+    const id = id_('TE'); appendRow_(table_('Testemunhos'), { TestemunhoID: id, MembroID: u.membroId, Titulo: clip_(d.titulo, 100), Texto: texto, Data: now_(), Status: 'Ativo' }); audit_(u.email, 'TESTEMUNHO', id, 'OK'); return { id: id };
+  });
+}
+function deleteTestimony_(d, u) {
+  return withLock_(function () {
+    const t = table_('Testemunhos'), r = t.rows.filter(function (x) { return x.TestemunhoID === d.id; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Testemunho não encontrado.');
+    if (r.MembroID !== u.membroId && !canMod_(u)) throw new ApiError('FORBIDDEN', 'Só o autor ou a administração apaga.');
+    writeRow_(t, r._row, { Status: 'Removido' }); audit_(u.email, 'TESTEMUNHO_REMOVIDO', r.TestemunhoID, 'OK'); return { ok: true };
+  });
+}
+function toggleLike_(d, u) {
+  return withLock_(function () {
+    const tipo = d.tipo === 'testemunho' ? 'testemunho' : d.tipo === 'comentario' ? 'comentario' : ''; if (!tipo) throw new ApiError('VALIDATION', 'Tipo inválido.');
+    const alvo = clip_(d.alvoId, 30), t = table_('Curtidas'), ex = t.rows.filter(function (c) { return c.Tipo === tipo && c.AlvoID === alvo && c.MembroID === u.membroId; })[0];
+    if (ex) { t.sh.deleteRow(ex._row); } else appendRow_(t, { Tipo: tipo, AlvoID: alvo, MembroID: u.membroId, Data: now_() });
+    return { curti: !ex };
+  });
 }
 
 /* ===== presença: pessoa já está em outra célula? transferência, novo cadastro ===== */
@@ -482,7 +585,7 @@ const DIAS_ = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Dom
 const ENT = {
   celulas: { titulo: 'Células', aba: 'Celulas', id: 'CelulaID', pre: 'C', perm: 'celulas', rotulo: 'Nome', status: { col: 'Status', ativo: 'Ativa', off: 'Inativa' }, campos: [
     { k: 'Nome', l: 'Nome', t: 'text', max: 100, req: 1 }, { k: 'Descricao', l: 'Descrição', t: 'area', max: 500 }, { k: 'LiderID', l: 'Líder', t: 'membro' }, { k: 'SupervisorID', l: 'Supervisor', t: 'membro' },
-    { k: 'TreinamentoID', l: 'Líder em treinamento', t: 'membro' }, { k: 'Dia', l: 'Dia da semana', t: 'sel', op: DIAS_ }, { k: 'Inicio', l: 'Início', t: 'time' }, { k: 'Fim', l: 'Fim', t: 'time' }, { k: 'Categoria', l: 'Categoria', t: 'text', max: 30 }, { k: 'Faixa', l: 'Faixa etária', t: 'text', max: 30 },
+    { k: 'TreinamentoID', l: 'Líder em treinamento', t: 'membro' }, { k: 'MaeID', l: 'Gerada da célula (multiplicação)', t: 'celula' }, { k: 'Dia', l: 'Dia da semana', t: 'sel', op: DIAS_ }, { k: 'Inicio', l: 'Início', t: 'time' }, { k: 'Fim', l: 'Fim', t: 'time' }, { k: 'Categoria', l: 'Categoria', t: 'text', max: 30 }, { k: 'Faixa', l: 'Faixa etária', t: 'text', max: 30 },
     { k: 'Bairro', l: 'Bairro', t: 'text', max: 80 }, { k: 'Cidade', l: 'Cidade', t: 'text', max: 80 }, { k: 'UF', l: 'UF', t: 'text', max: 2 }, { k: 'Endereco', l: 'Endereço', t: 'text', max: 200 },
     { k: 'Status', l: 'Situação', t: 'sel', op: [['Ativa', 'Ativa'], ['Inativa', 'Inativa']] }] },
   eventos: { titulo: 'Eventos', aba: 'Eventos', id: 'EventoID', pre: 'E', perm: 'eventos', rotulo: 'Titulo', sub: 'Data', status: { col: 'Status', ativo: 'Ativo', off: 'Cancelado' }, defaults: { Escopo: 'igreja' }, campos: [
@@ -583,6 +686,9 @@ const ROUTES = {
   lookup: { auth: 'any', fn: lookup_ }, requestTransfer: { auth: 'any', write: 1, fn: requestTransfer_ }, requestExit: { auth: 'any', write: 1, fn: requestExit_ }, decideExit: { auth: 'any', write: 1, fn: decideExit_ }, addNewMember: { auth: 'any', write: 1, fn: addNewMember_ }, orgTree: { auth: 'any', fn: orgTree_ },
   listTransfers: { auth: 'any', fn: listTransfers_ }, decideTransfer: { auth: 'any', write: 1, fn: decideTransfer_ },
   createEvent: { auth: 'eventos', write: 1, fn: createEvent_ }, postNews: { auth: 'eventos', write: 1, fn: postNews_ },
+  listBooks: { auth: 'any', fn: listBooks_ }, saveBook: { auth: 'any', write: 1, fn: saveBook_ }, deleteBook: { auth: 'any', write: 1, fn: deleteBook_ }, getBookFile: { auth: 'any', fn: getBookFile_ },
+  listBookComments: { auth: 'any', fn: listBookComments_ }, addBookComment: { auth: 'any', write: 1, fn: addBookComment_ }, deleteBookComment: { auth: 'any', write: 1, fn: deleteBookComment_ },
+  listTestimonies: { auth: 'any', fn: listTestimonies_ }, addTestimony: { auth: 'any', write: 1, fn: addTestimony_ }, deleteTestimony: { auth: 'any', write: 1, fn: deleteTestimony_ }, toggleLike: { auth: 'any', write: 1, fn: toggleLike_ },
   saveMinistry: { auth: 'min', write: 1, fn: saveMinistry_ }, deleteMinistry: { auth: 'min', write: 1, fn: deleteMinistry_ }, listInterests: { auth: 'min', fn: listInterests_ },
   saveConfig: { auth: 'config', write: 1, fn: saveConfig_ }, saveVideo: { auth: 'config', write: 1, fn: saveVideo_ }, deleteVideo: { auth: 'config', write: 1, fn: deleteVideo_ },
   listUsers: { auth: 'config', fn: listUsers_ }, createUser: { auth: 'config', write: 1, fn: createUser_ }, setUser: { auth: 'config', write: 1, fn: setUser_ }, savePerms: { auth: 'config', write: 1, fn: savePerms_ },

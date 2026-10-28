@@ -225,3 +225,36 @@ test('fluxo: frequência confere o dia da célula; saída só com líder + super
   const t = e.call('listTransfers', {}, S).data.find(x => x.tipo === 'transferencia'); e.call('decideTransfer', { id: t.id, decisao: 'autorizado' }, S);
   assert.equal(e.call('history', {}, L).data.indicadores.exParticipantes, 1);
 });
+test('biblioteca virtual: admin envia PDF; membros leem e comentam; testemunhos para todos', () => {
+  const { e, adm, tok, mk } = boot(); mk('ana@zoe.com', 'membro'); mk('beto@zoe.com', 'membro');
+  const A = tok('ana@zoe.com', 'Temp12345'), B = tok('beto@zoe.com', 'Temp12345');
+  const pdf = Buffer.from('%PDF-1.4 teste').toString('base64');
+  assert.equal(e.call('saveBook', { titulo: 'Livro X', pdf }, A).error.code, 'FORBIDDEN');
+  assert.equal(e.call('saveBook', { titulo: 'Livro X', pdf: Buffer.from('nao e pdf').toString('base64') }, adm).error.code, 'VALIDATION');
+  assert.equal(e.call('saveBook', { titulo: 'Livro X' }, adm).error.code, 'VALIDATION');
+  const id = e.call('saveBook', { titulo: 'Livro X', autor: 'Autor', descricao: 'Desc', capa: '', pdf }, adm).data.id;
+  const l = e.call('listBooks', {}, A).data; assert.equal(l.length, 1); assert.equal(l[0].titulo, 'Livro X'); assert.equal(l[0].tamanho > 0, true);
+  assert.equal(Buffer.from(e.call('getBookFile', { id }, A).data.pdf, 'base64').toString().startsWith('%PDF'), true);
+  const c = e.call('addBookComment', { livroId: id, texto: 'Que livro abençoador', pagina: '12' }, A).data.id;
+  assert.equal(e.call('addBookComment', { livroId: id, texto: '' }, A).error.code, 'VALIDATION');
+  assert.equal(e.call('toggleLike', { tipo: 'comentario', alvoId: c }, B).data.curti, true);
+  const fc = e.call('listBookComments', { livroId: id }, B).data; assert.equal(fc[0].autor, 'ana'); assert.equal(fc[0].curtidas, 1); assert.equal(fc[0].curti, true); assert.equal(fc[0].meu, false);
+  assert.equal(e.call('deleteBookComment', { id: c }, B).error.code, 'FORBIDDEN');
+  assert.equal(e.call('listBooks', {}, B).data[0].comentarios, 1);
+  // substituir PDF mantém o livro
+  e.call('saveBook', { id, titulo: 'Livro X 2', pdf }, adm); assert.equal(e.call('listBooks', {}, A).data[0].titulo, 'Livro X 2');
+  // testemunhos
+  assert.equal(e.call('addTestimony', { texto: 'curto' }, A).error.code, 'VALIDATION');
+  const t = e.call('addTestimony', { titulo: 'Cura', texto: 'Deus me curou de uma enfermidade.' }, A).data.id;
+  const lt = e.call('listTestimonies', {}, B).data; assert.equal(lt.length, 1); assert.equal(lt[0].titulo, 'Cura'); assert.equal(lt[0].autor, 'ana');
+  assert.equal(e.call('deleteTestimony', { id: t }, B).error.code, 'FORBIDDEN');
+  assert.equal(e.call('deleteTestimony', { id: t }, adm).ok, true); assert.equal(e.call('listTestimonies', {}, B).data.length, 0);
+  assert.equal(e.call('deleteBook', { id }, A).error.code, 'FORBIDDEN'); assert.equal(e.call('deleteBook', { id }, adm).ok, true); assert.equal(e.call('listBooks', {}, A).data.length, 0);
+});
+test('organograma: todos veem a árvore; célula gerada de outra', () => {
+  const { e, adm, tok, mk } = boot(); const sup = mk('sup@zoe.com', 'membro'), l1 = mk('l1@zoe.com', 'membro'), l2 = mk('l2@zoe.com', 'membro');
+  const c1 = e.call('createCell', { nome: 'Semeadores', liderId: l1, supervisorId: sup }, adm).data.id;
+  e.call('createCell', { nome: 'Seara', liderId: l2, supervisorId: sup, maeId: c1 }, adm);
+  const X = (mk('x@zoe.com', 'membro'), tok('x@zoe.com', 'Temp12345')); const o = e.call('orgTree', {}, X).data;
+  assert.equal(o.length, 1); assert.equal(o[0].celulas.length, 2); assert.equal(o[0].celulas.find(c => c.nome === 'Seara').maeId, c1); assert.equal(o[0].celulas[0].membros, 1);
+});

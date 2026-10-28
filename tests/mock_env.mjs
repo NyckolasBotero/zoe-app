@@ -18,9 +18,10 @@ export function makeEnv() {
     CacheService: { getScriptCache: () => ({ get: k => store[k] ?? null, put: (k, v) => { store[k] = v; }, remove: k => { delete store[k]; } }) },
     LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
     PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k] ?? null, setProperty: (k, v) => { props[k] = v; } }) },
-    Utilities: { getUuid: () => crypto.randomUUID(), base64Encode: b => Buffer.from(b).toString('base64'), DigestAlgorithm: { SHA_256: 'sha256' },
+    Utilities: { newBlob: (bytes, type, name) => ({ bytes, type, name }), base64Decode: s => [...Buffer.from(s, 'base64')], getUuid: () => crypto.randomUUID(), base64Encode: b => Buffer.from(b).toString('base64'), DigestAlgorithm: { SHA_256: 'sha256' },
       computeDigest: (a, s) => [...crypto.createHash('sha256').update(s).digest()],
       formatDate: (d, tz, f) => { const p = new Intl.DateTimeFormat('sv-SE', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(d); const [D, T] = p.split(' '); return f === 'yyyy-MM-dd' ? D : f === 'HH:mm' ? T.slice(0, 5) : D + ' ' + T; } },
+    DriveApp: (() => { const files = {}, fold = { getId: () => 'FOLDER', createFile: b => { const id = 'F' + Object.keys(files).length; files[id] = { id, blob: b, trashed: false, getId: () => id, getBlob: () => ({ getBytes: () => b.bytes }), setTrashed(v) { this.trashed = v; } }; return files[id]; } }; return { _files: files, createFolder: () => fold, getFolderById: () => fold, getFileById: id => files[id] }; })(),
     ContentService: { MimeType: { JSON: 'json' }, createTextOutput: t => ({ t, setMimeType() { return this; }, getContent() { return t; } }) } };
   vm.createContext(ctx); vm.runInContext(fs.readFileSync(CODE, 'utf8'), ctx); vm.runInContext('setup()', ctx);
   const call = (action, data = {}, token) => { ctx.__req = JSON.stringify({ action, data, token }); return JSON.parse(vm.runInContext('doPost({postData:{contents:__req}}).getContent()', ctx)); };

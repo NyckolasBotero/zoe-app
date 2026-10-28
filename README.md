@@ -44,3 +44,11 @@ Texto: *Almeida 1819 (Bíblia Livre)*, domínio público, fonte github.com/midva
 3. **Frequência**: a lista traz apenas as pessoas cadastradas na célula. A data vem preenchida com o último dia da célula; se a data escolhida não for o dia da célula, o sistema avisa e pede confirmação (fica marcado "fora do dia" no histórico). Datas futuras são bloqueadas. Ao registrar, o histórico mostra data, dia da semana, presentes e ausentes por nome.
 4. **Ex-participante** só existe quando o líder usa *Informar saída* (aba Membros) e o supervisor da célula (ou a administração) **autoriza** em Administração → Pedidos. Enquanto não houver aprovação, a pessoa continua na lista. Transferência entre células não conta como ex-participante.
 5. Atualização do backend: cole o novo `Code.gs`, execute `setup()` uma vez (cria a aba **Saidas** e as colunas novas) e publique uma **nova versão** da implantação.
+
+## Biblioteca virtual, testemunhos, mural e organograma
+
+- **Biblioteca virtual** (menu lateral): o administrador envia PDFs em *Administração → Biblioteca virtual* (nome, autor, descrição, capa e arquivo até 10 MB). Os PDFs ficam em uma pasta privada do Google Drive ("Zoe - Biblioteca Virtual (PDFs)"), criada ao rodar `setup()`. Os membros leem no próprio app (leitor pdf.js em `assets/lib/`) e comentam em um feed, com número da página e botão "Amém". Quem tem a permissão de ministérios ou configurações gerencia livros e apaga comentários.
+- **Testemunhos**: em Início, qualquer membro compartilha o seu e todos veem; o autor ou a administração apaga.
+- **Mural**: as fotos aparecem inteiras, com a proporção original. Em *Mover e ajustar*, a bolinha do canto redimensiona e o X remove. *Salvar e compartilhar* gera uma imagem PNG do mural, abre a folha de compartilhamento (WhatsApp) ou baixa a imagem.
+- **Organograma** (aba após o Mural, visível a todos): árvore invertida, com a supervisão na base e as células crescendo para cima. Ao criar ou editar uma célula, o campo *Gerada da célula* coloca a nova acima da célula de origem.
+- Atualização do backend: cole o novo `Code.gs`, rode `setup()` (autorize o acesso ao Google Drive quando o Google pedir) e publique uma nova versão da implantação.
