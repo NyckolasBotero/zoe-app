@@ -761,3 +761,50 @@ test('um acesso por pessoa; limpar notificações; notificações definidas pelo
   assert.equal(e.call('clearNotifications', { ids: [l.itens[0].id] }, M).data.itens.length, 1); assert.equal(e.call('clearNotifications', {}, M).data.itens.length, 0);
   const c = e.call('saveConfig', { notifTipos: { aniv: false } }, adm).data; assert.equal(c.notifTipos.aniv, false); assert.equal(c.notifTipos.celula, true);
 });
+test('escalas: lote semanal, lembretes 7/3/1, confirmar, re-escalar, troca, pedido e indicadores', () => {
+  const { e, adm, tok, mk } = boot();
+  const a = mk('ana@zoe.com', 'membro'), b = mk('beto@zoe.com', 'membro'); const ta = tok('ana@zoe.com', 'Temp12345'), tb = tok('beto@zoe.com', 'Temp12345');
+  const min = e.call('listMinistries', {}, adm).data[0].id;
+  const hoje = e.run('today_()'); const add = n => e.run(`escFmt_(new Date(new Date().getTime()+${n}*86400000))`);
+  assert.equal(e.call('saveScale', { ministerioId: min, membroId: a, data: hoje }, ta).error.code, 'FORBIDDEN');
+  // lote: todo dia da semana de hoje por 2 meses
+  const dow = e.run('new Date().getDay()');
+  const r = e.call('saveScale', { ministerioId: min, membros: [a], data: hoje, hora: '19:00', repetir: { dias: [dow], meses: 2 } }, adm); assert.ok(r.ok && r.data.criadas >= 8, JSON.stringify(r));
+  assert.equal(e.call('saveScale', { ministerioId: min, membros: [a], data: hoje, hora: '19:00', repetir: { dias: [dow], meses: 2 } }, adm).data.criadas, 0); // sem duplicar
+  // membro vê, mas não lança/remarca
+  const la = e.call('listScales', {}, ta).data; assert.equal(la.gestor, false); assert.ok(la.itens.length >= 8 && !la.ind);
+  assert.equal(e.call('rescheduleScale', { id: la.itens[0].id, data: add(2) }, ta).error.code, 'FORBIDDEN');
+  // escala de amanhã, 3 dias e 7 dias => lembretes
+  for (const n of [1, 3, 7]) e.call('saveScale', { ministerioId: min, membroId: a, data: add(n), hora: '10:00' }, adm);
+  e.call('listNotifications', {}, ta); let nt = e.sheets.Notificacoes.rows.slice(1).filter(x => x[1] === a && x[2] === 'escala_lembrete'); assert.ok(nt.length >= 3, nt.length);
+  e.call('listNotifications', {}, ta); assert.equal(e.sheets.Notificacoes.rows.slice(1).filter(x => x[1] === a && x[2] === 'escala_lembrete').length, nt.length); // idempotente
+  const dia1 = e.call('listScales', {}, ta).data.itens.find(x => x.data === add(1));
+  assert.equal(e.call('respondScale', { id: dia1.id, acao: 'reescalar' }, ta).error.code, 'VALIDATION');
+  assert.equal(e.call('respondScale', { id: dia1.id, acao: 'reescalar', motivo: 'Viagem de trabalho' }, ta).data.status, 'reescalar');
+  assert.equal(e.call('respondScale', { id: dia1.id, acao: 'confirmar' }, tb).error.code, 'FORBIDDEN');
+  const g = e.call('listScales', {}, adm).data; const x1 = g.itens.find(x => x.id === dia1.id); assert.equal(x1.motivo, 'Viagem de trabalho'); assert.equal(g.ind.reescTotal, 1); assert.equal(g.ind.reescalar, 1);
+  assert.equal(e.call('listScales', {}, tb).data.itens.find(x => x.id === dia1.id).motivo, ''); // motivo só para dono/supervisor
+  // supervisor remarca e passa a escala para Beto
+  assert.ok(e.call('rescheduleScale', { id: dia1.id, data: add(5), membroId: b }, adm).ok);
+  const nb = e.call('listScales', {}, tb).data.itens.find(x => x.id === dia1.id); assert.equal(nb.status, 'pendente'); assert.equal(nb.origem, 'ana');
+  // Beto confirma
+  assert.equal(e.call('respondScale', { id: dia1.id, acao: 'confirmar' }, tb).data.status, 'confirmada');
+  // Ana pede troca com Beto (Beto aceita) numa escala dela
+  const ea = e.call('listScales', {}, ta).data.itens.find(x => x.data === add(3));
+  assert.ok(e.call('requestSwap', { id: ea.id, comMembroId: b, msg: 'Consulta médica' }, ta).ok);
+  assert.equal(e.call('answerSwap', { id: ea.id, aceita: true }, ta).error.code, 'FORBIDDEN');
+  assert.ok(e.call('answerSwap', { id: ea.id, aceita: true }, tb).ok);
+  const tr = e.call('listScales', {}, tb).data.itens.find(x => x.id === ea.id); assert.equal(tr.membroId, b); assert.equal(tr.origem, 'ana'); assert.equal(tr.status, 'pendente');
+  // pedido para participar
+  assert.ok(e.call('requestJoin', { ministerioId: min, data: add(9), msg: 'Quero servir' }, tb).ok);
+  assert.equal(e.call('requestJoin', { ministerioId: min }, tb).error.code, 'VALIDATION');
+  const ped = e.call('listScales', {}, adm).data.pedidos; assert.equal(ped.length, 1);
+  assert.equal(e.call('decideJoin', { id: ped[0].id, aprovar: true }, tb).error.code, 'FORBIDDEN');
+  assert.ok(e.call('decideJoin', { id: ped[0].id, aprovar: true, hora: '09:00' }, adm).ok);
+  assert.ok(e.call('listScales', {}, tb).data.itens.some(x => x.data === add(9) && x.membroId === b));
+  // presença + indicadores
+  const gi = e.call('listScales', {}, adm).data; assert.ok(gi.ind.porMinisterio[0].pessoas >= 1 && gi.ind.confirmadas >= 1);
+  assert.ok(e.call('markScale', { id: dia1.id, presente: true }, adm).ok);
+  // remover série
+  const serie = gi.itens.find(x => x.serie).serie; assert.ok(e.call('deleteScale', { serie }, adm).data.removidas >= 7);
+});

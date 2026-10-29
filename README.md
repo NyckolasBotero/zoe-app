@@ -188,3 +188,14 @@ Administração › **Maratona Bíblica (programar)**: início (1º de janeiro),
 ## Pessoas e Chat
 - Aba **Pessoas**: busca por nome (mín. 2 letras, sem acento) e abre o **perfil de qualquer usuário**: foto, insígnias, nível, destaques e **envolvimento** (célula, ministérios, cursos concluídos, reuniões e eventos). Telefone, e-mail e endereço nunca aparecem. Em Personalizar dá para ocultar o envolvimento.
 - **Chat** ao lado do sino: conversas 1 a 1 com qualquer usuário ativo, busca por nome, contador de não lidas, atualização a cada 4 s com o chat aberto (20 s fechado), limite de 20 mensagens por minuto. Tabela `ChatMsgs`; rotas `searchPeople`, `profileView`, `sendChat`, `getChat`, `chatRead`, `listChats`.
+
+## Escalas dos ministérios
+- Menu **Escalas**. Supervisores (e pastores/admin) têm **Visão geral** (indicadores: pessoas escaladas por ministério, confirmadas, pendentes, re-escalações, quem confirmou e foi), **Lançar escala** (ministério + pessoas + data/hora/função; **lote** repetindo nos dias da semana escolhidos pelos próximos 1–12 meses, sem duplicar), **Agenda** (remarcar, remover, marcar “foi/faltou”) e **Pedidos** (aprovar/recusar quem quer entrar na escala). Membros só visualizam a agenda.
+- A pessoa escalada recebe aviso no sino **7, 3 e 1 dia antes** e popup da Zoe com “Vou estar lá!”; pode **confirmar**, **pedir re-escalação** (com motivo, que o supervisor vê) ou **pedir troca** (a outra pessoa aceita e a agenda mostra “⇄ trocou com”). A Zoe elogia quem confirma ou pede para servir, com versículos.
+- Qualquer membro pode ver a agenda e **pedir para participar** (aba Participar).
+- Tabelas `Escalas` e `EscalaPedidos`; rotas `listScales`, `saveScale`, `rescheduleScale`, `deleteScale`, `respondScale`, `requestSwap`, `answerSwap`, `markScale`, `requestJoin`, `decideJoin`. Teste: `tests/e2e_escalas.py`.
+
+## Outras mudanças recentes
+- Sino: limpar tudo / descartar uma a uma; tipos de notificação definidos pelo adm em Parâmetros.
+- Certificado: assinatura cursiva (8 fontes) e cor; assinatura cadastrada em **Meu perfil › Editar perfil › Assinatura** (professores) e na aba Aulas.
+- **Célula › Perfil da célula**: clique no mapa para preencher latitude/longitude.

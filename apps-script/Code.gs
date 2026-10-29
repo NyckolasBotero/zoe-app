@@ -54,6 +54,8 @@ const SHEETS = {
   Interesses: ['InteresseID', 'MinisterioID', 'MembroID', 'Data', 'Status', 'DecididoPor', 'DataDecisao'],
   Membresias: ['MembresiaID', 'MembroID', 'CelulaID', 'Frequencias', 'Status', 'DecididoPor', 'Data', 'DataDecisao'],
   AprovLog: ['Tipo', 'RefID', 'Acao', 'Por', 'Data', 'Motivo'],
+  Escalas: ['EscalaID', 'MinisterioID', 'MembroID', 'Data', 'Hora', 'Funcao', 'Status', 'Motivo', 'TrocaMembroID', 'TrocaEscalaID', 'TrocaMsg', 'OrigemMembroID', 'SerieID', 'CriadoPor', 'ConfirmadoEm', 'Reesc', 'Presente', 'Avisos'],
+  EscalaPedidos: ['PedidoID', 'MinisterioID', 'MembroID', 'Data', 'Msg', 'Status', 'DecididoPor', 'DataDecisao', 'CriadoEm'],
   Notificacoes: ['NotifID', 'MembroID', 'Tipo', 'Titulo', 'Texto', 'Ref', 'Data', 'Lida'],
   Uso: ['Mes', 'MembroID', 'Tela', 'Segundos', 'Visitas'],
   Livros: ['LivroID', 'Titulo', 'Autor', 'Descricao', 'Capa', 'ArquivoID', 'Tamanho', 'Status', 'CriadoEm'],
@@ -572,8 +574,9 @@ function resumoPessoa_(mid, celulaId) {
 /* ===== notificações (antes "alertas"): resultado das decisões vai para quem pediu e para o líder ===== */
 function notify_(mid, tipo, titulo, texto, ref) { if (!mid) return; appendRow_(table_('Notificacoes'), { NotifID: id_('NT'), MembroID: mid, Tipo: tipo, Titulo: clip_(titulo, 160), Texto: clip_(texto, 400), Ref: clip_(ref, 40), Data: now_(), Lida: '0' }); }
 function listNotifications_(d, u) {
+  try { escAvisos_(u); } catch (e) { }
   const l = table_('Notificacoes').rows.filter(function (n) { return n.MembroID === u.membroId; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).slice(0, 60);
-  return { itens: l.map(function (n) { return { id: n.NotifID, tipo: n.Tipo, titulo: n.Titulo, texto: n.Texto, data: n.Data, lida: n.Lida === '1' }; }), naoLidas: l.filter(function (n) { return n.Lida !== '1'; }).length };
+  return { itens: l.map(function (n) { return { id: n.NotifID, tipo: n.Tipo, titulo: n.Titulo, texto: n.Texto, ref: n.Ref || '', data: n.Data, lida: n.Lida === '1' }; }), naoLidas: l.filter(function (n) { return n.Lida !== '1'; }).length };
 }
 function readNotifications_(d, u) {
   return withLock_(function () {
@@ -1834,6 +1837,174 @@ function saveNote_(d, u) {
   });
 }
 
+
+/* ===== Escalas de ministérios ===== */
+function escPad_(n) { return (n < 10 ? '0' : '') + n; }
+function escFmt_(d) { return d.getFullYear() + '-' + escPad_(d.getMonth() + 1) + '-' + escPad_(d.getDate()); }
+function escDatas_(ini, dias, meses) {
+  const p = ini.split('-'), d0 = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]), 12), fim = new Date(d0.getTime()); fim.setMonth(fim.getMonth() + meses);
+  const out = []; for (let x = new Date(d0.getTime()); x < fim && out.length < 120; x.setDate(x.getDate() + 1)) { if (dias.indexOf(x.getDay()) >= 0) out.push(escFmt_(x)); } return out;
+}
+function escDiasAte_(data) { const a = today_().split('-'), b = data.split('-'); return Math.round((new Date(Number(b[0]), Number(b[1]) - 1, Number(b[2]), 12) - new Date(Number(a[0]), Number(a[1]) - 1, Number(a[2]), 12)) / 86400000); }
+function escBr_(data) { const p = data.split('-'); return p[2] + '/' + p[1]; }
+function escGestor_(u) { return podeCurar_(u); }
+function escGestoresDe_(membroId, extra) {
+  const ids = {}; (extra || []).forEach(function (x) { if (x) ids[x] = 1; });
+  table_('Usuarios').rows.forEach(function (r) { if (r.MembroID && (r.Papel === 'admin' || r.Papel === 'pastor') && r.Status !== 'Inativo') ids[r.MembroID] = 1; });
+  const m = table_('Membros').rows.filter(function (x) { return x.MembroID === membroId; })[0];
+  if (m && m.CelulaID) { const c = table_('Celulas').rows.filter(function (x) { return x.CelulaID === m.CelulaID; })[0]; if (c) { if (c.SupervisorID) ids[c.SupervisorID] = 1; } }
+  delete ids[membroId]; return Object.keys(ids);
+}
+function escRow_(id) { const t = table_('Escalas'), r = t.rows.filter(function (x) { return x.EscalaID === id; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Escala não encontrada.'); return { t: t, r: r }; }
+function escAvisos_(u) {
+  if (!u || !u.membroId) return;
+  const t = table_('Escalas'), mi = {}; table_('Ministerios').rows.forEach(function (m) { mi[m.MinisterioID] = m.Nome; });
+  t.rows.forEach(function (r) {
+    if (r.MembroID !== u.membroId || r.Status === 'cancelada' || r.Status === 'reescalar' || !r.Data) return;
+    const dd = escDiasAte_(r.Data); if (dd < 0 || dd > 7) return;
+    const marca = dd <= 1 ? '1' : dd <= 3 ? '3' : '7', ja = String(r.Avisos || '').split(',');
+    if (ja.indexOf(marca) >= 0) return;
+    const quando = marca === '1' ? 'amanhã' : marca === '3' ? 'em 3 dias' : 'em 1 semana';
+    notify_(u.membroId, 'escala_lembrete', 'Você está escalado ' + (dd <= 0 ? 'hoje' : quando) + ': ' + (mi[r.MinisterioID] || 'Ministério') + ' (' + escBr_(r.Data) + (r.Hora ? ' às ' + r.Hora : '') + ')', r.Status === 'confirmada' ? 'Sua presença já está confirmada. Deus abençoe!' : 'Confirme sua presença ou peça uma re-escalação.', r.EscalaID);
+    writeRow_(t, r._row, { Avisos: ja.filter(Boolean).concat([marca]).join(',') });
+  });
+}
+function escOut_(r, nm, mi, u, gestor) {
+  const dono = r.MembroID === u.membroId, vis = gestor || dono;
+  return { id: r.EscalaID, ministerioId: r.MinisterioID, ministerio: mi[r.MinisterioID] || '', membroId: r.MembroID, nome: nm[r.MembroID] || '', data: r.Data, hora: r.Hora || '', funcao: r.Funcao || '', status: r.Status || 'pendente', motivo: vis ? (r.Motivo || '') : '', meu: dono,
+    troca: r.Status === 'troca' ? { membroId: r.TrocaMembroID, nome: nm[r.TrocaMembroID] || '', escalaId: r.TrocaEscalaID || '', msg: vis ? (r.TrocaMsg || '') : '' } : null,
+    origem: r.OrigemMembroID ? (nm[r.OrigemMembroID] || '') : '', serie: r.SerieID || '', reesc: Number(r.Reesc || 0), presente: r.Presente === '' || r.Presente === undefined ? null : r.Presente === '1' };
+}
+function listScales_(d, u) {
+  escAvisos_(u);
+  const gestor = escGestor_(u), nm = nomes_(), mi = {}; table_('Ministerios').rows.forEach(function (m) { mi[m.MinisterioID] = m.Nome; });
+  const hoje = today_(), ini = escFmt_(new Date(new Date().getTime() - 60 * 86400000));
+  const rows = table_('Escalas').rows.filter(function (r) { return r.Status !== 'cancelada' && r.Data >= ini && (!d.ministerioId || r.MinisterioID === d.ministerioId); }).sort(function (a, b) { return a.Data === b.Data ? (a.Hora < b.Hora ? -1 : 1) : (a.Data < b.Data ? -1 : 1); }).slice(0, 700);
+  const out = { gestor: gestor, hoje: hoje, ministerios: listMin_().map(function (m) { return { id: m.id, nome: m.nome }; }), itens: rows.map(function (r) { return escOut_(r, nm, mi, u, gestor); }) };
+  const pd = table_('EscalaPedidos').rows.filter(function (p) { return gestor ? p.Status === 'pendente' : p.MembroID === u.membroId; }).slice(-60);
+  out.pedidos = pd.map(function (p) { return { id: p.PedidoID, ministerioId: p.MinisterioID, ministerio: mi[p.MinisterioID] || '', membroId: p.MembroID, nome: nm[p.MembroID] || '', data: p.Data, msg: p.Msg, status: p.Status, criadoEm: p.CriadoEm }; });
+  if (gestor) {
+    const all = table_('Escalas').rows.filter(function (r) { return r.Status !== 'cancelada'; }), fut = all.filter(function (r) { return r.Data >= hoje; }), pass = all.filter(function (r) { return r.Data < hoje; });
+    const por = {}; fut.forEach(function (r) { const k = r.MinisterioID; por[k] = por[k] || { ministerio: mi[k] || '?', pessoas: {}, escalas: 0 }; por[k].pessoas[r.MembroID] = 1; por[k].escalas++; });
+    out.ind = {
+      porMinisterio: Object.keys(por).map(function (k) { return { ministerio: por[k].ministerio, pessoas: Object.keys(por[k].pessoas).length, escalas: por[k].escalas }; }).sort(function (a, b) { return b.escalas - a.escalas; }),
+      proximas: fut.length, confirmadas: fut.filter(function (r) { return r.Status === 'confirmada'; }).length, pendentes: fut.filter(function (r) { return r.Status === 'pendente'; }).length,
+      reescalar: fut.filter(function (r) { return r.Status === 'reescalar'; }).length, trocas: fut.filter(function (r) { return r.Status === 'troca'; }).length,
+      reescTotal: all.reduce(function (a, r) { return a + Number(r.Reesc || 0); }, 0),
+      confirmouFoi: pass.filter(function (r) { return r.Presente === '1' && r.ConfirmadoEm; }).length, foram: pass.filter(function (r) { return r.Presente === '1'; }).length, faltaram: pass.filter(function (r) { return r.Presente === '0'; }).length, passadas: pass.length
+    };
+  }
+  return out;
+}
+function saveScale_(d, u) {
+  if (!escGestor_(u)) throw new ApiError('FORBIDDEN', 'Só supervisores lançam escalas.');
+  return withLock_(function () {
+    const min = table_('Ministerios').rows.filter(function (m) { return m.MinisterioID === d.ministerioId && m.Ativo !== '0'; })[0]; if (!min) throw new ApiError('VALIDATION', 'Escolha o ministério.');
+    const ids = (Array.isArray(d.membros) ? d.membros : [d.membroId]).map(function (x) { return clip_(x, 30); }).filter(Boolean);
+    if (!ids.length) throw new ApiError('VALIDATION', 'Escolha ao menos uma pessoa.');
+    const mem = {}; table_('Membros').rows.forEach(function (m) { mem[m.MembroID] = m; }); ids.forEach(function (x) { if (!mem[x]) throw new ApiError('VALIDATION', 'Pessoa não encontrada.'); });
+    const data = clip_(d.data, 10); if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) throw new ApiError('VALIDATION', 'Informe a data.');
+    const hora = clip_(d.hora, 5); if (hora && !/^\d{2}:\d{2}$/.test(hora)) throw new ApiError('VALIDATION', 'Hora inválida.');
+    let datas = [data], serie = '';
+    if (d.repetir && Array.isArray(d.repetir.dias) && d.repetir.dias.length) {
+      const dias = d.repetir.dias.map(Number).filter(function (x) { return x >= 0 && x <= 6; }), meses = Math.max(1, Math.min(12, Math.floor(Number(d.repetir.meses) || 1)));
+      datas = escDatas_(data, dias, meses); if (!datas.length) throw new ApiError('VALIDATION', 'Nenhuma data nesse período.'); serie = id_('SE');
+    }
+    const t = table_('Escalas'); let n = 0;
+    ids.forEach(function (mid) {
+      let primeira = '';
+      datas.forEach(function (dt) {
+        if (t.rows.some(function (r) { return r.MembroID === mid && r.MinisterioID === min.MinisterioID && r.Data === dt && r.Hora === hora && r.Status !== 'cancelada'; })) return;
+        appendRow_(t, { EscalaID: id_('ES'), MinisterioID: min.MinisterioID, MembroID: mid, Data: dt, Hora: hora, Funcao: clip_(d.funcao, 40), Status: 'pendente', SerieID: serie, CriadoPor: u.membroId, Reesc: 0, Avisos: '' }); n++; if (!primeira) primeira = dt;
+      });
+      if (primeira) notify_(mid, 'escala', 'Você foi escalado: ' + min.Nome, datas.length > 1 ? 'Primeira data ' + escBr_(primeira) + ' e mais ' + (datas.length - 1) + ' escala(s). Abra Escalas para confirmar.' : 'Dia ' + escBr_(primeira) + (hora ? ' às ' + hora : '') + '. Abra Escalas para confirmar.', 'escala');
+    });
+    audit_(u.email, 'saveScale', min.Nome + ' x' + n); return { criadas: n };
+  });
+}
+function rescheduleScale_(d, u) {
+  if (!escGestor_(u)) throw new ApiError('FORBIDDEN', 'Só supervisores remarcam escalas.');
+  return withLock_(function () {
+    const x = escRow_(clip_(d.id, 30)), data = clip_(d.data, 10) || x.r.Data, hora = d.hora === undefined ? x.r.Hora : clip_(d.hora, 5);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) throw new ApiError('VALIDATION', 'Data inválida.');
+    const p = { Data: data, Hora: hora, Status: 'pendente', Motivo: '', TrocaMembroID: '', TrocaEscalaID: '', TrocaMsg: '', ConfirmadoEm: '', Avisos: '', Presente: '' };
+    if (d.membroId) { if (!table_('Membros').rows.some(function (m) { return m.MembroID === d.membroId; })) throw new ApiError('VALIDATION', 'Pessoa não encontrada.'); p.MembroID = d.membroId; p.OrigemMembroID = x.r.MembroID; }
+    writeRow_(x.t, x.r._row, p);
+    notify_(p.MembroID || x.r.MembroID, 'escala', 'Sua escala foi remarcada', 'Nova data: ' + escBr_(data) + (hora ? ' às ' + hora : '') + '. Abra Escalas para confirmar.', 'escala'); return { ok: true };
+  });
+}
+function deleteScale_(d, u) {
+  if (!escGestor_(u)) throw new ApiError('FORBIDDEN', 'Só supervisores removem escalas.');
+  return withLock_(function () {
+    const t = table_('Escalas'); const alvo = d.serie ? t.rows.filter(function (r) { return r.SerieID === d.serie && r.Data >= today_(); }) : [escRow_(clip_(d.id, 30)).r];
+    alvo.forEach(function (r) { writeRow_(t, r._row, { Status: 'cancelada' }); }); return { removidas: alvo.length };
+  });
+}
+function respondScale_(d, u) {
+  return withLock_(function () {
+    const x = escRow_(clip_(d.id, 30)); if (x.r.MembroID !== u.membroId) throw new ApiError('FORBIDDEN', 'Esta escala não é sua.');
+    const nome = nomes_()[u.membroId] || '', mi = {}; table_('Ministerios').rows.forEach(function (m) { mi[m.MinisterioID] = m.Nome; });
+    const min = mi[x.r.MinisterioID] || 'ministério', dest = escGestoresDe_(u.membroId, [x.r.CriadoPor]);
+    if (d.acao === 'confirmar') {
+      writeRow_(x.t, x.r._row, { Status: 'confirmada', Motivo: '', ConfirmadoEm: now_(), TrocaMembroID: '', TrocaEscalaID: '' });
+      dest.forEach(function (m) { notify_(m, 'escala', nome + ' confirmou presença', min + ' · ' + escBr_(x.r.Data), 'escala'); }); return { ok: true, status: 'confirmada' };
+    }
+    if (d.acao === 'reescalar') {
+      const mo = clip_(d.motivo, 300); if (mo.length < 3) throw new ApiError('VALIDATION', 'Explique o motivo.');
+      writeRow_(x.t, x.r._row, { Status: 'reescalar', Motivo: mo, ConfirmadoEm: '', Reesc: Number(x.r.Reesc || 0) + 1 });
+      dest.forEach(function (m) { notify_(m, 'escala', nome + ' pediu re-escalação', min + ' · ' + escBr_(x.r.Data) + ' — ' + mo, 'escala'); }); return { ok: true, status: 'reescalar' };
+    }
+    throw new ApiError('VALIDATION', 'Ação inválida.');
+  });
+}
+function requestSwap_(d, u) {
+  return withLock_(function () {
+    const x = escRow_(clip_(d.id, 30)); if (x.r.MembroID !== u.membroId) throw new ApiError('FORBIDDEN', 'Esta escala não é sua.');
+    const com = clip_(d.comMembroId, 30); if (!com || com === u.membroId || !table_('Membros').rows.some(function (m) { return m.MembroID === com; })) throw new ApiError('VALIDATION', 'Escolha a pessoa para a troca.');
+    let te = clip_(d.comEscalaId, 30); if (te) { const o = escRow_(te); if (o.r.MembroID !== com) throw new ApiError('VALIDATION', 'Essa escala não é dessa pessoa.'); }
+    writeRow_(x.t, x.r._row, { Status: 'troca', TrocaMembroID: com, TrocaEscalaID: te, TrocaMsg: clip_(d.msg, 200), ConfirmadoEm: '' });
+    const nome = nomes_()[u.membroId] || '';
+    notify_(com, 'escala_troca', nome + ' pediu troca de escala com você', escBr_(x.r.Data) + (te ? ' ⇄ ' + escBr_(escRow_(te).r.Data) : '') + '. Abra Escalas para aceitar ou recusar.', x.r.EscalaID);
+    escGestoresDe_(u.membroId, [x.r.CriadoPor]).forEach(function (m) { notify_(m, 'escala', nome + ' pediu troca de escala', escBr_(x.r.Data), 'escala'); }); return { ok: true };
+  });
+}
+function answerSwap_(d, u) {
+  return withLock_(function () {
+    const x = escRow_(clip_(d.id, 30)); if (x.r.Status !== 'troca' || x.r.TrocaMembroID !== u.membroId) throw new ApiError('FORBIDDEN', 'Não há troca pendente para você.');
+    const orig = x.r.MembroID;
+    if (!d.aceita) { writeRow_(x.t, x.r._row, { Status: 'pendente', TrocaMembroID: '', TrocaEscalaID: '', TrocaMsg: '' }); notify_(orig, 'escala', 'Troca recusada', (nomes_()[u.membroId] || '') + ' não pôde trocar a escala de ' + escBr_(x.r.Data) + '.', 'escala'); return { ok: true, aceita: false }; }
+    writeRow_(x.t, x.r._row, { MembroID: u.membroId, OrigemMembroID: orig, Status: 'pendente', TrocaMembroID: '', TrocaEscalaID: '', TrocaMsg: '', ConfirmadoEm: '', Avisos: '', Motivo: '' });
+    if (x.r.TrocaEscalaID) { const o = escRow_(x.r.TrocaEscalaID); writeRow_(o.t, o.r._row, { MembroID: orig, OrigemMembroID: u.membroId, Status: 'pendente', ConfirmadoEm: '', Avisos: '', Motivo: '' }); }
+    notify_(orig, 'escala', 'Troca aceita', (nomes_()[u.membroId] || '') + ' aceitou a troca. Confira a nova agenda em Escalas.', 'escala');
+    escGestoresDe_(u.membroId, [x.r.CriadoPor]).forEach(function (m) { notify_(m, 'escala', 'Troca de escala realizada', (nomes_()[orig] || '') + ' ⇄ ' + (nomes_()[u.membroId] || '') + ' · ' + escBr_(x.r.Data), 'escala'); });
+    return { ok: true, aceita: true };
+  });
+}
+function markScale_(d, u) {
+  if (!escGestor_(u)) throw new ApiError('FORBIDDEN', 'Só supervisores marcam presença.');
+  return withLock_(function () { const x = escRow_(clip_(d.id, 30)); writeRow_(x.t, x.r._row, { Presente: d.presente === null || d.presente === undefined ? '' : (d.presente ? '1' : '0') }); return { ok: true }; });
+}
+function requestJoin_(d, u) {
+  return withLock_(function () {
+    const min = table_('Ministerios').rows.filter(function (m) { return m.MinisterioID === d.ministerioId && m.Ativo !== '0'; })[0]; if (!min) throw new ApiError('VALIDATION', 'Escolha o ministério.');
+    const t = table_('EscalaPedidos'); if (t.rows.some(function (p) { return p.MembroID === u.membroId && p.MinisterioID === min.MinisterioID && p.Status === 'pendente'; })) throw new ApiError('VALIDATION', 'Você já tem um pedido pendente para este ministério.');
+    const data = clip_(d.data, 10); if (data && !/^\d{4}-\d{2}-\d{2}$/.test(data)) throw new ApiError('VALIDATION', 'Data inválida.');
+    appendRow_(t, { PedidoID: id_('EP'), MinisterioID: min.MinisterioID, MembroID: u.membroId, Data: data, Msg: clip_(d.msg, 300), Status: 'pendente', CriadoEm: now_() });
+    escGestoresDe_(u.membroId, []).forEach(function (m) { notify_(m, 'escala', (nomes_()[u.membroId] || '') + ' quer entrar na escala', min.Nome + (data ? ' · ' + escBr_(data) : ''), 'escala'); }); return { ok: true };
+  });
+}
+function decideJoin_(d, u) {
+  if (!escGestor_(u)) throw new ApiError('FORBIDDEN', 'Só supervisores decidem pedidos.');
+  return withLock_(function () {
+    const t = table_('EscalaPedidos'), p = t.rows.filter(function (x) { return x.PedidoID === d.id && x.Status === 'pendente'; })[0]; if (!p) throw new ApiError('NOT_FOUND', 'Pedido não encontrado.');
+    const aprova = !!d.aprovar, mi = {}; table_('Ministerios').rows.forEach(function (m) { mi[m.MinisterioID] = m.Nome; });
+    writeRow_(t, p._row, { Status: aprova ? 'aprovado' : 'recusado', DecididoPor: u.membroId, DataDecisao: now_() });
+    const data = clip_(d.data, 10) || p.Data;
+    if (aprova && data) { appendRow_(table_('Escalas'), { EscalaID: id_('ES'), MinisterioID: p.MinisterioID, MembroID: p.MembroID, Data: data, Hora: clip_(d.hora, 5), Status: 'pendente', CriadoPor: u.membroId, Reesc: 0, Avisos: '' }); }
+    notify_(p.MembroID, 'escala', aprova ? 'Pedido de escala aprovado! 🎉' : 'Pedido de escala não aprovado', (mi[p.MinisterioID] || '') + (aprova && data ? ' · ' + escBr_(data) + '. Confirme em Escalas.' : aprova ? '. O supervisor vai te escalar em breve.' : '. Converse com seu supervisor.'), 'escala'); return { ok: true };
+  });
+}
+
 const ROUTES = {
   ping: { fn: function () { return { servico: 'Zoe API', status: 'online' }; } },
   login: { fn: login_ },
@@ -1847,6 +2018,7 @@ const ROUTES = {
   getSignature: { auth: 'any', fn: getSignature_ }, saveSignature: { auth: 'any', write: 1, fn: saveSignature_ }, rateAula: { auth: 'any', write: 1, fn: rateAula_ }, aulaFeedback: { auth: 'any', fn: aulaFeedback_ },
   listLessons: { auth: 'any', fn: listLessons_ }, listDynamics: { auth: 'any', fn: listDyn_ }, addDynamic: { auth: 'any', write: 1, fn: addDyn_ }, listVideos: { auth: 'any', fn: listVideos_ }, listProducts: { auth: 'any', fn: listProducts_ }, listFamilia: { auth: 'any', fn: listFamilia_ }, profileView: { auth: 'any', fn: profileView_ }, listFeed: { auth: 'any', fn: listFeed_ }, likePost: { auth: 'any', write: 1, fn: likePost_ }, commentPost: { auth: 'any', write: 1, fn: commentPost_ }, listComments: { auth: 'any', fn: listComments_ }, deletePost: { auth: 'any', write: 1, fn: deletePost_ }, deleteComment: { auth: 'any', write: 1, fn: deleteComment_ },
   registerDecision: { auth: 'any', write: 1, fn: registerDecision_ }, saveVisitor: { auth: 'any', write: 1, fn: saveVisitor_ }, listVisitors: { auth: 'any', fn: listVisitors_ }, contactVisitor: { auth: 'any', write: 1, fn: contactVisitor_ },
+  listScales: { auth: 'any', fn: listScales_ }, saveScale: { auth: 'any', write: 1, fn: saveScale_ }, rescheduleScale: { auth: 'any', write: 1, fn: rescheduleScale_ }, deleteScale: { auth: 'any', write: 1, fn: deleteScale_ }, respondScale: { auth: 'any', write: 1, fn: respondScale_ }, requestSwap: { auth: 'any', write: 1, fn: requestSwap_ }, answerSwap: { auth: 'any', write: 1, fn: answerSwap_ }, markScale: { auth: 'any', write: 1, fn: markScale_ }, requestJoin: { auth: 'any', write: 1, fn: requestJoin_ }, decideJoin: { auth: 'any', write: 1, fn: decideJoin_ },
   listMarks: { auth: 'any', fn: listMarks_ }, saveMark: { auth: 'any', write: 1, fn: saveMark_ }, saveNote: { auth: 'any', write: 1, fn: saveNote_ },
   listInsigniaDefs: { auth: 'any', fn: listInsigniaDefs_ }, saveInsigniaDef: { auth: 'any', write: 1, fn: saveInsigniaDef_ }, grantBadge: { auth: 'any', write: 1, fn: grantBadge_ }, logServico: { auth: 'any', write: 1, fn: logServico_ }, listServicos: { auth: 'any', fn: listServicos_ }, searchPeople: { auth: 'any', fn: findPeople_ }, sendChat: { auth: 'any', write: 1, fn: sendChat_ }, getChat: { auth: 'any', fn: getChat_ }, chatRead: { auth: 'any', write: 1, fn: chatRead_ }, listChats: { auth: 'any', fn: listChats_ }, getCertLayout: { auth: 'any', fn: getCertLayout_ }, saveCertLayout: { auth: 'any', write: 1, fn: saveCertLayout_ }, previewCert: { auth: 'any', fn: previewCert_ }, revokeCert: { auth: 'any', write: 1, fn: revokeCert_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
   searchCells: { auth: 'any', fn: searchCells_ }, addPrayer: { auth: 'any', write: 1, fn: addPrayer_ }, listPrayers: { auth: 'any', fn: listPrayers_ },
