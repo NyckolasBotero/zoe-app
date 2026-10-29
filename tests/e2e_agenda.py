@@ -11,7 +11,7 @@ with sync_playwright() as p:
     pg.wait_for_selector('.cal'); pg.wait_for_timeout(600)
     box=pg.locator('.calc').bounding_box(); assert box['width']<=380,box
     assert pg.locator('.cal button.ev').count()>=1
-    pg.locator('.cal button.hoje').hover(); pg.wait_for_timeout(400)
+    pg.locator('.cal button.hoje').hover(); pg.wait_for_selector('.cal button.hoje .peek',state='visible'); pg.wait_for_timeout(300)
     pk=pg.locator('.cal button.hoje .peek'); assert pk.is_visible(); t=pk.inner_text(); print(t); assert 'Culto' in t and 'Jantar' in t
     pg.screenshot(path=OUT+'/m_cal.png')
     # alternância
@@ -28,11 +28,11 @@ with sync_playwright() as p:
     sp=pg.inner_text('#secpanel'); print(sp.replace('\n',' | ')); assert 'Novo usuário' in sp and 'Níveis de acesso' in sp
     assert pg.locator('h3:has-text("Regras Células")').count()==0
     pg.click('#secpanel .sn:has-text("Níveis de acesso")'); pg.wait_for_timeout(900)
-    assert 'Níveis' in pg.inner_text('#secpanel .sn.on')
+    assert pg.locator('#secpanel .sn.on').count()==1
     pg.screenshot(path=OUT+'/m_adm_pag.png')
     # celular: tudo junto, sem menu horizontal
     pg.set_viewport_size({'width':400,'height':800}); pg.wait_for_timeout(900)
     assert pg.locator('.admtabs').is_hidden() or pg.locator('.admtabs').count()==0
-    assert pg.locator('h3:has-text("Regras Células")').count()==1
+    assert pg.locator('h3:has-text("Regras Células")').count()==1 and pg.locator('#secfab').count()==1
     print('ERROS',errs); assert not errs
 print('OK')

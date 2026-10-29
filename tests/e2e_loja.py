@@ -10,7 +10,7 @@ with sync_playwright() as p:
     pg.click('.nv:has-text("Loja Zoe")'); pg.wait_for_selector('#view h2:has-text("Loja Zoe")'); assert 'Em breve' in pg.inner_text('#view')
     assert 'contato da loja ainda não' not in pg.inner_text('#view') or True
     # admin
-    pg.click('.nv:has-text("Administração")'); pg.wait_for_selector('#pn'); pg.wait_for_timeout(1800)
+    pg.click('.nv:has-text("Administração")'); pg.wait_for_selector('.admtabs'); pg.evaluate("admGrupo('loja')"); pg.wait_for_selector('#pn'); pg.wait_for_timeout(1800)
     def novo(nome,cat,preco,op,desc,foto=False,disp=True):
         pg.fill('#pn',nome); pg.select_option('#pc',cat); pg.fill('#pp',preco); pg.fill('#po',op); pg.fill('#pd',desc)
         if foto: pg.set_input_files('input[onchange="fotoProd(this)"]',files=[{'name':'a.png','mimeType':'image/png','buffer':PNG}]); pg.wait_for_selector('#pfp:not([hidden])')
@@ -35,7 +35,7 @@ with sync_playwright() as p:
     m=urllib.parse.unquote(u.split('text=')[1]); print(m)
     for t in ['Camiseta Zoe','Algodão','Opção: M','Quantidade: 3','Valor unitário: R$ 59,90','Total: R$ 179,70']: assert t in m,t
     # esgotado
-    pg.click('.nv:has-text("Administração")'); pg.wait_for_selector('#pn'); pg.wait_for_timeout(1800); pg.click('.opt:has-text("Boné Zoe") button:has-text("Marcar esgotado")'); pg.wait_for_selector('.opt:has-text("esgotado")')
+    pg.click('.nv:has-text("Administração")'); pg.wait_for_selector('.admtabs'); pg.evaluate("admGrupo('loja')"); pg.wait_for_selector('#pn'); pg.wait_for_timeout(1800); pg.click('.opt:has-text("Boné Zoe") button:has-text("Marcar esgotado")'); pg.wait_for_selector('.opt:has-text("esgotado")')
     pg.click('.nv:has-text("Loja Zoe")'); pg.wait_for_selector('.pc'); assert pg.locator('.pc.off button[disabled]').count()==1
     # número padrão: sem contato da loja usa o da igreja
     print('E2E LOJA OK' if not errs else 'ERROS: %s'%errs); b.close()

@@ -13,7 +13,7 @@ def entra(b,email,senha,nova=None):
 with sync_playwright() as p:
     b=p.chromium.launch(); adm=entra(b,'admin@zoe.com','SenhaForte123')
     # regra configurável pelo painel
-    adm.evaluate("go('admin')"); adm.wait_for_selector('#afm'); adm.wait_for_timeout(900); adm.fill('#afm','2'); adm.click('text=Salvar regra'); adm.wait_for_function('S.freqMembro===2')
+    adm.evaluate("go('admin')"); adm.wait_for_selector('.admtabs'); adm.evaluate("admGrupo('def')"); adm.wait_for_selector('#afm'); adm.wait_for_timeout(900); adm.fill('#afm','2'); adm.click('text=Salvar regra'); adm.wait_for_function('S.freqMembro===2')
     adm.evaluate("async()=>{for(const [n,e] of [['Sup Um','sup@zoe.com'],['Lider Um','l1@zoe.com'],['Ana Souza','ana@zoe.com']])await api('createUser',{nome:n,email:e,senha:'Temp12345',papel:'membro'})}")
     ids=adm.evaluate("async()=>Object.fromEntries((await api('listUsers')).map(u=>[u.email,u.membroId]))")
     adm.evaluate("async(i)=>{await api('createCell',{nome:'Semeadores',liderId:i['l1@zoe.com'],supervisorId:i['sup@zoe.com'],dia:'Quinta'})}",ids)
@@ -36,8 +36,8 @@ with sync_playwright() as p:
     adm=entra(b,'admin@zoe.com','SenhaForte123'); adm.evaluate("go('aprovacoes')"); adm.wait_for_selector('text=quer participar do ministério'); adm.click("button:has-text('Aprovar') >> nth=0"); adm.wait_for_selector('.ubar')
     ana=entra(b,'ana@zoe.com','NovaSenha123'); r=ana.evaluate("roadmap().map(x=>x[2]).join(' | ')"); assert 'Aprovado para participar do ministério' in r, r
     # uso da plataforma e edição de senha/acesso
-    ana.evaluate("trkFlush()"); adm.evaluate("go('admin')"); adm.wait_for_selector('text=Uso da plataforma'); adm.evaluate("carregaUso(TODAY.slice(0,7))"); adm.wait_for_selector("td:has-text('Ana Souza')")
+    ana.evaluate("trkFlush()"); adm.evaluate("go('admin')"); adm.wait_for_selector('.admtabs'); adm.evaluate("admGrupo('ind')"); adm.wait_for_selector('text=Uso da plataforma'); adm.evaluate("carregaUso(TODAY.slice(0,7))"); adm.wait_for_selector("td:has-text('Ana Souza')")
     adm.locator('#view').get_by_text('Uso da plataforma').scroll_into_view_if_needed(); adm.locator('.card:has(h3:has-text("Uso da plataforma"))').screenshot(path=OUT+'/s_uso.png')
-    adm.click("tr:has-text('ana@zoe.com') >> text=Editar acesso e senha"); adm.fill('#eu_w','OutraSenha777'); adm.click(".modal >> text=Salvar"); adm.wait_for_selector('text=Acesso e senha atualizados')
+    adm.evaluate("admGrupo('acc')"); adm.click("tr:has-text('ana@zoe.com') >> text=Editar acesso e senha"); adm.fill('#eu_w','OutraSenha777'); adm.click(".modal >> text=Salvar"); adm.wait_for_selector('text=Acesso e senha atualizados')
     entra(b,'ana@zoe.com','OutraSenha777','TerceiraSenha1')
     print('ERROS:',errs); print('E2E APROV OK' if not errs else 'FALHOU')
