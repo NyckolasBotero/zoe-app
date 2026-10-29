@@ -292,7 +292,8 @@ test('aprovações: central única, membresia por frequência configurável, des
   assert.equal(e.call('undoApproval', { tipo: 'membresia', id: m.id }, L1).error.code, 'FORBIDDEN');
   assert.equal(e.call('undoApproval', { tipo: 'membresia', id: m.id }, S).data.status, 'pendente');
   assert.equal(e.run(`table_('Membros').rows.filter(function(x){return x.MembroID==='${v}'})[0].EhMembro`), '0');
-  assert.equal(e.call('decideApproval', { tipo: 'membresia', id: m.id, decisao: 'negado' }, S).data.status, 'negado');
+  assert.equal(e.call('decideApproval', { tipo: 'membresia', id: m.id, decisao: 'negado' }, S).error.code, 'VALIDATION'); // recusar exige motivo
+  assert.equal(e.call('decideApproval', { tipo: 'membresia', id: m.id, decisao: 'negado', motivo: 'Cadastro incompleto' }, S).data.status, 'negado');
   it = e.call('listApprovals', {}, S).data.itens.find(x => x.id === m.id); assert.deepEqual(it.hist.map(h => h.acao), ['autorizado', 'revertido', 'negado']);
   // transferência autorizada e desfeita volta a pessoa para a célula de origem
   const mb = e.call('cellMembers', {}, L1).data.find(x => x.id === ana) || null; assert.equal(mb, null);
@@ -426,4 +427,31 @@ test('supervisor: precisa multiplicar X células, com exceção aberta por quem 
   e.call('createCell', { nome: 'F1', liderId: l2, dia: 'Sexta', maeId: mae }, adm); e.call('createCell', { nome: 'F2', liderId: mk('l3@zoe.com', 'membro'), dia: 'Sábado', maeId: mae }, adm);
   assert.ok(e.call('createCell', { nome: 'C', liderId: mk('l4@zoe.com', 'membro'), supervisorId: l1, dia: 'Domingo' }, adm).ok, 'multiplicou 2 células');
   void tok;
+});
+
+test('aprovações: motivo vai para o líder como notificação e o aprovador recebe o resumo da pessoa', () => {
+  const { e, adm, tok, mk } = boot();
+  const sup = mk('sup@zoe.com', 'membro'), l1 = mk('lider1@zoe.com', 'membro'), l2 = mk('lider2@zoe.com', 'membro');
+  const c1 = e.call('createCell', { nome: 'Semeadores', liderId: l1, supervisorId: sup, dia: 'Quinta' }, adm).data.id;
+  e.call('createCell', { nome: 'Raízes', liderId: l2, supervisorId: sup, dia: 'Segunda' }, adm);
+  const L1 = tok('lider1@zoe.com', 'Temp12345'), L2 = tok('lider2@zoe.com', 'Temp12345'), S = tok('sup@zoe.com', 'Temp12345');
+  const p = e.call('addNewMember', { nome: 'Carlos Pereira', celular: '61999990000' }, L1).data.id;
+  e.run(`writeRow_(table_('Membros'), table_('Membros').rows.filter(function(x){return x.MembroID==='${p}'})[0]._row, {DataBatismo:'2025-10-11'})`);
+  e.call('saveAttendance', { data: '2026-10-15', presentes: [p] }, L1); e.call('saveAttendance', { data: '2026-10-22', presentes: [] }, L1);
+  assert.equal(e.call('requestTransfer', { membroId: p, motivo: 'Mudou para perto da Raízes' }, L2).data.status, 'pendente');
+  const it = e.call('listApprovals', {}, S).data.itens.find(x => x.tipo === 'transferencia'); assert.ok(it);
+  assert.equal(it.ctx.de, 'Semeadores'); assert.equal(it.ctx.para, 'Raízes'); assert.equal(it.ctx.motivo, 'Mudou para perto da Raízes');
+  assert.equal(it.resumo.nome, 'Carlos Pereira'); assert.equal(it.resumo.batizado, true); assert.equal(it.resumo.dataBatismo, '2025-10-11'); assert.equal(it.resumo.celula, 'Semeadores'); assert.equal(it.resumo.pct, 50); assert.equal(it.resumo.tipo, 'Frequentador');
+  assert.equal(e.call('decideApproval', { tipo: 'transferencia', id: it.id, decisao: 'negado', motivo: '  ' }, S).error.code, 'VALIDATION');
+  assert.equal(e.call('decideApproval', { tipo: 'transferencia', id: it.id, decisao: 'negado', motivo: 'Aguarde o fim do curso' }, S).data.status, 'negado');
+  const n = e.call('listNotifications', {}, L2).data; assert.equal(n.naoLidas, 1); assert.ok(n.itens[0].titulo.includes('recusada')); assert.ok(n.itens[0].texto.includes('Aguarde o fim do curso'));
+  assert.equal(e.call('listNotifications', {}, L1).data.naoLidas, 1); // líder da célula de origem também fica sabendo
+  assert.equal(e.call('listNotifications', {}, S).data.naoLidas, 0); // quem decidiu não se notifica
+  const dec = e.call('listApprovals', {}, S).data.itens.find(x => x.id === it.id); assert.equal(dec.motivoDecisao, 'Aguarde o fim do curso'); assert.equal(dec.hist.pop().motivo, 'Aguarde o fim do curso');
+  assert.equal(e.call('readNotifications', {}, L2).data.naoLidas, 0); assert.equal(e.call('listNotifications', {}, L1).data.naoLidas, 1);
+  // aprovar não exige motivo; com motivo, ele também chega
+  e.call('undoApproval', { tipo: 'transferencia', id: it.id }, S);
+  assert.equal(e.call('decideApproval', { tipo: 'transferencia', id: it.id, decisao: 'autorizado' }, S).data.status, 'autorizado');
+  assert.ok(e.call('listNotifications', {}, L2).data.itens[0].titulo.includes('aprovada'));
+  assert.ok(c1);
 });

@@ -120,3 +120,9 @@ Em **Administração → Definições de Parâmetros → Regras Células** o adm
 - **Histórico de presença**: cada reunião grava o elenco da época (coluna `Elenco` em `Reunioes`); entrar gente nova não muda o % de reuniões passadas.
 - **Supervisor**: "Células a multiplicar para ser supervisor" (0 = sem exigência). Se a pessoa ainda não cumpriu, o sistema avisa e o administrador pode abrir uma exceção.
 - Ao atualizar o `Code.gs`: cole, rode `setup()` uma vez (cria a coluna `Elenco` e a configuração) e publique nova versão.
+
+## Aprovações: motivo, Notificações e resumo para decidir
+- Quem aprova pode (opcionalmente) escrever o **motivo**; ao **recusar**, o motivo é obrigatório. O resultado vai como **Notificação** (antes "Alertas", sino no topo) para quem fez o pedido e para o líder da célula, com o motivo. Quem decidiu não se notifica. As notificações ficam na aba `Notificacoes` da planilha e o motivo no `AprovLog`.
+- Cada pedido pendente mostra um **resumo** para decidir com base em fatos: de qual célula vem e para qual vai (ou "não estava em nenhuma"), motivo do pedido, membro desde, batismo, % de frequência na célula (e se é Frequentador ou Membro), cursos, ministérios e eventos. Vale para transferência, pedido de ministério, saída de participante e novo membro. Ao pedir transferência, o líder pode informar o motivo (coluna `Motivo` em `Transferencias`).
+- Hierarquia: o **supervisor** decide e recebe os pedidos; o **líder** não decide nem recebe pedidos, só o resultado do que pediu; **líder em treinamento** é a nomenclatura do futuro líder.
+- Ao atualizar o `Code.gs`, rode `setup()` (cria `Notificacoes` e as colunas `Motivo`).

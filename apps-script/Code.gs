@@ -44,7 +44,8 @@ const SHEETS = {
   Ministerios: ['MinisterioID', 'Nome', 'Ordem', 'Ativo', 'Descricao', 'Foto'],
   Interesses: ['InteresseID', 'MinisterioID', 'MembroID', 'Data', 'Status', 'DecididoPor', 'DataDecisao'],
   Membresias: ['MembresiaID', 'MembroID', 'CelulaID', 'Frequencias', 'Status', 'DecididoPor', 'Data', 'DataDecisao'],
-  AprovLog: ['Tipo', 'RefID', 'Acao', 'Por', 'Data'],
+  AprovLog: ['Tipo', 'RefID', 'Acao', 'Por', 'Data', 'Motivo'],
+  Notificacoes: ['NotifID', 'MembroID', 'Tipo', 'Titulo', 'Texto', 'Ref', 'Data', 'Lida'],
   Uso: ['Mes', 'MembroID', 'Tela', 'Segundos', 'Visitas'],
   Livros: ['LivroID', 'Titulo', 'Autor', 'Descricao', 'Capa', 'ArquivoID', 'Tamanho', 'Status', 'CriadoEm'],
   LivroComentarios: ['ComentarioID', 'LivroID', 'MembroID', 'Texto', 'Pagina', 'Data', 'Status'],
@@ -52,7 +53,7 @@ const SHEETS = {
   LivroNotas: ['LivroID', 'MembroID', 'Nota', 'Data'],
   Curtidas: ['Tipo', 'AlvoID', 'MembroID', 'Data'],
   Saidas: ['SaidaID', 'MembroID', 'CelulaID', 'Motivo', 'SolicitadoPor', 'Status', 'DecididoPor', 'Data', 'DataDecisao'],
-  Transferencias: ['TransfID', 'MembroID', 'DeCelulaID', 'ParaCelulaID', 'SolicitadoPor', 'Status', 'DecididoPor', 'Data', 'DataDecisao'],
+  Transferencias: ['TransfID', 'MembroID', 'DeCelulaID', 'ParaCelulaID', 'SolicitadoPor', 'Status', 'DecididoPor', 'Data', 'DataDecisao', 'Motivo'],
   Cursos: ['CursoID', 'Nome', 'Ativo'],
   Matriculas: ['MatriculaID', 'CursoID', 'MembroID', 'Status', 'Data'],
   Noticias: ['NoticiaID', 'Titulo', 'Texto', 'Data', 'CriadoPor', 'Status'],
@@ -471,33 +472,74 @@ function aprovItens_(u) {
   const cel = {}; table_('Celulas').rows.forEach(function (c) { cel[c.CelulaID] = c; });
   const mi = {}; table_('Ministerios').rows.forEach(function (m) { mi[m.MinisterioID] = m.Nome; });
   const meu = function (c) { return !!c && !!u.membroId && c.SupervisorID === u.membroId; }, adm = can_(u, 'transf'), min = can_(u, 'min');
-  const logs = {}; table_('AprovLog').rows.forEach(function (l) { const k = l.Tipo + ':' + l.RefID; (logs[k] = logs[k] || []).push({ acao: l.Acao, por: nm(l.Por) || '—', data: l.Data }); });
+  const logs = {}; table_('AprovLog').rows.forEach(function (l) { const k = l.Tipo + ':' + l.RefID; (logs[k] = logs[k] || []).push({ acao: l.Acao, por: nm(l.Por) || '—', data: l.Data, motivo: l.Motivo || '' }); });
   const out = [];
   const add = function (o) {
     o.hist = (logs[o.tipo + ':' + o.id] || []).sort(function (a, b) { return a.data < b.data ? -1 : 1; }); o.minha = !!o.decididoPorId && o.decididoPorId === u.membroId;
-    o.podeReverter = o.status !== 'pendente' && (o.minha || o.admOk); delete o.admOk; out.push(o);
+    o.podeReverter = o.status !== 'pendente' && (o.minha || o.admOk); delete o.admOk;
+    if (o.status !== 'pendente') { const dec = o.hist.filter(function (h) { return h.acao === 'autorizado' || h.acao === 'negado'; }).pop(); o.motivoDecisao = dec ? dec.motivo : ''; }
+    else if (out.length < 60) o.resumo = resumoPessoa_(o.pessoaId, o.ctxCel);
+    delete o.ctxCel; out.push(o);
   };
   table_('Transferencias').rows.forEach(function (t) {
     if (!(adm || meu(cel[t.ParaCelulaID]) || meu(cel[t.DeCelulaID]))) return;
-    add({ tipo: 'transferencia', id: t.TransfID, pessoaId: t.MembroID, titulo: 'Transferência de ' + nm(t.MembroID), detalhe: ((cel[t.DeCelulaID] || {}).Nome || '?') + ' para ' + ((cel[t.ParaCelulaID] || {}).Nome || '?'), status: t.Status, data: t.Data, solicitante: nm(t.SolicitadoPor), decididoPorId: t.DecididoPor, decididoPor: nm(t.DecididoPor), dataDecisao: t.DataDecisao, pode: adm || t.SolicitadoPor !== u.membroId, admOk: adm });
+    add({ tipo: 'transferencia', id: t.TransfID, pessoaId: t.MembroID, titulo: 'Transferência de ' + nm(t.MembroID), detalhe: ((cel[t.DeCelulaID] || {}).Nome || '?') + ' para ' + ((cel[t.ParaCelulaID] || {}).Nome || '?'), status: t.Status, data: t.Data, solicitante: nm(t.SolicitadoPor), decididoPorId: t.DecididoPor, decididoPor: nm(t.DecididoPor), dataDecisao: t.DataDecisao, pode: adm || t.SolicitadoPor !== u.membroId, admOk: adm, ctxCel: t.DeCelulaID, ctx: { de: (cel[t.DeCelulaID] || {}).Nome || '', para: (cel[t.ParaCelulaID] || {}).Nome || '', motivo: t.Motivo || '' } });
   });
   table_('Saidas').rows.forEach(function (x) {
     if (!(adm || meu(cel[x.CelulaID]))) return;
-    add({ tipo: 'saida', id: x.SaidaID, pessoaId: x.MembroID, titulo: nm(x.MembroID) + ' saiu da congregação', detalhe: 'Célula ' + ((cel[x.CelulaID] || {}).Nome || '?') + (x.Motivo ? ' · ' + x.Motivo : ''), status: x.Status, data: x.Data, solicitante: nm(x.SolicitadoPor), decididoPorId: x.DecididoPor, decididoPor: nm(x.DecididoPor), dataDecisao: x.DataDecisao, pode: adm || x.SolicitadoPor !== u.membroId, admOk: adm });
+    add({ tipo: 'saida', id: x.SaidaID, pessoaId: x.MembroID, titulo: nm(x.MembroID) + ' saiu da congregação', detalhe: 'Célula ' + ((cel[x.CelulaID] || {}).Nome || '?') + (x.Motivo ? ' · ' + x.Motivo : ''), status: x.Status, data: x.Data, solicitante: nm(x.SolicitadoPor), decididoPorId: x.DecididoPor, decididoPor: nm(x.DecididoPor), dataDecisao: x.DataDecisao, pode: adm || x.SolicitadoPor !== u.membroId, admOk: adm, ctxCel: x.CelulaID, ctx: { de: (cel[x.CelulaID] || {}).Nome || '', motivo: x.Motivo || '' } });
   });
   if (min) table_('Interesses').rows.forEach(function (i) {
     const m = mem[i.MembroID] || {};
-    add({ tipo: 'interesse', id: i.InteresseID, pessoaId: i.MembroID, titulo: nm(i.MembroID) + ' quer participar do ministério ' + (mi[i.MinisterioID] || '?'), detalhe: m.Telefone ? 'Telefone ' + m.Telefone : 'Sem telefone cadastrado', status: stN_(i.Status), data: i.Data, solicitante: nm(i.MembroID), decididoPorId: i.DecididoPor, decididoPor: nm(i.DecididoPor), dataDecisao: i.DataDecisao, pode: true, admOk: true });
+    add({ tipo: 'interesse', id: i.InteresseID, pessoaId: i.MembroID, titulo: nm(i.MembroID) + ' quer participar do ministério ' + (mi[i.MinisterioID] || '?'), detalhe: m.Telefone ? 'Telefone ' + m.Telefone : 'Sem telefone cadastrado', status: stN_(i.Status), data: i.Data, solicitante: nm(i.MembroID), decididoPorId: i.DecididoPor, decididoPor: nm(i.DecididoPor), dataDecisao: i.DataDecisao, pode: true, admOk: true, ctx: { ministerio: mi[i.MinisterioID] || '' } });
   });
   table_('Membresias').rows.forEach(function (b) {
     if (!(adm || meu(cel[b.CelulaID]))) return; const m = mem[b.MembroID] || {};
-    add({ tipo: 'membresia', id: b.MembresiaID, pessoaId: b.MembroID, titulo: nm(b.MembroID) + ' pode se tornar membro', detalhe: 'Frequentou ' + b.Frequencias + ' células seguidas em ' + ((cel[b.CelulaID] || {}).Nome || '?') + '. Revise o cadastro antes de aprovar.', status: b.Status, data: b.Data, solicitante: 'Sistema', decididoPorId: b.DecididoPor, decididoPor: nm(b.DecididoPor), dataDecisao: b.DataDecisao, pode: true, admOk: adm,
+    add({ tipo: 'membresia', id: b.MembresiaID, pessoaId: b.MembroID, titulo: nm(b.MembroID) + ' pode se tornar membro', detalhe: 'Frequentou ' + b.Frequencias + ' células seguidas em ' + ((cel[b.CelulaID] || {}).Nome || '?') + '. Revise o cadastro antes de aprovar.', status: b.Status, data: b.Data, solicitante: 'Sistema', decididoPorId: b.DecididoPor, decididoPor: nm(b.DecididoPor), dataDecisao: b.DataDecisao, pode: true, admOk: adm, ctxCel: b.CelulaID, ctx: { de: (cel[b.CelulaID] || {}).Nome || '', frequencias: Number(b.Frequencias || 0) },
       revisar: { nome: m.Nome, telefone: m.Telefone, email: m.Email, nascimento: m.Nascimento, endereco: [m.Endereco, m.Bairro, m.Cidade].filter(String).join(', ') } });
   });
   return out.sort(function (a, b) { return a.data < b.data ? 1 : -1; });
 }
 function listApprovals_(d, u) { const l = aprovItens_(u).slice(0, 300); return { itens: l, pendentes: l.filter(function (x) { return x.status === 'pendente' && x.pode; }).length }; }
-function logAprov_(tipo, id, acao, u) { appendRow_(table_('AprovLog'), { Tipo: tipo, RefID: id, Acao: acao, Por: u.membroId, Data: now_() }); }
+function logAprov_(tipo, id, acao, u, motivo) { appendRow_(table_('AprovLog'), { Tipo: tipo, RefID: id, Acao: acao, Por: u.membroId, Data: now_(), Motivo: clip_(motivo, 300) }); }
+// Visão geral da pessoa para quem decide: tempo de casa, batismo, presença, célula, cursos, ministérios e eventos
+const RESUMO_CACHE_ = {};
+function resumoPessoa_(mid, celulaId) {
+  if (!mid) return null; const m = table_('Membros').rows.filter(function (x) { return x.MembroID === mid; })[0]; if (!m) return null;
+  const cs = table_('Celulas').rows, cel = function (id) { return id ? cs.filter(function (c) { return c.CelulaID === id; })[0] : null; };
+  const atual = cel(m.CelulaID), ref = celulaId || m.CelulaID, pct = ref ? pctMembro_(mid, ref) : null, lim = Number(cfgMap_().FrequentadorPct) || 70;
+  const nomes = function (tab, idCol, nmCol) { const o = {}; table_(tab).rows.forEach(function (r) { o[r[idCol]] = r[nmCol]; }); return o; };
+  const cu = nomes('Cursos', 'CursoID', 'Nome'), mi = nomes('Ministerios', 'MinisterioID', 'Nome'), ev = nomes('Eventos', 'EventoID', 'Titulo');
+  const ints = table_('Interesses').rows.filter(function (i) { return i.MembroID === mid; });
+  return { nome: m.Nome, membroDesde: String(m.CriadoEm || '').slice(0, 10), ehMembro: m.EhMembro === '1', batizado: m.Batizado === 'sim' || !!m.DataBatismo, dataBatismo: m.DataBatismo || '', celula: atual ? atual.Nome : '', pct: pct, tipo: pct === null ? '' : (pct < lim ? 'Frequentador' : 'Membro'),
+    cursos: table_('Matriculas').rows.filter(function (r) { return r.MembroID === mid && cu[r.CursoID]; }).slice(0, 6).map(function (r) { return cu[r.CursoID]; }),
+    ministerios: ints.filter(function (i) { return stN_(i.Status) === 'autorizado' && mi[i.MinisterioID]; }).map(function (i) { return mi[i.MinisterioID]; }),
+    ministeriosPendentes: ints.filter(function (i) { return stN_(i.Status) === 'pendente' && mi[i.MinisterioID]; }).map(function (i) { return mi[i.MinisterioID]; }),
+    eventos: table_('Inscricoes').rows.filter(function (r) { return r.MembroID === mid && ev[r.EventoID]; }).slice(0, 5).map(function (r) { return ev[r.EventoID]; }) };
+}
+/* ===== notificações (antes "alertas"): resultado das decisões vai para quem pediu e para o líder ===== */
+function notify_(mid, tipo, titulo, texto, ref) { if (!mid) return; appendRow_(table_('Notificacoes'), { NotifID: id_('NT'), MembroID: mid, Tipo: tipo, Titulo: clip_(titulo, 160), Texto: clip_(texto, 400), Ref: clip_(ref, 40), Data: now_(), Lida: '0' }); }
+function listNotifications_(d, u) {
+  const l = table_('Notificacoes').rows.filter(function (n) { return n.MembroID === u.membroId; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).slice(0, 60);
+  return { itens: l.map(function (n) { return { id: n.NotifID, tipo: n.Tipo, titulo: n.Titulo, texto: n.Texto, data: n.Data, lida: n.Lida === '1' }; }), naoLidas: l.filter(function (n) { return n.Lida !== '1'; }).length };
+}
+function readNotifications_(d, u) {
+  return withLock_(function () {
+    const t = table_('Notificacoes'), ids = Array.isArray(d.ids) ? d.ids : null;
+    t.rows.forEach(function (n) { if (n.MembroID === u.membroId && n.Lida !== '1' && (!ids || ids.indexOf(n.NotifID) >= 0)) writeRow_(t, n._row, { Lida: '1' }); });
+    return listNotifications_({}, u);
+  });
+}
+function notifyDecisao_(tipo, id, status, motivo, u) {
+  const cs = table_('Celulas').rows, lider = function (cid) { const c = cs.filter(function (x) { return x.CelulaID === cid; })[0]; return c ? c.LiderID : ''; };
+  const nome = function (mid) { const m = table_('Membros').rows.filter(function (x) { return x.MembroID === mid; })[0]; return m ? (m.Apelido || m.Simples || m.Nome) : '—'; };
+  let dest = [], pessoa = '', rot = '';
+  if (tipo === 'transferencia') { const r = table_('Transferencias').rows.filter(function (x) { return x.TransfID === id; })[0]; if (!r) return; pessoa = nome(r.MembroID); rot = 'Transferência de ' + pessoa; dest = [r.SolicitadoPor, lider(r.ParaCelulaID), lider(r.DeCelulaID)]; }
+  else if (tipo === 'saida') { const r = table_('Saidas').rows.filter(function (x) { return x.SaidaID === id; })[0]; if (!r) return; pessoa = nome(r.MembroID); rot = 'Saída de ' + pessoa; dest = [r.SolicitadoPor, lider(r.CelulaID)]; }
+  else if (tipo === 'interesse') { const r = table_('Interesses').rows.filter(function (x) { return x.InteresseID === id; })[0]; if (!r) return; const g = table_('Membros').rows.filter(function (x) { return x.MembroID === r.MembroID; })[0] || {}; pessoa = nome(r.MembroID); rot = 'Ministério de ' + pessoa; dest = [r.MembroID, lider(g.CelulaID)]; }
+  else if (tipo === 'membresia') { const r = table_('Membresias').rows.filter(function (x) { return x.MembresiaID === id; })[0]; if (!r) return; pessoa = nome(r.MembroID); rot = 'Cadastro de membro de ' + pessoa; dest = [lider(r.CelulaID)]; }
+  const seen = {}; dest.forEach(function (m) { if (!m || m === u.membroId || seen[m]) return; seen[m] = 1; notify_(m, 'aprovacao', rot + (status === 'autorizado' ? ' aprovada' : ' recusada'), (motivo ? 'Motivo: ' + motivo : 'Sem motivo informado.') + ' · por ' + nome(u.membroId), tipo + ':' + id); });
+}
 function decideInterest_(d, u) {
   return withLock_(function () {
     if (!can_(u, 'min')) throw new ApiError('FORBIDDEN', 'Sem permissão para aprovar ministérios.');
@@ -516,9 +558,12 @@ function decideMembership_(d, u) {
   });
 }
 function decideApproval_(d, u) {
-  const tipo = String(d.tipo || ''); let r;
+  const tipo = String(d.tipo || ''), mot = clip_(d.motivo, 300); let r;
+  if (d.decisao !== 'autorizado' && !mot) throw new ApiError('VALIDATION', 'Informe o motivo da recusa. Ele é enviado ao líder como notificação.');
   if (tipo === 'transferencia') r = decideTransfer_(d, u); else if (tipo === 'saida') r = decideExit_(d, u); else if (tipo === 'interesse') r = decideInterest_(d, u); else if (tipo === 'membresia') r = decideMembership_(d, u); else throw new ApiError('VALIDATION', 'Tipo de pedido inválido.');
-  logAprov_(tipo, d.id, r.status, u); return r;
+  logAprov_(tipo, d.id, r.status, u, mot);
+  try { notifyDecisao_(tipo, d.id, r.status, mot, u); } catch (e) { /* a decisão já foi gravada */ }
+  return r;
 }
 // volta o pedido ao estado anterior (pendente) e desfaz o efeito da decisão, para decidir de novo
 function undoApproval_(d, u) {
@@ -694,7 +739,7 @@ function requestTransfer_(d, u) {
     const para = cellOf_(u, d, 'transf'), g = getMember_(clip_(d.membroId, 30)); if (g.m.CelulaID === para) throw new ApiError('VALIDATION', 'Essa pessoa já está na sua célula.');
     const t = table_('Transferencias'); if (t.rows.some(function (r) { return r.MembroID === g.m.MembroID && r.ParaCelulaID === para && r.Status === 'pendente'; })) throw new ApiError('VALIDATION', 'Já existe um pedido pendente.');
     if (!g.m.CelulaID) { writeRow_(g.t, g.m._row, { CelulaID: para, Status: 'Ativo', DataSaida: '' }); audit_(u.email, 'ENTRADA_CELULA', g.m.MembroID + '>' + para, 'OK'); return { status: 'incluido' }; }
-    appendRow_(t, { TransfID: id_('T'), MembroID: g.m.MembroID, DeCelulaID: g.m.CelulaID, ParaCelulaID: para, SolicitadoPor: u.membroId, Status: 'pendente', Data: now_() });
+    appendRow_(t, { TransfID: id_('T'), MembroID: g.m.MembroID, DeCelulaID: g.m.CelulaID, ParaCelulaID: para, SolicitadoPor: u.membroId, Status: 'pendente', Data: now_(), Motivo: clip_(d.motivo, 300) });
     audit_(u.email, 'TRANSFERENCIA_PEDIDA', g.m.MembroID, 'OK'); return { status: 'pendente' };
   });
 }
@@ -991,7 +1036,7 @@ const ROUTES = {
   lookup: { auth: 'any', fn: lookup_ }, requestTransfer: { auth: 'any', write: 1, fn: requestTransfer_ }, requestExit: { auth: 'any', write: 1, fn: requestExit_ }, decideExit: { auth: 'any', write: 1, fn: decideExit_ }, addNewMember: { auth: 'any', write: 1, fn: addNewMember_ }, orgTree: { auth: 'any', fn: orgTree_ },
   listTransfers: { auth: 'any', fn: listTransfers_ }, decideTransfer: { auth: 'any', write: 1, fn: decideTransfer_ },
   createEvent: { auth: 'eventos', write: 1, fn: createEvent_ }, postNews: { auth: 'eventos', write: 1, fn: postNews_ },
-  listApprovals: { auth: 'any', fn: listApprovals_ }, decideApproval: { auth: 'any', fn: decideApproval_ }, undoApproval: { auth: 'any', fn: undoApproval_ }, track: { auth: 'any', fn: track_ }, usageReport: { auth: 'config', fn: usageReport_ },
+  listApprovals: { auth: 'any', fn: listApprovals_ }, listNotifications: { auth: 'any', fn: listNotifications_ }, readNotifications: { auth: 'any', write: 1, fn: readNotifications_ }, decideApproval: { auth: 'any', fn: decideApproval_ }, undoApproval: { auth: 'any', fn: undoApproval_ }, track: { auth: 'any', fn: track_ }, usageReport: { auth: 'config', fn: usageReport_ },
   orgMove: { auth: 'any', write: 1, fn: orgMove_ }, saveOrgLayout: { auth: 'any', write: 1, fn: saveOrgLayout_ }, rateBook: { auth: 'any', write: 1, fn: rateBook_ }, fotos: { auth: 'any', fn: fotos_ },
   listBooks: { auth: 'any', fn: listBooks_ }, saveBook: { auth: 'any', write: 1, fn: saveBook_ }, deleteBook: { auth: 'any', write: 1, fn: deleteBook_ }, getBookFile: { auth: 'any', fn: getBookFile_ },
   listBookComments: { auth: 'any', fn: listBookComments_ }, addBookComment: { auth: 'any', write: 1, fn: addBookComment_ }, deleteBookComment: { auth: 'any', write: 1, fn: deleteBookComment_ },

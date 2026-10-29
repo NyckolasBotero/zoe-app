@@ -22,18 +22,18 @@ with sync_playwright() as p:
     # supervisor: pop-up no login, clica e vai para Aprovações
     sp=entra(b,'sup@zoe.com','Temp12345','NovaSenha123'); sp.wait_for_selector('.popA'); assert 'Visitante Silva pode se tornar membro' in sp.inner_text('.popA')
     assert sp.inner_text('#bb').strip()!='' ; sp.click('.popA'); sp.wait_for_selector('text=Revisar cadastro')
-    sp.click('text=Revisar cadastro'); sp.wait_for_selector("text=61999990000"); sp.click(".modal >> text=Aprovar como membro"); sp.wait_for_selector('.ubar'); sp.screenshot(path=OUT+'/s_undo.png')
+    sp.click('text=Revisar cadastro'); sp.wait_for_selector("text=61999990000"); sp.click(".modal >> text=Aprovar como membro"); sp.wait_for_selector('#apm'); sp.fill('#apm','Cadastro conferido'); sp.click('.modal >> text=Confirmar aprovação'); sp.wait_for_selector('.ubar'); sp.screenshot(path=OUT+'/s_undo.png')
     # desfaz dentro do tempo
     sp.click('.ubar >> text=Desfazer'); sp.wait_for_selector('text=Decisão desfeita'); sp.wait_for_selector("button:has-text('Aprovar como membro')")
     # aprova de novo e deixa o tempo acabar; depois reverte pelo log
-    sp.click("button:has-text('Aprovar como membro')"); sp.wait_for_selector('.ubar'); sp.wait_for_selector('.ubar',state='detached',timeout=15000)
+    sp.click("button:has-text('Aprovar como membro')"); sp.wait_for_selector('#apm'); sp.click('.modal >> text=Confirmar aprovação'); sp.wait_for_selector('.ubar'); sp.wait_for_selector('.ubar',state='detached',timeout=15000)
     sp.click("button:has-text('Histórico geral')"); sp.wait_for_selector('text=Aprovado por'); sp.click('text=Reverter decisão'); sp.click(".modal >> text=Sim, reverter"); sp.wait_for_selector('text=Decisão desfeita')
-    sp.click("button:has-text('Pendentes')"); sp.click("button:has-text('Recusar')"); sp.wait_for_selector('.ubar')
+    sp.click("button:has-text('Pendentes')"); sp.click("button:has-text('Recusar')"); sp.wait_for_selector('#apm'); sp.click('.modal >> text=Confirmar recusa'); sp.wait_for_selector('text=Informe o motivo da recusa'); sp.fill('#apm','Cadastro incompleto'); sp.click('.modal >> text=Confirmar recusa'); sp.wait_for_selector('.ubar')
     sp.click("button:has-text('Minhas decisões')"); sp.wait_for_selector('text=Recusado por'); sp.screenshot(path=OUT+'/s_aprov.png')
     # interesse em ministério: aprovado pelo administrador aparece no roadmap do membro
     ana=entra(b,'ana@zoe.com','Temp12345','NovaSenha123'); mid=ana.evaluate("S.minIds[0]")
     ana.evaluate("async(m)=>{await api('interest',{ministerioId:m})}",mid)
-    adm=entra(b,'admin@zoe.com','SenhaForte123'); adm.evaluate("go('aprovacoes')"); adm.wait_for_selector('text=quer participar do ministério'); adm.click("button:has-text('Aprovar') >> nth=0"); adm.wait_for_selector('.ubar')
+    adm=entra(b,'admin@zoe.com','SenhaForte123'); adm.evaluate("go('aprovacoes')"); adm.wait_for_selector('text=quer participar do ministério'); adm.click("button:has-text('Aprovar') >> nth=0"); adm.wait_for_selector('#apm'); adm.click('.modal >> text=Confirmar aprovação'); adm.wait_for_selector('.ubar')
     ana=entra(b,'ana@zoe.com','NovaSenha123'); r=ana.evaluate("roadmap().map(x=>x[2]).join(' | ')"); assert 'Aprovado para participar do ministério' in r, r
     # uso da plataforma e edição de senha/acesso
     ana.evaluate("trkFlush()"); adm.evaluate("go('admin')"); adm.wait_for_selector('.admtabs'); adm.evaluate("admGrupo('ind')"); adm.wait_for_selector('text=Uso da plataforma'); adm.evaluate("carregaUso(TODAY.slice(0,7))"); adm.wait_for_selector("td:has-text('Ana Souza')")
