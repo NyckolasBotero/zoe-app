@@ -199,3 +199,10 @@ Administração › **Maratona Bíblica (programar)**: início (1º de janeiro),
 - Sino: limpar tudo / descartar uma a uma; tipos de notificação definidos pelo adm em Parâmetros.
 - Certificado: assinatura cursiva (8 fontes) e cor; assinatura cadastrada em **Meu perfil › Editar perfil › Assinatura** (professores) e na aba Aulas.
 - **Célula › Perfil da célula**: clique no mapa para preencher latitude/longitude.
+
+## Área do Multimídia (projetor de letras)
+- Menu **Multimídia**, só para quem está no ministério **Som** (e supervisores/pastor/admin). As músicas ficam salvas para todo o ministério; qualquer um pode editar ou excluir.
+- **Nova música**: nome, cantor, link do YouTube, letra colada ou **importada da web** (busca por nome/cantor via lyrics.ovh, feita pelo servidor — o Apps Script pede autorização de “conectar a serviço externo” na 1ª vez; rode `setup()` e autorize). Uma **linha em branco separa os slides**; dá para juntar, dividir, editar e excluir slides.
+- **Layout** por música ou **layout padrão**: degradê de fundo, luzes coloridas que brilham e se movem, partículas (luzes em desfoque, estrelas, neve, bolhas, corações, cruzes, notas, brilho), fonte, tamanho, cor, negrito, itálico, maiúsculas, contorno, sombra, alinhamento, logo (tamanho, posição, opacidade) e nome/cantor.
+- **Projetar › Iniciar transmissão** abre uma janela nova: na **segunda tela** (tela cheia — o navegador pede permissão “gerenciar janelas”; se não abrir em tela cheia, clique ou aperte F) ou, sem segunda tela, numa janela com moldura na tela principal. Painel com slide atual, **anterior e próximo**, lista para **pular direto**, atalhos (← → espaço, B) e **Pausar/Retomar**. Pausar ou encerrar mostra a **logo da Zoe** na tela de projeção.
+- Tabela `Musicas` (a linha `PADRAO` guarda o layout padrão); rotas `listSongs`, `saveSong`, `deleteSong`, `saveSongDefault`, `searchLyrics`, `importLyrics`. Teste: `tests/e2e_multimidia.py`.

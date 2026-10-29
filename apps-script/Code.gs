@@ -56,6 +56,7 @@ const SHEETS = {
   AprovLog: ['Tipo', 'RefID', 'Acao', 'Por', 'Data', 'Motivo'],
   Escalas: ['EscalaID', 'MinisterioID', 'MembroID', 'Data', 'Hora', 'Funcao', 'Status', 'Motivo', 'TrocaMembroID', 'TrocaEscalaID', 'TrocaMsg', 'OrigemMembroID', 'SerieID', 'CriadoPor', 'ConfirmadoEm', 'Reesc', 'Presente', 'Avisos'],
   EscalaPedidos: ['PedidoID', 'MinisterioID', 'MembroID', 'Data', 'Msg', 'Status', 'DecididoPor', 'DataDecisao', 'CriadoEm'],
+  Musicas: ['MusicaID', 'Titulo', 'Artista', 'Youtube', 'Letra', 'Layout', 'CriadoPor', 'CriadoEm', 'AtualizadoPor', 'AtualizadoEm', 'Ativo'],
   Notificacoes: ['NotifID', 'MembroID', 'Tipo', 'Titulo', 'Texto', 'Ref', 'Data', 'Lida'],
   Uso: ['Mes', 'MembroID', 'Tela', 'Segundos', 'Visitas'],
   Livros: ['LivroID', 'Titulo', 'Autor', 'Descricao', 'Capa', 'ArquivoID', 'Tamanho', 'Status', 'CriadoEm'],
@@ -261,7 +262,7 @@ function me_(d, u) {
   const nivelCel = !cel ? '' : (full || (cel.LiderID === u.membroId) ? 'lider' : cel.SupervisorID === u.membroId ? 'supervisor' : cel.TreinamentoID === u.membroId ? 'treinamento' : 'membro');
   const tef = tipoEf_(u), abas = abasPorTipo_()[tef] || {}, cp = cel ? (full ? allCelPerm_() : celPermMap_(u, cel)) : null;
   const urow = table_('Usuarios').rows.filter(function (r) { return String(r.Email).toLowerCase() === u.email; })[0] || {};
-  return { xp: xpResumo_(u.membroId), guiaVisto: urow.GuiaVisto !== '0', usuario: { email: u.email, papel: u.papel, tipo: tef }, abas: abas, permCelula: cp, membro: memberFull_(mm), celula: cel ? cellOut_(cel, nivelCel !== 'membro') : null, nivelCelula: nivelCel, cargos: cg, minhasCelulas: minhas, permissoes: permMatrix_()[tef], config: publicConfig_(), interesses: interessesDe_(u.membroId), membresia: membresiaDe_(u.membroId) };
+  return { multimidia: multiOk_(u), xp: xpResumo_(u.membroId), guiaVisto: urow.GuiaVisto !== '0', usuario: { email: u.email, papel: u.papel, tipo: tef }, abas: abas, permCelula: cp, membro: memberFull_(mm), celula: cel ? cellOut_(cel, nivelCel !== 'membro') : null, nivelCelula: nivelCel, cargos: cg, minhasCelulas: minhas, permissoes: permMatrix_()[tef], config: publicConfig_(), interesses: interessesDe_(u.membroId), membresia: membresiaDe_(u.membroId) };
 }
 function saveMember_(d, u) {
   return withLock_(function () {
@@ -2005,6 +2006,76 @@ function decideJoin_(d, u) {
   });
 }
 
+
+/* ===== Multimídia (projetor de letras) ===== */
+const MM_ESPEC = {
+  luzesOn: ['b'], luzesQtd: ['n', 0, 14], luzesBrilho: ['n', 5, 100], luzesVel: ['n', 0, 300],
+  parts: ['e', ['nenhuma', 'bokeh', 'estrelas', 'neve', 'bolhas', 'coracoes', 'cruzes', 'notas', 'poeira']], partQtd: ['n', 0, 160], partTam: ['n', 40, 400], partVel: ['n', 0, 300], partDesf: ['n', 0, 30], partCor: ['c'],
+  fonte: ['e', ['montserrat', 'poppins', 'playfair', 'bebas', 'oswald', 'lora', 'cinzel', 'figtree', 'caveat', 'georgia', 'arial']], tam: ['n', 2, 12], cor: ['c'], neg: ['b'], ita: ['b'], contorno: ['b'], contCor: ['c'], contLarg: ['n', 0, 12], sombra: ['b'], alinha: ['e', ['center', 'left', 'right']], caixa: ['b'], entre: ['n', 1, 2],
+  logoOn: ['b'], logoTam: ['n', 4, 60], logoPos: ['e', ['tl', 'tc', 'tr', 'bl', 'bc', 'br', 'c']], logoOp: ['n', 10, 100], info: ['e', ['primeiro', 'sempre', 'nunca']]
+};
+function mmLayout_(l) {
+  const o = {}; if (!l || typeof l !== 'object') return o;
+  Object.keys(MM_ESPEC).forEach(function (k) {
+    const e = MM_ESPEC[k], v = l[k]; if (v === undefined || v === null) return;
+    if (e[0] === 'b') o[k] = !!v; else if (e[0] === 'n') { const n = Number(v); if (isFinite(n)) o[k] = Math.max(e[1], Math.min(e[2], n)); }
+    else if (e[0] === 'e') { if (e[1].indexOf(String(v)) >= 0) o[k] = String(v); } else if (e[0] === 'c') { if (/^#[0-9a-fA-F]{6}$/.test(String(v))) o[k] = String(v); }
+  });
+  ['cores', 'luzesCores'].forEach(function (k) { if (Array.isArray(l[k])) { const a = l[k].filter(function (c) { return /^#[0-9a-fA-F]{6}$/.test(String(c)); }).slice(0, k === 'cores' ? 3 : 5); if (a.length >= (k === 'cores' ? 2 : 1)) o[k] = a; } });
+  return o;
+}
+function multiOk_(u) {
+  if (podeCurar_(u)) return true;
+  const som = table_('Ministerios').rows.filter(function (m) { return norm_(m.Nome) === 'som' && m.Ativo !== '0'; }).map(function (m) { return m.MinisterioID; });
+  return table_('Interesses').rows.some(function (i) { return i.MembroID === u.membroId && stN_(i.Status) === 'autorizado' && som.indexOf(i.MinisterioID) >= 0; });
+}
+function multiExige_(u) { if (!multiOk_(u)) throw new ApiError('FORBIDDEN', 'A Área do Multimídia é do ministério Som.'); }
+function ytOk_(v) { v = clip_(v, 200); if (v && !/^https:\/\/(www\.|m\.)?(youtube\.com|youtu\.be)\//.test(v)) throw new ApiError('VALIDATION', 'O link do YouTube precisa começar com https://youtube.com ou https://youtu.be.'); return v; }
+function songOut_(r, nm) { return { id: r.MusicaID, titulo: r.Titulo, artista: r.Artista, youtube: r.Youtube, letra: r.Letra, layout: jparse_(r.Layout, null), criadoPor: nm[r.CriadoPor] || '', atualizadoPor: nm[r.AtualizadoPor] || '', atualizadoEm: r.AtualizadoEm }; }
+function listSongs_(d, u) {
+  multiExige_(u); const nm = nomes_(), rows = table_('Musicas').rows.filter(function (r) { return r.Ativo !== '0'; });
+  const pad = rows.filter(function (r) { return r.MusicaID === 'PADRAO'; })[0];
+  return { itens: rows.filter(function (r) { return r.MusicaID !== 'PADRAO'; }).sort(function (a, b) { return norm_(a.Titulo) < norm_(b.Titulo) ? -1 : 1; }).map(function (r) { return songOut_(r, nm); }), padrao: pad ? jparse_(pad.Layout, {}) : {} };
+}
+function saveSong_(d, u) {
+  multiExige_(u);
+  return withLock_(function () {
+    const t = table_('Musicas'), titulo = clip_(d.titulo, 120), letra = String(d.letra || '').replace(/\r/g, '').slice(0, 20000);
+    if (!titulo) throw new ApiError('VALIDATION', 'Informe o nome da música.'); if (!letra.trim()) throw new ApiError('VALIDATION', 'A letra está vazia.');
+    const p = { Titulo: titulo, Artista: clip_(d.artista, 120), Youtube: ytOk_(d.youtube), Letra: letra, Layout: d.layout ? JSON.stringify(mmLayout_(d.layout)) : '', AtualizadoPor: u.membroId, AtualizadoEm: now_() };
+    if (d.id) { const r = t.rows.filter(function (x) { return x.MusicaID === d.id && x.Ativo !== '0' && x.MusicaID !== 'PADRAO'; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Música não encontrada.'); writeRow_(t, r._row, p); return { id: r.MusicaID }; }
+    const id = id_('MU'); appendRow_(t, Object.assign({ MusicaID: id, CriadoPor: u.membroId, CriadoEm: now_(), Ativo: '1' }, p)); audit_(u.email, 'saveSong', titulo); return { id: id };
+  });
+}
+function deleteSong_(d, u) {
+  multiExige_(u);
+  return withLock_(function () { const t = table_('Musicas'), r = t.rows.filter(function (x) { return x.MusicaID === d.id && x.MusicaID !== 'PADRAO'; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Música não encontrada.'); writeRow_(t, r._row, { Ativo: '0', AtualizadoPor: u.membroId, AtualizadoEm: now_() }); audit_(u.email, 'deleteSong', r.Titulo); return { ok: true }; });
+}
+function saveSongDefault_(d, u) {
+  multiExige_(u);
+  return withLock_(function () {
+    const t = table_('Musicas'), lay = JSON.stringify(mmLayout_(d.layout)), r = t.rows.filter(function (x) { return x.MusicaID === 'PADRAO'; })[0];
+    if (r) writeRow_(t, r._row, { Layout: lay, AtualizadoPor: u.membroId, AtualizadoEm: now_() }); else appendRow_(t, { MusicaID: 'PADRAO', Titulo: '(layout padrão)', Layout: lay, CriadoPor: u.membroId, CriadoEm: now_(), AtualizadoPor: u.membroId, AtualizadoEm: now_(), Ativo: '1' });
+    return { ok: true };
+  });
+}
+function lyricsGet_(url) { const r = UrlFetchApp.fetch(url, { muteHttpExceptions: true, followRedirects: true }); if (r.getResponseCode() !== 200) return null; try { return JSON.parse(r.getContentText()); } catch (e) { return null; } }
+function searchLyrics_(d, u) {
+  multiExige_(u); const q = clip_(d.q, 100); if (q.length < 2) throw new ApiError('VALIDATION', 'Digite o nome da música ou do cantor.');
+  const j = lyricsGet_('https://api.lyrics.ovh/suggest/' + encodeURIComponent(q)); if (!j || !Array.isArray(j.data)) throw new ApiError('UPSTREAM', 'A busca de letras não respondeu agora. Tente de novo ou cole a letra.');
+  const vistos = {}, out = []; j.data.forEach(function (x) { const t = clip_(x.title_short || x.title, 120), a = clip_(x.artist && x.artist.name, 120), k = norm_(t + '|' + a); if (t && a && !vistos[k] && out.length < 12) { vistos[k] = 1; out.push({ titulo: t, artista: a }); } });
+  return { itens: out };
+}
+function limpaLetra_(t) {
+  t = String(t || '').replace(/\r/g, '').replace(/^Paroles de la chanson[^\n]*\n+/i, '').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  return t.slice(0, 20000);
+}
+function importLyrics_(d, u) {
+  multiExige_(u); const a = clip_(d.artista, 120), t = clip_(d.titulo, 120); if (!a || !t) throw new ApiError('VALIDATION', 'Escolha uma música da lista.');
+  const j = lyricsGet_('https://api.lyrics.ovh/v1/' + encodeURIComponent(a) + '/' + encodeURIComponent(t)); if (!j || !j.lyrics) throw new ApiError('NOT_FOUND', 'Não achei a letra dessa música. Cole manualmente.');
+  return { titulo: t, artista: a, letra: limpaLetra_(j.lyrics) };
+}
+
 const ROUTES = {
   ping: { fn: function () { return { servico: 'Zoe API', status: 'online' }; } },
   login: { fn: login_ },
@@ -2019,6 +2090,7 @@ const ROUTES = {
   listLessons: { auth: 'any', fn: listLessons_ }, listDynamics: { auth: 'any', fn: listDyn_ }, addDynamic: { auth: 'any', write: 1, fn: addDyn_ }, listVideos: { auth: 'any', fn: listVideos_ }, listProducts: { auth: 'any', fn: listProducts_ }, listFamilia: { auth: 'any', fn: listFamilia_ }, profileView: { auth: 'any', fn: profileView_ }, listFeed: { auth: 'any', fn: listFeed_ }, likePost: { auth: 'any', write: 1, fn: likePost_ }, commentPost: { auth: 'any', write: 1, fn: commentPost_ }, listComments: { auth: 'any', fn: listComments_ }, deletePost: { auth: 'any', write: 1, fn: deletePost_ }, deleteComment: { auth: 'any', write: 1, fn: deleteComment_ },
   registerDecision: { auth: 'any', write: 1, fn: registerDecision_ }, saveVisitor: { auth: 'any', write: 1, fn: saveVisitor_ }, listVisitors: { auth: 'any', fn: listVisitors_ }, contactVisitor: { auth: 'any', write: 1, fn: contactVisitor_ },
   listScales: { auth: 'any', fn: listScales_ }, saveScale: { auth: 'any', write: 1, fn: saveScale_ }, rescheduleScale: { auth: 'any', write: 1, fn: rescheduleScale_ }, deleteScale: { auth: 'any', write: 1, fn: deleteScale_ }, respondScale: { auth: 'any', write: 1, fn: respondScale_ }, requestSwap: { auth: 'any', write: 1, fn: requestSwap_ }, answerSwap: { auth: 'any', write: 1, fn: answerSwap_ }, markScale: { auth: 'any', write: 1, fn: markScale_ }, requestJoin: { auth: 'any', write: 1, fn: requestJoin_ }, decideJoin: { auth: 'any', write: 1, fn: decideJoin_ },
+  listSongs: { auth: 'any', fn: listSongs_ }, saveSong: { auth: 'any', write: 1, fn: saveSong_ }, deleteSong: { auth: 'any', write: 1, fn: deleteSong_ }, saveSongDefault: { auth: 'any', write: 1, fn: saveSongDefault_ }, searchLyrics: { auth: 'any', fn: searchLyrics_ }, importLyrics: { auth: 'any', fn: importLyrics_ },
   listMarks: { auth: 'any', fn: listMarks_ }, saveMark: { auth: 'any', write: 1, fn: saveMark_ }, saveNote: { auth: 'any', write: 1, fn: saveNote_ },
   listInsigniaDefs: { auth: 'any', fn: listInsigniaDefs_ }, saveInsigniaDef: { auth: 'any', write: 1, fn: saveInsigniaDef_ }, grantBadge: { auth: 'any', write: 1, fn: grantBadge_ }, logServico: { auth: 'any', write: 1, fn: logServico_ }, listServicos: { auth: 'any', fn: listServicos_ }, searchPeople: { auth: 'any', fn: findPeople_ }, sendChat: { auth: 'any', write: 1, fn: sendChat_ }, getChat: { auth: 'any', fn: getChat_ }, chatRead: { auth: 'any', write: 1, fn: chatRead_ }, listChats: { auth: 'any', fn: listChats_ }, getCertLayout: { auth: 'any', fn: getCertLayout_ }, saveCertLayout: { auth: 'any', write: 1, fn: saveCertLayout_ }, previewCert: { auth: 'any', fn: previewCert_ }, revokeCert: { auth: 'any', write: 1, fn: revokeCert_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
   searchCells: { auth: 'any', fn: searchCells_ }, addPrayer: { auth: 'any', write: 1, fn: addPrayer_ }, listPrayers: { auth: 'any', fn: listPrayers_ },

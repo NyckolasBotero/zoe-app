@@ -2,7 +2,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700&family=Great+Vibes&family=Dancing+Script:wght@600&family=Allura&family=Sacramento&family=Mr+Dafoe&family=Homemade+Apple&family=Caveat:wght@600&family=Satisfy&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700&family=Montserrat:ital,wght@0,500;0,800;1,500;1,800&family=Poppins:ital,wght@0,500;0,800;1,500;1,800&family=Playfair+Display:ital,wght@0,500;0,800;1,500;1,800&family=Bebas+Neue&family=Oswald:wght@500;700&family=Lora:ital,wght@0,500;0,700;1,500;1,700&family=Cinzel:wght@500;800&family=Great+Vibes&family=Dancing+Script:wght@600&family=Allura&family=Sacramento&family=Mr+Dafoe&family=Homemade+Apple&family=Caveat:wght@600&family=Satisfy&display=swap">
 <style>
 /* Layout: menu lateral retrátil em vidro à esquerda, barra superior com sino, conteúdo em cards translúcidos sobre fundo líquido.
    Identidade: verde, vermelho e branco. Cores extraídas da logo: verde #1D904F, vermelho #DD3326, preto e branco. */
@@ -458,6 +458,13 @@ html.theming *,html.theming *::before,html.theming *::after{transition:backgroun
 .chf{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line)}.chf input{flex:1}
 @media(max-width:700px){.chatp{inset:0;width:auto;border-radius:0;top:0;bottom:0}}
 .esc-l.meu{border-left:4px solid var(--verde,#1f7a4d)}
+.mm-st{aspect-ratio:16/9;width:100%;border-radius:12px;overflow:hidden;background:#000}.mm-th{border:2px solid var(--line,#ddd)}
+.mm-ed{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}.mm-pj{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:14px;align-items:start}
+.mm-sticky{position:sticky;top:8px}.mm-ths{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mm-lst{display:flex;flex-direction:column;gap:6px;max-height:70vh;overflow:auto}
+.mm-it{display:flex;gap:10px;align-items:center;width:100%;cursor:pointer;text-align:left}.mm-it.on,.mm-s.on{outline:2px solid var(--verde,#1f7a4d)}
+.mm-g{border:1px solid var(--line,#ddd);border-radius:12px;padding:8px 12px;margin-top:8px}.mm-g summary{cursor:pointer;font-weight:700;padding:4px 0}.mm-g>*:not(summary){margin-top:8px}
+.mm-r input{width:100%}.mm-ck{display:flex;gap:8px;align-items:center}.mm-c input[type=color],.mm-cc input[type=color]{width:56px;height:36px;padding:0;border:1px solid var(--line,#ccc);border-radius:8px;background:none}.mm-cc{display:inline-flex;align-items:center;gap:4px}
+@media(max-width:900px){.mm-ed,.mm-pj{grid-template-columns:1fr}.mm-sticky{position:static}}
 </style>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><filter id="goo"><feGaussianBlur in="SourceGraphic" stdDeviation="14" result="b"/><feColorMatrix in="b" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -8"/></filter></defs></svg>
@@ -935,7 +942,7 @@ async function atualizar(){if(VIT.on)return;VIT.on=true;vitrine();const b=$('#br
  finally{VIT.on=false;if(b)b.classList.remove('spin')}}
 async function hydrate(){
  vitLog('Verificando a sessão e o seu perfil');let me;try{me=await api('me',S.celId?{celulaId:S.celId}:{})}catch(e){if(e.code==='SESSION')throw e;S.celId='';me=await api('me')}const m=me.membro,c=me.config;S.cargos=me.cargos||{};S.nivelCel=me.nivelCelula||'';S.minhas=me.minhasCelulas||[];
- S.role=me.usuario.papel;S.perm={};S.perm[S.role]=me.permissoes;S.membroId=m.MembroID;S.permCel=me.permCelula||null;S.abas=me.abas||{};S.tipo=me.usuario.tipo||S.role;S.alerts=Object.assign({aniv:true,celula:true,eventos:true,oracao:true,cursos:true,transf:true,escala:true},c.notifTipos||{});S.freqPct=c.frequentadorPct||70;S.freqJan=c.frequentadorJanela||8;S.celSup=c.celulasParaSupervisor||0;
+ S.multi=!!me.multimidia;S.role=me.usuario.papel;S.perm={};S.perm[S.role]=me.permissoes;S.membroId=m.MembroID;S.permCel=me.permCelula||null;S.abas=me.abas||{};S.tipo=me.usuario.tipo||S.role;S.alerts=Object.assign({aniv:true,celula:true,eventos:true,oracao:true,cursos:true,transf:true,escala:true},c.notifTipos||{});S.freqPct=c.frequentadorPct||70;S.freqJan=c.frequentadorJanela||8;S.celSup=c.celulasParaSupervisor||0;
  S.apelido=m.Apelido||m.Simples||String(m.Nome||'Membro').split(' ')[0];S.foto=m.Foto||'';FOTOS[m.MembroID]=S.foto;S.perfil=fromMembro(m);
  S.yt=c.canalYoutube||YT_URL;S.whats=c.whatsapp||'';S.lojaWhats=c.lojaWhatsapp||'';S.local=c.localEndereco||'';S.mapa=c.linkMapa||MAPA_URL;S.colunas=c.colunasExtras||[];
  const cel=me.celula;S.celulaId=cel?cel.id:'';
@@ -1089,9 +1096,9 @@ const NOTICIAS=[{t:'Aniversário Zoe será em 31/10',d:'Hoje',s:'Venha celebrar 
 const PAPEIS=['Louvor','Recepcionar visitantes','Dinâmica e quebra-gelo','Registro semanal de presença','Eventos do grupo'];
 const TEMAS=['Proteção e Livramento','Direção de Deus e sabedoria para decisões','Agradecimentos','Liderança e Ministério'];
 // Abas liberadas por tipo de acesso (Administração > Níveis de acesso). Exceção: quem já está numa célula sempre vê a aba Células.
-const ABAS_FIXAS=new Set(['feed','escalas','meu','insignias','consolidacao','pessoas','corrida','perfil','aprovacoes','admin']);
+const ABAS_FIXAS=new Set(['feed','escalas','multimidia','meu','insignias','consolidacao','pessoas','corrida','perfil','aprovacoes','admin']);
 const abaOk=k=>{if(!ONLINE||ABAS_FIXAS.has(k)||S.role==='admin'||!S.abas||S.abas[k]!==0)return true;return k==='celula'&&!!(S.celulaId||(S.minhas||[]).length)};
-const NAV=[['feed','home','Início'],['meu','star','Meu perfil'],['pessoas','users','Pessoas'],['membro','book','Bíblia e Anotações'],['biblioteca','lib','Biblioteca virtual'],['celula','users','Células'],['familia','heart','Família Zoe'],['ministerios','grid','Ministérios'],['buscar','pin','Buscar células'],['licoes','file','Lições / Extras'],['dinamicas','bulb','Dinâmicas'],['cursos','grad','Cursos'],['aulas','file','Aulas'],['eventos','cal','Eventos'],['escalas','cal','Escalas'],['insignias','star','Criar insígnias'],['consolidacao','pin','Consolidação'],['aniversarios','cake','Aniversariantes'],['tutoriais','play','Lives e Vídeos'],['loja','bag','Loja Zoe'],['aprovacoes','check','Aprovações'],['admin','gear','Administração']];
+const NAV=[['feed','home','Início'],['meu','star','Meu perfil'],['pessoas','users','Pessoas'],['membro','book','Bíblia e Anotações'],['biblioteca','lib','Biblioteca virtual'],['celula','users','Células'],['familia','heart','Família Zoe'],['ministerios','grid','Ministérios'],['buscar','pin','Buscar células'],['licoes','file','Lições / Extras'],['dinamicas','bulb','Dinâmicas'],['cursos','grad','Cursos'],['aulas','file','Aulas'],['eventos','cal','Eventos'],['escalas','cal','Escalas'],['multimidia','play','Multimídia'],['insignias','star','Criar insígnias'],['consolidacao','pin','Consolidação'],['aniversarios','cake','Aniversariantes'],['tutoriais','play','Lives e Vídeos'],['loja','bag','Loja Zoe'],['aprovacoes','check','Aprovações'],['admin','gear','Administração']];
 const R={r:'feed',sub:{meu:'ver',cursos:'igreja',aulas:'meus',aprovacoes:'pend',perfil:'info',membro:'biblia',celula:'freq',familia:'fale',licoes:'todas',dinamicas:'buscar'},mi:null};
 const can=k=>!!(S.perm[S.role]&&S.perm[S.role][k]);
 // Cargos de célula ≠ nível de acesso: um administrador também pode ser líder e/ou supervisor.
@@ -1115,7 +1122,7 @@ function shell(){
   if(S.theme)document.documentElement.setAttribute('data-theme',S.theme);else document.documentElement.removeAttribute('data-theme');
   document.body.classList.toggle('collapsed',!!S.collapsed);
   const ini=(S.apelido||'Z').trim()[0]?.toUpperCase()||'Z';
-  const nav=NAV.filter(n=>abaOk(n[0])&&(n[0]!=='admin'||can('config')||can('min')||can('eventos')||canTransf())&&(n[0]!=='aprovacoes'||canAprov())&&(n[0]!=='aulas'||(ONLINE&&can('prof')))&&(n[0]!=='corrida'||(CORR&&CORR.ativa))&&(n[0]!=='insignias'||canCurar())&&(n[0]!=='consolidacao'||canLider()));
+  const nav=NAV.filter(n=>abaOk(n[0])&&(n[0]!=='multimidia'||multiOk())&&(n[0]!=='admin'||can('config')||can('min')||can('eventos')||canTransf())&&(n[0]!=='aprovacoes'||canAprov())&&(n[0]!=='aulas'||(ONLINE&&can('prof')))&&(n[0]!=='corrida'||(CORR&&CORR.ativa))&&(n[0]!=='insignias'||canCurar())&&(n[0]!=='consolidacao'||canLider()));
   $('#side').innerHTML=`<div class="brand">${logoImg(140)}</div>
   <div class="me"><div class="av"><div class="pic" ${S.foto?`style="background-image:url('${S.foto}')"`:''}>${S.foto?'':esc(ini)}</div><button class="pen" onclick="go('perfil','foto')" aria-label="Alterar foto">${ic('pen',12)}</button></div>
   <div class="nm"><input id="apelido" value="${esc(S.apelido)}" maxlength="24" aria-label="Apelido" onchange="setApelido(this.value)"><small>Toque para mudar o apelido</small></div></div>
@@ -1137,7 +1144,7 @@ function toggleTheme(){const dark=document.documentElement.getAttribute('data-th
 function go(r,s){entra();if(r==='corrida'){r='membro';s='maratona'}if(r==='perfil'){if(s)R.sub.perfil=s;r='meu';s='editar'}R.r=r;if(s){const k=r;R.sub[k]=s}menu(false);history.replaceState(null,'','#'+r);shell();render();scrollTo(0,0);if(r==='admin'&&ONLINE){loadAdmin();loadLivros()}if(r==='biblioteca'){LB.open=null;loadLivros()}if(r==='cursos'){CS.open='';carregaCursos().then(()=>R.r==='cursos'&&render())}if(r==='aulas'){PR.open='';carregaSig();carregaCursos().then(()=>R.r==='aulas'&&render())}if(r==='feed'&&ONLINE)refreshTest();if(r==='aprovacoes')refreshAprov();trkVisit(r)}
 function sub(k,v){R.sub[k]=v;entra();render()}
 function aplicaRO(){document.querySelectorAll('#view .ro').forEach(w=>{w.querySelectorAll('input,textarea,select,button').forEach(el=>{const oc=el.getAttribute('onclick')||'';if(/^(R\.|sub\()/.test(oc))return;el.disabled=true});if(R.r==='celula'&&/^(mural|org)$/.test(R.sub.celula))w.style.pointerEvents='none'})}
-function render(){if(R.r==='corrida'){R.r='membro';R.sub.membro='maratona'}if(R.r==='perfil'){R.r='meu';R.sub.meu='editar'}const v=VIEWS[R.r]||VIEWS.feed;$('#view').innerHTML=v();aplicaRO();sgIni();$('#view').dataset.r=R.r;if(R.r==='celula'&&R.sub.celula==='mural')muralInit();if(R.r==='celula'&&R.sub.celula==='org')orgInit();if(R.r==='celula'&&R.sub.celula==='perfilc')cmInit();if(R.r==='buscar')mapaInit();if(R.r==='consolidacao'&&VT.sub==='novo')vmInit();if(R.r==='tutoriais')vcInit();carInit();coreografia();admMenu();if(R.r==='membro'&&R.sub.membro==='biblia'&&BIB.idx&&BIB.idx!=='erro')bibShow()}
+function render(){if(R.r==='corrida'){R.r='membro';R.sub.membro='maratona'}if(R.r==='perfil'){R.r='meu';R.sub.meu='editar'}const v=VIEWS[R.r]||VIEWS.feed;$('#view').innerHTML=v();aplicaRO();sgIni();$('#view').dataset.r=R.r;if(R.r==='celula'&&R.sub.celula==='mural')muralInit();if(R.r==='celula'&&R.sub.celula==='org')orgInit();if(R.r==='celula'&&R.sub.celula==='perfilc')cmInit();if(R.r==='multimidia')mmInit();if(R.r==='buscar')mapaInit();if(R.r==='consolidacao'&&VT.sub==='novo')vmInit();if(R.r==='tutoriais')vcInit();carInit();coreografia();admMenu();if(R.r==='membro'&&R.sub.membro==='biblia'&&BIB.idx&&BIB.idx!=='erro')bibShow()}
 let MODT=0;function modal(html){MODT++;$('#layer').innerHTML=`<div class="modal" onclick="if(event.target===this)closeL()"><div class="box" role="dialog" aria-modal="true">${html}</div></div>`}
 function closeL(){const m=$('#layer .modal');if(!m||m.classList.contains('closing')||!S.anim){$('#layer').innerHTML='';return}const t=MODT;m.classList.add('closing');setTimeout(()=>{if(MODT===t)$('#layer').innerHTML=''},170)}
 
@@ -1310,7 +1317,7 @@ dinamicas(){const s=R.sub.dinamicas;const q=(R.q||'').toLowerCase();let l=[...(S
 
 cursos(){return cursosHTML()},
 aulas(){return aulasHTML()},
-meu(){return meuHTML()},escalas(){return escalasHTML()},insignias(){return insigniasHTML()},consolidacao(){return consolidacaoHTML()},
+meu(){return meuHTML()},escalas(){return escalasHTML()},multimidia(){return multimidiaHTML()},insignias(){return insigniasHTML()},consolidacao(){return consolidacaoHTML()},
 pessoas(){return pessoasHTML()},
 corrida(){return corridaHTML()},
 
@@ -2327,6 +2334,181 @@ async function escPres(id,v){try{await escApi('markScale',{id,presente:v});await
 async function escPedir(){const p=ESC.pj;p.ministerioId=$('#ep_m').value;p.data=$('#ep_d').value;p.msg=$('#ep_t').value;try{if(!p.ministerioId)throw new Error('Escolha o ministério.');await escApi('requestJoin',{ministerioId:p.ministerioId,data:p.data,msg:p.msg});ESC.pj={ministerioId:'',data:'',msg:''};await escCarrega();zElogia(`Que lindo, ${S.apelido||''}! 💛 Seu coração para **servir** alegra a Deus e a igreja. Seu pedido foi para o supervisor.\n${escV()}`)}catch(e){toast(e.message)}}
 async function escDecide(id,aprovar){try{await escApi('decideJoin',{id,aprovar,data:($('#pd_'+id)||{}).value||'',hora:($('#ph_'+id)||{}).value||''});toast(aprovar?'Pedido aprovado':'Pedido recusado');await escCarrega()}catch(e){toast(e.message)}}
 async function escLembreteOk(ref){try{await escApi('respondScale',{id:ref,acao:'confirmar'});ESC.d=null;zMomOk();setTimeout(()=>zElogia(`Obrigada por confirmar, ${S.apelido||''}! 💛\n${escV()}`),1200)}catch(e){toast(e.message)}}
+
+/* ===== Multimídia: renderizador (autossuficiente — também roda dentro da janela de projeção) ===== */
+function mmRenderer(){
+ const FONTES={montserrat:"'Montserrat',sans-serif",poppins:"'Poppins',sans-serif",playfair:"'Playfair Display',serif",bebas:"'Bebas Neue',sans-serif",oswald:"'Oswald',sans-serif",lora:"'Lora',serif",cinzel:"'Cinzel',serif",figtree:"'Figtree',sans-serif",caveat:"'Caveat',cursive",georgia:"Georgia,serif",arial:"Arial,Helvetica,sans-serif"};
+ const DEF={cores:['#0a1a3f','#1b4f9c','#5b1d8f'],luzesOn:true,luzesCores:['#3aa0ff','#b05cff','#ff5c9d'],luzesQtd:6,luzesBrilho:55,luzesVel:100,parts:'bokeh',partQtd:40,partCor:'#ffffff',partTam:100,partVel:100,partDesf:8,fonte:'montserrat',tam:5.6,cor:'#ffffff',neg:true,ita:false,contorno:true,contCor:'#000000',contLarg:3,sombra:true,alinha:'center',caixa:false,entre:1.25,logoOn:true,logoTam:12,logoPos:'br',logoOp:85,info:'primeiro'};
+ const rnd=(()=>{let s=7;return()=>{s=(s*16807)%2147483647;return(s-1)/2147483646}})();
+ function factory(root,opt){
+  opt=opt||{};const anim=opt.anim!==false;
+  if(getComputedStyle(root).position==='static')root.style.position='relative';root.style.overflow='hidden';root.style.background='#05080f';root.innerHTML='';
+  const mk=(tag,css)=>{const e=document.createElement(tag);e.style.cssText=css;root.appendChild(e);return e};
+  const cv=mk('canvas','position:absolute;inset:0;width:100%;height:100%'),cx=cv.getContext('2d');
+  const box=mk('div','position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:5% 7%;box-sizing:border-box'),tx=document.createElement('div');tx.style.cssText='white-space:pre-wrap;word-break:break-word;max-width:100%;transition:opacity .25s;opacity:0';box.appendChild(tx);
+  const lg=mk('img','position:absolute;display:none;pointer-events:none'),inf=mk('div','position:absolute;left:3%;bottom:3%;color:#fff;opacity:.75;font-family:Figtree,Arial,sans-serif;text-shadow:0 1px 4px #000;pointer-events:none');
+  const ps=mk('div','position:absolute;inset:0;background:radial-gradient(circle at 50% 40%,#10203f,#04070d 70%);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .5s'),pl=document.createElement('img');pl.style.cssText='width:34%;max-height:60%;object-fit:contain';ps.appendChild(pl);ps.className='mmpause';
+  let st={L:Object.assign({},DEF),slide:null,pausado:false,logo:''},W=2,H=2,parts=[],raf=0,tok=0,lastJ='',t0=performance.now(),lastT=t0;
+  const L=()=>st.L;
+  function size(){const r=root.getBoundingClientRect(),k=Math.min(window.devicePixelRatio||1,anim?1.5:1);W=cv.width=Math.max(2,Math.round(r.width*k));H=cv.height=Math.max(2,Math.round(r.height*k));fit()}
+  function build(){const l=L(),n=Math.round(l.partQtd*(anim?1:.6));parts=[];if(l.parts==='nenhuma')return;for(let i=0;i<n;i++)parts.push({x:rnd(),y:rnd(),s:.4+rnd()*.9,v:.3+rnd()*.9,ph:rnd()*6.28,k:i%2})}
+  function heart(x,y,r){cx.beginPath();cx.moveTo(x,y+r*.9);cx.bezierCurveTo(x-r*1.6,y-r*.2,x-r*.7,y-r*1.3,x,y-r*.45);cx.bezierCurveTo(x+r*.7,y-r*1.3,x+r*1.6,y-r*.2,x,y+r*.9);cx.closePath()}
+  function star(x,y,r){cx.beginPath();for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,rr=i%2?r*.42:r;cx.lineTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr)}cx.closePath()}
+  function cross(x,y,r){const w=r*.3;cx.beginPath();cx.rect(x-w,y-r,w*2,r*2);cx.rect(x-r*.65,y-r*.5,r*1.3,w*2);}
+  function frame(now){
+   if(!root.isConnected){cancelAnimationFrame(raf);return}
+   const l=L(),t=anim?now-t0:4000,dt=Math.min(.05,(now-lastT)/1000);lastT=now;const mx=Math.max(W,H);
+   const g=cx.createLinearGradient(0,0,W,H),c=l.cores.length?l.cores:DEF.cores;c.forEach((col,i)=>g.addColorStop(c.length===1?0:i/(c.length-1),col));cx.globalCompositeOperation='source-over';cx.globalAlpha=1;cx.fillStyle=g;cx.fillRect(0,0,W,H);
+   if(l.luzesOn){cx.globalCompositeOperation='lighter';const sp=l.luzesVel/100,lc=l.luzesCores.length?l.luzesCores:DEF.luzesCores;for(let i=0;i<l.luzesQtd;i++){const a=t*.00009*sp*(.6+i*.17)+i*2.1,x=W*(.5+.42*Math.sin(a*1.1+i)),y=H*(.5+.42*Math.cos(a*.9+i*1.7)),r=mx*(.28+.12*Math.sin(a*2+i)),rg=cx.createRadialGradient(x,y,0,x,y,r),col=lc[i%lc.length];rg.addColorStop(0,col+'');rg.addColorStop(1,'rgba(0,0,0,0)');cx.globalAlpha=Math.min(.9,l.luzesBrilho/100*.55);cx.fillStyle=rg;cx.beginPath();cx.arc(x,y,r,0,6.2832);cx.fill()}}
+   cx.globalCompositeOperation='source-over';
+   if(parts.length){const sp=l.partVel/100,tk=l.partTam/100,pc=l.partCor,dsf=l.partDesf*(W/1000);cx.shadowColor=pc;cx.shadowBlur=dsf;
+    parts.forEach(p=>{if(anim){const v=p.v*sp*dt*.05;if(l.parts==='neve'){p.y+=v*1.2;p.x+=Math.sin(t*.0008+p.ph)*.0004}else if(l.parts==='poeira'){p.y-=v*.35;p.x+=Math.sin(t*.0006+p.ph)*.0003}else{p.y-=v;p.x+=Math.sin(t*.0005+p.ph)*.0004}if(p.y<-.1)p.y=1.1;if(p.y>1.1)p.y=-.1;if(p.x<-.1)p.x=1.1;if(p.x>1.1)p.x=-.1}
+     const x=p.x*W,y=p.y*H,tw=.5+.5*Math.sin(t*.002*(.5+p.s)+p.ph);cx.fillStyle=pc;cx.strokeStyle=pc;
+     if(l.parts==='bokeh'){const r=(.012+.032*p.s)*W*tk,rg=cx.createRadialGradient(x,y,0,x,y,r);cx.shadowBlur=0;rg.addColorStop(0,pc);rg.addColorStop(.6,pc);rg.addColorStop(1,'rgba(0,0,0,0)');cx.globalAlpha=(.07+.2*tw)*(.5+p.s*.5);cx.fillStyle=rg;cx.beginPath();cx.arc(x,y,r,0,6.2832);cx.fill();cx.shadowBlur=dsf}
+     else if(l.parts==='estrelas'){cx.globalAlpha=.25+.75*tw;star(x,y,(.004+.011*p.s)*W*tk);cx.fill()}
+     else if(l.parts==='neve'||l.parts==='poeira'){cx.globalAlpha=(l.parts==='poeira'?.2+.6*tw:.35+.5*p.s*.6);cx.beginPath();cx.arc(x,y,(l.parts==='poeira'?.0015:.003+.004*p.s)*W*tk,0,6.2832);cx.fill()}
+     else if(l.parts==='bolhas'){cx.globalAlpha=.35;cx.lineWidth=Math.max(1,W*.0012);cx.beginPath();cx.arc(x,y,(.008+.02*p.s)*W*tk,0,6.2832);cx.stroke();cx.globalAlpha=.08;cx.fill()}
+     else if(l.parts==='coracoes'){cx.globalAlpha=.3+.4*tw;heart(x,y,(.006+.012*p.s)*W*tk);cx.fill()}
+     else if(l.parts==='cruzes'){cx.globalAlpha=.25+.5*tw;cross(x,y,(.007+.012*p.s)*W*tk);cx.fill()}
+     else if(l.parts==='notas'){cx.globalAlpha=.3+.5*tw;cx.font=((.018+.03*p.s)*W*tk)+'px serif';cx.fillText(p.k?'♪':'♫',x,y)}});
+    cx.shadowBlur=0;cx.globalAlpha=1}
+   if(anim)raf=requestAnimationFrame(frame)}
+  function fit(){const l=L(),w=root.clientWidth||W;tx.style.fontFamily=FONTES[l.fonte]||FONTES.montserrat;tx.style.color=l.cor;tx.style.fontWeight=l.neg?'800':'500';tx.style.fontStyle=l.ita?'italic':'normal';tx.style.textAlign=l.alinha;tx.style.textTransform=l.caixa?'uppercase':'none';tx.style.lineHeight=l.entre;
+   tx.style.webkitTextStroke=l.contorno&&l.contLarg>0?(w*l.contLarg/700)+'px '+l.contCor:'0';tx.style.paintOrder='stroke fill';tx.style.textShadow=l.sombra?`0 ${w*.004}px ${w*.016}px rgba(0,0,0,.7)`:'none';
+   let sc=1;tx.style.fontSize=(w*l.tam/100)+'px';const lim=root.clientHeight*.86;let n=0;while(tx.offsetHeight>lim&&sc>.3&&n++<20){sc-=.05;tx.style.fontSize=(w*l.tam/100*sc)+'px'}
+   const lp=l.logoPos,lw=w*l.logoTam/100,m=w*.025;lg.style.cssText='position:absolute;pointer-events:none;object-fit:contain;display:'+(l.logoOn&&st.logo?'block':'none')+';width:'+lw+'px;opacity:'+l.logoOp/100+';'+(lp[0]==='t'?'top:'+m+'px;':lp[0]==='b'?'bottom:'+m+'px;':'top:50%;transform:translateY(-50%);')+(lp==='c'?'left:50%;transform:translate(-50%,-50%);':lp[1]==='l'?'left:'+m+'px;':lp[1]==='r'?'right:'+m+'px;':'left:50%;transform:translateX(-50%);');
+   inf.style.fontSize=(w*.017)+'px'}
+  function infoTxt(){const s=st.slide,l=L();if(!s||l.info==='nunca'||!(s.titulo||s.artista)||(l.info==='primeiro'&&s.idx!==0)){inf.textContent='';return}inf.textContent=[s.titulo,s.artista].filter(Boolean).join(' — ')}
+  function showText(){const s=st.slide,txt=s?s.texto:'',my=++tok;if(tx.textContent===txt&&tx.style.opacity==='1'){fit();infoTxt();return}tx.style.opacity='0';setTimeout(()=>{if(my!==tok)return;tx.textContent=txt;fit();infoTxt();tx.style.opacity=txt?'1':'0'},anim?200:0)}
+  function set(o){if(o.L){const nl=Object.assign({},DEF,o.L),j=JSON.stringify(nl);if(j!==lastJ){lastJ=j;st.L=nl;build()}}if(o.logo!==undefined){st.logo=o.logo;lg.src=o.logo;pl.src=o.logo}if('slide' in o)st.slide=o.slide;if('pausado' in o){st.pausado=!!o.pausado;ps.style.opacity=st.pausado?'1':'0'}
+   size();showText();if(!anim)frame(performance.now());else if(!raf||true){cancelAnimationFrame(raf);raf=requestAnimationFrame(frame)}}
+  let ro=null;if(window.ResizeObserver){ro=new ResizeObserver(()=>{if(!root.isConnected){ro.disconnect();return}size();if(!anim)frame(performance.now())});ro.observe(root)}
+  build();set({});
+  return{set,destroy(){cancelAnimationFrame(raf);if(ro)ro.disconnect()}}}
+ factory.DEF=DEF;factory.FONTES=FONTES;return factory}
+
+/* ===== Multimídia: biblioteca de músicas, editor, layout e projetor ===== */
+const MMR=mmRenderer(),MM_DEF=MMR.DEF;
+const multiOk=()=>!ONLINE||!!S.multi;
+const MM={sub:'lista',songs:null,padrao:{},q:'',busca:{q:'',res:[],busy:false,msg:''},ed:null,prevI:0,rs:{},pj:null,win:null,bc:null};
+const MM_EX={titulo:'Exemplo de slide',artista:'Ministério Zoe',texto:'Santo, Santo, Santo\nÉ o Senhor Deus Todo-Poderoso',idx:0};
+const mmSplit=t=>String(t||'').replace(/\r/g,'').split(/\n[ \t]*\n+/).map(x=>x.trim()).filter(Boolean);
+const mmEf=l=>Object.assign({},MM_DEF,MM.padrao||{},l||{});
+async function mmApi(a,d){if(ONLINE)return api(a,d);
+ const D=S.mmD=S.mmD||[];
+ if(a==='listSongs')return{itens:D.slice().sort((x,y)=>x.titulo.localeCompare(y.titulo)),padrao:S.mmPad||{}};
+ if(a==='saveSong'){if(!String(d.titulo||'').trim())throw new Error('Informe o nome da música.');if(!String(d.letra||'').trim())throw new Error('A letra está vazia.');if(d.youtube&&!/^https:\/\/(www\.|m\.)?(youtube\.com|youtu\.be)\//.test(d.youtube))throw new Error('O link do YouTube precisa começar com https://youtube.com ou https://youtu.be.');
+  let r=d.id&&D.find(x=>x.id===d.id);if(!r){r={id:'mu'+Date.now()};D.push(r)}Object.assign(r,{titulo:d.titulo,artista:d.artista||'',youtube:d.youtube||'',letra:d.letra,layout:d.layout||null,atualizadoPor:S.apelido||''});save();return{id:r.id}}
+ if(a==='deleteSong'){S.mmD=D.filter(x=>x.id!==d.id);save();return{ok:true}}
+ if(a==='saveSongDefault'){S.mmPad=d.layout||{};save();return{ok:true}}
+ if(a==='searchLyrics'||a==='importLyrics'){try{if(a==='searchLyrics'){const j=await(await fetch('https://api.lyrics.ovh/suggest/'+encodeURIComponent(d.q))).json();return{itens:(j.data||[]).slice(0,12).map(x=>({titulo:x.title_short||x.title,artista:x.artist.name}))}}
+   const j=await(await fetch('https://api.lyrics.ovh/v1/'+encodeURIComponent(d.artista)+'/'+encodeURIComponent(d.titulo))).json();if(!j.lyrics)throw 0;return{titulo:d.titulo,artista:d.artista,letra:String(j.lyrics).replace(/\r/g,'').replace(/^Paroles de la chanson[^\n]*\n+/i,'').replace(/\n{3,}/g,'\n\n').trim()}}catch(e){throw new Error('A busca de letras só funciona no app publicado. Cole a letra manualmente.')}}
+ return null}
+async function mmCarrega(){try{const r=await mmApi('listSongs',{});MM.songs=r.itens;MM.padrao=r.padrao||{}}catch(e){MM.songs=[];toast(e.message)}if(R.r==='multimidia')render()}
+function mmSub(k){mmPjLimpaRs();MM.sub=k;if(k!=='editor')MM.ed=null;render()}
+function mmNova(){MM.ed={id:'',titulo:'',artista:'',youtube:'',letra:'',layout:null,web:true};MM.prevI=0;MM.busca={q:'',res:[],busy:false,msg:''};MM.sub='editor';render()}
+function mmEdita(id){const s=MM.songs.find(x=>x.id===id);if(!s)return;MM.ed={id:s.id,titulo:s.titulo,artista:s.artista,youtube:s.youtube,letra:s.letra,layout:s.layout?JSON.parse(JSON.stringify(s.layout)):null};MM.prevI=0;MM.sub='editor';render()}
+async function mmApaga(id){const s=MM.songs.find(x=>x.id===id);if(!s||!confirm('Excluir "'+s.titulo+'"? Todos do ministério Som perdem acesso a ela.'))return;try{await mmApi('deleteSong',{id});MM.songs=MM.songs.filter(x=>x.id!==id);render()}catch(e){toast(e.message)}}
+async function mmSalvar(){const e=MM.ed;try{const r=await mmApi('saveSong',{id:e.id,titulo:e.titulo,artista:e.artista,youtube:e.youtube,letra:e.letra,layout:e.layout});toast('Música salva para todo o ministério Som');MM.songs=null;MM.sub='lista';MM.ed=null;render()}catch(er){toast(er.message)}}
+async function mmSalvaPadrao(){try{await mmApi('saveSongDefault',{layout:MM.padrao});toast('Layout padrão salvo');}catch(e){toast(e.message)}}
+/* busca de letras */
+let mmTm=0;function mmBusca(v){MM.busca.q=v}
+async function mmBuscaGo(){const b=MM.busca,q=(b.q||'').trim();if(q.length<2)return toast('Digite o nome da música ou do cantor');b.busy=true;b.msg='';b.res=[];mmBuscaRe();try{b.res=(await mmApi('searchLyrics',{q})).itens;if(!b.res.length)b.msg='Nada encontrado. Tente outro nome ou cole a letra.'}catch(e){b.msg=e.message}b.busy=false;mmBuscaRe()}
+function mmBuscaRe(){const el=$('#mm_res');if(!el)return;const b=MM.busca;el.innerHTML=b.busy?'<div class="skel" aria-busy="true"></div>':b.msg?`<p class="muted sm">${esc(b.msg)}</p>`:b.res.map((r,i)=>`<div class="opt" style="cursor:pointer" onclick="mmImporta(${i})"><div style="flex:1"><b>${esc(r.titulo)}</b><div class="muted sm">${esc(r.artista)}</div></div><span class="btn sm">Importar</span></div>`).join('')}
+async function mmImporta(i){const r=MM.busca.res[i];if(!r)return;try{const x=await mmApi('importLyrics',{artista:r.artista,titulo:r.titulo});const e=MM.ed;e.titulo=e.titulo||x.titulo;e.artista=e.artista||x.artista;e.letra=x.letra;MM.busca.res=[];toast('Letra importada. Revise e ajuste os slides.');render()}catch(er){toast(er.message)}}
+/* slides do editor */
+function mmSlidesEd(){const e=MM.ed,sl=mmSplit(e.letra);return sl}
+function mmLetra(v){MM.ed.letra=v;const n=mmSplit(v).length,el=$('#mm_n');if(el)el.textContent=n+' slide'+(n===1?'':'s');if(MM.prevI>=n)MM.prevI=Math.max(0,n-1);mmSlidesRe();mmPrevUpd()}
+function mmSlidesRe(){const el=$('#mm_sl');if(el)el.innerHTML=mmSlidesHTML()}
+function mmSlidesHTML(){const sl=mmSlidesEd();return sl.map((t,i)=>`<div class="opt mm-s ${i===MM.prevI?'on':''}" style="display:block"><div class="row" style="gap:6px;flex-wrap:wrap"><b style="flex:1" onclick="mmVeSlide(${i})" style="cursor:pointer">Slide ${i+1}</b><button class="btn sm ghost" onclick="mmVeSlide(${i})">Ver</button>${i>0?`<button class="btn sm ghost" onclick="mmJunta(${i})" title="Junta com o slide anterior">↑ Juntar</button>`:''}<button class="btn sm ghost" onclick="mmDivide(${i})" title="Divide onde está o cursor">Dividir</button><button class="btn sm ghost" onclick="mmRemoveSl(${i})" aria-label="Excluir slide">${ic('x',14)}</button></div><textarea id="mm_t${i}" rows="${Math.min(8,t.split('\n').length+1)}" oninput="mmEditSl(${i},this.value)" onfocus="mmVeSlide(${i},1)">${esc(t)}</textarea></div>`).join('')||'<p class="muted sm">Cole ou importe a letra para ver os slides.</p>'}
+function mmGrava(sl){MM.ed.letra=sl.join('\n\n');const ta=$('#mm_letra');if(ta)ta.value=MM.ed.letra;const n=sl.length,el=$('#mm_n');if(el)el.textContent=n+' slide'+(n===1?'':'s')}
+function mmEditSl(i,v){const sl=mmSlidesEd();sl[i]=v;MM.ed.letra=sl.map(x=>x.trim()).join('\n\n');const ta=$('#mm_letra');if(ta)ta.value=MM.ed.letra;mmPrevUpd()}
+function mmJunta(i){const sl=mmSlidesEd();sl.splice(i-1,2,sl[i-1]+'\n'+sl[i]);mmGrava(sl);MM.prevI=i-1;mmSlidesRe();mmPrevUpd()}
+function mmDivide(i){const ta=$('#mm_t'+i);if(!ta)return;const p=ta.selectionStart,sl=mmSlidesEd(),t=sl[i],a=t.slice(0,p).trim(),b=t.slice(p).trim();if(!a||!b)return toast('Clique no texto, no ponto onde o slide deve ser dividido');sl.splice(i,1,a,b);mmGrava(sl);MM.prevI=i;mmSlidesRe();mmPrevUpd()}
+function mmRemoveSl(i){const sl=mmSlidesEd();sl.splice(i,1);mmGrava(sl);MM.prevI=Math.max(0,Math.min(MM.prevI,sl.length-1));mmSlidesRe();mmPrevUpd()}
+function mmVeSlide(i,soft){MM.prevI=i;mmPrevUpd();if(!soft)mmSlidesRe()}
+/* layout */
+const mmTgt=()=>MM.sub==='padrao'?MM.padrao:(MM.ed&&MM.ed.layout);
+function mmSetV(k,v){const t=mmTgt();if(!t)return;t[k]=v;mmPrevUpd();const o=$('#mmv_'+k);if(o)o.textContent=v}
+function mmSetA(k,i,v){const t=mmTgt();if(!t)return;const a=(t[k]||mmEf(t)[k]).slice();a[i]=v;t[k]=a;mmPrevUpd()}
+function mmAddCor(k){const t=mmTgt(),a=(t[k]||mmEf(t)[k]).slice(),max=k==='cores'?3:5;if(a.length>=max)return;a.push(a[a.length-1]);t[k]=a;render()}
+function mmDelCor(k,i){const t=mmTgt(),a=(t[k]||mmEf(t)[k]).slice(),min=k==='cores'?2:1;if(a.length<=min)return;a.splice(i,1);t[k]=a;render()}
+const mmN=(k,l,mn,mx,st,E)=>`<label class="f mm-r">${l} <span class="muted sm" id="mmv_${k}">${E[k]}</span><input type="range" min="${mn}" max="${mx}" step="${st||1}" value="${E[k]}" oninput="mmSetV('${k}',+this.value)"></label>`;
+const mmB=(k,l,E)=>`<label class="mm-ck"><input type="checkbox" ${E[k]?'checked':''} onchange="mmSetV('${k}',this.checked)"> ${l}</label>`;
+const mmE=(k,l,ops,E)=>`<label class="f">${l}<select onchange="mmSetV('${k}',this.value)">${ops.map(([v,t])=>`<option value="${v}" ${E[k]===v?'selected':''}>${t}</option>`).join('')}</select></label>`;
+const mmC=(k,l,E)=>`<label class="f mm-c">${l}<input type="color" value="${E[k]}" oninput="mmSetV('${k}',this.value)"></label>`;
+const mmCA=(k,l,E)=>`<div class="f"><span>${l}</span><div class="row" style="gap:8px;flex-wrap:wrap">${E[k].map((c,i)=>`<span class="mm-cc"><input type="color" value="${c}" oninput="mmSetA('${k}',${i},this.value)" aria-label="Cor ${i+1}">${E[k].length>(k==='cores'?2:1)?`<button class="x" onclick="mmDelCor('${k}',${i})" aria-label="Remover cor">×</button>`:''}</span>`).join('')}${E[k].length<(k==='cores'?3:5)?`<button class="btn sm ghost" onclick="mmAddCor('${k}')">+ cor</button>`:''}</div></div>`;
+function mmLayoutForm(){const t=mmTgt(),E=mmEf(t);if(MM.sub==='padrao')Object.assign(E,MM_DEF,t);
+ return `<details open class="mm-g"><summary>🎨 Fundo e luzes</summary>${mmCA('cores','Cores do fundo (degradê)',E)}${mmB('luzesOn','Luzes coloridas que brilham e se movem',E)}${mmCA('luzesCores','Cores das luzes',E)}${mmN('luzesQtd','Quantidade de luzes',0,14,1,E)}${mmN('luzesBrilho','Brilho',5,100,1,E)}${mmN('luzesVel','Velocidade do movimento',0,300,5,E)}</details>
+ <details class="mm-g"><summary>✨ Partículas (overlay)</summary>${mmE('parts','Estilo',[['nenhuma','Nenhuma'],['bokeh','Luzes em desfoque'],['estrelas','Estrelas'],['neve','Neve'],['bolhas','Bolhas'],['coracoes','Corações'],['cruzes','Cruzes'],['notas','Notas musicais'],['poeira','Brilho (poeira)']],E)}${mmC('partCor','Cor das partículas',E)}${mmN('partQtd','Quantidade',0,160,1,E)}${mmN('partTam','Tamanho (%)',40,400,5,E)}${mmN('partVel','Velocidade (%)',0,300,5,E)}${mmN('partDesf','Brilho/desfoque',0,30,1,E)}</details>
+ <details class="mm-g"><summary>🔤 Letra</summary>${mmE('fonte','Fonte',[['montserrat','Montserrat'],['poppins','Poppins'],['playfair','Playfair Display'],['bebas','Bebas Neue'],['oswald','Oswald'],['lora','Lora'],['cinzel','Cinzel'],['figtree','Figtree'],['caveat','Caveat (manuscrita)'],['georgia','Georgia'],['arial','Arial']],E)}${mmN('tam','Tamanho',2,12,.1,E)}${mmC('cor','Cor da letra',E)}<div class="row" style="flex-wrap:wrap;gap:14px">${mmB('neg','Negrito',E)}${mmB('ita','Itálico',E)}${mmB('caixa','MAIÚSCULAS',E)}${mmB('sombra','Sombra',E)}</div>${mmB('contorno','Contorno na letra',E)}${mmC('contCor','Cor do contorno',E)}${mmN('contLarg','Espessura do contorno',0,12,.5,E)}${mmE('alinha','Alinhamento',[['center','Centro'],['left','Esquerda'],['right','Direita']],E)}${mmN('entre','Espaço entre linhas',1,2,.05,E)}</details>
+ <details class="mm-g"><summary>⛪ Logo e título</summary>${mmB('logoOn','Mostrar logo da igreja',E)}${mmN('logoTam','Tamanho da logo (%)',4,60,1,E)}${mmE('logoPos','Posição da logo',[['tl','Topo, esquerda'],['tc','Topo, centro'],['tr','Topo, direita'],['bl','Rodapé, esquerda'],['bc','Rodapé, centro'],['br','Rodapé, direita'],['c','Centro']],E)}${mmN('logoOp','Opacidade da logo (%)',10,100,1,E)}${mmE('info','Nome da música e cantor',[['primeiro','Só no primeiro slide'],['sempre','Em todos os slides'],['nunca','Não mostrar']],E)}</details>`}
+function mmPrevUpd(){const r=MM.rs.prev;if(!r)return;const e=MM.ed,sl=e?mmSlidesEd():[],i=Math.min(MM.prevI,Math.max(0,sl.length-1));const L=MM.sub==='padrao'?mmEf(MM.padrao):mmEf(e&&e.layout);r.set({L,logo:LOGO_D,slide:MM.sub==='padrao'?MM_EX:{texto:sl[i]||'Cole a letra para ver aqui',titulo:e&&e.titulo,artista:e&&e.artista,idx:i}})}
+function mmPjLimpaRs(){Object.values(MM.rs).forEach(r=>{try{r.destroy()}catch(e){}});MM.rs={}}
+function mmInit(){mmPjLimpaRs();const a=$('#mmprev');if(a&&(MM.sub==='editor'||MM.sub==='padrao')){MM.rs.prev=MMR(a,{anim:true});mmPrevUpd()}
+ if(MM.sub==='projetor'&&MM.pj){const p=MM.pj;[['cur','mm_cur',true],['prv','mm_prv',false],['nxt','mm_nxt',false]].forEach(([k,id,an])=>{const el=$('#'+id);if(el)MM.rs[k]=MMR(el,{anim:an})});mmPjDraw()}}
+/* telas */
+function mmListaHTML(){if(MM.songs===null){mmCarrega();return '<div class="skel" aria-busy="true"></div>'}const q=semAc(MM.q||''),l=MM.songs.filter(s=>!q||semAc(s.titulo+' '+s.artista).includes(q));
+ return `<div class="card flat col"><div class="row" style="flex-wrap:wrap"><h2 style="flex:1;margin:0">Músicas do ministério Som</h2><button class="btn" onclick="mmNova()">${ic('plus',16)} Nova música</button></div><input placeholder="Buscar música ou cantor" value="${esc(MM.q)}" oninput="MM.q=this.value;mmListaRe()" aria-label="Buscar música"><div id="mm_lista">${mmCards(l)}</div></div>`}
+const mmCards=l=>l.length?l.map(s=>`<div class="opt"><div style="flex:1;min-width:150px"><b>${esc(s.titulo)}</b><div class="muted sm">${esc(s.artista||'—')} · ${mmSplit(s.letra).length} slides${s.layout?' · layout próprio':' · layout padrão'}</div></div><div class="row" style="gap:6px;flex-wrap:wrap">${s.youtube?`<a class="btn sm ghost" href="${esc(s.youtube)}" target="_blank" rel="noopener">▶ YouTube</a>`:''}<button class="btn sm" onclick="mmProjeta('${esc(s.id)}')">${ic('play',14)} Projetar</button><button class="btn sm ghost" onclick="mmEdita('${esc(s.id)}')">Editar</button><button class="btn sm ghost" onclick="mmApaga('${esc(s.id)}')" aria-label="Excluir">${ic('x',14)}</button></div></div>`).join(''):'<p class="muted">Nenhuma música ainda. Toque em “Nova música” para colar ou importar uma letra.</p>';
+function mmListaRe(){const q=semAc(MM.q||''),el=$('#mm_lista');if(el)el.innerHTML=mmCards(MM.songs.filter(s=>!q||semAc(s.titulo+' '+s.artista).includes(q)))}
+function mmEditorHTML(){const e=MM.ed,n=mmSplit(e.letra).length;
+ return `<div class="row"><button class="btn ghost sm" onclick="mmSub('lista')">‹ Músicas</button><h2 style="margin:0;flex:1">${e.id?'Editar música':'Nova música'}</h2><button class="btn" onclick="mmSalvar()">Salvar</button></div>
+ <div class="mm-ed"><div class="col" style="gap:12px;min-width:0">
+ <div class="card flat col"><h3 style="margin:0">Dados da música</h3><div class="form"><label class="f full">Nome da música<input value="${esc(e.titulo)}" maxlength="120" oninput="MM.ed.titulo=this.value;mmPrevUpd()"></label><label class="f">Cantor / ministério<input value="${esc(e.artista)}" maxlength="120" oninput="MM.ed.artista=this.value;mmPrevUpd()"></label><label class="f">Link do YouTube (opcional)<input value="${esc(e.youtube)}" maxlength="200" placeholder="https://youtu.be/..." oninput="MM.ed.youtube=this.value"></label></div></div>
+ <div class="card flat col"><h3 style="margin:0">Letra</h3><div class="row" style="gap:8px"><input id="mm_bq" placeholder="Buscar letra na web (nome da música ou cantor)" value="${esc(MM.busca.q)}" oninput="mmBusca(this.value)" onkeydown="if(event.key==='Enter')mmBuscaGo()" style="flex:1"><button class="btn" onclick="mmBuscaGo()">${ic('search',16)} Buscar</button></div><div id="mm_res"></div>
+ <p class="muted sm" style="margin:0">Ou cole a letra abaixo. <b>Uma linha em branco separa os slides.</b> <span id="mm_n">${n} slide${n===1?'':'s'}</span></p><textarea id="mm_letra" rows="10" placeholder="Cole a letra aqui" oninput="mmLetra(this.value)">${esc(e.letra)}</textarea></div>
+ <div class="card flat col"><h3 style="margin:0">Slides</h3><p class="muted sm" style="margin:0">Ajuste o que fica em cada slide: junte, divida ou edite. Toque em “Ver” para conferir na prévia.</p><div id="mm_sl" class="col" style="gap:8px">${mmSlidesHTML()}</div></div></div>
+ <div class="col" style="gap:12px;min-width:0"><div class="card flat col mm-sticky"><h3 style="margin:0">Prévia</h3><div id="mmprev" class="mm-st"></div>
+ <label class="mm-ck"><input type="checkbox" ${e.layout?'':'checked'} onchange="mmUsaPadrao(this.checked)"> Usar o layout padrão</label>${e.layout?`<p class="muted sm" style="margin:0">Esta música tem o próprio layout.</p><div class="mm-form">${mmLayoutForm()}</div>`:'<p class="muted sm" style="margin:0">Desmarque para personalizar o layout só desta música. O padrão é editado na aba “Layout padrão”.</p>'}</div></div></div>`}
+function mmUsaPadrao(on){MM.ed.layout=on?null:JSON.parse(JSON.stringify(MM.padrao||{}));render()}
+function mmPadraoHTML(){if(MM.songs===null){mmCarrega();return '<div class="skel" aria-busy="true"></div>'}
+ return `<div class="mm-ed"><div class="card flat col"><h2 style="margin:0">Layout padrão</h2><p class="muted sm" style="margin:0">Vale para toda música sem layout próprio.</p><div class="mm-form">${mmLayoutForm()}</div><div><button class="btn" onclick="mmSalvaPadrao()">Salvar layout padrão</button></div></div><div class="card flat col mm-sticky"><h3 style="margin:0">Prévia</h3><div id="mmprev" class="mm-st"></div></div></div>`}
+function multimidiaHTML(){if(!multiOk())return '<div class="card flat"><h2>Área do Multimídia</h2><p class="muted">Esta área é do ministério Som. Peça ao supervisor para te incluir.</p></div>';
+ const T=[['lista','Músicas'],['padrao','Layout padrão']];let b='';
+ if(MM.sub==='editor'&&MM.ed)b=mmEditorHTML();else if(MM.sub==='projetor'&&MM.pj)b=mmProjetorHTML();else{if(MM.sub!=='padrao')MM.sub='lista';b=(MM.sub==='padrao'?mmPadraoHTML():mmListaHTML())}
+ const tb=(MM.sub==='editor'||MM.sub==='projetor')?'':tabs(T,MM.sub,'multimidia').replace(/sub\('multimidia','(\w+)'\)/g,"mmSub('$1')");
+ return `<div class="row"><h1 style="flex:1">Multimídia</h1></div>${tb}<div class="col" style="gap:12px">${b}</div>`}
+
+/* projetor */
+function mmProjeta(id){const s=MM.songs.find(x=>x.id===id);if(!s)return;const sl=mmSplit(s.letra);MM.pj={song:s,slides:sl,i:0,pausado:false,ativa:false,modo:''};MM.sub='projetor';render()}
+const mmSl=(i)=>{const p=MM.pj,t=p.slides[i];return t===undefined?null:{texto:t,titulo:p.song.titulo,artista:p.song.artista,idx:i}};
+function mmPjHTML_thumb(id,lab){return `<div><div class="muted sm" style="margin-bottom:4px">${lab}</div><div id="${id}" class="mm-st mm-th"></div></div>`}
+function mmProjetorHTML(){const p=MM.pj,at=mmAtiva();
+ return `<div class="row" style="flex-wrap:wrap;gap:8px"><button class="btn ghost sm" onclick="mmSaiProj()">‹ Músicas</button><div style="flex:1;min-width:140px"><b>${esc(p.song.titulo)}</b><div class="muted sm">${esc(p.song.artista||'')}</div></div>
+ ${at?`<span class="chip ${p.pausado?'y':'g'}">${p.pausado?'Pausada (logo na tela)':'Transmitindo'} · ${esc(p.modo)}</span><button class="btn ${p.pausado?'':'ghost'}" onclick="mmPausa()">${p.pausado?'▶ Retomar transmissão':'⏸ Pausar transmissão'}</button><button class="btn red" onclick="mmEncerra()">Encerrar</button>`:`<button class="btn" id="mm_ini" onclick="mmIniciar()">${ic('play',16)} Iniciar transmissão</button>`}</div>
+ <div class="mm-pj"><div class="col" style="gap:10px;min-width:0"><div class="muted sm">Agora · slide ${p.i+1} de ${p.slides.length}</div><div id="mm_cur" class="mm-st"></div>
+ <div class="row" style="gap:8px"><button class="btn ghost" onclick="mmVai(-1)" ${p.i<=0?'disabled':''}>← Anterior</button><button class="btn" style="flex:1" onclick="mmVai(1)" ${p.i>=p.slides.length-1?'disabled':''}>Próximo →</button></div>
+ <div class="mm-ths">${mmPjHTML_thumb('mm_prv','Slide anterior')}${mmPjHTML_thumb('mm_nxt','Próximo slide')}</div><p class="muted sm" style="margin:0">Atalhos: ← → ou espaço para passar, B para pausar.</p></div>
+ <div class="card flat col" style="min-width:0"><h3 style="margin:0">Ir direto para…</h3><div class="mm-lst">${p.slides.map((t,i)=>`<button class="opt mm-it ${i===p.i?'on':''}" onclick="mmPula(${i})" aria-label="Slide ${i+1}"><b>${i+1}</b><span style="flex:1;text-align:left">${esc(t.split('\n')[0].slice(0,60))}${t.split('\n').length>1?' …':''}</span></button>`).join('')}</div></div></div>`}
+const mmAtiva=()=>!!(MM.pj&&MM.pj.ativa&&MM.win&&!MM.win.closed);
+function mmPjDraw(){const p=MM.pj;if(!p)return;const L=mmEf(p.song.layout),R=MM.rs;if(R.cur)R.cur.set({L,logo:LOGO_D,slide:mmSl(p.i),pausado:false});if(R.prv)R.prv.set({L,logo:LOGO_D,slide:mmSl(p.i-1)});if(R.nxt)R.nxt.set({L,logo:LOGO_D,slide:mmSl(p.i+1)});mmEnvia()}
+function mmEnvia(first){const p=MM.pj;if(!p||!mmAtiva())return;try{MM.win.postMessage({mm:1,L:mmEf(p.song.layout),slide:mmSl(p.i),pausado:p.pausado,logo:first?LOGO_D:undefined},'*')}catch(e){}}
+function mmVai(d){const p=MM.pj;if(!p)return;mmPula(Math.max(0,Math.min(p.slides.length-1,p.i+d)))}
+function mmPula(i){const p=MM.pj;if(!p||i===p.i)return;p.i=i;p.pausado=false;renderKeep();}
+function mmSaiProj(){mmPjLimpaRs();MM.sub='lista';MM.pj=null;render()}
+function mmPausa(){const p=MM.pj;p.pausado=!p.pausado;renderKeep()}
+function mmEncerra(){const p=MM.pj;p.pausado=true;mmEnvia();p.ativa=false;toast('Transmissão encerrada. A segunda tela mostra a logo; feche a janela quando quiser.');renderKeep()}
+async function mmIniciar(){const p=MM.pj;let tela=null,multi=false;
+ try{if(window.getScreenDetails){const sd=await Promise.race([window.getScreenDetails(),new Promise((_,no)=>setTimeout(no,1500))]);tela=sd.screens.find(s=>!s.isPrimary)||null;multi=!!tela}else multi=!!(screen&&screen.isExtended)}catch(e){}
+ const W=960,H=540,f=tela?`left=${tela.availLeft},top=${tela.availTop},width=${tela.availWidth},height=${tela.availHeight}`:`left=${Math.max(0,Math.round((screen.availWidth-W)/2))},top=${Math.max(0,Math.round((screen.availHeight-H)/2))},width=${W},height=${H}`;
+ if(MM.win&&!MM.win.closed){p.ativa=true;p.modo=MM.modo||'janela';p.pausado=false;mmEnvia(true);renderKeep();return}
+ const w=window.open('','zoe_projecao',f+',popup=yes');if(!w)return toast('O navegador bloqueou a janela. Permita pop-ups para este site e tente de novo.');
+ const fonts=(document.querySelector('link[href*="fonts.googleapis.com/css2"]')||{}).href||'';
+ w.document.open();w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Zoe · Projeção</title>${fonts?`<link rel="stylesheet" href="${fonts}">`:''}<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}#st{position:absolute;inset:0}#dica{position:fixed;left:50%;bottom:4%;transform:translateX(-50%);background:rgba(0,0,0,.7);color:#fff;font:600 15px Arial;padding:10px 16px;border-radius:12px;opacity:0;transition:opacity .4s;pointer-events:none}</style></head><body><div id="st" style="position:absolute;left:0;top:0;right:0;bottom:0"></div><div id="dica">Clique ou aperte F para tela cheia</div><script>const MMR=(${mmRenderer.toString()})();const R=MMR(document.getElementById('st'),{anim:true});let logo='',fsOk=${tela?'true':'false'};
+const dica=document.getElementById('dica');function fs(){const d=document.documentElement;if(!document.fullscreenElement&&d.requestFullscreen)d.requestFullscreen().catch(()=>{})}
+addEventListener('message',e=>{const m=e.data;if(!m||m.mm!==1)return;if(m.logo)logo=m.logo;R.set({L:m.L,slide:m.slide,pausado:m.pausado,logo:logo})});
+addEventListener('keydown',e=>{if(e.key==='f'||e.key==='F')fs()});addEventListener('click',()=>{if(fsOk)fs()});
+if(fsOk){setTimeout(()=>{if(!document.fullscreenElement){dica.style.opacity=1;setTimeout(()=>dica.style.opacity=0,5000)}},1200)}
+setInterval(()=>{if(!window.opener||window.opener.closed)R.set({pausado:true})},1000);
+try{window.opener.postMessage({mmOk:1},'*')}catch(e){}<\/script></body></html>`);w.document.close();
+ MM.win=w;MM.modo=multi?'segunda tela':'janela na tela principal';p.ativa=true;p.modo=MM.modo;p.pausado=false;
+ if(tela){try{w.document.documentElement.requestFullscreen({screen:tela}).catch(()=>{})}catch(e){}}
+ MM.ok=false;const t0=Date.now(),iv=setInterval(()=>{if(MM.ok||Date.now()-t0>4000||w.closed){clearInterval(iv);return}mmEnvia(true)},300);
+ renderKeep()}
+addEventListener('message',e=>{if(e.data&&e.data.mmOk){MM.ok=true;mmEnvia(true)}});
+setInterval(()=>{if(MM.pj&&MM.pj.ativa&&MM.win&&MM.win.closed){MM.pj.ativa=false;if(R.r==='multimidia')renderKeep()}},1000);
+addEventListener('keydown',e=>{if(R.r!=='multimidia'||MM.sub!=='projetor'||!MM.pj)return;if(/INPUT|TEXTAREA|SELECT/.test((document.activeElement||{}).tagName))return;if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'){e.preventDefault();mmVai(1)}else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();mmVai(-1)}else if(e.key==='b'||e.key==='B'){if(mmAtiva())mmPausa()}});
 
 /* ===== Criar insígnias (supervisores) e escalas de serviço ===== */
 const canCurar=()=>S.role==='admin'||S.role==='pastor'||can('config')||can('eventos')||can('celulas')||!!cg().supervisor;

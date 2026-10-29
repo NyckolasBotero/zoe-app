@@ -808,3 +808,25 @@ test('escalas: lote semanal, lembretes 7/3/1, confirmar, re-escalar, troca, pedi
   // remover série
   const serie = gi.itens.find(x => x.serie).serie; assert.ok(e.call('deleteScale', { serie }, adm).data.removidas >= 7);
 });
+test('multimídia: só ministério Som; músicas com layout; layout padrão; busca de letras', () => {
+  const { e, adm, tok, mk } = boot();
+  const a = mk('som@zoe.com', 'membro'), b = mk('outro@zoe.com', 'membro'); const ta = tok('som@zoe.com', 'Temp12345'), tb = tok('outro@zoe.com', 'Temp12345');
+  assert.equal(e.call('listSongs', {}, ta).error.code, 'FORBIDDEN'); assert.equal(e.call('me', {}, ta).data.multimidia, false);
+  const som = e.call('listMinistries', {}, adm).data.find(m => m.nome === 'Som').id;
+  e.run(`appendRow_(table_('Interesses'), { InteresseID: 'I1', MinisterioID: '${som}', MembroID: '${a}', Data: now_(), Status: 'autorizado' })`);
+  assert.equal(e.call('me', {}, ta).data.multimidia, true); assert.equal(e.call('listSongs', {}, tb).error.code, 'FORBIDDEN');
+  assert.ok(e.call('listSongs', {}, adm).ok); // gestor também
+  assert.equal(e.call('saveSong', { titulo: '', letra: 'x' }, ta).error.code, 'VALIDATION');
+  assert.equal(e.call('saveSong', { titulo: 'A', letra: 'x', youtube: 'http://evil.com/x' }, ta).error.code, 'VALIDATION');
+  const r = e.call('saveSong', { titulo: 'Grande é o Senhor', artista: 'Coral', youtube: 'https://youtu.be/abc', letra: 'Linha 1\nLinha 2\n\nRefrão', layout: { cor: 'red', tam: 99, fonte: 'comic', parts: 'estrelas', cores: ['#112233', '#445566'], luzesQtd: 5, hack: '<script>' } }, ta); assert.ok(r.ok, JSON.stringify(r));
+  const l = e.call('listSongs', {}, adm).data; assert.equal(l.itens.length, 1); const lay = l.itens[0].layout;
+  assert.equal(lay.tam, 12); assert.equal(lay.fonte, undefined); assert.equal(lay.parts, 'estrelas'); assert.equal(lay.hack, undefined); assert.equal(lay.cor, undefined); assert.deepEqual(lay.cores, ['#112233', '#445566']);
+  assert.ok(e.call('saveSong', { id: r.data.id, titulo: 'Grande é o Senhor!', letra: 'Nova letra' }, ta).ok); assert.equal(e.call('listSongs', {}, ta).data.itens[0].titulo, 'Grande é o Senhor!');
+  assert.ok(e.call('saveSongDefault', { layout: { fonte: 'cinzel', tam: 6 } }, ta).ok); const d = e.call('listSongs', {}, ta).data; assert.equal(d.padrao.fonte, 'cinzel'); assert.equal(d.itens.length, 1);
+  // busca / importação com serviço simulado
+  e.run(`UrlFetchApp = { fetch: u => ({ getResponseCode: () => 200, getContentText: () => u.indexOf('/suggest/') > 0 ? JSON.stringify({ data: [{ title: 'Oceanos', artist: { name: 'Hillsong' } }, { title: 'Oceanos', artist: { name: 'Hillsong' } }] }) : JSON.stringify({ lyrics: 'Paroles de la chanson Oceanos par Hillsong\\r\\nVerso 1\\r\\n\\r\\n\\r\\n\\r\\nVerso 2' }) }) }`);
+  assert.deepEqual(e.call('searchLyrics', { q: 'oceanos' }, ta).data.itens, [{ titulo: 'Oceanos', artista: 'Hillsong' }]);
+  assert.equal(e.call('importLyrics', { artista: 'Hillsong', titulo: 'Oceanos' }, ta).data.letra, 'Verso 1\n\nVerso 2');
+  assert.equal(e.call('searchLyrics', { q: 'x' }, ta).error.code, 'VALIDATION');
+  assert.ok(e.call('deleteSong', { id: r.data.id }, ta).ok); assert.equal(e.call('listSongs', {}, ta).data.itens.length, 0);
+});
