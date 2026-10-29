@@ -101,7 +101,7 @@ function setup() {
   const props = PropertiesService.getScriptProperties();
   let id = props.getProperty('SHEET_ID');
   if (!id) { const s = SpreadsheetApp.create(CFG.SHEET_NAME); id = s.getId(); props.setProperty('SHEET_ID', id); }
-  const ss = SpreadsheetApp.openById(id);
+  SS_ = null; const ss = SpreadsheetApp.openById(id);
   Object.keys(SHEETS).forEach(function (n) { ensureSheet_(ss, n, SHEETS[n]); });
   const p = table_('Permissoes'), have = {}; p.rows.forEach(function (r) { have[r.Papel] = 1; });
   PAPEIS.forEach(function (r) { if (!have[r]) appendRow_(p, Object.assign({ Papel: r }, DEFAULT_PERMS[r])); });
@@ -134,19 +134,21 @@ function ensureSheet_(ss, name, headers) {
 }
 
 /* ============================== BASE ============================== */
-function ss_() { const id = PropertiesService.getScriptProperties().getProperty('SHEET_ID'); if (!id) throw new ApiError('SETUP', 'Rode setup() no Apps Script.'); return SpreadsheetApp.openById(id); }
+let SS_ = null, TMEMO_ = null;
+function ss_() { if (SS_) return SS_; const id = PropertiesService.getScriptProperties().getProperty('SHEET_ID'); if (!id) throw new ApiError('SETUP', 'Rode setup() no Apps Script.'); SS_ = SpreadsheetApp.openById(id); return SS_; }
 function table_(name) {
+  if (TMEMO_ && TMEMO_[name]) return TMEMO_[name];
   const sh = ss_().getSheetByName(name); if (!sh) throw new ApiError('SETUP', 'Aba ausente: ' + name + '. Rode setup().');
   const v = sh.getDataRange().getValues(), headers = (v[0] || []).map(String);
   const rows = v.slice(1).map(function (r, i) { const o = { _row: i + 2 }; headers.forEach(function (h, j) { o[h] = str_(r[j]); }); return o; }).filter(function (o) { return headers.some(function (h) { return o[h] !== ''; }); });
-  return { sh: sh, headers: headers, rows: rows };
+  const t = { name: name, sh: sh, headers: headers, rows: rows }; if (TMEMO_) TMEMO_[name] = t; return t;
 }
 let TZ_SHEET_ = null;
-function tzSheet_() { if (TZ_SHEET_) return TZ_SHEET_; try { TZ_SHEET_ = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('SHEET_ID')).getSpreadsheetTimeZone() || CFG.TZ; } catch (e) { TZ_SHEET_ = CFG.TZ; } return TZ_SHEET_; }
+function tzSheet_() { if (TZ_SHEET_) return TZ_SHEET_; try { TZ_SHEET_ = ss_().getSpreadsheetTimeZone() || CFG.TZ; } catch (e) { TZ_SHEET_ = CFG.TZ; } return TZ_SHEET_; }
 // O Google Sheets converte "20:00" em hora (ano 1899) quando a célula não é texto. Aqui devolvemos sempre texto legível.
 function str_(x) { if (x instanceof Date) { if (x.getFullYear() < 1950) return Utilities.formatDate(x, tzSheet_(), 'HH:mm'); return Utilities.formatDate(x, CFG.TZ, 'yyyy-MM-dd'); } return x === null || x === undefined ? '' : String(x); }
-function appendRow_(t, o) { const vals = t.headers.map(function (h) { return o[h] === undefined ? '' : o[h]; }); const rg = t.sh.getRange(t.sh.getLastRow() + 1, 1, 1, vals.length); rg.setNumberFormat('@'); rg.setValues([vals]); } // formato texto antes de gravar: horas e datas não viram Date
-function writeRow_(t, row, patch) { Object.keys(patch).forEach(function (k) { const c = t.headers.indexOf(k); if (c >= 0) { const rg = t.sh.getRange(row, c + 1, 1, 1); rg.setNumberFormat('@'); rg.setValues([[patch[k]]]); } }); }
+function appendRow_(t, o) { if (TMEMO_ && t.name) delete TMEMO_[t.name]; const vals = t.headers.map(function (h) { return o[h] === undefined ? '' : o[h]; }); const rg = t.sh.getRange(t.sh.getLastRow() + 1, 1, 1, vals.length); rg.setNumberFormat('@'); rg.setValues([vals]); } // formato texto antes de gravar: horas e datas não viram Date
+function writeRow_(t, row, patch) { if (TMEMO_ && t.name) delete TMEMO_[t.name]; Object.keys(patch).forEach(function (k) { const c = t.headers.indexOf(k); if (c >= 0) { const rg = t.sh.getRange(row, c + 1, 1, 1); rg.setNumberFormat('@'); rg.setValues([[patch[k]]]); } }); }
 function id_(p) { return p + Utilities.getUuid().replace(/-/g, '').slice(0, 10).toUpperCase(); }
 function now_() { return Utilities.formatDate(new Date(), CFG.TZ, 'yyyy-MM-dd HH:mm:ss'); }
 function today_() { return Utilities.formatDate(new Date(), CFG.TZ, 'yyyy-MM-dd'); }
@@ -2076,6 +2078,29 @@ function importLyrics_(d, u) {
   return { titulo: t, artista: a, letra: limpaLetra_(j.lyrics) };
 }
 
+
+/* Carga inicial em UMA requisição (antes eram ~20 idas e voltas ao Apps Script) */
+function boot_(d, u) {
+  const out = {}; let cid = clip_(d.celulaId, 30);
+  const run = function (k, action, data) { try { const r = ROUTES[action]; if (r.auth && r.auth !== 'any' && !can_(u, r.auth)) throw new ApiError('FORBIDDEN', ''); out[k] = r.fn(data || {}, u); } catch (e) { if (k === 'me' && e instanceof ApiError && cid) { cid = ''; return run(k, action, {}); } out[k] = { __erro: e instanceof ApiError ? e.code : 'ERROR' }; } };
+  run('me', 'me', cid ? { celulaId: cid } : {}); const me = out.me && !out.me.__erro ? out.me : null; if (!me) throw new ApiError('ERROR', 'Falha ao carregar.');
+  ['listEvents', 'listMinistries', 'listNews', 'listVideos', 'listCourses', 'listLessons', 'listDynamics', 'birthdays', 'searchCells', 'listTestimonies', 'listProducts', 'listFamilia', 'listNotifications'].forEach(function (a) { run(a, a, {}); });
+  const cg = me.cargos || {}, pc = me.permCelula || {}, pv = function (g) { return !!(pc[g] && pc[g].v); }, cd = cid ? { celulaId: cid } : {};
+  if (can_(u, 'celulas') || cg.supervisor || pv('org')) run('orgTree', 'orgTree', {});
+  if (me.celula && me.permCelula) {
+    if (pv('membros') || pv('freq') || pv('pres') || pv('papeis')) run('cellMembers', 'cellMembers', cd);
+    if (pv('hist') || pv('freq')) run('history', 'history', cd);
+    if (pv('papeis')) run('getPapeis', 'getPapeis', cd);
+    if (pv('oracao')) run('listPrayers', 'listPrayers', cd);
+    if (pv('ind')) run('indicators', 'indicators', cd);
+  }
+  const pm = me.permissoes || {};
+  if (pm.transf || cg.supervisor) run('listTransfers', 'listTransfers', {});
+  if (pm.config) run('getPerms', 'getPerms', {});
+  if (pm.transf || pm.min || cg.supervisor) run('listApprovals', 'listApprovals', {});
+  return out;
+}
+
 const ROUTES = {
   ping: { fn: function () { return { servico: 'Zoe API', status: 'online' }; } },
   login: { fn: login_ },
@@ -2091,6 +2116,7 @@ const ROUTES = {
   registerDecision: { auth: 'any', write: 1, fn: registerDecision_ }, saveVisitor: { auth: 'any', write: 1, fn: saveVisitor_ }, listVisitors: { auth: 'any', fn: listVisitors_ }, contactVisitor: { auth: 'any', write: 1, fn: contactVisitor_ },
   listScales: { auth: 'any', fn: listScales_ }, saveScale: { auth: 'any', write: 1, fn: saveScale_ }, rescheduleScale: { auth: 'any', write: 1, fn: rescheduleScale_ }, deleteScale: { auth: 'any', write: 1, fn: deleteScale_ }, respondScale: { auth: 'any', write: 1, fn: respondScale_ }, requestSwap: { auth: 'any', write: 1, fn: requestSwap_ }, answerSwap: { auth: 'any', write: 1, fn: answerSwap_ }, markScale: { auth: 'any', write: 1, fn: markScale_ }, requestJoin: { auth: 'any', write: 1, fn: requestJoin_ }, decideJoin: { auth: 'any', write: 1, fn: decideJoin_ },
   listSongs: { auth: 'any', fn: listSongs_ }, saveSong: { auth: 'any', write: 1, fn: saveSong_ }, deleteSong: { auth: 'any', write: 1, fn: deleteSong_ }, saveSongDefault: { auth: 'any', write: 1, fn: saveSongDefault_ }, searchLyrics: { auth: 'any', fn: searchLyrics_ }, importLyrics: { auth: 'any', fn: importLyrics_ },
+  boot: { auth: 'any', fn: boot_ },
   listMarks: { auth: 'any', fn: listMarks_ }, saveMark: { auth: 'any', write: 1, fn: saveMark_ }, saveNote: { auth: 'any', write: 1, fn: saveNote_ },
   listInsigniaDefs: { auth: 'any', fn: listInsigniaDefs_ }, saveInsigniaDef: { auth: 'any', write: 1, fn: saveInsigniaDef_ }, grantBadge: { auth: 'any', write: 1, fn: grantBadge_ }, logServico: { auth: 'any', write: 1, fn: logServico_ }, listServicos: { auth: 'any', fn: listServicos_ }, searchPeople: { auth: 'any', fn: findPeople_ }, sendChat: { auth: 'any', write: 1, fn: sendChat_ }, getChat: { auth: 'any', fn: getChat_ }, chatRead: { auth: 'any', write: 1, fn: chatRead_ }, listChats: { auth: 'any', fn: listChats_ }, getCertLayout: { auth: 'any', fn: getCertLayout_ }, saveCertLayout: { auth: 'any', write: 1, fn: saveCertLayout_ }, previewCert: { auth: 'any', fn: previewCert_ }, revokeCert: { auth: 'any', write: 1, fn: revokeCert_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
   searchCells: { auth: 'any', fn: searchCells_ }, addPrayer: { auth: 'any', write: 1, fn: addPrayer_ }, listPrayers: { auth: 'any', fn: listPrayers_ },
@@ -2119,10 +2145,12 @@ function doPost(e) {
     const req = JSON.parse(raw); action = String(req.action || '');
     if (raw.length > 1500000 && action !== 'saveBook') throw new ApiError('BAD_REQUEST', 'Requisição grande demais.'); route = Object.prototype.hasOwnProperty.call(ROUTES, action) ? ROUTES[action] : null; if (!route) throw new ApiError('NOT_FOUND', 'Ação desconhecida.');
     if (route.auth) { user = auth_(req.token); if (route.auth !== 'any' && !can_(user, route.auth)) { audit_(user.email, 'NEGADO:' + action, '', 'NEGADO'); throw new ApiError('FORBIDDEN', 'Você não tem permissão para esta operação.'); } }
+    TMEMO_ = /^(list|get|search|boot|me$|birthdays|orgTree|cellMembers|history|indicators|profileView|lookup|track|usageReport|fotos|certData|courseDetail|aulaFeedback)/.test(action) ? {} : null;
     out = { ok: true, data: route.fn(req.data || {}, user) };
   } catch (err) {
     if (err instanceof ApiError) out = { ok: false, error: { code: err.code, message: err.message } };
     else { console.error(err && err.stack || err); out = { ok: false, error: { code: 'ERROR', message: 'Erro inesperado. Tente novamente.' } }; }
   }
+  TMEMO_ = null;
   return json_(out);
 }

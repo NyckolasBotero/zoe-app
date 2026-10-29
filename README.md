@@ -206,3 +206,7 @@ Administração › **Maratona Bíblica (programar)**: início (1º de janeiro),
 - **Layout** por música ou **layout padrão**: degradê de fundo, luzes coloridas que brilham e se movem, partículas (luzes em desfoque, estrelas, neve, bolhas, corações, cruzes, notas, brilho), fonte, tamanho, cor, negrito, itálico, maiúsculas, contorno, sombra, alinhamento, logo (tamanho, posição, opacidade) e nome/cantor.
 - **Projetar › Iniciar transmissão** abre uma janela nova: na **segunda tela** (tela cheia — o navegador pede permissão “gerenciar janelas”; se não abrir em tela cheia, clique ou aperte F) ou, sem segunda tela, numa janela com moldura na tela principal. Painel com slide atual, **anterior e próximo**, lista para **pular direto**, atalhos (← → espaço, B) e **Pausar/Retomar**. Pausar ou encerrar mostra a **logo da Zoe** na tela de projeção.
 - Tabela `Musicas` (a linha `PADRAO` guarda o layout padrão); rotas `listSongs`, `saveSong`, `deleteSong`, `saveSongDefault`, `searchLyrics`, `importLyrics`. Teste: `tests/e2e_multimidia.py`.
+
+## Desempenho do carregamento
+- A carga inicial agora é **uma única requisição** (`boot`) em vez de ~20; o servidor lê cada aba da planilha uma vez por requisição de leitura (cache só em rotas de leitura, invalidado ao gravar) e reutiliza a planilha aberta.
+- Fontes extras (assinaturas cursivas e Multimídia) carregam depois do app, fora do caminho crítico.

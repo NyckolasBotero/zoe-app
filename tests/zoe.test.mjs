@@ -837,3 +837,16 @@ test('index.html: nenhum <style>/<link> dentro de scripts (build os moveria para
   assert.equal((h.match(/<style/g) || []).length, 2);
   assert.ok(!/html,body\{[^}]*overflow:hidden/.test(h.split('<body>')[0]));
 });
+test('boot: carga inicial em uma requisição, igual às chamadas separadas', () => {
+  const { e, adm, tok, mk } = boot(); mk('maria@zoe.com', 'membro'); const m = tok('maria@zoe.com', 'Temp12345');
+  for (const t of [adm, m]) {
+    const b = e.call('boot', {}, t); assert.ok(b.ok, JSON.stringify(b)); const d = b.data;
+    for (const k of ['me', 'listEvents', 'listMinistries', 'listNews', 'listVideos', 'listCourses', 'listLessons', 'listDynamics', 'birthdays', 'searchCells', 'listTestimonies', 'listProducts', 'listFamilia', 'listNotifications']) assert.ok(d[k] && !d[k].__erro, k + ' ' + JSON.stringify(d[k]));
+    assert.deepEqual(d.listMinistries, e.call('listMinistries', {}, t).data); assert.equal(d.me.usuario.email, t === adm ? 'admin@zoe.com' : 'maria@zoe.com');
+  }
+  assert.ok(e.call('boot', {}, adm).data.getPerms && e.call('boot', {}, adm).data.listApprovals); assert.equal(e.call('boot', {}, m).data.getPerms, undefined);
+  assert.equal(e.call('boot', { celulaId: 'CEL_INEXISTENTE' }, m).ok, true); // celula inválida cai para a padrão
+  assert.equal(e.call('boot', {}).error.code, 'SESSION');
+  // memo só nas leituras: gravação seguida de leitura continua enxergando o dado novo
+  e.call('saveSong', { titulo: 'x', letra: 'y' }, adm); const n = e.call('listSongs', {}, adm).data.itens.length; e.call('saveSong', { titulo: 'z', letra: 'w' }, adm); assert.equal(e.call('listSongs', {}, adm).data.itens.length, n + 1);
+});
