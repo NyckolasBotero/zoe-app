@@ -370,6 +370,37 @@ html.theming *,html.theming *::before,html.theming *::after{transition:backgroun
 .ib.rot svg{animation:rot .7s var(--e-spring)}@keyframes rot{from{transform:rotate(-200deg) scale(.4);opacity:0}}
 @media (max-width:860px){.collapsed .brand b,.collapsed .brand small,.collapsed .nm,.collapsed .nv span{opacity:1;max-width:220px;flex:revert;transform:none;pointer-events:auto}.collapsed .nv{gap:12px;justify-content:flex-start;padding-left:12px;padding-right:12px}.collapsed .side-foot{opacity:1;max-height:200px;pointer-events:auto;transform:none}.collapsed .me{gap:12px}.collapsed .brand{justify-content:flex-start}.collapsed .nm{flex:1}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+.pf{border-radius:22px;padding:0 0 14px;margin-bottom:14px;display:flex;flex-direction:column;gap:12px;overflow:hidden}
+.pf>.card{margin:0 14px}.pf-tabs{margin-bottom:12px;flex-wrap:wrap}
+.fb-verde,.swf.fb-verde{background:linear-gradient(160deg,#2f6b3a,#8fc27b)}.fb-aurora,.swf.fb-aurora{background:linear-gradient(160deg,#0f766e,#6d28d9 70%,#c084fc)}.fb-solpoente,.swf.fb-solpoente{background:linear-gradient(160deg,#f59e0b,#ef4444 55%,#be185d)}
+.fb-noite,.swf.fb-noite{background:radial-gradient(1.5px 1.5px at 20% 30%,#fff,transparent),radial-gradient(1.5px 1.5px at 70% 20%,#fff,transparent),radial-gradient(1px 1px at 50% 70%,#fff,transparent),radial-gradient(1.5px 1.5px at 85% 80%,#fff,transparent),linear-gradient(180deg,#0b1437,#27306b)}
+.fb-bordado,.swf.fb-bordado{background:repeating-linear-gradient(45deg,rgba(255,255,255,.07) 0 2px,transparent 2px 5px),linear-gradient(#56713a,#3f5a2b)}
+.fb-ouro,.swf.fb-ouro{background:linear-gradient(120deg,#b8861b,#f7d56a,#b8861b,#f7d56a);background-size:300% 100%;animation:pfsh 6s linear infinite}
+@keyframes pfsh{to{background-position:300% 0}}@keyframes pfspin{to{transform:rotate(360deg)}}@keyframes pfglow{50%{opacity:.65}}
+.pf-capa{height:150px;background:rgba(0,0,0,.18) center/cover}.pf-capa.sm{height:90px;border-radius:12px;margin:6px 0 8px}
+.pf-head{display:flex;gap:16px;align-items:flex-end;margin-top:-52px!important;position:relative;flex-wrap:wrap}.pf-id{flex:1;min-width:200px}.pf-id h1{margin:0 0 4px}.pf-v{font-style:italic;color:var(--verde)}
+.pfav{position:relative;width:104px;height:104px;flex:none;margin-top:-50px}.pfav.sm{width:44px;height:44px;margin:0}
+.pfav::before{content:'';position:absolute;inset:0;border-radius:50%;background:var(--ring,#fff);box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.pfp{position:absolute;inset:6px;border-radius:50%;background:#cfe0c4 center/cover;display:grid;place-items:center;font-weight:700;font-size:34px;color:#2f6b3a;z-index:1}.pfav.sm .pfp{inset:4px}
+.mold-verde{--ring:linear-gradient(135deg,#2f6b3a,#9ad28a)}.mold-dourada{--ring:linear-gradient(135deg,#f7d56a,#b8861b,#f7d56a)}
+.mold-arco::before{background:conic-gradient(#f44,#fa0,#ee3,#4c4,#39f,#a4f,#f44);animation:pfspin 3.5s linear infinite}
+.mold-chama::before{background:conic-gradient(#ff4d00,#ffc400,#ff4d00,#c40000,#ff4d00);animation:pfspin 2.2s linear infinite;box-shadow:0 0 14px #ff6a00}
+.mold-luz::before{background:conic-gradient(#fff,#ffe9a3,#fff,#bfe3ff,#fff);animation:pfspin 5s linear infinite;box-shadow:0 0 18px #ffe9a3}
+.mold-luz::after{content:'';position:absolute;inset:-6px;border-radius:50%;box-shadow:0 0 22px 4px #ffe9a3;animation:pfglow 2.4s ease-in-out infinite}
+.no-anim .pfav::before,.no-anim .pfav::after,.no-anim .fb-ouro{animation:none!important}
+.xpbar{height:12px;border-radius:99px;background:rgba(0,0,0,.1);overflow:hidden}.xpbar i{display:block;height:100%;background:linear-gradient(90deg,#3f8a4a,#d6a21d);border-radius:99px;transition:width .8s}
+.pf-ins{margin-top:12px}
+.faixa{display:grid;grid-template-rows:0fr;transition:grid-template-rows .7s cubic-bezier(.2,.9,.3,1.05);margin:-12px 24px 0;filter:drop-shadow(0 6px 8px rgba(0,0,0,.35))}.faixa.open{grid-template-rows:1fr;margin-top:0}
+.no-anim .faixa{transition:none}.fx{overflow:hidden;min-height:0}
+.fx-in{position:relative;color:#f6efd0;padding:20px 18px 66px;background:repeating-linear-gradient(45deg,rgba(255,255,255,.07) 0 2px,transparent 2px 5px),repeating-linear-gradient(-45deg,rgba(0,0,0,.08) 0 2px,transparent 2px 5px),linear-gradient(#5b7a3c,#3d5a2a);clip-path:polygon(0 0,100% 0,100% calc(100% - 40px),50% 100%,0 calc(100% - 40px))}
+.fx-in::before{content:'';position:absolute;inset:7px 7px 0;border:2px dashed rgba(246,239,208,.65);border-bottom:0;pointer-events:none}
+.fx-in h3{margin:0 0 12px;text-align:center;letter-spacing:.14em;text-transform:uppercase;font-size:15px;color:#f6efd0}.fx-sm{text-align:center;font-size:12px;opacity:.85;margin:12px 0 0}
+.fx-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:14px 8px}
+.bd{background:none;border:0;color:#f6efd0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;font-weight:600;transform:rotate(var(--r));transition:transform .2s;padding:0}.bd:hover,.bd:focus-visible{transform:rotate(0) scale(1.08)}
+.bdsvg{filter:drop-shadow(0 2px 2px rgba(0,0,0,.45))}.bdbig{display:flex;justify-content:center;margin-bottom:6px}
+.pfd{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;padding:6px 0}.pfd figure{margin:0;background:#fff;padding:8px 8px 4px;box-shadow:0 3px 10px rgba(0,0,0,.25);transform:rotate(var(--r));width:150px;position:relative;color:#333}.pfd img{width:100%;aspect-ratio:1;object-fit:cover;display:block}.pfd figcaption{font-size:12px;text-align:center;padding:4px 0;min-height:18px}.pfd .x{position:absolute;top:-8px;right:-8px;background:#c0392b;color:#fff;border:0;border-radius:50%;width:24px;height:24px;display:grid;place-items:center;cursor:pointer}
+.sws{display:flex;flex-wrap:wrap;gap:10px;margin:6px 0 12px}.sw{border:2px solid var(--line,#ccc);background:none;border-radius:12px;padding:6px;display:flex;flex-direction:column;align-items:center;gap:4px;width:92px;cursor:pointer;color:inherit;position:relative}.sw.on{border-color:var(--verde,#2f6b3a);box-shadow:0 0 0 2px var(--verde,#2f6b3a)}.sw.lock{opacity:.5;cursor:not-allowed}.sw small{font-size:11px;text-align:center}.sw em{font-style:normal;font-size:10px;background:#444;color:#fff;border-radius:6px;padding:0 5px}.swf{width:60px;height:34px;border-radius:8px;display:block}
+.pf-xp{padding-left:18px;margin:6px 0}.btn.dis{opacity:.45;pointer-events:none}
 </style>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><filter id="goo"><feGaussianBlur in="SourceGraphic" stdDeviation="14" result="b"/><feColorMatrix in="b" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -8"/></filter></defs></svg>
@@ -948,7 +979,7 @@ const fmt=d=>{const[a,m,x]=d.split('-');return `${x}/${m}/${a}`};
 function toast(t,tipo){document.querySelectorAll('.toast').forEach(x=>x.remove());const e=document.createElement('div');tipo=tipo||'ok';e.className='toast '+tipo;e.setAttribute('role',tipo==='err'?'alert':'status');e.innerHTML=`<i>${ic(tipo==='err'?'x':tipo==='info'?'bell':'check',13)}</i><span></span>`;e.lastChild.textContent=t;document.body.appendChild(e);setTimeout(()=>{e.classList.add('out');setTimeout(()=>e.remove(),230)},tipo==='err'?5000:tipo==='info'?2200:2600);if(tipo==='ok'){try{navigator.vibrate&&navigator.vibrate(12)}catch(x){}}}
 
 /* ---------- dados de exemplo e estado ---------- */
-const DEF={zMom:{},guiaVisto:false,theme:null,anim:true,collapsed:false,apelido:'Nyckolas',foto:'',role:'admin',
+const DEF={pfd:{},zMom:{},guiaVisto:false,theme:null,anim:true,collapsed:false,apelido:'Nyckolas',foto:'',role:'admin',
  alerts:{aniv:true,celula:true,eventos:true,oracao:true,cursos:true,transf:true},
  perfil:{nome:'Fábio Nyckolas Figueiredo Botero',simples:'Fábio Botero',sexo:'M',nasc:'1999-08-07',nacionalidade:'Brasileira',natural:'',sangue:'',doador:'',prof:'Líder de Operações',tel:'61994379971',email:'nyckolasbotero@gmail.com',
   cep:'72911-476',uf:'GO',cidade:'Águas Lindas de Goiás',end:'Quadra C, Chácara 2A, Casa 15',bairro:'Chácaras Coimbra',decisao:'',batizado:'',dataBat:'',igrejaBat:'',acPriv:'2026-10-15',acTermos:'2026-10-15',
@@ -991,10 +1022,10 @@ const NOTICIAS=[{t:'Aniversário Zoe será em 31/10',d:'Hoje',s:'Venha celebrar 
 const PAPEIS=['Louvor','Recepcionar visitantes','Dinâmica e quebra-gelo','Registro semanal de presença','Eventos do grupo'];
 const TEMAS=['Proteção e Livramento','Direção de Deus e sabedoria para decisões','Agradecimentos','Liderança e Ministério'];
 // Abas liberadas por tipo de acesso (Administração > Níveis de acesso). Exceção: quem já está numa célula sempre vê a aba Células.
-const ABAS_FIXAS=new Set(['feed','perfil','aprovacoes','admin']);
+const ABAS_FIXAS=new Set(['feed','meu','perfil','aprovacoes','admin']);
 const abaOk=k=>{if(!ONLINE||ABAS_FIXAS.has(k)||S.role==='admin'||!S.abas||S.abas[k]!==0)return true;return k==='celula'&&!!(S.celulaId||(S.minhas||[]).length)};
-const NAV=[['feed','home','Início'],['perfil','user','Editar perfil'],['membro','book','Bíblia e Anotações'],['biblioteca','lib','Biblioteca virtual'],['celula','users','Células'],['familia','heart','Família Zoe'],['ministerios','grid','Ministérios'],['buscar','pin','Buscar células'],['licoes','file','Lições / Extras'],['dinamicas','bulb','Dinâmicas'],['cursos','grad','Cursos'],['aulas','file','Aulas'],['eventos','cal','Eventos'],['aniversarios','cake','Aniversariantes'],['tutoriais','play','Lives e Vídeos'],['loja','bag','Loja Zoe'],['aprovacoes','check','Aprovações'],['admin','gear','Administração']];
-const R={r:'feed',sub:{cursos:'igreja',aulas:'meus',aprovacoes:'pend',perfil:'info',membro:'biblia',celula:'freq',familia:'fale',licoes:'todas',dinamicas:'buscar'},mi:null};
+const NAV=[['feed','home','Início'],['meu','star','Meu perfil'],['perfil','user','Editar perfil'],['membro','book','Bíblia e Anotações'],['biblioteca','lib','Biblioteca virtual'],['celula','users','Células'],['familia','heart','Família Zoe'],['ministerios','grid','Ministérios'],['buscar','pin','Buscar células'],['licoes','file','Lições / Extras'],['dinamicas','bulb','Dinâmicas'],['cursos','grad','Cursos'],['aulas','file','Aulas'],['eventos','cal','Eventos'],['aniversarios','cake','Aniversariantes'],['tutoriais','play','Lives e Vídeos'],['loja','bag','Loja Zoe'],['aprovacoes','check','Aprovações'],['admin','gear','Administração']];
+const R={r:'feed',sub:{meu:'ver',cursos:'igreja',aulas:'meus',aprovacoes:'pend',perfil:'info',membro:'biblia',celula:'freq',familia:'fale',licoes:'todas',dinamicas:'buscar'},mi:null};
 const can=k=>!!(S.perm[S.role]&&S.perm[S.role][k]);
 // Cargos de célula ≠ nível de acesso: um administrador também pode ser líder e/ou supervisor.
 const cg=()=>ONLINE?(S.cargos||{}):{lider:S.role==='lider',supervisor:S.role==='supervisor',treinamento:S.role==='treino'};
@@ -1207,6 +1238,7 @@ dinamicas(){const s=R.sub.dinamicas;const q=(R.q||'').toLowerCase();let l=[...(S
 
 cursos(){return cursosHTML()},
 aulas(){return aulasHTML()},
+meu(){return meuHTML()},
 
 eventos(){if(R.ev){const e=EVENTOS.find(x=>x.id===R.ev);if(!e){R.ev=null;return VIEWS.eventos()}const ins=S.inscr.includes(e.t);
   return `<button class="btn ghost sm" style="align-self:flex-start" onclick="R.ev=null;render()">${ic('chev',16)} Voltar</button><div class="card flat col">${e.foto?`<img src="${esc(e.foto)}" alt="Foto do evento ${esc(e.t)}" style="width:100%;border-radius:16px;max-height:340px;object-fit:cover">`:`<div class="pic-ph">${ic('cal',42)}</div>`}<h1>${esc(e.t)}</h1><p class="muted">${fmt(e.d)} às ${esc(e.h)} · ${esc(e.loc)}</p><p>${esc(e.desc)}</p><h3>Programação</h3>${e.prog.map(p=>`<div class="opt">${esc(p)}</div>`).join('')}<div><button class="btn ${ins?'ghost':''}" onclick="inscrever(${e.id})">${ins?'Inscrito · cancelar':'Inscrever-se'}</button></div></div>`}
@@ -1877,6 +1909,65 @@ document.addEventListener('pointerdown',e=>{if(!S.anim)return;const t=e.target.c
  function tick(){cur+=(tgt-cur)*.14;const b=$('#sprog');if(b)b.style.transform=`scaleX(${cur.toFixed(4)})`;if(Math.abs(tgt-cur)>.001)raf=requestAnimationFrame(tick);else raf=0}
  addEventListener('scroll',()=>{const y=scrollY,h=top();if(h){h.classList.toggle('scrolled',y>8);const dn=y>last&&y>140&&!document.body.classList.contains('menu-open');h.classList.toggle('hide',dn&&S.anim)}last=y;const m=document.documentElement.scrollHeight-innerHeight;tgt=m>0?Math.min(1,y/m):0;if(!raf)raf=requestAnimationFrame(tick)},{passive:true})})();
 let ENTER=false,RVIO=null;
+/* ===== Meu perfil: insígnias bordadas, XP, personalização ===== */
+const NIVN=['Semente','Broto','Raiz','Tronco','Ramo','Folha','Fruto','Árvore','Floresta','Vida em abundância'],NIVX=[0,100,250,450,700,1000,1400,1900,2500,3200];
+const FUNDOS_L={verde:['Verde Zoe',1],aurora:['Aurora',2],solpoente:['Pôr do sol',3],noite:['Noite estrelada',4],bordado:['Bordado',5],ouro:['Ouro',8]};
+const MOLD_L={simples:['Simples',1],verde:['Verde',2],dourada:['Dourada',3],arco:['Arco-íris animado',5],chama:['Chama animada',7],luz:['Luz animada',9]};
+const BD_TIER={ouro:['#d6a21d','#fff1b8'],prata:['#8b97a5','#f3f6fa'],bronze:['#a5602c','#f8e1c9']};
+const BD_SH={circ:'M50 6A44 44 0 1 1 49.99 6Z',esc:'M50 5L89 17V50C89 73 70 88 50 96C30 88 11 73 11 50V17Z',hex:'M50 4L90 27V73L50 96L10 73V27Z'};
+const BD_IC={user:'<circle cx="50" cy="38" r="10"/><path d="M30 70C30 53 70 53 70 70Z"/>',flame:'<path d="M50 22C58 37 68 43 66 57C64 69 56 74 50 74C42 74 34 68 34 57C34 49 40 45 42 37C46 41 48 35 50 22Z"/>',gota:'<path d="M50 22C50 22 32 45 32 57C32 68 40 75 50 75C60 75 68 68 68 57C68 45 50 22 50 22Z"/>',livro:'<path d="M27 35L48 39V72L27 68ZM73 35L52 39V72L73 68Z"/>',estrela:'<polygon points="50,23 57,42 77,42 61,54 67,73 50,61 33,73 39,54 23,42 43,42"/>',coroa:'<path d="M27 68L31 40L42 53L50 35L58 53L69 40L73 68Z"/>'};
+function bdTema(cod){cod=String(cod);const m=/^corrida-(ouro|prata|bronze)-(\d)$/.exec(cod);if(m)return{f:'esc',c:BD_TIER[m[1]],i:'livro',n:m[2]+'º'};
+ return({perfil:{f:'circ',c:['#2f6b3a','#efe3b0'],i:'user'},decisao:{f:'esc',c:['#8c2f2f','#f7e6b8'],i:'flame'},batismo:{f:'hex',c:['#1d5f91','#e4f1fa'],i:'gota'},curso:{f:'esc',c:['#5a3a8c','#f3e8c6'],i:'livro'},evento:{f:'circ',c:['#b5601a','#fdebc9'],i:'estrela'},presenca:{f:'hex',c:['#7a5b12','#ffe9a0'],i:'coroa'}})[cod.split(':')[0]]||{f:'circ',c:['#35604a','#efe3b0'],i:'estrela'}}
+function bdSVG(cod,ano,px){const t=bdTema(cod),d=BD_SH[t.f],[c0,c1]=t.c,tx=t.n||ano||'';
+ if(!document.getElementById('bdDefs'))document.body.insertAdjacentHTML('beforeend','<svg id="bdDefs" width="0" height="0" style="position:absolute"><defs><pattern id="bdtx" width="3" height="3" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="3" height="1.2" fill="#000" opacity=".16"/><rect y="1.5" width="3" height="1" fill="#fff" opacity=".1"/></pattern><filter id="bdrel" x="-10%" y="-10%" width="120%" height="120%"><feDropShadow dx="0" dy="1" stdDeviation=".7" flood-color="#000" flood-opacity=".55"/></filter></defs></svg>');
+ return `<svg viewBox="0 0 100 100" width="${px||88}" height="${px||88}" role="img" aria-hidden="true" class="bdsvg"><path d="${d}" fill="${c0}" stroke="${c1}" stroke-width="5" stroke-dasharray="2.4 1.2" stroke-linejoin="round"/><path d="${d}" fill="url(#bdtx)"/><path d="${d}" fill="none" stroke="rgba(0,0,0,.3)" stroke-width="1"/><path d="${d}" fill="none" stroke="${c1}" stroke-width="1.6" stroke-dasharray="3 2" transform="translate(50 50) scale(.8) translate(-50 -50)"/><g fill="${c1}" stroke="rgba(0,0,0,.35)" stroke-width=".8" filter="url(#bdrel)" transform="translate(0 ${tx?-5:0})">${BD_IC[t.i]}</g>${tx?`<text x="50" y="85" text-anchor="middle" font-family="Georgia,serif" font-weight="800" font-size="12" fill="${c1}" stroke="rgba(0,0,0,.35)" stroke-width=".4">${esc(tx)}</text>`:''}</svg>`}
+const BD_COMO={perfil:'Preencha todos os dados em Editar perfil.',decisao:'Registre sua decisão por Cristo em Editar perfil.',batismo:'Registre a data do seu batismo em Editar perfil.',curso:'Conclua um curso e receba o certificado.',evento:'Compareça aos eventos exclusivos da igreja.',presenca:'Compareça a todos os eventos do ano.','corrida':'Termine a leitura da Bíblia na Corrida da Bíblia.'};
+let MEU=null,MEUP=null,MEUOPEN=false,MEUC=null;
+const nivInfo=xp=>{let n=1;NIVX.forEach((v,i)=>{if(xp>=v)n=i+1});return{xp,nivel:n,nome:NIVN[n-1],base:NIVX[n-1],proximo:NIVX[n]===undefined?null:NIVX[n]}};
+function meuDemo(){const p=S.pfd||{},dest=p.dest||[],ins=[{codigo:'perfil',titulo:'Perfil completo',ano:'',data:TODAY},{codigo:'decisao',titulo:'Decisão por Cristo',ano:'2019',data:TODAY},{codigo:'batismo',titulo:'Batizado',ano:'2020',data:TODAY},{codigo:'curso:demo',titulo:'Discipulado',ano:'2026',data:TODAY},{codigo:'evento:amigo',titulo:'Dia do Amigo',ano:'2026',data:TODAY},{codigo:'presenca',titulo:'Presença total',ano:'2025',data:TODAY},{codigo:'corrida-prata-2',titulo:'Corrida da Bíblia',ano:'2026',data:TODAY}],xp=nivInfo(p.xp||650);
+ return{id:S.membroId||'demo',meu:true,nome:S.apelido,foto:S.foto,bio:p.bio||'',capa:p.capa||'',fundo:p.fundo||'verde',moldura:p.moldura||'simples',versiculo:p.versiculo||'',xp,insignias:ins,destaques:dest,libera:{fundos:Object.fromEntries(Object.entries(FUNDOS_L).map(([k,v])=>[k,v[1]])),molduras:Object.fromEntries(Object.entries(MOLD_L).map(([k,v])=>[k,v[1]])),capa:2,versiculo:2,slots:xp.nivel>=8?6:xp.nivel>=6?3:xp.nivel>=4?2:xp.nivel>=3?1:0}}}
+async function meuCarrega(){MEU=ONLINE?await api('profileView',{}):meuDemo()}
+function meuRecarrega(){MEU=null;MEUC=null;render()}
+function meuHTML(){
+ if(!MEU){if(!MEUP){MEUP=meuCarrega().catch(e=>{MEU={erro:e.message||'Não foi possível carregar.'}}).finally(()=>{MEUP=null;if(R.r==='meu')render()})}return `<div class="card"><p class="muted">Carregando seu perfil…</p></div>`}
+ if(MEU.erro)return `<div class="card"><p>${esc(MEU.erro)}</p><button class="btn" onclick="meuRecarrega()">Tentar de novo</button></div>`;
+ const m=MEU,x=m.xp,pct=x.proximo?Math.min(100,Math.round((x.xp-x.base)/(x.proximo-x.base)*100)):100,ini=(m.nome||'Z').trim()[0]?.toUpperCase()||'Z',sub=R.sub.meu||'ver';
+ const tabs=`<div class="row pf-tabs"><button class="chip ${sub==='ver'?'on':''}" onclick="sub('meu','ver')">Meu perfil</button><button class="chip ${sub==='custom'?'on':''}" onclick="meuAbrePers()">Personalizar</button><button class="chip" onclick="go('perfil','foto')">Foto de perfil</button></div>`;
+ if(sub==='custom')return tabs+meuCustom();
+ const bds=m.insignias,base=[['perfil','Perfil completo'],['decisao','Decisão por Cristo'],['batismo','Batizado']].filter(b=>!bds.some(i=>i.codigo===b[0]));
+ return `${tabs}<div class="pf fb-${esc(m.fundo)}">
+ <div class="pf-capa" style="${m.capa?`background-image:url('${m.capa}')`:''}"></div>
+ <div class="card pf-head"><div class="pfav mold-${esc(m.moldura)}"><div class="pfp" ${m.foto?`style="background-image:url('${m.foto}')"`:''}>${m.foto?'':esc(ini)}</div></div>
+  <div class="pf-id"><h1>${esc(m.nome)}</h1><span class="chip g">Nível ${x.nivel} · ${esc(x.nome)}</span>${m.bio?`<p>${esc(m.bio)}</p>`:'<p class="muted">Conte um pouco sobre você em Personalizar.</p>'}${m.versiculo?`<p class="pf-v">“${esc(m.versiculo)}”</p>`:''}</div></div>
+ <div class="card"><div class="xpbar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct}%"></i></div><p class="muted" style="margin:6px 0 0;font-size:13px"><b>${x.xp} XP</b>${x.proximo?` · faltam ${x.proximo-x.xp} para o nível ${x.nivel+1} (${esc(NIVN[x.nivel])})`:' · nível máximo!'}</p>
+  <button class="btn pf-ins" id="pf_ins" aria-expanded="${MEUOPEN}" onclick="faixaToggle()">${ic('star',16)} Insígnias (${bds.length})</button></div>
+ <div class="faixa ${MEUOPEN?'open':''}" id="faixa"><div class="fx"><div class="fx-in"><h3>Insígnias</h3>${bds.length?`<div class="fx-g">${bds.map((b,i)=>`<button class="bd" style="--r:${((i*37)%7)-3}deg" onclick="bdInfo(${i})" aria-label="${esc(b.titulo)}">${bdSVG(b.codigo,b.ano,92)}<span>${esc(b.titulo)}</span></button>`).join('')}</div>`:'<p>Você ainda não tem insígnias. Complete seu perfil, vá aos eventos e conclua cursos!</p>'}
+  ${base.length?`<p class="fx-sm">Para ganhar: ${base.map(b=>`${esc(b[1])}`).join(' · ')}</p>`:''}</div></div></div>
+ ${m.destaques.length?`<div class="card"><h2>Destaques</h2><div class="pfd">${m.destaques.map((d,i)=>`<figure style="--r:${((i*53)%9)-4}deg"><img src="${d.foto}" alt="${esc(d.legenda)}"><figcaption>${esc(d.legenda)}</figcaption></figure>`).join('')}</div></div>`:''}
+ <div class="card"><h2>Como ganhar XP</h2><ul class="pf-xp"><li>Acessar o app todo dia: <b>+5</b></li><li>Estar presente na célula: <b>+10</b></li><li>Perfil completo: <b>+100</b> · Decisão: <b>+150</b> · Batismo: <b>+200</b></li><li>Concluir um curso: <b>+300</b></li><li>Insígnias de eventos e da Corrida da Bíblia dão XP extra.</li></ul><p class="muted" style="font-size:13px">Cada nível libera capas, fundos, molduras animadas e destaques de fotos.</p></div></div>`}
+function faixaToggle(){MEUOPEN=!MEUOPEN;const f=$('#faixa');if(f)f.classList.toggle('open',MEUOPEN);const b=$('#pf_ins');if(b)b.setAttribute('aria-expanded',MEUOPEN);if(MEUOPEN)setTimeout(()=>{const f=$('#faixa');if(f)f.scrollIntoView({behavior:S.anim?'smooth':'auto',block:'nearest'})},350)}
+function bdInfo(i){const b=MEU.insignias[i];if(!b)return;const k=String(b.codigo).replace(/^corrida.*/,'corrida').split(':')[0];modal(`<div style="text-align:center"><div class="bdbig">${bdSVG(b.codigo,b.ano,170)}</div><h2>${esc(b.titulo)}</h2><p class="muted">${b.ano?'Ano '+esc(b.ano)+' · ':''}conquistada em ${fmt(b.data)}</p><p>${esc(BD_COMO[k]||'')}</p><button class="btn" onclick="closeL()">Fechar</button></div>`)}
+function meuAbrePers(){MEUC={bio:MEU.bio,fundo:MEU.fundo,moldura:MEU.moldura,versiculo:MEU.versiculo,capa:'__keep',capaV:MEU.capa};sub('meu','custom')}
+function meuCustom(){if(!MEUC)meuAbrePersSilent();const c=MEUC,L=MEU.libera||{},nv=MEU.xp.nivel,fl=L.fundos||{},ml=L.molduras||{},ini=(MEU.nome||'Z').trim()[0]?.toUpperCase()||'Z';
+ const sw=(tipo,lista,rot,atual)=>Object.keys(lista).map(k=>{const need=lista[k],lock=nv<need;return `<button class="sw ${atual===k?'on':''} ${lock?'lock':''}" ${lock?'':`onclick="MEUC.${tipo}='${k}';renderKeep()"`} aria-label="${esc(rot[k][0])}${lock?', abre no nível '+need:''}">${tipo==='fundo'?`<span class="swf fb-${k}"></span>`:`<span class="pfav mold-${k} sm"><span class="pfp"></span></span>`}<small>${esc(rot[k][0])}</small>${lock?`<em>Nv ${need}</em>`:''}</button>`}).join('');
+ const capaOk=nv>=(L.capa||2),vOk=nv>=(L.versiculo||2);
+ return `<div class="card"><h2>Personalizar perfil</h2><p class="muted">Seu nível: <b>${nv}</b> (${esc(MEU.xp.nome)}). Ganhe XP para liberar mais opções.</p>
+ <label class="f">Descrição<textarea id="pc_bio" maxlength="280" rows="3" oninput="MEUC.bio=this.value">${esc(c.bio)}</textarea></label>
+ <label class="f">Versículo em destaque ${vOk?'':`<small>(abre no nível ${L.versiculo||2})</small>`}<input id="pc_v" maxlength="200" ${vOk?'':'disabled'} value="${esc(c.versiculo)}" oninput="MEUC.versiculo=this.value"></label>
+ <h3>Fundo do perfil</h3><div class="sws">${sw('fundo',fl,FUNDOS_L,c.fundo)}</div>
+ <h3>Moldura da foto (contorno)</h3><div class="sws">${sw('moldura',ml,MOLD_L,c.moldura)}</div>
+ <h3>Capa do perfil ${capaOk?'':`<small>(abre no nível ${L.capa||2})</small>`}</h3>
+ <div class="pf-capa sm" style="${(c.capa==='__keep'?c.capaV:c.capa)?`background-image:url('${c.capa==='__keep'?c.capaV:c.capa}')`:''}"></div>
+ <div class="row"><label class="btn ghost sm ${capaOk?'':'dis'}">${ic('image',14)} Escolher capa<input type="file" accept="image/*" hidden ${capaOk?'':'disabled'} onchange="meuCapa(this)"></label><button class="btn ghost sm" onclick="MEUC.capa='';MEUC.capaV='';renderKeep()">Remover capa</button></div>
+ <div class="row" style="margin-top:14px"><button class="btn" onclick="meuSalva()">Salvar perfil</button><button class="btn ghost" onclick="sub('meu','ver')">Cancelar</button></div></div>
+ <div class="card"><h2>Destaques de fotos</h2><p class="muted">${L.slots?`Você pode destacar até ${L.slots} foto(s) no seu perfil.`:'Os destaques de fotos abrem no nível 3.'}</p>
+ <div class="pfd">${MEU.destaques.map((d,i)=>`<figure style="--r:${((i*53)%9)-4}deg"><img src="${d.foto}" alt=""><figcaption>${esc(d.legenda)}</figcaption><button class="x" onclick="meuDelDest('${esc(d.id)}')" aria-label="Remover foto">${ic('x',12)}</button></figure>`).join('')}</div>
+ ${MEU.destaques.length<(L.slots||0)?`<label class="btn ghost sm">${ic('plus',14)} Adicionar foto<input type="file" accept="image/*" hidden onchange="meuAddDest(this)"></label>`:''}</div>`}
+function meuAbrePersSilent(){MEUC={bio:MEU.bio,fundo:MEU.fundo,moldura:MEU.moldura,versiculo:MEU.versiculo,capa:'__keep',capaV:MEU.capa}}
+function meuCapa(i){const f=i.files[0];if(!f)return;redimMax(f,d=>{MEUC.capa=d;renderKeep()},90000)}
+async function meuSalva(){const c=MEUC;try{if(ONLINE){const d={bio:c.bio,fundo:c.fundo,moldura:c.moldura,versiculo:c.versiculo};if(c.capa!=='__keep')d.capa=c.capa;await api('saveProfile',d)}else{S.pfd=Object.assign(S.pfd||{},{bio:c.bio,fundo:c.fundo,moldura:c.moldura,versiculo:c.versiculo});if(c.capa!=='__keep')S.pfd.capa=c.capa;save()}toast('Perfil atualizado');R.sub.meu='ver';MEU=null;MEUC=null;render()}catch(e){toast(e.message)}}
+function meuAddDest(i){const f=i.files[0];if(!f)return;redimMax(f,async d=>{try{if(ONLINE)await api('saveHighlight',{foto:d,legenda:''});else{S.pfd=S.pfd||{};(S.pfd.dest=S.pfd.dest||[]).push({id:'d'+Date.now(),foto:d,legenda:''});save()}const c=MEUC;await meuCarrega();MEUC=c;toast('Foto destacada');render()}catch(e){toast(e.message)}})}
+async function meuDelDest(id){try{if(ONLINE)await api('deleteHighlight',{id});else{S.pfd.dest=(S.pfd.dest||[]).filter(x=>x.id!==id);save()}const c=MEUC;await meuCarrega();MEUC=c;render()}catch(e){toast(e.message)}}
 function entra(){ENTER=true}
 function coreografia(){const v=$('#view');if(!v)return;v.classList.remove('enter');if(RVIO)RVIO.disconnect();if(!S.anim||!ENTER){ENTER=false;return}ENTER=false;
  if(!RVIO)RVIO=new IntersectionObserver(es=>es.forEach(en=>{if(!en.isIntersecting)return;RVIO.unobserve(en.target);en.target.classList.add('in');setTimeout(()=>en.target.classList.remove('rv','in'),700)}),{rootMargin:'0px 0px -6% 0px'});
