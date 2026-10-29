@@ -76,7 +76,7 @@ const SHEETS = {
   Servicos: ['Atividade', 'MembroID', 'Mes', 'RegistradoPor'],
   ChatMsgs: ['MsgID', 'ConvID', 'De', 'Para', 'Texto', 'Ts', 'Lida'],
   PerfilFotos: ['MembroID', 'FotoID', 'Foto', 'Legenda', 'Ordem'],
-  Assinaturas: ['MembroID', 'Tipo', 'Dado', 'Cargo', 'Atualizado'],
+  Assinaturas: ['MembroID', 'Tipo', 'Dado', 'Cargo', 'Atualizado', 'Fonte'],
   Noticias: ['NoticiaID', 'Titulo', 'Texto', 'Data', 'CriadoPor', 'Status'],
   Licoes: ['LicaoID', 'Titulo', 'Resumo', 'Categoria', 'Url', 'Status'],
   Dinamicas: ['DinamicaID', 'Titulo', 'Descricao', 'Minutos', 'MembroID', 'Data'],
@@ -1147,22 +1147,25 @@ function decideCert_(d, u) {
     audit_(u.email, 'CERTIFICADO_' + (d.decisao === 'autorizado' ? 'EMITIDO' : 'NEGADO'), c0 ? c0.CursoID : '', 'OK'); return { n: n };
   });
 }
-function sigOut_(mid) { const s = table_('Assinaturas').rows.filter(function (r) { return r.MembroID === mid; })[0]; return s ? { tipo: s.Tipo, dado: s.Dado, cargo: s.Cargo || '' } : null; }
+function sigOut_(mid) { const s = table_('Assinaturas').rows.filter(function (r) { return r.MembroID === mid; })[0]; return s ? { tipo: s.Tipo, dado: s.Dado, cargo: s.Cargo || '', fonte: s.Fonte || 'great' } : null; }
 function getSignature_(d, u) { return { assinatura: sigOut_(u.membroId) }; }
+const SIG_FONTES = ['great', 'dancing', 'allura', 'sacramento', 'mrdafoe', 'homemade', 'caveat', 'satisfy'];
 function saveSignature_(d, u) {
   if (!(can_(u, 'prof') || can_(u, 'cursos') || can_(u, 'config'))) throw new ApiError('FORBIDDEN', 'Só professores e supervisores cadastram assinatura.');
   return withLock_(function () {
     const tipo = d.tipo === 'texto' ? 'texto' : 'desenho'; let dado = String(d.dado || ''); const cargo = clip_(d.cargo, 60);
     if (tipo === 'desenho') { if (!/^data:image\/png;base64,/.test(dado) || dado.length > 40000) throw new ApiError('VALIDATION', 'Assinatura inválida ou grande demais. Desenhe de novo.'); } else { dado = clip_(dado, 60); if (!dado) throw new ApiError('VALIDATION', 'Digite o nome da assinatura.'); }
-    const t = table_('Assinaturas'), ex = t.rows.filter(function (r) { return r.MembroID === u.membroId; })[0], row = { Tipo: tipo, Dado: dado, Cargo: cargo, Atualizado: now_() };
+    const t = table_('Assinaturas'), ex = t.rows.filter(function (r) { return r.MembroID === u.membroId; })[0], row = { Tipo: tipo, Dado: dado, Cargo: cargo, Atualizado: now_(), Fonte: SIG_FONTES.indexOf(d.fonte) >= 0 ? d.fonte : 'great' };
     if (ex) writeRow_(t, ex._row, row); else appendRow_(t, Object.assign({ MembroID: u.membroId }, row)); return { ok: true };
   });
 }
 // ---- layout do certificado (cada professor edita o seu) ----
-const CERT_PAD = { cor1: '#0B6B35', cor2: '#DD3326', fundo: '#FFFDF6', moldura: 'dupla', fonte: 'cursiva', titulo: 'CERTIFICADO', subtitulo: 'de conclusão de curso', abertura: 'Certificamos que', rodape: 'Ministério Zoe · Vida de Deus', logo: '1', descricao: '1', carga: '1', periodo: '1', presenca: '1' };
+const CERT_PAD = { cor1: '#0B6B35', cor2: '#DD3326', fundo: '#FFFDF6', moldura: 'dupla', fonte: 'cursiva', titulo: 'CERTIFICADO', subtitulo: 'de conclusão de curso', abertura: 'Certificamos que', rodape: 'Ministério Zoe · Vida de Deus', logo: '1', descricao: '1', carga: '1', periodo: '1', presenca: '1', assinEstilo: 'cadastrada', assinFonte: 'great', assinCor: '#16336b' };
 function layoutLimpo_(d) {
   const o = {}, cor = function (k) { if (d[k] === undefined) return; if (!/^#[0-9a-fA-F]{6}$/.test(String(d[k]))) throw new ApiError('VALIDATION', 'Cor inválida.'); o[k] = String(d[k]).toLowerCase(); };
-  ['cor1', 'cor2', 'fundo'].forEach(cor);
+  ['cor1', 'cor2', 'fundo', 'assinCor'].forEach(cor);
+  if (d.assinEstilo !== undefined) { if (['cadastrada', 'cursiva'].indexOf(d.assinEstilo) < 0) throw new ApiError('VALIDATION', 'Estilo de assinatura inválido.'); o.assinEstilo = d.assinEstilo; }
+  if (d.assinFonte !== undefined) { if (SIG_FONTES.indexOf(d.assinFonte) < 0) throw new ApiError('VALIDATION', 'Fonte de assinatura inválida.'); o.assinFonte = d.assinFonte; }
   if (d.moldura !== undefined) { if (['dupla', 'simples', 'ornamental', 'nenhuma'].indexOf(d.moldura) < 0) throw new ApiError('VALIDATION', 'Moldura inválida.'); o.moldura = d.moldura; }
   if (d.fonte !== undefined) { if (['cursiva', 'serifada', 'moderna'].indexOf(d.fonte) < 0) throw new ApiError('VALIDATION', 'Fonte inválida.'); o.fonte = d.fonte; }
   [['titulo', 40], ['subtitulo', 60], ['abertura', 60], ['rodape', 90]].forEach(function (p) { if (d[p[0]] !== undefined) o[p[0]] = clip_(d[p[0]], p[1]); });
@@ -1182,7 +1185,7 @@ function saveCertLayout_(d, u) {
 function certData_(c, r, aluno, lay) {
   const mem = {}; table_('Membros').rows.forEach(function (m) { mem[m.MembroID] = m; }); const aulas = aulasDe_(c.CursoID), ds = aulas.map(function (a) { return a.Data; }).sort();
   const us = {}; table_('Usuarios').rows.forEach(function (x) { us[x.MembroID] = x; });
-  const pess = function (mid, pad) { if (!mid) return null; const m = mem[mid] || {}, sg = sigOut_(mid), papel = (us[mid] || {}).Papel || ''; return { nome: m.Nome || m.Simples || '', cargo: (sg && sg.cargo) || pad(papel), assinatura: sg ? { tipo: sg.tipo, dado: sg.dado } : null }; };
+  const pess = function (mid, pad) { if (!mid) return null; const m = mem[mid] || {}, sg = sigOut_(mid), papel = (us[mid] || {}).Papel || ''; return { nome: m.Nome || m.Simples || '', cargo: (sg && sg.cargo) || pad(papel), assinatura: sg ? { tipo: sg.tipo, dado: sg.dado, fonte: sg.fonte } : null }; };
   const prof = pess(c.ProfessorID, function () { return 'Professor'; });
   const sup = c.DecididoPor && c.DecididoPor !== c.ProfessorID ? pess(c.DecididoPor, function (p) { return p === 'pastor' ? 'Pastor e Supervisor' : p === 'admin' ? 'Administração e Supervisor' : 'Supervisor'; }) : null;
   return { codigo: r && r.CertCodigo ? r.CertCodigo : 'PRÉVIA', data: r && r.CertData ? r.CertData : today_(), aluno: aluno, presenca: r ? Number(r.PresencaPct) || 0 : 100, layout: lay || layoutDe_(c.ProfessorID), curso: { nome: c.Nome, descricao: c.Descricao || '', cargaMin: cargaMin_(c, aulas), nAulas: aulas.length, inicio: ds[0] || '', fim: ds[ds.length - 1] || '', presencaMin: Number(c.PresencaMin) || 75 }, professor: prof, supervisor: sup };

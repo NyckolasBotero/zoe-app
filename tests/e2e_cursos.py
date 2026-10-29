@@ -23,7 +23,7 @@ with sync_playwright() as p:
     # 2) supervisor (administração) recebe o alerta e aprova
     adm.evaluate("go('aprovacoes')"); adm.wait_for_selector('.aprov:has-text("Fundamentos da Fé")'); t=adm.inner_text('.aprov'); print(t.replace('\n',' | ')); assert 'Base bíblica' in t and 'Professor Paulo' in t and '50% de presença' in t
     adm.click(".aprov:has-text('Fundamentos da Fé') button:has-text('Aprovar')"); adm.wait_for_selector('#apm'); adm.click('.modal >> text=Confirmar'); adm.wait_for_function("!document.querySelector('.aprov')||!document.querySelector('.aprov').innerText.includes('Pedido de')||true"); adm.wait_for_timeout(900)
-    assina(adm,'Pr. Admin','Pastor e Supervisor')
+    adm.evaluate("go('perfil','assin')"); assina(adm,'Pr. Admin','Pastor e Supervisor')
     # 3) professor: aulas em lote (4 sábados de novembro) + assinatura + pedido de início
     pr.evaluate("PR.open='';go('aulas')"); pr.wait_for_selector('.cc'); pr.click('.cc button:has-text("Gerenciar")'); pr.wait_for_selector('button:has-text("Aulas em lote")'); assert 'Inscrições abertas' in pr.inner_text('#view')
     pr.click('button:has-text("Aulas em lote")'); pr.wait_for_selector('#lt_n'); pr.fill('#lt_n','4'); pr.fill('#lt_d','2026-11-07'); pr.dispatch_event('#lt_d','change'); pr.fill('#lt_i','19:00'); pr.fill('#lt_f','21:00'); pr.click('button:has-text("Gerar lista")')
