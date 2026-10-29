@@ -468,6 +468,14 @@ test('cursos: professor cria, supervisor aprova, aulas com chamada, certificado 
   assert.ok(e.call('rateAula', { aulaId: a1, nota: 9, feedback: 'Ótima', duvida: 'O que é graça?' }, A).ok); assert.ok(e.call('rateAula', { aulaId: a1, nota: 10 }, A).ok);
   assert.ok(e.call('listNotifications', {}, P).data.itens.some(n => n.texto.includes('O que é graça?'))); const fb = e.call('aulaFeedback', { aulaId: a1 }, P).data.itens; assert.equal(fb.length, 1); assert.equal(fb[0].nota, 10); assert.equal(e.call('aulaFeedback', { aulaId: a1 }, A).error.code, 'FORBIDDEN');
   assert.equal(e.call('courseDetail', { cursoId: cid }, P).data.aulas[0].media, 10);
+  // prévia do certificado: vale com o curso ainda em andamento e sem salvar o layout
+  const lc0 = e.call('listCertificates', { cursoId: cid }, P).data, m0 = lc0.alunos[0].id;
+  const pv0 = e.call('previewCert', { cursoId: cid, matriculaId: m0 }, P).data; assert.equal(pv0.codigo, 'PRÉVIA'); assert.equal(pv0.aluno, 'ana'); assert.equal(pv0.layout.titulo, 'CERTIFICADO');
+  assert.equal(e.call('previewCert', { cursoId: cid }, P).data.aluno, 'Nome do Aluno'); assert.equal(e.call('previewCert', { cursoId: cid }, A).error.code, 'FORBIDDEN');
+  const pv1 = e.call('previewCert', { cursoId: cid, layout: { titulo: 'DIPLOMA', cor1: '#112233', moldura: 'ornamental' } }, P).data; assert.deepEqual([pv1.layout.titulo, pv1.layout.cor1, pv1.layout.moldura, pv1.layout.fonte], ['DIPLOMA', '#112233', 'ornamental', 'cursiva']);
+  assert.equal(e.call('previewCert', { cursoId: cid, layout: { cor1: 'vermelho' } }, P).error.code, 'VALIDATION'); assert.equal(e.call('saveCertLayout', { layout: { titulo: 'X' } }, A).error.code, 'FORBIDDEN');
+  assert.equal(e.call('saveCertLayout', { layout: { moldura: 'x' } }, P).error.code, 'VALIDATION'); assert.ok(e.call('saveCertLayout', { layout: { titulo: 'CERTIFICADO ZOE', cor1: '#0a5c8a', rodape: 'Igreja Zoe' } }, P).ok);
+  assert.equal(e.call('getCertLayout', {}, P).data.layout.titulo, 'CERTIFICADO ZOE'); assert.equal(e.call('getCertLayout', {}, A).error.code, 'FORBIDDEN');
   // encerrar e certificados
   assert.equal(e.call('decideCert', { id: 'x', decisao: 'autorizado' }, P).error.code, 'VALIDATION'); // sem assinatura
   assert.equal(e.call('finishCourse', { cursoId: cid }, A).error.code, 'FORBIDDEN'); assert.ok(e.call('finishCourse', { cursoId: cid }, P).ok); assert.equal(e.call('listCourses', {}, P).data[0].status, 'encerrado');
@@ -482,6 +490,15 @@ test('cursos: professor cria, supervisor aprova, aulas com chamada, certificado 
   assert.equal(cert.professor.assinatura.tipo, 'desenho'); assert.equal(cert.professor.cargo, 'Professor de Fundamentos'); assert.equal(cert.supervisor.cargo, 'Pastor e Supervisor'); assert.equal(cert.supervisor.assinatura.dado, 'Pr. Sup'); assert.match(cert.codigo, /^ZOE-/);
   assert.equal(e.call('certificate', { id: mid }, B).error.code, 'FORBIDDEN'); assert.equal(e.call('listCourses', {}, A).data[0].minha.cert, 'emitido');
   assert.ok(e.call('listNotifications', {}, A).data.itens.some(n => n.titulo === 'Seu certificado está pronto'));
+  assert.equal(cert.layout.titulo, 'CERTIFICADO ZOE'); assert.equal(cert.layout.cor1, '#0a5c8a');
+  // excluir um certificado emitido por engano
+  const xp0 = e.call('profileView', {}, A).data; assert.ok(xp0.insignias.some(x => x.codigo.startsWith('curso:')));
+  assert.equal(e.call('revokeCert', { id: mid }, A).error.code, 'FORBIDDEN'); assert.equal(e.call('revokeCert', { id: 'x' }, P).error.code, 'NOT_FOUND');
+  assert.ok(e.call('revokeCert', { id: mid }, P).ok); assert.equal(e.call('certificate', { id: mid }, A).error.code, 'NOT_FOUND'); assert.equal(e.call('revokeCert', { id: mid }, P).error.code, 'NOT_FOUND');
+  const xp1 = e.call('profileView', {}, A).data; assert.ok(!xp1.insignias.some(x => x.codigo.startsWith('curso:'))); assert.equal(xp1.xp.xp, xp0.xp.xp - 300);
+  assert.equal(e.call('listCertificates', { cursoId: cid }, P).data.alunos[0].cert, 'pendente'); assert.equal(e.call('listCourses', {}, A).data[0].minha.status, 'autorizado');
+  assert.ok(e.call('listNotifications', {}, A).data.itens.some(n => n.titulo === 'Certificado removido'));
+  assert.ok(e.call('decideCert', { ids: [mid], decisao: 'autorizado' }, P).ok); assert.equal(e.call('profileView', {}, A).data.xp.xp, xp0.xp.xp); // reemitido: tudo volta
 });
 test('cursos: sem exigência de aprovação a matrícula é imediata; níveis e permissões do professor', () => {
   const { e, adm, tok, mk } = boot(); mk('prof@zoe.com', 'professor'); mk('ana@zoe.com', 'membro'); const P = tok('prof@zoe.com', 'Temp12345'), A = tok('ana@zoe.com', 'Temp12345');

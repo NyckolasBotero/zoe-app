@@ -64,6 +64,7 @@ const SHEETS = {
   Aulas: ['AulaID', 'CursoID', 'Numero', 'Titulo', 'Descricao', 'Data', 'Inicio', 'Fim', 'ArquivoID', 'PdfNome', 'Foto', 'Dada', 'Status'],
   AulaPresenca: ['AulaID', 'MembroID', 'Presente'],
   AulaAval: ['AulaID', 'CursoID', 'MembroID', 'Nota', 'Feedback', 'Duvida', 'Obs', 'Data'],
+  CertLayout: ['MembroID', 'Dados', 'Atualizado'],
   Insignias: ['MembroID', 'Codigo', 'Titulo', 'Ano', 'Data', 'Ref'],
   XpLog: ['MembroID', 'Ref', 'Pontos', 'Motivo', 'Data'],
   Perfis: ['MembroID', 'Bio', 'Capa', 'Fundo', 'Moldura', 'Versiculo'],
@@ -1138,15 +1139,60 @@ function saveSignature_(d, u) {
     if (ex) writeRow_(t, ex._row, row); else appendRow_(t, Object.assign({ MembroID: u.membroId }, row)); return { ok: true };
   });
 }
-function certificate_(d, u) {
-  const r = table_('Matriculas').rows.filter(function (x) { return x.MatriculaID === d.id; })[0]; if (!r || r.Cert !== 'emitido') throw new ApiError('NOT_FOUND', 'Certificado não encontrado.');
-  const c = getCurso_(r.CursoID); if (!(r.MembroID === u.membroId || gereCurso_(u, c) || can_(u, 'cursos'))) throw new ApiError('FORBIDDEN', 'Este certificado é de outra pessoa.');
+// ---- layout do certificado (cada professor edita o seu) ----
+const CERT_PAD = { cor1: '#0B6B35', cor2: '#DD3326', fundo: '#FFFDF6', moldura: 'dupla', fonte: 'cursiva', titulo: 'CERTIFICADO', subtitulo: 'de conclusão de curso', abertura: 'Certificamos que', rodape: 'Ministério Zoe · Vida de Deus', logo: '1', descricao: '1', carga: '1', periodo: '1', presenca: '1' };
+function layoutLimpo_(d) {
+  const o = {}, cor = function (k) { if (d[k] === undefined) return; if (!/^#[0-9a-fA-F]{6}$/.test(String(d[k]))) throw new ApiError('VALIDATION', 'Cor inválida.'); o[k] = String(d[k]).toLowerCase(); };
+  ['cor1', 'cor2', 'fundo'].forEach(cor);
+  if (d.moldura !== undefined) { if (['dupla', 'simples', 'ornamental', 'nenhuma'].indexOf(d.moldura) < 0) throw new ApiError('VALIDATION', 'Moldura inválida.'); o.moldura = d.moldura; }
+  if (d.fonte !== undefined) { if (['cursiva', 'serifada', 'moderna'].indexOf(d.fonte) < 0) throw new ApiError('VALIDATION', 'Fonte inválida.'); o.fonte = d.fonte; }
+  [['titulo', 40], ['subtitulo', 60], ['abertura', 60], ['rodape', 90]].forEach(function (p) { if (d[p[0]] !== undefined) o[p[0]] = clip_(d[p[0]], p[1]); });
+  ['logo', 'descricao', 'carga', 'periodo', 'presenca'].forEach(function (k) { if (d[k] !== undefined) o[k] = (d[k] === true || d[k] === '1' || d[k] === 1) ? '1' : '0'; });
+  return o;
+}
+function layoutDe_(mid) { const r = table_('CertLayout').rows.filter(function (x) { return x.MembroID === mid; })[0]; return Object.assign({}, CERT_PAD, r ? jparse_(r.Dados, {}) : {}); }
+function podeLayout_(u) { if (!(can_(u, 'prof') || can_(u, 'cursos') || can_(u, 'config'))) throw new ApiError('FORBIDDEN', 'Só professores e supervisores editam o layout.'); }
+function getCertLayout_(d, u) { podeLayout_(u); return { layout: layoutDe_(u.membroId), padrao: CERT_PAD }; }
+function saveCertLayout_(d, u) {
+  podeLayout_(u);
+  return withLock_(function () {
+    const t = table_('CertLayout'), ex = t.rows.filter(function (x) { return x.MembroID === u.membroId; })[0], dados = d.reset ? '{}' : JSON.stringify(layoutLimpo_(d.layout || {}));
+    if (ex) writeRow_(t, ex._row, { Dados: dados, Atualizado: now_() }); else appendRow_(t, { MembroID: u.membroId, Dados: dados, Atualizado: now_() }); return { layout: layoutDe_(u.membroId) };
+  });
+}
+function certData_(c, r, aluno, lay) {
   const mem = {}; table_('Membros').rows.forEach(function (m) { mem[m.MembroID] = m; }); const aulas = aulasDe_(c.CursoID), ds = aulas.map(function (a) { return a.Data; }).sort();
   const us = {}; table_('Usuarios').rows.forEach(function (x) { us[x.MembroID] = x; });
   const pess = function (mid, pad) { if (!mid) return null; const m = mem[mid] || {}, sg = sigOut_(mid), papel = (us[mid] || {}).Papel || ''; return { nome: m.Nome || m.Simples || '', cargo: (sg && sg.cargo) || pad(papel), assinatura: sg ? { tipo: sg.tipo, dado: sg.dado } : null }; };
   const prof = pess(c.ProfessorID, function () { return 'Professor'; });
   const sup = c.DecididoPor && c.DecididoPor !== c.ProfessorID ? pess(c.DecididoPor, function (p) { return p === 'pastor' ? 'Pastor e Supervisor' : p === 'admin' ? 'Administração e Supervisor' : 'Supervisor'; }) : null;
-  return { codigo: r.CertCodigo, data: r.CertData, aluno: (mem[r.MembroID] || {}).Nome || '', presenca: Number(r.PresencaPct) || 0, curso: { nome: c.Nome, descricao: c.Descricao || '', cargaMin: cargaMin_(c, aulas), nAulas: aulas.length, inicio: ds[0] || '', fim: ds[ds.length - 1] || '', presencaMin: Number(c.PresencaMin) || 75 }, professor: prof, supervisor: sup };
+  return { codigo: r && r.CertCodigo ? r.CertCodigo : 'PRÉVIA', data: r && r.CertData ? r.CertData : today_(), aluno: aluno, presenca: r ? Number(r.PresencaPct) || 0 : 100, layout: lay || layoutDe_(c.ProfessorID), curso: { nome: c.Nome, descricao: c.Descricao || '', cargaMin: cargaMin_(c, aulas), nAulas: aulas.length, inicio: ds[0] || '', fim: ds[ds.length - 1] || '', presencaMin: Number(c.PresencaMin) || 75 }, professor: prof, supervisor: sup };
+}
+function certificate_(d, u) {
+  const r = table_('Matriculas').rows.filter(function (x) { return x.MatriculaID === d.id; })[0]; if (!r || r.Cert !== 'emitido') throw new ApiError('NOT_FOUND', 'Certificado não encontrado.');
+  const c = getCurso_(r.CursoID); if (!(r.MembroID === u.membroId || gereCurso_(u, c) || can_(u, 'cursos'))) throw new ApiError('FORBIDDEN', 'Este certificado é de outra pessoa.');
+  const m = table_('Membros').rows.filter(function (x) { return x.MembroID === r.MembroID; })[0] || {}; return certData_(c, r, m.Nome || '', null);
+}
+// prévia: vale a qualquer momento (curso em andamento ou encerrado), com um aluno de verdade ou um nome de exemplo, e com o layout ainda não salvo
+function previewCert_(d, u) {
+  const c = getCurso_(clip_(d.cursoId, 30)); if (!(gereCurso_(u, c) || can_(u, 'cursos'))) throw new ApiError('FORBIDDEN', 'Só o professor do curso.');
+  const r = d.matriculaId ? table_('Matriculas').rows.filter(function (x) { return x.MatriculaID === d.matriculaId && x.CursoID === c.CursoID; })[0] : null; let nome = 'Nome do Aluno', reg = null;
+  if (r) { const m = table_('Membros').rows.filter(function (x) { return x.MembroID === r.MembroID; })[0] || {}; nome = m.Nome || nome; const aulas = aulasDe_(c.CursoID), ids = {}; aulas.forEach(function (a) { ids[a.AulaID] = 1; }); reg = { PresencaPct: String(r.PresencaPct !== '' && r.PresencaPct !== undefined ? r.PresencaPct : presencaPct_(c.CursoID, r.MembroID, aulas.length, table_('AulaPresenca').rows.filter(function (p) { return ids[p.AulaID]; }))) }; }
+  const lay = d.layout ? Object.assign({}, CERT_PAD, layoutLimpo_(d.layout)) : layoutDe_(c.ProfessorID); return certData_(c, reg, nome, lay);
+}
+// exclui um certificado emitido por engano: o aluno volta a "a avaliar", a insígnia e o XP daquele curso saem
+function revokeCert_(d, u) {
+  return withLock_(function () {
+    const t = table_('Matriculas'), r = t.rows.filter(function (x) { return x.MatriculaID === d.id; })[0]; if (!r || r.Cert !== 'emitido') throw new ApiError('NOT_FOUND', 'Certificado não encontrado.');
+    const c = getCurso_(r.CursoID); if (!(gereCurso_(u, c) || can_(u, 'cursos'))) throw new ApiError('FORBIDDEN', 'Só o professor do curso.');
+    const ano = String(r.CertData || '').slice(0, 4), ref = 'curso:' + c.CursoID + ':' + ano;
+    writeRow_(t, r._row, { Cert: 'pendente', CertCodigo: '', CertData: '', CertPor: '', Status: 'autorizado' });
+    const ti = table_('Insignias'), tx = table_('XpLog');
+    ti.rows.filter(function (x) { return x.MembroID === r.MembroID && x.Ref === ref; }).sort(function (a, b) { return b._row - a._row; }).forEach(function (x) { ti.sh.deleteRow(x._row); });
+    tx.rows.filter(function (x) { return x.MembroID === r.MembroID && x.Ref === 'insignia:' + ref; }).sort(function (a, b) { return b._row - a._row; }).forEach(function (x) { tx.sh.deleteRow(x._row); });
+    notify_(r.MembroID, 'curso', 'Certificado removido', 'O certificado de ' + c.Nome + ' foi retirado pelo professor. Ele pode ser emitido de novo depois.', 'curso:' + c.CursoID);
+    audit_(u.email, 'CERTIFICADO_REVOGADO', c.CursoID + ':' + r.MatriculaID, 'OK'); return { ok: true };
+  });
 }
 function rateAula_(d, u) {
   return withLock_(function () {
@@ -1486,7 +1532,7 @@ const ROUTES = {
   listCourses: { auth: 'any', fn: listCourses_ }, enrollCourse: { auth: 'any', write: 1, fn: enrollCourse_ }, saveCourse: { auth: 'any', write: 1, fn: saveCourse_ }, courseDetail: { auth: 'any', fn: courseDetail_ }, saveAula: { auth: 'any', write: 1, fn: saveAula_ }, deleteAula: { auth: 'any', write: 1, fn: deleteAula_ }, getAulaPdf: { auth: 'any', fn: getAulaPdf_ },
   requestStart: { auth: 'any', write: 1, fn: requestStart_ }, getClassRoll: { auth: 'any', fn: getClassRoll_ }, saveClassRoll: { auth: 'any', write: 1, fn: saveClassRoll_ }, finishCourse: { auth: 'any', write: 1, fn: finishCourse_ }, listCertificates: { auth: 'any', fn: listCertificates_ }, decideCert: { auth: 'any', write: 1, fn: decideCert_ }, certificate: { auth: 'any', fn: certificate_ },
   getSignature: { auth: 'any', fn: getSignature_ }, saveSignature: { auth: 'any', write: 1, fn: saveSignature_ }, rateAula: { auth: 'any', write: 1, fn: rateAula_ }, aulaFeedback: { auth: 'any', fn: aulaFeedback_ },
-  listLessons: { auth: 'any', fn: listLessons_ }, listDynamics: { auth: 'any', fn: listDyn_ }, addDynamic: { auth: 'any', write: 1, fn: addDyn_ }, listVideos: { auth: 'any', fn: listVideos_ }, listProducts: { auth: 'any', fn: listProducts_ }, listFamilia: { auth: 'any', fn: listFamilia_ }, profileView: { auth: 'any', fn: profileView_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
+  listLessons: { auth: 'any', fn: listLessons_ }, listDynamics: { auth: 'any', fn: listDyn_ }, addDynamic: { auth: 'any', write: 1, fn: addDyn_ }, listVideos: { auth: 'any', fn: listVideos_ }, listProducts: { auth: 'any', fn: listProducts_ }, listFamilia: { auth: 'any', fn: listFamilia_ }, profileView: { auth: 'any', fn: profileView_ }, getCertLayout: { auth: 'any', fn: getCertLayout_ }, saveCertLayout: { auth: 'any', write: 1, fn: saveCertLayout_ }, previewCert: { auth: 'any', fn: previewCert_ }, revokeCert: { auth: 'any', write: 1, fn: revokeCert_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
   searchCells: { auth: 'any', fn: searchCells_ }, addPrayer: { auth: 'any', write: 1, fn: addPrayer_ }, listPrayers: { auth: 'any', fn: listPrayers_ },
   cellMembers: { auth: 'any', fn: cellMembers_ }, saveCell: { auth: 'any', write: 1, fn: saveCell_ }, saveAttendance: { auth: 'any', write: 1, fn: saveAttendance_ }, history: { auth: 'any', fn: history_ },
   indicators: { auth: 'any', fn: indicators_ }, getPapeis: { auth: 'any', fn: getPapeis_ }, savePapeis: { auth: 'any', write: 1, fn: savePapeis_ }, createCellEvent: { auth: 'any', write: 1, fn: createCellEvent_ },

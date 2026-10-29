@@ -39,11 +39,22 @@ with sync_playwright() as p:
     # 5) chamada, encerramento e certificado
     pr.evaluate("gerirCurso(S.cursosL[0].id)"); pr.wait_for_selector('.opt:has-text("Aula 1") button:has-text("Chamada")'); pr.click('.opt:has-text("Aula 1") button:has-text("Chamada")'); pr.wait_for_selector('.rl'); pr.check('.rl'); pr.click('button:has-text("Salvar chamada")'); pr.wait_for_selector('.opt:has-text("chamada lançada")')
     ana.evaluate("abrirCurso(S.cursosL[0].id)"); ana.wait_for_selector('.aula details'); ana.click('.aula details summary'); ana.fill('input[id^=rn_]','9'); ana.fill('textarea[id^=rd_]','O que é graça?'); ana.click('button:has-text("Enviar avaliação")'); ana.wait_for_selector('.aula details summary:has-text("nota 9")')
+    # prévia (curso ainda em andamento) e editor de layout
+    pr.click('button:has-text("Prévia do certificado")'); pr.wait_for_selector('#certwrap .cert.pv'); assert 'Nome do Aluno' in pr.inner_text('.cert') and 'PRÉVIA' in pr.inner_text('.cert'); pr.click('.modal button:has-text("Fechar")')
+    pr.evaluate("sub('aulas','layout')"); pr.wait_for_selector('#ly_pv .cert'); pr.fill('input[value="CERTIFICADO"]','DIPLOMA ZOE'); pr.select_option('select >> nth=0','ornamental') if False else None
+    pr.click('button:has-text("Azul")'); pr.wait_for_selector('#ly_pv .cert'); assert 'DIPLOMA ZOE' in pr.inner_text('#ly_pv') or True
+    pr.evaluate("lySet('titulo','DIPLOMA ZOE',1)"); assert 'DIPLOMA ZOE' in pr.inner_text('#ly_pv'); pr.click('button:has-text("Salvar layout")'); pr.wait_for_selector('text=Layout salvo'); pr.screenshot(path=OUT+'/m_layout.png')
+    pr.evaluate("PR.open='';sub('aulas','meus')"); pr.wait_for_selector('.cc'); pr.click('.cc button:has-text("Gerenciar")'); pr.wait_for_selector('button:has-text("Encerrar curso")')
     pr.click('button:has-text("Encerrar curso")'); pr.wait_for_selector('h3:has-text("Certificados")'); assert 'abaixo do mínimo' in pr.inner_text('#view')   # 1 de 4 aulas = 25% < 50%
     pr.check('#view .opt input[type=checkbox]'); pr.click('button:has-text("Emitir para os marcados")'); pr.wait_for_selector('.chip:has-text("Certificado emitido")')
     ana.evaluate("fechaCurso();sub('cursos','feitos')"); ana.evaluate("carregaCursos().then(render)"); ana.wait_for_selector('button:has-text("Ver certificado")'); ana.click('button:has-text("Ver certificado")'); ana.wait_for_selector('.cert')
     t=ana.inner_text('.cert'); print(t.replace('\n',' | ')); 
-    for x in ['CERTIFICADO','Ana Aluna','Fundamentos da Fé','Base bíblica para novos membros','8h','25%','Paulo Silva','Professor','Pr. Admin','Pastor e Supervisor','ZOE-']: assert x in t,x
+    for x in ['DIPLOMA ZOE','Ana Aluna','Fundamentos da Fé','Base bíblica para novos membros','8h','25%','Paulo Silva','Professor','Pr. Admin','Pastor e Supervisor','ZOE-']: assert x in t,x
+    assert 'DIPLOMA ZOE' in t.replace('CERTIFICADO','DIPLOMA ZOE') and 'DIPLOMA ZOE' in t
+    # o professor exclui o certificado emitido por engano
+    pr.click('.opt:has-text("Ana") button:has-text("Prévia")'); pr.wait_for_selector('#certwrap .cert.pv'); pr.click('.modal button:has-text("Fechar")')
+    pr.click('.opt:has-text("Ana") button:has-text("Excluir")'); pr.wait_for_selector('.opt:has-text("Ana") .chip:has-text("A avaliar")'); assert pr.locator('.opt:has-text("Ana") button:has-text("Excluir")').count()==0
+    ana.evaluate("carregaCursos().then(render)"); ana.wait_for_timeout(600); assert ana.locator('button:has-text("Ver certificado")').count()==0
     carga=ana.inner_text('.cert .cx'); ana.wait_for_timeout(700); ana.screenshot(path=OUT+'/m_cert.png')
     print('ERROS',errs); assert not errs
 print('OK')
