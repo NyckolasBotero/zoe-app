@@ -15,7 +15,7 @@ with sync_playwright() as p:
     # --- admin envia o PDF
     adm.evaluate("go('admin')"); adm.wait_for_selector('#bk_t')
     adm.fill('#bk_t','Propósito'); adm.fill('#bk_a','Autor Teste'); adm.fill('#bk_d','Um livro para a célula')
-    adm.set_input_files('#bk_p','/tmp/demo.pdf'); adm.set_input_files('#bk_c','/tmp/capa.png'); adm.click('text=Adicionar livro'); adm.wait_for_selector("text=Livro adicionado")
+    adm.set_input_files('#bk_p','/tmp/demo.pdf'); adm.set_input_files('#bk_c','/tmp/capa.png'); adm.click("button[onclick='salvarLivro()']"); adm.wait_for_selector("text=Livro adicionado")
     # --- membro lê e comenta
     adm.evaluate("async()=>{await api('createUser',{nome:'Ana Souza',email:'ana@zoe.com',senha:'Temp12345',papel:'membro'})}")
     ana=entra(b,'ana@zoe.com','Temp12345','NovaSenha123'); ana.evaluate("go('biblioteca')"); ana.wait_for_selector("text=Ler e comentar"); ana.click("text=Ler e comentar")

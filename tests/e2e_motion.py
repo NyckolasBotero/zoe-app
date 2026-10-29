@@ -27,7 +27,7 @@ with sync_playwright() as p:
     pg.evaluate("window.scrollTo({top:0,behavior:'instant'})"); pg.wait_for_timeout(300)
     # ripple no clique
     pg.evaluate("go('admin')"); pg.wait_for_selector('#bk_t'); pg.wait_for_timeout(600)
-    pg.hover('text=Adicionar livro'); pg.wait_for_timeout(300)
+    pg.hover("button[onclick='salvarLivro()']"); pg.wait_for_timeout(300)
     pg.mouse.down(); assert pg.evaluate("!!document.querySelector('.rip')"); pg.mouse.up()
     # feedback de arquivo selecionado
     pg.set_input_files('#bk_p','/tmp/demo.pdf'); pg.wait_for_selector('.toast >> text=Arquivo selecionado')
