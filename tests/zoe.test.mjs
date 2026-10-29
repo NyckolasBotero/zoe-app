@@ -619,18 +619,37 @@ test('XP e insígnias: batismo/decisão, idempotência, nível e personalizaçã
   assert.ok(e.call('saveMember', { membro: { Nome: 'João Silva', DataBatismo: '2020-01-05', DataDecisao: '2019-03-02' } }, j).ok);
   assert.ok(e.call('saveMember', { membro: { Nome: 'João Silva', DataBatismo: '2020-01-05', DataDecisao: '2019-03-02' } }, j).ok); // repetir não duplica
   const pv = e.call('profileView', {}, j).data; const cods = pv.insignias.map(x => x.codigo).sort();
-  assert.deepEqual(cods, ['batismo', 'decisao']); assert.equal(pv.xp.xp, 350); assert.equal(pv.xp.nivel, 3);
+  assert.deepEqual(cods, ['batismo', 'decisao']); assert.equal(pv.xp.xp, 350); assert.equal(pv.xp.nivel, 6);
   assert.equal(pv.insignias.find(x => x.codigo === 'batismo').ano, '2020');
-  assert.equal(e.call('saveProfile', { fundo: 'ouro' }, j).error.code, 'FORBIDDEN');
+  assert.ok(pv.bloqueadas.some(x => x.codigo === 'perfil')); assert.ok(!pv.bloqueadas.some(x => x.codigo === 'batismo'));
+  assert.equal(e.call('saveProfile', { fundo: 'aurora' }, j).error.code, 'FORBIDDEN');
   assert.equal(e.call('saveProfile', { fundo: 'nada' }, j).error.code, 'VALIDATION');
-  assert.ok(e.call('saveProfile', { bio: 'Olá!', fundo: 'solpoente', moldura: 'dourada', versiculo: 'Sl 23' }, j).ok);
-  const p2 = e.call('profileView', {}, j).data; assert.equal(p2.bio, 'Olá!'); assert.equal(p2.fundo, 'solpoente');
-  assert.equal(p2.libera.slots, 1);
+  assert.equal(e.call('saveHighlight', { foto: 'data:image/jpeg;base64,/9j/4AAQSkZJRg==' }, j).error.code, 'FORBIDDEN');
+  e.run(`awardXp_('${pv.id}','teste',500,'t')`);
+  assert.ok(e.call('saveProfile', { bio: 'Olá!', fundo: 'aurora', contorno: 'verde', moldura: 'fio', versiculo: 'Sl 23' }, j).ok);
+  assert.equal(e.call('saveProfile', { contorno: 'dourada' }, j).error.code, 'FORBIDDEN'); // abre no nível 20
+  const p2 = e.call('profileView', {}, j).data; assert.equal(p2.bio, 'Olá!'); assert.equal(p2.fundo, 'aurora'); assert.equal(p2.contorno, 'verde'); assert.equal(p2.libera.slots, 2);
   const f = 'data:image/jpeg;base64,/9j/4AAQSkZJRg==';
-  assert.ok(e.call('saveHighlight', { foto: f, legenda: 'Batismo' }, j).ok);
+  assert.ok(e.call('saveHighlight', { foto: f, legenda: 'Batismo' }, j).ok); assert.ok(e.call('saveHighlight', { foto: f }, j).ok);
   assert.equal(e.call('saveHighlight', { foto: f }, j).error.code, 'FORBIDDEN');
-  const d = e.call('profileView', {}, j).data.destaques; assert.equal(d.length, 1);
-  assert.ok(e.call('deleteHighlight', { id: d[0].id }, j).ok); assert.equal(e.call('profileView', {}, j).data.destaques.length, 0);
+  const d = e.call('profileView', {}, j).data.destaques; assert.equal(d.length, 2);
+  assert.ok(e.call('deleteHighlight', { id: d[0].id }, j).ok); assert.equal(e.call('profileView', {}, j).data.destaques.length, 1);
+});
+test('insígnias criadas por supervisores: critério, progresso, escuras até conquistar', () => {
+  const { e, adm, tok, mk } = boot(); mk('ana@zoe.com', 'membro'); const A = tok('ana@zoe.com', 'Temp12345');
+  assert.equal(e.call('saveInsigniaDef', { titulo: 'Mão no arado', criterio: { tipo: 'servico', atividade: 'Limpeza', meses: 2 } }, A).error.code, 'FORBIDDEN');
+  const r = e.call('saveInsigniaDef', { titulo: 'Mão no arado', descricao: 'Serviço fiel', xp: 120, visual: { estilo: 'ouro', forma: 'hex', icone: 'arado', cor1: '#2f6b3a', cor2: '#efe3b0' }, criterio: { tipo: 'servico', atividade: 'Limpeza', meses: 2 } }, adm);
+  assert.ok(r.ok, JSON.stringify(r)); assert.equal(e.call('saveInsigniaDef', { titulo: 'x', criterio: { tipo: 'zzz' } }, adm).error.code, 'VALIDATION');
+  const ana = e.call('me', {}, A).data.membroId || e.sheets.Membros.rows[e.sheets.Membros.rows.length - 1][0];
+  let pv = e.call('profileView', {}, A).data; const b = pv.bloqueadas.find(x => x.codigo === 'cust:' + r.data.id);
+  assert.ok(b && b.progresso.atual === 0 && b.progresso.meta === 2 && b.visual.estilo === 'ouro');
+  assert.equal(e.call('logServico', { atividade: 'Limpeza', mes: '2026-09', membros: [pv.id] }, A).error.code, 'FORBIDDEN');
+  assert.equal(e.call('logServico', { atividade: 'Limpeza', mes: '2026-09', membros: [pv.id] }, adm).data.n, 1);
+  assert.equal(e.call('logServico', { atividade: 'Limpeza', mes: '2026-09', membros: [pv.id] }, adm).data.n, 0);
+  pv = e.call('profileView', {}, A).data; assert.equal(pv.bloqueadas.find(x => x.codigo === 'cust:' + r.data.id).progresso.atual, 1);
+  e.call('logServico', { atividade: 'limpeza', mes: '2026-10', membros: [pv.id] }, adm);
+  pv = e.call('profileView', {}, A).data; const g = pv.insignias.find(x => x.codigo === 'cust:' + r.data.id);
+  assert.ok(g && g.visual.forma === 'hex' && !pv.bloqueadas.some(x => x.codigo === 'cust:' + r.data.id)); assert.equal(pv.xp.xp, 120);
 });
 test('botons de eventos: check-in dá insígnia exclusiva e "presença total"', () => {
   const { e, adm, tok, mk } = boot(); const a = mk('ana@zoe.com', 'membro'), b = mk('bia@zoe.com', 'membro'); const A = tok('ana@zoe.com', 'Temp12345');

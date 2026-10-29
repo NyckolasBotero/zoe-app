@@ -67,7 +67,9 @@ const SHEETS = {
   CertLayout: ['MembroID', 'Dados', 'Atualizado'],
   Insignias: ['MembroID', 'Codigo', 'Titulo', 'Ano', 'Data', 'Ref'],
   XpLog: ['MembroID', 'Ref', 'Pontos', 'Motivo', 'Data'],
-  Perfis: ['MembroID', 'Bio', 'Capa', 'Fundo', 'Moldura', 'Versiculo', 'Oculto'],
+  Perfis: ['MembroID', 'Bio', 'Capa', 'Fundo', 'Moldura', 'Versiculo', 'Oculto', 'Contorno', 'Quadro'],
+  InsigniaDefs: ['DefID', 'Nome', 'Descricao', 'Estilo', 'Forma', 'Cor1', 'Cor2', 'Icone', 'Texto', 'XP', 'Criterio', 'Ativo', 'CriadoPor'],
+  Servicos: ['Atividade', 'MembroID', 'Mes', 'RegistradoPor'],
   ChatMsgs: ['MsgID', 'ConvID', 'De', 'Para', 'Texto', 'Ts', 'Lida'],
   PerfilFotos: ['MembroID', 'FotoID', 'Foto', 'Legenda', 'Ordem'],
   Assinaturas: ['MembroID', 'Tipo', 'Dado', 'Cargo', 'Atualizado'],
@@ -1213,16 +1215,20 @@ function aulaFeedback_(d, u) {
 
 /* ============================== INSÍGNIAS, XP E PERFIL ==============================
    XP vem de tarefas e insígnias (cada prêmio é gravado uma única vez, por "ref"). O nível libera personalização do perfil. */
-const NIVEIS = [0, 100, 250, 450, 700, 1000, 1400, 1900, 2500, 3200];
-const NIVEL_NOMES = ['Semente', 'Broto', 'Raiz', 'Tronco', 'Ramo', 'Folha', 'Fruto', 'Árvore', 'Floresta', 'Vida em abundância'];
-const FUNDOS_NV = { verde: 1, aurora: 2, solpoente: 3, noite: 4, bordado: 5, ouro: 8 };
-const MOLDURAS_NV = { simples: 1, verde: 2, dourada: 3, arco: 5, chama: 7, luz: 9 };
-const SLOTS_DESTAQUE = [[8, 6], [6, 3], [4, 2], [3, 1]]; // [nível mínimo, fotos em destaque]
-const NV_CAPA = 2, NV_VERSICULO = 2;
-function nivelDe_(xp) { let n = 1; for (let i = 0; i < NIVEIS.length; i++) if (xp >= NIVEIS[i]) n = i + 1; return n; }
-function slotsDestaque_(nv) { for (let i = 0; i < SLOTS_DESTAQUE.length; i++) if (nv >= SLOTS_DESTAQUE[i][0]) return SLOTS_DESTAQUE[i][1]; return 0; }
+const NV_MAX = 100;
+function xpNivel_(n) { return n <= 1 ? 0 : Math.round(30 * Math.pow(n - 1, 1.5)); } // XP necessário para chegar ao nível n
+function nivelDe_(xp) { let n = 1; while (n < NV_MAX && xp >= xpNivel_(n + 1)) n++; return n; }
+const TIER_NOMES = ['Semente', 'Broto', 'Raiz', 'Tronco', 'Ramo', 'Folha', 'Fruto', 'Árvore', 'Floresta', 'Videira', 'Vida em abundância'];
+function tierDe_(nv) { return Math.min(10, Math.floor(nv / 10)); }
+// Personalização libera de 10 em 10 níveis: o item de posição i abre no nível i*10 (posição 0 já vem liberada)
+const CONTORNOS = ['simples', 'verde', 'dourada', 'arco', 'chama', 'luz', 'neon', 'gelo', 'coroa', 'galaxia', 'eterno'];
+const MOLDURAS = ['nenhuma', 'fio', 'dupla', 'bordado', 'dourada', 'ornamental', 'luz', 'chama', 'arco', 'realeza', 'eterna'];
+const FUNDOS = ['zoe', 'aurora', 'solpoente', 'oceano', 'noite', 'bordado', 'ouro', 'floresta', 'neon', 'galaxia', 'vida'];
+function reqMap_(lista) { const o = {}; lista.forEach(function (k, i) { o[k] = i * 10; }); return o; }
+function slotsMural_(nv) { return Math.min(12, tierDe_(nv) * 2); }
+const NV_CAPA = 10, NV_VERSICULO = 10, NV_MURAL = 10;
 function xpDe_(mid) { let t = 0; table_('XpLog').rows.forEach(function (r) { if (r.MembroID === mid) t += Number(r.Pontos) || 0; }); return t; }
-function xpResumo_(mid) { const xp = xpDe_(mid), nv = nivelDe_(xp), ini = NIVEIS[nv - 1], prox = NIVEIS[nv] === undefined ? null : NIVEIS[nv]; return { xp: xp, nivel: nv, nome: NIVEL_NOMES[nv - 1], proximo: prox, base: ini }; }
+function xpResumo_(mid) { const xp = xpDe_(mid), nv = nivelDe_(xp); return { xp: xp, nivel: nv, tier: tierDe_(nv), nome: TIER_NOMES[tierDe_(nv)], base: xpNivel_(nv), proximo: nv >= NV_MAX ? null : xpNivel_(nv + 1) }; }
 function awardXp_(mid, ref, pts, motivo) {
   if (!mid || !ref) return false; const t = table_('XpLog'); if (t.rows.some(function (r) { return r.MembroID === mid && r.Ref === ref; })) return false;
   appendRow_(t, { MembroID: mid, Ref: ref, Pontos: String(pts), Motivo: clip_(motivo, 120), Data: now_() }); t.rows.push({ MembroID: mid, Ref: ref, Pontos: String(pts) }); return true;
@@ -1236,27 +1242,129 @@ function awardBadge_(mid, codigo, titulo, ano, pts) {
 }
 const PERFIL_COMPLETO = ['Nome', 'Simples', 'Apelido', 'Sexo', 'Nascimento', 'Nacionalidade', 'Naturalidade', 'Sangue', 'Profissao', 'Telefone', 'Email', 'CEP', 'UF', 'Cidade', 'Endereco', 'Bairro', 'Mae', 'Pai', 'EstadoCivil', 'Foto'];
 function conquistasMembro_(m) {
-  if (!m) return; const mid = m.MembroID, ano = today_().slice(0, 4);
+  if (!m) return; const mid = m.MembroID;
   if (PERFIL_COMPLETO.every(function (k) { return String(m[k] || '').trim(); })) { awardBadge_(mid, 'perfil', 'Perfil completo', '', 100); }
   if (m.DataDecisao) awardBadge_(mid, 'decisao', 'Decisão por Cristo', String(m.DataDecisao).slice(0, 4), 150);
   if (m.DataBatismo) awardBadge_(mid, 'batismo', 'Batizado', String(m.DataBatismo).slice(0, 4), 200);
 }
-function listInsignias_(mid) { return table_('Insignias').rows.filter(function (r) { return r.MembroID === mid; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).map(function (r) { return { codigo: r.Codigo, titulo: r.Titulo, ano: r.Ano || '', data: r.Data }; }); }
+/* ---- insígnias criadas pelos supervisores: o que precisa ser feito (critério) e o visual ---- */
+const ICONES_BD = ['estrela', 'user', 'flame', 'gota', 'livro', 'coroa', 'cruz', 'coracao', 'pomba', 'trigo', 'chave', 'escudo', 'sino', 'maos', 'arado', 'ancora', 'vela', 'raio'];
+const FORMAS_BD = ['circ', 'esc', 'hex', 'oct', 'losango'];
+const ESTILOS_BD = ['bordado', 'ouro', 'prata', 'bronze'];
+function podeCurar_(u) { return can_(u, 'config') || can_(u, 'eventos') || can_(u, 'celulas') || (u.supervisiona && u.supervisiona.length > 0) || u.papel === 'pastor' || u.papel === 'admin'; }
+function exigeCurar_(u) { if (!podeCurar_(u)) throw new ApiError('FORBIDDEN', 'Só supervisores e a administração criam insígnias.'); }
+function ehLider_(u) { return can_(u, 'celulas') || (u.lidera && u.lidera.length > 0) || (u.supervisiona && u.supervisiona.length > 0) || u.papel === 'pastor' || u.papel === 'admin'; }
+function criterioLimpo_(c) {
+  c = c || {}; const t = String(c.tipo || 'manual'), n = Math.floor(Number(c.n)), o = { tipo: t };
+  if (['manual'].indexOf(t) >= 0) return o;
+  if (t === 'eventos_ultimos') { o.palavra = clip_(c.palavra, 40); o.n = n; if (!o.palavra || !(n >= 1 && n <= 50)) throw new ApiError('VALIDATION', 'Informe a palavra do evento (ex.: retiro) e quantos dos últimos.'); return o; }
+  if (t === 'servico') { o.atividade = clip_(c.atividade, 60); o.meses = Math.floor(Number(c.meses)); o.consecutivos = c.consecutivos ? 1 : 0; if (!o.atividade || !(o.meses >= 1 && o.meses <= 120)) throw new ApiError('VALIDATION', 'Informe a atividade/escala e quantos meses.'); return o; }
+  if (['eventos_total', 'reunioes', 'cursos', 'acessos'].indexOf(t) >= 0) { if (!(n >= 1 && n <= 5000)) throw new ApiError('VALIDATION', 'Informe a quantidade necessária.'); o.n = n; return o; }
+  throw new ApiError('VALIDATION', 'Tipo de critério inválido.');
+}
+function critTexto_(c) {
+  switch (c.tipo) {
+    case 'eventos_ultimos': return 'Ir aos ' + c.n + ' últimos eventos de “' + c.palavra + '”';
+    case 'servico': return 'Servir em “' + c.atividade + '” por ' + c.meses + ' ' + (c.consecutivos ? 'meses seguidos' : 'meses');
+    case 'eventos_total': return 'Ir a ' + c.n + ' eventos da igreja'; case 'reunioes': return 'Estar em ' + c.n + ' reuniões de célula';
+    case 'cursos': return 'Concluir ' + c.n + ' curso(s)'; case 'acessos': return 'Acessar o app em ' + c.n + ' dias'; default: return 'Concedida pelos líderes';
+  }
+}
+function seqMeses_(meses) { const s = {}; meses.forEach(function (m) { s[m] = 1; }); let melhor = 0; meses.slice().sort().forEach(function (m) { let n = 0, y = Number(m.slice(0, 4)), mo = Number(m.slice(5, 7)); while (s[y + '-' + ('0' + mo).slice(-2)]) { n++; mo--; if (mo < 1) { mo = 12; y--; } } if (n > melhor) melhor = n; }); return melhor; }
+function critProg_(c, mid) {
+  const meta = c.tipo === 'servico' ? c.meses : (c.tipo === 'manual' ? 1 : c.n);
+  if (c.tipo === 'eventos_ultimos') {
+    const q = norm_(c.palavra), hj = today_(), evs = table_('Eventos').rows.filter(function (e) { return e.Escopo !== 'celula' && e.Status !== 'Cancelado' && e.Data <= hj && norm_(e.Titulo).indexOf(q) >= 0; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).slice(0, c.n);
+    const meus = {}; table_('EventoPresenca').rows.forEach(function (r) { if (r.MembroID === mid) meus[r.EventoID] = 1; }); return { atual: evs.filter(function (e) { return meus[e.EventoID]; }).length, meta: meta };
+  }
+  if (c.tipo === 'servico') {
+    const q = norm_(c.atividade), ms = {}; table_('Servicos').rows.forEach(function (r) { if (r.MembroID === mid && norm_(r.Atividade) === q) ms[r.Mes] = 1; }); const lista = Object.keys(ms);
+    return { atual: c.consecutivos ? seqMeses_(lista) : lista.length, meta: meta };
+  }
+  if (c.tipo === 'eventos_total') { const s = {}; table_('EventoPresenca').rows.forEach(function (r) { if (r.MembroID === mid) s[r.EventoID] = 1; }); return { atual: Object.keys(s).length, meta: meta }; }
+  if (c.tipo === 'reunioes') return { atual: table_('Presencas').rows.filter(function (r) { return r.MembroID === mid; }).length, meta: meta };
+  if (c.tipo === 'cursos') return { atual: table_('Matriculas').rows.filter(function (r) { return r.MembroID === mid && r.Cert === 'emitido'; }).length, meta: meta };
+  if (c.tipo === 'acessos') return { atual: table_('XpLog').rows.filter(function (r) { return r.MembroID === mid && String(r.Ref).indexOf('dia:') === 0; }).length, meta: meta };
+  return { atual: 0, meta: meta };
+}
+function defOut_(r) { const c = jparse_(r.Criterio, { tipo: 'manual' }); return { id: r.DefID, codigo: 'cust:' + r.DefID, titulo: r.Nome, descricao: r.Descricao || '', criterio: c, regra: critTexto_(c), xp: Number(r.XP) || 100, ativo: r.Ativo !== '0', visual: { estilo: r.Estilo || 'bordado', forma: r.Forma || 'circ', cor1: r.Cor1 || '#2f6b3a', cor2: r.Cor2 || '#efe3b0', icone: r.Icone || 'estrela', texto: r.Texto || '' } }; }
+function defsAtivas_() { return table_('InsigniaDefs').rows.filter(function (r) { return r.Ativo !== '0'; }); }
+// confere as insígnias criadas pelos supervisores e entrega as que a pessoa já alcançou (chamada dentro dos pontos em que algo muda)
+function avaliaDefs_(mid) {
+  if (!mid) return 0; let n = 0; const meus = {}; table_('Insignias').rows.forEach(function (r) { if (r.MembroID === mid) meus[r.Ref] = 1; });
+  defsAtivas_().forEach(function (r) { if (meus['cust:' + r.DefID]) return; const c = jparse_(r.Criterio, { tipo: 'manual' }); if (c.tipo === 'manual') return; const p = critProg_(c, mid); if (p.atual >= p.meta && awardBadge_(mid, 'cust:' + r.DefID, r.Nome, '', Number(r.XP) || 100)) n++; });
+  return n;
+}
+function listInsigniaDefs_(d, u) {
+  exigeCurar_(u); const ganhou = {}; table_('Insignias').rows.forEach(function (r) { if (String(r.Codigo).indexOf('cust:') === 0) ganhou[r.Codigo] = (ganhou[r.Codigo] || 0) + 1; });
+  return { defs: table_('InsigniaDefs').rows.map(function (r) { const o = defOut_(r); o.ganharam = ganhou[o.codigo] || 0; return o; }), icones: ICONES_BD, formas: FORMAS_BD, estilos: ESTILOS_BD };
+}
+function saveInsigniaDef_(d, u) {
+  exigeCurar_(u);
+  return withLock_(function () {
+    const nome = clip_(d.titulo, 40), cor = function (v, pad) { v = String(v || pad); if (!/^#[0-9a-fA-F]{6}$/.test(v)) throw new ApiError('VALIDATION', 'Cor inválida.'); return v.toLowerCase(); };
+    if (nome.length < 2) throw new ApiError('VALIDATION', 'Dê um nome à insígnia.');
+    const v = d.visual || {}, estilo = v.estilo || 'bordado', forma = v.forma || 'circ', icone = v.icone || 'estrela';
+    if (ESTILOS_BD.indexOf(estilo) < 0 || FORMAS_BD.indexOf(forma) < 0 || ICONES_BD.indexOf(icone) < 0) throw new ApiError('VALIDATION', 'Visual inválido.');
+    const xp = Math.max(10, Math.min(1000, Math.floor(Number(d.xp) || 100))), t = table_('InsigniaDefs'), ex = d.id ? t.rows.filter(function (r) { return r.DefID === d.id; })[0] : null; if (d.id && !ex) throw new ApiError('NOT_FOUND', 'Insígnia não encontrada.');
+    const row = { Nome: nome, Descricao: clip_(d.descricao, 200), Estilo: estilo, Forma: forma, Cor1: cor(v.cor1, '#2f6b3a'), Cor2: cor(v.cor2, '#efe3b0'), Icone: icone, Texto: clip_(v.texto, 4), XP: String(xp), Criterio: JSON.stringify(criterioLimpo_(d.criterio)), Ativo: d.ativo === false ? '0' : '1' };
+    let id; if (ex) { writeRow_(t, ex._row, row); id = ex.DefID; } else { id = id_('IB'); appendRow_(t, Object.assign({ DefID: id, CriadoPor: u.membroId }, row)); }
+    audit_(u.email, 'INSIGNIA_DEF', id + ' ' + nome, 'OK'); return { id: id };
+  });
+}
+function grantBadge_(d, u) {
+  exigeCurar_(u);
+  return withLock_(function () {
+    const r = table_('InsigniaDefs').rows.filter(function (x) { return x.DefID === d.defId; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Insígnia não encontrada.');
+    const mem = {}; table_('Membros').rows.forEach(function (m) { mem[m.MembroID] = 1; }); let n = 0;
+    (Array.isArray(d.membros) ? d.membros : []).slice(0, 200).forEach(function (mid) { mid = clip_(mid, 30); if (mem[mid] && awardBadge_(mid, 'cust:' + r.DefID, r.Nome, '', Number(r.XP) || 100)) n++; }); audit_(u.email, 'INSIGNIA_CONCEDIDA', r.DefID + ' x' + n, 'OK'); return { n: n };
+  });
+}
+// registro de participação em escalas/atividades (ex.: limpeza), um lançamento por pessoa e mês
+function logServico_(d, u) {
+  exigeCurar_(u);
+  return withLock_(function () {
+    const ativ = clip_(d.atividade, 60), mes = clip_(d.mes, 7); if (!ativ || !/^\d{4}-(0[1-9]|1[0-2])$/.test(mes)) throw new ApiError('VALIDATION', 'Informe a atividade e o mês (AAAA-MM).');
+    const t = table_('Servicos'), mem = {}; table_('Membros').rows.forEach(function (m) { mem[m.MembroID] = 1; }); let n = 0;
+    (Array.isArray(d.membros) ? d.membros : []).slice(0, 200).forEach(function (mid) { mid = clip_(mid, 30); if (!mem[mid]) return; if (t.rows.some(function (r) { return r.MembroID === mid && r.Mes === mes && norm_(r.Atividade) === norm_(ativ); })) return; appendRow_(t, { Atividade: ativ, MembroID: mid, Mes: mes, RegistradoPor: u.membroId }); t.rows.push({ Atividade: ativ, MembroID: mid, Mes: mes }); n++; avaliaDefs_(mid); });
+    audit_(u.email, 'SERVICO', ativ + ' ' + mes + ' x' + n, 'OK'); return { n: n };
+  });
+}
+function listServicos_(d, u) {
+  exigeCurar_(u); const nome = nomes_(), rows = table_('Servicos').rows, ativ = {}; rows.forEach(function (r) { ativ[r.Atividade] = 1; });
+  const q = norm_(d.atividade || ''); return { atividades: Object.keys(ativ).sort(), itens: rows.filter(function (r) { return !q || norm_(r.Atividade) === q; }).slice(-200).reverse().map(function (r) { return { atividade: r.Atividade, mes: r.Mes, membroId: r.MembroID, nome: nome[r.MembroID] || '—' }; }) };
+}
+function listInsignias_(mid) {
+  const defs = {}; table_('InsigniaDefs').rows.forEach(function (r) { defs['cust:' + r.DefID] = r; });
+  return table_('Insignias').rows.filter(function (r) { return r.MembroID === mid; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).map(function (r) { const o = { codigo: r.Codigo, titulo: r.Titulo, ano: r.Ano || '', data: r.Data }; if (defs[r.Codigo]) { const x = defOut_(defs[r.Codigo]); o.visual = x.visual; o.descricao = x.descricao; o.regra = x.regra; } return o; });
+}
+// as que ainda não foram conquistadas aparecem escuras no perfil
+function bloqueadas_(mid, meu, ganhas) {
+  const tem = {}; ganhas.forEach(function (g) { tem[g.codigo + (g.ano ? ':' + g.ano : '')] = 1; tem[g.codigo] = 1; }); const out = [], ano = today_().slice(0, 4);
+  [['perfil', 'Perfil completo', 'Preencha todos os dados em Editar perfil.', ''], ['decisao', 'Decisão por Cristo', 'Registre a sua decisão por Cristo.', ''], ['batismo', 'Batizado', 'Registre a data do seu batismo.', ''], ['presenca', 'Presença total', 'Compareça a todos os eventos do ano.', ano]].forEach(function (b) {
+    if (!ganhas.some(function (g) { return g.codigo === b[0] && (b[0] !== 'presenca' || g.ano === ano); })) out.push({ codigo: b[0], titulo: b[1], descricao: b[2], ano: b[3] });
+  });
+  table_('Eventos').rows.forEach(function (e) { if (!e.Insignia || e.Status === 'Cancelado' || String(e.Data).slice(0, 4) !== ano) return; if (!ganhas.some(function (g) { return g.codigo === 'evento:' + e.EventoID; })) out.push({ codigo: 'evento:' + e.EventoID, titulo: e.Insignia, descricao: 'Compareça a ' + e.Titulo + '.', ano: ano }); });
+  defsAtivas_().forEach(function (r) { if (tem['cust:' + r.DefID]) return; const x = defOut_(r), o = { codigo: x.codigo, titulo: x.titulo, descricao: x.descricao, regra: x.regra, visual: x.visual, ano: '' }; if (meu) { const p = critProg_(x.criterio, mid); o.progresso = { atual: Math.min(p.atual, p.meta), meta: p.meta }; } out.push(o); });
+  return out;
+}
 function perfilRow_(mid) { return table_('Perfis').rows.filter(function (r) { return r.MembroID === mid; })[0]; }
 function profileView_(d, u) {
   const mid = clip_(d.membroId, 30) || u.membroId, m = table_('Membros').rows.filter(function (x) { return x.MembroID === mid && x.Status !== 'Inativo'; })[0]; if (!m) throw new ApiError('NOT_FOUND', 'Perfil não encontrado.');
-  const p = perfilRow_(mid) || {}, rs = xpResumo_(mid), meu = mid === u.membroId;
-  const out = { id: mid, meu: meu, nome: m.Simples || m.Nome, apelido: m.Apelido || '', foto: m.Foto || '', bio: p.Bio || '', capa: p.Capa || '', fundo: p.Fundo || 'verde', moldura: p.Moldura || 'simples', versiculo: p.Versiculo || '', xp: rs, insignias: listInsignias_(mid), oculto: p.Oculto === '1', envolvimento: (p.Oculto === '1' && !meu) ? null : envolvimento_(m),
+  const meu = mid === u.membroId; if (meu) withLock_(function () { avaliaDefs_(mid); });
+  const p = perfilRow_(mid) || {}, rs = xpResumo_(mid), ganhas = listInsignias_(mid);
+  const contorno = CONTORNOS.indexOf(p.Contorno) >= 0 ? p.Contorno : (CONTORNOS.indexOf(p.Moldura) >= 0 ? p.Moldura : 'simples');
+  const out = { id: mid, meu: meu, nome: m.Simples || m.Nome, apelido: m.Apelido || '', foto: m.Foto || '', bio: p.Bio || '', capa: p.Capa || '', fundo: FUNDOS.indexOf(p.Fundo) >= 0 ? p.Fundo : 'zoe', contorno: contorno, moldura: MOLDURAS.indexOf(p.Quadro) >= 0 ? p.Quadro : 'nenhuma', versiculo: p.Versiculo || '', xp: rs, insignias: ganhas, bloqueadas: bloqueadas_(mid, meu, ganhas), oculto: p.Oculto === '1', envolvimento: (p.Oculto === '1' && !meu) ? null : envolvimento_(m),
     destaques: table_('PerfilFotos').rows.filter(function (r) { return r.MembroID === mid; }).sort(function (a, b) { return Number(a.Ordem) - Number(b.Ordem); }).map(function (r) { return { id: r.FotoID, foto: r.Foto, legenda: r.Legenda || '' }; }) };
-  if (meu) out.libera = { fundos: FUNDOS_NV, molduras: MOLDURAS_NV, capa: NV_CAPA, versiculo: NV_VERSICULO, slots: slotsDestaque_(rs.nivel), niveis: NIVEIS, nomes: NIVEL_NOMES };
+  if (meu) out.libera = { fundos: reqMap_(FUNDOS), contornos: reqMap_(CONTORNOS), molduras: reqMap_(MOLDURAS), capa: NV_CAPA, versiculo: NV_VERSICULO, mural: NV_MURAL, slots: slotsMural_(rs.nivel), tiers: TIER_NOMES };
   return out;
 }
 function saveProfile_(d, u) {
   return withLock_(function () {
-    const rs = xpResumo_(u.membroId), nv = rs.nivel, t = table_('Perfis'), ex = perfilRow_(u.membroId), patch = {};
+    const nv = xpResumo_(u.membroId).nivel, t = table_('Perfis'), ex = perfilRow_(u.membroId), patch = {};
+    const escolha = function (campo, lista, col, rot) { if (d[campo] === undefined) return; const i = lista.indexOf(d[campo]); if (i < 0) throw new ApiError('VALIDATION', rot + ' inválido(a).'); if (nv < i * 10) throw new ApiError('FORBIDDEN', rot + ' abre no nível ' + (i * 10) + '.'); patch[col] = d[campo]; };
     if (d.bio !== undefined) patch.Bio = clip_(d.bio, 280);
-    if (d.fundo !== undefined) { if (!FUNDOS_NV[d.fundo]) throw new ApiError('VALIDATION', 'Fundo inválido.'); if (nv < FUNDOS_NV[d.fundo]) throw new ApiError('FORBIDDEN', 'Esse fundo abre no nível ' + FUNDOS_NV[d.fundo] + '.'); patch.Fundo = d.fundo; }
-    if (d.moldura !== undefined) { if (!MOLDURAS_NV[d.moldura]) throw new ApiError('VALIDATION', 'Moldura inválida.'); if (nv < MOLDURAS_NV[d.moldura]) throw new ApiError('FORBIDDEN', 'Essa moldura abre no nível ' + MOLDURAS_NV[d.moldura] + '.'); patch.Moldura = d.moldura; }
+    escolha('fundo', FUNDOS, 'Fundo', 'Esse fundo'); escolha('contorno', CONTORNOS, 'Contorno', 'Esse contorno'); escolha('moldura', MOLDURAS, 'Quadro', 'Essa moldura');
     if (d.capa !== undefined && d.capa !== '__keep') { if (d.capa && nv < NV_CAPA) throw new ApiError('FORBIDDEN', 'A capa personalizada abre no nível ' + NV_CAPA + '.'); patch.Capa = fotoOk_(d.capa); }
     if (d.oculto !== undefined) patch.Oculto = d.oculto ? '1' : '0';
     if (d.versiculo !== undefined) { if (d.versiculo && nv < NV_VERSICULO) throw new ApiError('FORBIDDEN', 'O versículo em destaque abre no nível ' + NV_VERSICULO + '.'); patch.Versiculo = clip_(d.versiculo, 200); }
@@ -1265,8 +1373,8 @@ function saveProfile_(d, u) {
 }
 function saveHighlight_(d, u) {
   return withLock_(function () {
-    const nv = xpResumo_(u.membroId).nivel, slots = slotsDestaque_(nv), t = table_('PerfilFotos'), meus = t.rows.filter(function (r) { return r.MembroID === u.membroId; });
-    if (!slots) throw new ApiError('FORBIDDEN', 'O destaque de fotos abre no nível 3.'); if (meus.length >= slots) throw new ApiError('FORBIDDEN', 'Você usou todos os seus destaques (' + slots + '). Suba de nível para ganhar mais.');
+    const nv = xpResumo_(u.membroId).nivel, slots = slotsMural_(nv), t = table_('PerfilFotos'), meus = t.rows.filter(function (r) { return r.MembroID === u.membroId; });
+    if (!slots) throw new ApiError('FORBIDDEN', 'O mural do perfil abre no nível ' + NV_MURAL + '.'); if (meus.length >= slots) throw new ApiError('FORBIDDEN', 'Você usou todo o seu mural (' + slots + ' fotos). Suba de nível para ganhar mais espaço.');
     const foto = fotoOk_(d.foto); if (!foto) throw new ApiError('VALIDATION', 'Escolha uma foto.');
     const id = id_('PF'); appendRow_(t, { MembroID: u.membroId, FotoID: id, Foto: foto, Legenda: clip_(d.legenda, 80), Ordem: String(meus.length + 1) }); return { id: id };
   });
@@ -1578,7 +1686,7 @@ const ROUTES = {
   listCourses: { auth: 'any', fn: listCourses_ }, enrollCourse: { auth: 'any', write: 1, fn: enrollCourse_ }, saveCourse: { auth: 'any', write: 1, fn: saveCourse_ }, courseDetail: { auth: 'any', fn: courseDetail_ }, saveAula: { auth: 'any', write: 1, fn: saveAula_ }, deleteAula: { auth: 'any', write: 1, fn: deleteAula_ }, getAulaPdf: { auth: 'any', fn: getAulaPdf_ },
   requestStart: { auth: 'any', write: 1, fn: requestStart_ }, getClassRoll: { auth: 'any', fn: getClassRoll_ }, saveClassRoll: { auth: 'any', write: 1, fn: saveClassRoll_ }, finishCourse: { auth: 'any', write: 1, fn: finishCourse_ }, listCertificates: { auth: 'any', fn: listCertificates_ }, decideCert: { auth: 'any', write: 1, fn: decideCert_ }, certificate: { auth: 'any', fn: certificate_ },
   getSignature: { auth: 'any', fn: getSignature_ }, saveSignature: { auth: 'any', write: 1, fn: saveSignature_ }, rateAula: { auth: 'any', write: 1, fn: rateAula_ }, aulaFeedback: { auth: 'any', fn: aulaFeedback_ },
-  listLessons: { auth: 'any', fn: listLessons_ }, listDynamics: { auth: 'any', fn: listDyn_ }, addDynamic: { auth: 'any', write: 1, fn: addDyn_ }, listVideos: { auth: 'any', fn: listVideos_ }, listProducts: { auth: 'any', fn: listProducts_ }, listFamilia: { auth: 'any', fn: listFamilia_ }, profileView: { auth: 'any', fn: profileView_ }, searchPeople: { auth: 'any', fn: findPeople_ }, sendChat: { auth: 'any', write: 1, fn: sendChat_ }, getChat: { auth: 'any', fn: getChat_ }, chatRead: { auth: 'any', write: 1, fn: chatRead_ }, listChats: { auth: 'any', fn: listChats_ }, getCertLayout: { auth: 'any', fn: getCertLayout_ }, saveCertLayout: { auth: 'any', write: 1, fn: saveCertLayout_ }, previewCert: { auth: 'any', fn: previewCert_ }, revokeCert: { auth: 'any', write: 1, fn: revokeCert_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
+  listLessons: { auth: 'any', fn: listLessons_ }, listDynamics: { auth: 'any', fn: listDyn_ }, addDynamic: { auth: 'any', write: 1, fn: addDyn_ }, listVideos: { auth: 'any', fn: listVideos_ }, listProducts: { auth: 'any', fn: listProducts_ }, listFamilia: { auth: 'any', fn: listFamilia_ }, profileView: { auth: 'any', fn: profileView_ }, listInsigniaDefs: { auth: 'any', fn: listInsigniaDefs_ }, saveInsigniaDef: { auth: 'any', write: 1, fn: saveInsigniaDef_ }, grantBadge: { auth: 'any', write: 1, fn: grantBadge_ }, logServico: { auth: 'any', write: 1, fn: logServico_ }, listServicos: { auth: 'any', fn: listServicos_ }, searchPeople: { auth: 'any', fn: findPeople_ }, sendChat: { auth: 'any', write: 1, fn: sendChat_ }, getChat: { auth: 'any', fn: getChat_ }, chatRead: { auth: 'any', write: 1, fn: chatRead_ }, listChats: { auth: 'any', fn: listChats_ }, getCertLayout: { auth: 'any', fn: getCertLayout_ }, saveCertLayout: { auth: 'any', write: 1, fn: saveCertLayout_ }, previewCert: { auth: 'any', fn: previewCert_ }, revokeCert: { auth: 'any', write: 1, fn: revokeCert_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
   searchCells: { auth: 'any', fn: searchCells_ }, addPrayer: { auth: 'any', write: 1, fn: addPrayer_ }, listPrayers: { auth: 'any', fn: listPrayers_ },
   cellMembers: { auth: 'any', fn: cellMembers_ }, saveCell: { auth: 'any', write: 1, fn: saveCell_ }, saveAttendance: { auth: 'any', write: 1, fn: saveAttendance_ }, history: { auth: 'any', fn: history_ },
   indicators: { auth: 'any', fn: indicators_ }, getPapeis: { auth: 'any', fn: getPapeis_ }, savePapeis: { auth: 'any', write: 1, fn: savePapeis_ }, createCellEvent: { auth: 'any', write: 1, fn: createCellEvent_ },
