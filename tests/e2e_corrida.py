@@ -18,7 +18,7 @@ with sync_playwright() as p:
     adm.evaluate("go('admin')"); adm.wait_for_selector('text=Presença nos eventos'); adm.click('text=Carregar eventos'); adm.wait_for_selector('#ck_ev'); adm.click('text=Abrir lista de presença'); adm.wait_for_selector('#ck_l')
     adm.click('#ck_l label:has-text("Ana Souza")'); adm.click('text=Salvar presença'); adm.wait_for_selector('text=1 presença(s) registrada(s)')
     ana=entra(b,'ana@zoe.com','Temp12345','NovaSenha123'); ana.evaluate("S.guiaVisto=true")
-    ana.wait_for_selector('.nv[aria-label="Maratona Bíblica"]'); ana.click('.nv[aria-label="Maratona Bíblica"]'); ana.wait_for_selector('#cr_n')
+    ana.wait_for_selector('.nv[aria-label="Bíblia e Anotações"] .tdot'); ana.click('.nv[aria-label="Bíblia e Anotações"]'); ana.click('.tabs button:has-text("Maratona Bíblica")'); ana.wait_for_selector('#cr_n')
     ana.fill('#cr_n','3'); ana.fill('#cr_r','curto'); ana.click('text=Registrar leitura'); ana.wait_for_selector('text=mínimo 30 letras')
     ana.fill('#cr_r','Aprendi que Deus criou tudo com um propósito e cuida de nós.'); ana.click('text=Registrar leitura'); ana.wait_for_selector('text=Aguardando a validação')
     ana.screenshot(path=OUT+'/corrida_ana.png')
@@ -27,7 +27,7 @@ with sync_playwright() as p:
     adm.click('button:has-text("Validar")'); adm.wait_for_selector('text=Devocional validado'); adm.screenshot(path=OUT+'/corrida_adm.png')
     # Ana: insígnias no perfil (ouro 1º, evento)
     ana.evaluate("MEU=null;go('meu')"); ana.wait_for_selector('.pf-head'); t=ana.inner_text('#faixa'); print(t); assert 'Maratona Bíblica' in t and 'Dia do Amigo' in t
-    ana.click('#pf_ins'); ana.wait_for_timeout(900); ana.screenshot(path=OUT+'/corrida_perfil.png')
+    ana.wait_for_timeout(900); ana.screenshot(path=OUT+'/corrida_perfil.png')
     # Zoe comemora a insígnia
     ana.evaluate("S.notifs=null;api('listNotifications').then(n=>{S.notifs=n;zMomRun()})"); ana.wait_for_selector('#zbub:not([hidden])',timeout=15000); assert 'insígnia' in ana.inner_text('#zbub').lower(), ana.inner_text('#zbub')
     print('ERROS',errs); assert not errs
