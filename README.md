@@ -126,3 +126,9 @@ Em **Administração → Definições de Parâmetros → Regras Células** o adm
 - Cada pedido pendente mostra um **resumo** para decidir com base em fatos: de qual célula vem e para qual vai (ou "não estava em nenhuma"), motivo do pedido, membro desde, batismo, % de frequência na célula (e se é Frequentador ou Membro), cursos, ministérios e eventos. Vale para transferência, pedido de ministério, saída de participante e novo membro. Ao pedir transferência, o líder pode informar o motivo (coluna `Motivo` em `Transferencias`).
 - Hierarquia: o **supervisor** decide e recebe os pedidos; o **líder** não decide nem recebe pedidos, só o resultado do que pediu; **líder em treinamento** é a nomenclatura do futuro líder.
 - Ao atualizar o `Code.gs`, rode `setup()` (cria `Notificacoes` e as colunas `Motivo`).
+
+## Atualizar sem F5 e Termômetro da presença de Deus
+- **Botão atualizar** (ícone de setas no topo): recarrega os dados do app sem recarregar a página, mostrando uma "vitrine" fosca com o andamento ao lado (sessão, eventos e avisos, célula, aprovações e notificações). Você continua na mesma tela.
+- **Frequência**: o campo "Como foi a célula? (resumo)" vem acima do **Termômetro da presença de Deus**, uma barra de 0 a 100. Perto do zero aparece um gelinho animado; no meio, uma chama pequena; passando do meio a chama cresce e ganha brilho e faíscas. O valor vai para a coluna `Termometro` de `Reunioes` (o resumo em `Obs`, até 500 caracteres); `PresencaDeDeus` fica marcado a partir de 50 para os indicadores antigos.
+- **Histórico** mostra o ícone e o resumo de cada reunião; **Indicadores** mostra a média e as últimas 8 reuniões.
+- Ao atualizar o `Code.gs`, rode `setup()` (cria a coluna `Termometro`).

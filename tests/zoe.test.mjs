@@ -455,3 +455,17 @@ test('aprovações: motivo vai para o líder como notificação e o aprovador re
   assert.ok(e.call('listNotifications', {}, L2).data.itens[0].titulo.includes('aprovada'));
   assert.ok(c1);
 });
+test('termômetro da presença de Deus e resumo da reunião', () => {
+  const { e, adm, tok, mk } = boot(); const l1 = mk('lider1@zoe.com', 'membro');
+  e.call('createCell', { nome: 'Semeadores', liderId: l1, dia: 'Quinta' }, adm); const L1 = tok('lider1@zoe.com', 'Temp12345');
+  const p = e.call('addNewMember', { nome: 'Ana Souza', celular: '61999990000' }, L1).data.id;
+  assert.equal(e.call('saveAttendance', { data: '2026-10-15', presentes: [p], termometro: 'x' }, L1).error.code, 'VALIDATION');
+  e.call('saveAttendance', { data: '2026-10-15', presentes: [p], termometro: 85, obs: 'Tempo de louvor muito forte' }, L1);
+  e.call('saveAttendance', { data: '2026-10-22', presentes: [p], termometro: 20, obs: 'Reunião tranquila' }, L1);
+  e.call('saveAttendance', { data: '2026-10-08', presentes: [p], deus: true }, L1); // jeito antigo
+  const h = e.call('history', {}, L1).data, r = d => h.reunioes.find(x => x.data === d);
+  assert.equal(r('2026-10-15').termometro, 85); assert.equal(r('2026-10-15').obs, 'Tempo de louvor muito forte'); assert.equal(r('2026-10-15').deus, true); assert.equal(r('2026-10-22').deus, false); assert.equal(r('2026-10-08').termometro, 80);
+  assert.equal(h.indicadores.presencaDeDeus, 2);
+  e.call('saveAttendance', { data: '2026-10-22', presentes: [p], termometro: 500 }, L1); assert.equal(e.call('history', {}, L1).data.reunioes.find(x => x.data === '2026-10-22').termometro, 100);
+  const ind = e.call('indicators', {}, L1).data.termometro; assert.equal(ind.serie.length, 3); assert.equal(ind.media, Math.round((80 + 85 + 100) / 3));
+});

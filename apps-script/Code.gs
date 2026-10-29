@@ -35,7 +35,7 @@ const SHEETS = {
   Usuarios: ['Email', 'SenhaHash', 'Salt', 'Papel', 'Status', 'MembroID', 'TrocarSenha', 'CriadoEm', 'UltimoAcesso'],
   Membros: ['MembroID', 'Nome', 'Simples', 'Apelido', 'Sexo', 'Nascimento', 'Nacionalidade', 'Naturalidade', 'Sangue', 'Doador', 'Profissao', 'Telefone', 'Email', 'CEP', 'UF', 'Cidade', 'Endereco', 'Bairro', 'DataDecisao', 'Batizado', 'DataBatismo', 'IgrejaBatismo', 'Mae', 'Pai', 'EstadoCivil', 'Conjuge', 'DataCasamento', 'Filhos', 'Foto', 'CelulaID', 'EhMembro', 'Status', 'DataSaida', 'Extras', 'AceitePrivacidade', 'AceiteTermos', 'CriadoEm'],
   Celulas: ['CelulaID', 'Nome', 'Descricao', 'Foto', 'LiderID', 'SupervisorID', 'Dia', 'Inicio', 'Fim', 'Categoria', 'Faixa', 'Bairro', 'Cidade', 'UF', 'Endereco', 'TreinamentoID', 'MaeID', 'PrivGrupo', 'PrivTel', 'PrivEmail', 'PrivEnd', 'Status', 'Lat', 'Lng'],
-  Reunioes: ['ReuniaoID', 'CelulaID', 'Data', 'Presentes', 'PresencaDeDeus', 'Obs', 'ForaDoDia', 'Elenco'],
+  Reunioes: ['ReuniaoID', 'CelulaID', 'Data', 'Presentes', 'PresencaDeDeus', 'Obs', 'ForaDoDia', 'Elenco', 'Termometro'],
   Presencas: ['ReuniaoID', 'CelulaID', 'Data', 'MembroID'],
   Papeis: ['CelulaID', 'MembroID', 'Papel'],
   Oracoes: ['OracaoID', 'CelulaID', 'MembroID', 'Tema', 'Titulo', 'Texto', 'Data'],
@@ -337,6 +337,7 @@ function searchCells_(d) {
   });
 }
 const SEMANA_ = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+function termo_(r) { return r.Termometro !== '' && r.Termometro !== undefined ? Math.max(0, Math.min(100, Number(r.Termometro) || 0)) : (r.PresencaDeDeus === '1' ? 80 : 0); }
 function diaDe_(data) { const p = data.split('-'); return SEMANA_[new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2])).getDay()]; }
 function diaIgual_(a, b) { return norm_(String(a || '')).slice(0, 3) === norm_(String(b || '')).slice(0, 3); }
 function ativosDaCelula_(id) { return table_('Membros').rows.filter(function (m) { return m.CelulaID === id && m.Status !== 'Inativo'; }); }
@@ -351,7 +352,9 @@ function saveAttendance_(d, u) {
     const pt = table_('Presencas'); for (let i = pt.rows.length - 1; i >= 0; i--) if (pt.rows[i].CelulaID === id && pt.rows[i].Data === data) pt.sh.deleteRow(pt.rows[i]._row);
     const rt = table_('Reunioes'), ex = rt.rows.filter(function (r) { return r.CelulaID === id && r.Data === data; })[0], rid = ex ? ex.ReuniaoID : id_('R');
     const elenco = (ex && ex.Elenco) ? String(ex.Elenco).split(',').filter(String) : mem.slice(); pres.forEach(function (m) { if (elenco.indexOf(m) < 0) elenco.push(m); });
-    const patch = { Presentes: String(pres.length), PresencaDeDeus: d.deus ? '1' : '0', Obs: clip_(d.obs, 300), ForaDoDia: fora ? '1' : '0', Elenco: elenco.join(',') };
+    // Termômetro da presença de Deus: 0 (frio) a 100 (forte manifestação). "PresencaDeDeus" continua marcado a partir de 50 para os indicadores antigos.
+    let term = d.termometro !== undefined && d.termometro !== '' ? Math.round(Number(d.termometro)) : (d.deus ? 80 : 0); if (!isFinite(term)) throw new ApiError('VALIDATION', 'Termômetro inválido.'); term = Math.max(0, Math.min(100, term));
+    const patch = { Presentes: String(pres.length), PresencaDeDeus: term >= 50 ? '1' : '0', Termometro: String(term), Obs: clip_(d.obs, 500), ForaDoDia: fora ? '1' : '0', Elenco: elenco.join(',') };
     if (ex) writeRow_(rt, ex._row, patch); else appendRow_(rt, Object.assign({ ReuniaoID: rid, CelulaID: id, Data: data }, patch));
     const pt2 = table_('Presencas'); pres.forEach(function (m) { appendRow_(pt2, { ReuniaoID: rid, CelulaID: id, Data: data, MembroID: m }); });
     membresiaCheck_(id, pres);
@@ -368,7 +371,7 @@ function history_(d, u) {
   const saidas = table_('Saidas').rows.filter(function (x) { return x.CelulaID === id && x.Status === 'autorizado'; });
   const lista = l.map(function (r) {
     const ids = pres[r.Data] || [], el = elencoDe(r, ids), aus = el.filter(function (m) { return ids.indexOf(m) < 0; }).map(function (m) { return nome[m] || '?'; });
-    return { data: r.Data, dia: r.Data ? diaDe_(r.Data) : '', presentes: ids.length, total: Math.max(1, el.length), deus: r.PresencaDeDeus === '1', foraDoDia: r.ForaDoDia === '1', nomesPresentes: ids.map(function (i) { return nome[i] || '?'; }), nomesAusentes: aus };
+    return { data: r.Data, dia: r.Data ? diaDe_(r.Data) : '', presentes: ids.length, total: Math.max(1, el.length), deus: r.PresencaDeDeus === '1', termometro: termo_(r), obs: r.Obs || '', foraDoDia: r.ForaDoDia === '1', nomesPresentes: ids.map(function (i) { return nome[i] || '?'; }), nomesAusentes: aus };
   });
   const media = lista.length ? Math.round(lista.reduce(function (a, r) { return a + Math.min(1, r.presentes / r.total); }, 0) / lista.length * 100) : 0;
   return { reunioes: lista, indicadores: { participantes: total, exParticipantes: saidas.length, exNomes: saidas.map(function (x) { return { nome: nome[x.MembroID] || '?', data: x.DataDecisao, motivo: x.Motivo }; }), reunioes: l.length, presencaDeDeus: l.filter(function (r) { return r.PresencaDeDeus === '1'; }).length, mediaPresenca: media } };
@@ -380,7 +383,8 @@ function indicators_(d, u) {
   const byC = {}, byE = {};
   table_('Matriculas').rows.forEach(function (r) { if (ids[r.MembroID] && cursos[r.CursoID]) (byC[cursos[r.CursoID]] = byC[cursos[r.CursoID]] || []).push(ids[r.MembroID]); });
   table_('Inscricoes').rows.forEach(function (r) { if (ids[r.MembroID] && ev[r.EventoID]) (byE[ev[r.EventoID]] = byE[ev[r.EventoID]] || []).push(ids[r.MembroID]); });
-  return { cursos: byC, eventos: byE };
+  const rs = table_('Reunioes').rows.filter(function (r) { return r.CelulaID === id; }).sort(function (a, b) { return a.Data < b.Data ? -1 : 1; }), serie = rs.slice(-8).map(function (r) { return { data: r.Data, valor: termo_(r) }; });
+  return { cursos: byC, eventos: byE, termometro: { media: rs.length ? Math.round(rs.reduce(function (a, r) { return a + termo_(r); }, 0) / rs.length) : null, serie: serie } };
 }
 function getPapeis_(d, u) { const id = cellOf_(u, d, 'ver', 'papeis', 'ver'); return table_('Papeis').rows.filter(function (r) { return r.CelulaID === id; }).map(function (r) { return { membroId: r.MembroID, papel: r.Papel }; }); }
 function savePapeis_(d, u) {
