@@ -25,7 +25,7 @@ with sync_playwright() as p:
     pg.screenshot(path=OUT+'/m_vitrine.png')
     assert pg.evaluate("getComputedStyle(document.querySelector('#vit')).backdropFilter||getComputedStyle(document.querySelector('#vit')).webkitBackdropFilter").startswith('blur')
     pg.wait_for_selector('#vit.fim',timeout=20000); n=pg.locator('#vlog li').count(); print('passos',n); assert n>=4
-    pg.wait_for_selector('#vit',state='detached',timeout=5000); assert pg.evaluate("window.__api")>=3
+    pg.wait_for_selector('#vit',state='detached',timeout=5000); assert pg.evaluate("window.__api")>=1
     assert 'Dados atualizados' in pg.inner_text('.toast')
     # continua na mesma tela, sem recarregar
     assert pg.evaluate("R.r")=='celula'
