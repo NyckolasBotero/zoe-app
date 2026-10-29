@@ -43,8 +43,8 @@ with sync_playwright() as p:
     # --- beto agora é supervisor: vê e edita só a Bravo; ana (líder) e quem não é nada não vê
     beto=entra(b,'beto@zoe.com','Temp12345','NovaSenha123'); beto.evaluate("go('celula','org')"); beto.wait_for_selector('.oc.cel')
     assert beto.locator('.oc.cel.ed').count()==1 and 'Bravo' in beto.locator('.oc.cel.ed').inner_text(), beto.locator('.oc.cel.ed').count()
-    ana=entra(b,'ana@zoe.com','Temp12345','NovaSenha123'); ana.evaluate("go('celula','freq')"); assert 'Organograma' not in ana.inner_text('.tabs')
-    assert ana.evaluate("async()=>{try{await api('orgTree');return 'ok'}catch(e){return e.code}}")=='FORBIDDEN'
+    ana=entra(b,'ana@zoe.com','Temp12345','NovaSenha123'); ana.evaluate("go('celula','freq')"); assert 'Organograma' in ana.inner_text('.tabs')
+    assert ana.evaluate("async()=>{try{await api('orgTree');return 'ok'}catch(e){return e.code}}")=='ok'
     # --- foto de perfil da Ana aparece no comentário do livro; nota 1 a 10
     ana.set_input_files('input[type=file]',[]) if False else None
     ana.evaluate("async()=>{S.foto='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';FOTOS[S.membroId]=S.foto;await pushMember('x')}")

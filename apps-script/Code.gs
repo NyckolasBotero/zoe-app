@@ -318,7 +318,8 @@ function createCell_(d, u) {
     audit_(u.email, 'CELULA_CRIADA', id, 'OK'); return { id: id };
   });
 }
-function cellMembers_(d, u) { const id = cellOf_(u, d, 'ver', 'membros', 'ver'); return table_('Membros').rows.filter(function (m) { return m.CelulaID === id && m.Status !== 'Inativo'; }).map(memberPub_); }
+function cellOfAny_(u, d, guias) { let err; for (let i = 0; i < guias.length; i++) { try { return cellOf_(u, d, 'ver', guias[i], 'ver'); } catch (e) { err = e; } } throw err; }
+function cellMembers_(d, u) { const id = cellOfAny_(u, d, ['membros', 'freq', 'pres', 'papeis']); return table_('Membros').rows.filter(function (m) { return m.CelulaID === id && m.Status !== 'Inativo'; }).map(memberPub_); }
 function searchCells_(d) {
   const f = d || {}, q = norm_(f.q || '');
   const l = table_('Celulas').rows.filter(function (c) { return c.Status !== 'Inativa' && c.PrivGrupo === '1'; }).filter(function (c) {
@@ -357,7 +358,7 @@ function saveAttendance_(d, u) {
   });
 }
 function history_(d, u) {
-  const id = cellOf_(u, d, 'ver', 'hist', 'ver'), ativos = ativosDaCelula_(id), total = ativos.length;
+  const id = cellOfAny_(u, d, ['hist', 'freq']), ativos = ativosDaCelula_(id), total = ativos.length;
   const nome = {}; table_('Membros').rows.forEach(function (m) { nome[m.MembroID] = m.Apelido || m.Simples || m.Nome; });
   const pres = {}, primeira = {}; table_('Presencas').rows.forEach(function (p) { if (p.CelulaID !== id) return; (pres[p.Data] = pres[p.Data] || []).push(p.MembroID); if (!primeira[p.MembroID] || p.Data < primeira[p.MembroID]) primeira[p.MembroID] = p.Data; });
   const l = table_('Reunioes').rows.filter(function (r) { return r.CelulaID === id; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; });
@@ -408,7 +409,7 @@ function checarSupervisor_(sid, d, u, maeId) {
   throw new ApiError('REGRA_SUPERVISOR', (g.Apelido || g.Simples || g.Nome || 'Essa pessoa') + ' multiplicou ' + n + ' de ' + X + ' células. Para designar como supervisor mesmo assim, abra uma exceção.');
 }
 function canOrg_(u) { return can_(u, 'celulas') || ehSupervisor_(u); }
-function orgVer_(u) { if (canOrg_(u)) return true; const c = u.celulaId && table_('Celulas').rows.filter(function (r) { return r.CelulaID === u.celulaId; })[0]; return !!c && celPerm_(u, c, 'org', 'ver'); }
+function orgVer_(u) { if (canOrg_(u)) return true; const ids = (u.lidera || []).concat(u.treina || [], u.celulaId ? [u.celulaId] : []), cs = table_('Celulas').rows; return ids.some(function (id) { const c = cs.filter(function (r) { return r.CelulaID === id; })[0]; return !!c && celPerm_(u, c, 'org', 'ver'); }); }
 function orgTree_(d, u) {
   if (!orgVer_(u)) throw new ApiError('FORBIDDEN', 'O seu perfil não tem acesso ao organograma.');
   const mem = {}; table_('Membros').rows.forEach(function (m) { mem[m.MembroID] = m.Apelido || m.Simples || m.Nome; });

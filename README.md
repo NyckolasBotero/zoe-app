@@ -112,3 +112,11 @@ Na página de Administração, a barra lateral mostra, abaixo de "Administraçã
 - Contato: Administração → "Loja Zoe: produtos e contato". Em branco usa o WhatsApp da igreja (Dados da igreja). Números com 10/11 dígitos recebem o 55 automaticamente.
 - Administração: cadastrar/editar/remover produtos (nome, categoria, preço, opções, descrição, foto, disponível/esgotado).
 - Backend: aba `Produtos` e chave `LojaWhatsApp` em Config. Rotas `listProducts` (qualquer logado), `saveProduct`/`deleteProduct` (permissão "config"). Teste: `tests/e2e_loja.py`.
+
+## Regras Células, tipos de acesso e frequentador
+Em **Administração → Definições de Parâmetros → Regras Células** o administrador marca, para cada perfil (supervisor, líder, líder em treinamento, pastor, membro, frequentador e tipos criados por ele), quem pode **ver** e quem pode **editar** cada uma das 12 guias da célula. Padrão: líder e supervisor fazem tudo; membro e frequentador veem planejamento, membros, perfil, mural e organograma e podem pedir oração. As regras são conferidas **no servidor** (Apps Script), não só na tela; uma guia sem edição aparece em modo leitura.
+- **Frequentador**: quem está numa célula e tem presença abaixo do limite (padrão 70%, nas últimas 8 reuniões — ambos editáveis) é tratado como Frequentador; acima do limite, Membro. É calculado, não precisa ser marcado.
+- **Níveis de acesso** (Acessos): além das permissões, define quais **abas** cada tipo vê e permite **criar outros tipos**. Exceção automática: quem já está numa célula sempre vê a aba Células.
+- **Histórico de presença**: cada reunião grava o elenco da época (coluna `Elenco` em `Reunioes`); entrar gente nova não muda o % de reuniões passadas.
+- **Supervisor**: "Células a multiplicar para ser supervisor" (0 = sem exigência). Se a pessoa ainda não cumpriu, o sistema avisa e o administrador pode abrir uma exceção.
+- Ao atualizar o `Code.gs`: cole, rode `setup()` uma vez (cria a coluna `Elenco` e a configuração) e publique nova versão.
