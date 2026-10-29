@@ -469,3 +469,10 @@ test('termômetro da presença de Deus e resumo da reunião', () => {
   e.call('saveAttendance', { data: '2026-10-22', presentes: [p], termometro: 500 }, L1); assert.equal(e.call('history', {}, L1).data.reunioes.find(x => x.data === '2026-10-22').termometro, 100);
   const ind = e.call('indicators', {}, L1).data.termometro; assert.equal(ind.serie.length, 3); assert.equal(ind.media, Math.round((80 + 85 + 100) / 3));
 });
+test('guia de primeiro acesso: aparece até a pessoa concluir', () => {
+  const { e, tok, mk } = boot(); mk('nova@zoe.com', 'membro'); const N = tok('nova@zoe.com', 'Temp12345');
+  assert.equal(e.call('me', {}, N).data.guiaVisto, false);
+  assert.equal(e.call('guideDone', {}, N).data.guiaVisto, true);
+  assert.equal(e.call('me', {}, N).data.guiaVisto, true);
+  const M = (mk('outra@zoe.com', 'membro'), tok('outra@zoe.com', 'Temp12345')); assert.equal(e.call('me', {}, M).data.guiaVisto, false); // por pessoa
+});
