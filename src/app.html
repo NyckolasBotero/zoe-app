@@ -406,6 +406,15 @@ html.theming *,html.theming *::before,html.theming *::after{transition:backgroun
 .pfd{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;padding:6px 0}.pfd figure{margin:0;background:#fff;padding:8px 8px 4px;box-shadow:0 3px 10px rgba(0,0,0,.25);transform:rotate(var(--r));width:150px;position:relative;color:#333}.pfd img{width:100%;aspect-ratio:1;object-fit:cover;display:block}.pfd figcaption{font-size:12px;text-align:center;padding:4px 0;min-height:18px}.pfd .x{position:absolute;top:-8px;right:-8px;background:#c0392b;color:#fff;border:0;border-radius:50%;width:24px;height:24px;display:grid;place-items:center;cursor:pointer}
 .sws{display:flex;flex-wrap:wrap;gap:10px;margin:6px 0 12px}.sw{border:2px solid var(--line,#ccc);background:none;border-radius:12px;padding:6px;display:flex;flex-direction:column;align-items:center;gap:4px;width:92px;cursor:pointer;color:inherit;position:relative}.sw.on{border-color:var(--verde,#2f6b3a);box-shadow:0 0 0 2px var(--verde,#2f6b3a)}.sw.lock{opacity:.5;cursor:not-allowed}.sw small{font-size:11px;text-align:center}.sw em{font-style:normal;font-size:10px;background:#444;color:#fff;border-radius:6px;padding:0 5px}.swf{width:60px;height:34px;border-radius:8px;display:block}
 .pf-xp{padding-left:18px;margin:6px 0}.btn.dis{opacity:.45;pointer-events:none}
+.chatp{position:fixed;z-index:60;top:64px;right:14px;bottom:96px;width:min(380px,calc(100vw - 28px));background:var(--bg,#fff);border:1px solid var(--line);border-radius:20px;box-shadow:0 12px 40px rgba(0,0,0,.28);display:flex;flex-direction:column;overflow:hidden;animation:chin .25s ease}
+@keyframes chin{from{opacity:0;transform:translateY(10px)}}.no-anim .chatp{animation:none}
+.chh{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line)}.chh .ib.sm{width:34px;height:34px}.chn{flex:1;min-width:0;text-align:left;background:none;border:0;color:inherit;cursor:pointer;display:flex;flex-direction:column}.chn small{font-size:11px;color:var(--muted)}
+.chs{padding:8px 12px}.chs input{width:100%}.chb{flex:1;overflow:auto;padding:6px 8px;display:flex;flex-direction:column}
+.chr{display:flex;align-items:center;gap:10px;padding:9px 8px;border:0;background:none;color:inherit;border-radius:12px;cursor:pointer;text-align:left}.chr:hover{background:rgba(29,144,79,.1)}.chr small{display:block;color:var(--muted)}.ell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chu{min-width:20px;height:20px;border-radius:10px;background:var(--vermelho,#DD3326);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center;padding:0 5px}
+.chm{max-width:80%;margin:3px 0;padding:7px 11px;border-radius:16px;display:flex;flex-direction:column;word-break:break-word}.chm small{font-size:10px;opacity:.65;align-self:flex-end}.chm.me{align-self:flex-end;background:linear-gradient(135deg,#1D904F,#0B6B35);color:#fff;border-bottom-right-radius:4px}.chm.ou{align-self:flex-start;background:rgba(127,127,127,.18);border-bottom-left-radius:4px}
+.chf{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line)}.chf input{flex:1}
+@media(max-width:700px){.chatp{inset:0;width:auto;border-radius:0;top:0;bottom:0}}
 </style>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><filter id="goo"><feGaussianBlur in="SourceGraphic" stdDeviation="14" result="b"/><feColorMatrix in="b" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -8"/></filter></defs></svg>
@@ -420,6 +429,7 @@ html.theming *,html.theming *::before,html.theming *::after{transition:backgroun
  <button class="ib" onclick="atualizar()" id="br" aria-label="Atualizar os dados" title="Atualizar"></button>
     <button class="ib" onclick="toggleAnim()" id="ba" aria-label="Ligar ou desligar animações" title="Animações"></button>
     <button class="ib" onclick="toggleTheme()" id="bt" aria-label="Alternar modo claro e escuro" title="Modo claro/escuro"></button>
+    <button class="ib" onclick="chatToggle()" id="bch" aria-label="Chat"></button>
     <button class="ib" onclick="bell()" id="bb" aria-label="Notificações"></button>
     <i id="sprog" aria-hidden="true"></i>
   </header>
@@ -434,6 +444,7 @@ html.theming *,html.theming *::before,html.theming *::after{transition:backgroun
 const I={
 refresh:'<path d="M20 11a8 8 0 0 0-14.5-4.2L3 9"/><path d="M3 4v5h5"/><path d="M4 13a8 8 0 0 0 14.5 4.2L21 15"/><path d="M21 20v-5h-5"/>',
 home:'<path d="M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',
+chat:'<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>',
 bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/>',
 book:'<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5"/>',
 expand:'<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
@@ -511,7 +522,7 @@ function showLogin(msg){READY=false;$('#layer').innerHTML='';$('#gate').innerHTM
 async function doLogin(ev){ev.preventDefault();const b=$('#lg_b');b.disabled=true;try{const r=await api('login',{email:$('#lg_e').value,senha:$('#lg_s').value});TOKEN=r.token;try{localStorage.setItem(TK,TOKEN);sessionStorage.setItem('zoe-hello','1')}catch(e){}if(r.trocarSenha)showForced();else boot()}catch(e){showLogin(e.message)}return false}
 function showForced(){$('#gate').innerHTML=`<div class="gate"><div class="gwrap">${logoImg(190)}<form class="gbox" onsubmit="return doForced(event)"><h2>Crie sua senha</h2><p class="muted">Por segurança, troque a senha temporária antes de continuar.</p><label class="f">Senha temporária<input id="fp_a" type="password" required></label><label class="f">Nova senha (8 ou mais caracteres)<input id="fp_n" type="password" minlength="8" required></label><label class="f">Repita a nova senha<input id="fp_r" type="password" required></label><button class="btn">Salvar nova senha</button></form></div></div>`}
 async function doForced(ev){ev.preventDefault();if($('#fp_n').value!==$('#fp_r').value)return toast('As senhas não são iguais'),false;try{await api('changePassword',{atual:$('#fp_a').value,nova:$('#fp_n').value});TOKEN=null;try{localStorage.removeItem(TK)}catch(e){}toLogin('Senha alterada. Entre com a nova senha.')}catch(e){toast(e.message)}return false}
-async function boot(){$('#gate').innerHTML='';splashShow();try{await hydrate();READY=true;shell();render();await splashHide();iniciaApos();hello();zInit();carregaCorrida()}catch(e){await splashHide(400);if(e.code!=='SESSION')showLogin(e.message)}}
+async function boot(){$('#gate').innerHTML='';splashShow();try{await hydrate();READY=true;shell();render();await splashHide();iniciaApos();hello();zInit();carregaCorrida();chStart()}catch(e){await splashHide(400);if(e.code!=='SESSION')showLogin(e.message)}}
 const dBR=iso=>iso?String(iso).slice(0,10).split('-').reverse().join('/'):'';
 function fromMembro(m){const f=m.Filhos||[];return{nome:m.Nome,simples:m.Simples,sexo:m.Sexo,nasc:m.Nascimento,nacionalidade:m.Nacionalidade,natural:m.Naturalidade,sangue:m.Sangue,doador:m.Doador,prof:m.Profissao,tel:m.Telefone,email:m.Email,cep:m.CEP,uf:m.UF,cidade:m.Cidade,end:m.Endereco,bairro:m.Bairro,decisao:m.DataDecisao,batizado:m.Batizado,dataBat:m.DataBatismo,igrejaBat:m.IgrejaBatismo,mae:m.Mae,pai:m.Pai,civil:m.EstadoCivil||'Solteiro(a)',conj:m.Conjuge,dataCas:m.DataCasamento,filhos:f,temFilhos:f.length?'sim':'nao',acPriv:String(m.AceitePrivacidade||'').slice(0,10),acTermos:String(m.AceiteTermos||'').slice(0,10)}}
 function toMembro(p){return{Nome:p.nome,Simples:p.simples,Apelido:S.apelido,Sexo:p.sexo,Nascimento:p.nasc,Nacionalidade:p.nacionalidade,Naturalidade:p.natural,Sangue:p.sangue,Doador:p.doador,Profissao:p.prof,Telefone:p.tel,CEP:p.cep,UF:p.uf,Cidade:p.cidade,Endereco:p.end,Bairro:p.bairro,DataDecisao:p.decisao,Batizado:p.batizado,DataBatismo:p.dataBat,IgrejaBatismo:p.igrejaBat,Mae:p.mae,Pai:p.pai,EstadoCivil:p.civil,Conjuge:p.conj,DataCasamento:p.dataCas,Foto:S.foto,Filhos:p.temFilhos==='sim'?p.filhos:[]}}
@@ -1026,9 +1037,9 @@ const NOTICIAS=[{t:'Aniversário Zoe será em 31/10',d:'Hoje',s:'Venha celebrar 
 const PAPEIS=['Louvor','Recepcionar visitantes','Dinâmica e quebra-gelo','Registro semanal de presença','Eventos do grupo'];
 const TEMAS=['Proteção e Livramento','Direção de Deus e sabedoria para decisões','Agradecimentos','Liderança e Ministério'];
 // Abas liberadas por tipo de acesso (Administração > Níveis de acesso). Exceção: quem já está numa célula sempre vê a aba Células.
-const ABAS_FIXAS=new Set(['feed','meu','corrida','perfil','aprovacoes','admin']);
+const ABAS_FIXAS=new Set(['feed','meu','pessoas','corrida','perfil','aprovacoes','admin']);
 const abaOk=k=>{if(!ONLINE||ABAS_FIXAS.has(k)||S.role==='admin'||!S.abas||S.abas[k]!==0)return true;return k==='celula'&&!!(S.celulaId||(S.minhas||[]).length)};
-const NAV=[['feed','home','Início'],['meu','star','Meu perfil'],['perfil','user','Editar perfil'],['membro','book','Bíblia e Anotações'],['biblioteca','lib','Biblioteca virtual'],['celula','users','Células'],['familia','heart','Família Zoe'],['ministerios','grid','Ministérios'],['buscar','pin','Buscar células'],['licoes','file','Lições / Extras'],['dinamicas','bulb','Dinâmicas'],['cursos','grad','Cursos'],['aulas','file','Aulas'],['eventos','cal','Eventos'],['corrida','book','Corrida da Bíblia'],['aniversarios','cake','Aniversariantes'],['tutoriais','play','Lives e Vídeos'],['loja','bag','Loja Zoe'],['aprovacoes','check','Aprovações'],['admin','gear','Administração']];
+const NAV=[['feed','home','Início'],['meu','star','Meu perfil'],['pessoas','users','Pessoas'],['perfil','user','Editar perfil'],['membro','book','Bíblia e Anotações'],['biblioteca','lib','Biblioteca virtual'],['celula','users','Células'],['familia','heart','Família Zoe'],['ministerios','grid','Ministérios'],['buscar','pin','Buscar células'],['licoes','file','Lições / Extras'],['dinamicas','bulb','Dinâmicas'],['cursos','grad','Cursos'],['aulas','file','Aulas'],['eventos','cal','Eventos'],['corrida','book','Corrida da Bíblia'],['aniversarios','cake','Aniversariantes'],['tutoriais','play','Lives e Vídeos'],['loja','bag','Loja Zoe'],['aprovacoes','check','Aprovações'],['admin','gear','Administração']];
 const R={r:'feed',sub:{meu:'ver',cursos:'igreja',aulas:'meus',aprovacoes:'pend',perfil:'info',membro:'biblia',celula:'freq',familia:'fale',licoes:'todas',dinamicas:'buscar'},mi:null};
 const can=k=>!!(S.perm[S.role]&&S.perm[S.role][k]);
 // Cargos de célula ≠ nível de acesso: um administrador também pode ser líder e/ou supervisor.
@@ -1062,7 +1073,7 @@ function shell(){
   $('#br').innerHTML=ic('refresh');$('#ba').innerHTML=ic('spark');$('#ba').style.color=S.anim?'var(--verde)':'var(--muted)';
   const dark=document.documentElement.getAttribute('data-theme')==='dark'||(!S.theme&&matchMedia('(prefers-color-scheme: dark)').matches);
   $('#bt').innerHTML=ic(dark?'sun':'moon');
-  const n=alertas().length;$('#bb').innerHTML=ic('bell')+(n?`<span class="dot">${n}</span>`:'');
+  const n=alertas().length;$('#bb').innerHTML=ic('bell')+(n?`<span class="dot">${n}</span>`:'');$('#bch').innerHTML=ic('chat')+(CH.unread?`<span class="dot">${CH.unread}</span>`:'');
   $('#ttl').textContent=topic(R.r);
 }
 function setApelido(v){S.apelido=v.trim()||'Membro';save();shell();render();if(ONLINE)push('saveMember',{membro:{Apelido:S.apelido}},'Apelido atualizado no app todo');else toast('Apelido atualizado no app todo')}
@@ -1244,6 +1255,7 @@ dinamicas(){const s=R.sub.dinamicas;const q=(R.q||'').toLowerCase();let l=[...(S
 cursos(){return cursosHTML()},
 aulas(){return aulasHTML()},
 meu(){return meuHTML()},
+pessoas(){return pessoasHTML()},
 corrida(){return corridaHTML()},
 
 eventos(){if(R.ev){const e=EVENTOS.find(x=>x.id===R.ev);if(!e){R.ev=null;return VIEWS.eventos()}const ins=S.inscr.includes(e.t);
@@ -1931,7 +1943,7 @@ const BD_COMO={perfil:'Preencha todos os dados em Editar perfil.',decisao:'Regis
 let MEU=null,MEUP=null,MEUOPEN=false,MEUC=null;
 const nivInfo=xp=>{let n=1;NIVX.forEach((v,i)=>{if(xp>=v)n=i+1});return{xp,nivel:n,nome:NIVN[n-1],base:NIVX[n-1],proximo:NIVX[n]===undefined?null:NIVX[n]}};
 function meuDemo(){const p=S.pfd||{},dest=p.dest||[],ins=[{codigo:'perfil',titulo:'Perfil completo',ano:'',data:TODAY},{codigo:'decisao',titulo:'Decisão por Cristo',ano:'2019',data:TODAY},{codigo:'batismo',titulo:'Batizado',ano:'2020',data:TODAY},{codigo:'curso:demo',titulo:'Discipulado',ano:'2026',data:TODAY},{codigo:'evento:amigo',titulo:'Dia do Amigo',ano:'2026',data:TODAY},{codigo:'presenca',titulo:'Presença total',ano:'2025',data:TODAY},{codigo:'corrida-prata-2',titulo:'Corrida da Bíblia',ano:'2026',data:TODAY}],xp=nivInfo(p.xp||650);
- return{id:S.membroId||'demo',meu:true,nome:S.apelido,foto:S.foto,bio:p.bio||'',capa:p.capa||'',fundo:p.fundo||'verde',moldura:p.moldura||'simples',versiculo:p.versiculo||'',xp,insignias:ins,destaques:dest,libera:{fundos:Object.fromEntries(Object.entries(FUNDOS_L).map(([k,v])=>[k,v[1]])),molduras:Object.fromEntries(Object.entries(MOLD_L).map(([k,v])=>[k,v[1]])),capa:2,versiculo:2,slots:xp.nivel>=8?6:xp.nivel>=6?3:xp.nivel>=4?2:xp.nivel>=3?1:0}}}
+ return{id:S.membroId||'demo',meu:true,oculto:!!p.oculto,envolvimento:{celula:'Semeadores',ministerios:['Louvor'],cursos:[{nome:'Discipulado',ano:'2026'}],desde:'2022-03-10',reunioes:24,eventos:5},nome:S.apelido,foto:S.foto,bio:p.bio||'',capa:p.capa||'',fundo:p.fundo||'verde',moldura:p.moldura||'simples',versiculo:p.versiculo||'',xp,insignias:ins,destaques:dest,libera:{fundos:Object.fromEntries(Object.entries(FUNDOS_L).map(([k,v])=>[k,v[1]])),molduras:Object.fromEntries(Object.entries(MOLD_L).map(([k,v])=>[k,v[1]])),capa:2,versiculo:2,slots:xp.nivel>=8?6:xp.nivel>=6?3:xp.nivel>=4?2:xp.nivel>=3?1:0}}}
 async function meuCarrega(){MEU=ONLINE?await api('profileView',{}):meuDemo()}
 function meuRecarrega(){MEU=null;MEUC=null;render()}
 function meuHTML(){
@@ -1940,26 +1952,30 @@ function meuHTML(){
  const m=MEU,x=m.xp,pct=x.proximo?Math.min(100,Math.round((x.xp-x.base)/(x.proximo-x.base)*100)):100,ini=(m.nome||'Z').trim()[0]?.toUpperCase()||'Z',sub=R.sub.meu||'ver';
  const tabs=`<div class="row pf-tabs"><button class="chip ${sub==='ver'?'on':''}" onclick="sub('meu','ver')">Meu perfil</button><button class="chip ${sub==='custom'?'on':''}" onclick="meuAbrePers()">Personalizar</button><button class="chip" onclick="go('perfil','foto')">Foto de perfil</button></div>`;
  if(sub==='custom')return tabs+meuCustom();
- const bds=m.insignias,base=[['perfil','Perfil completo'],['decisao','Decisão por Cristo'],['batismo','Batizado']].filter(b=>!bds.some(i=>i.codigo===b[0]));
- return `${tabs}<div class="pf fb-${esc(m.fundo)}">
+ BDLIST=m.insignias;return tabs+perfilCorpo(m,true)}
+function perfilCorpo(m,meu){const x=m.xp,pct=x.proximo?Math.min(100,Math.round((x.xp-x.base)/(x.proximo-x.base)*100)):100,ini=(m.nome||'Z').trim()[0]?.toUpperCase()||'Z';
+ const bds=m.insignias,base=meu?[['perfil','Perfil completo'],['decisao','Decisão por Cristo'],['batismo','Batizado']].filter(b=>!bds.some(i=>i.codigo===b[0])):[];
+ return `<div class="pf fb-${esc(m.fundo)}">
  <div class="pf-capa" style="${m.capa?`background-image:url('${m.capa}')`:''}"></div>
  <div class="card pf-head"><div class="pfav mold-${esc(m.moldura)}"><div class="pfp" ${m.foto?`style="background-image:url('${m.foto}')"`:''}>${m.foto?'':esc(ini)}</div></div>
-  <div class="pf-id"><h1>${esc(m.nome)}</h1><span class="chip g">Nível ${x.nivel} · ${esc(x.nome)}</span>${m.bio?`<p>${esc(m.bio)}</p>`:'<p class="muted">Conte um pouco sobre você em Personalizar.</p>'}${m.versiculo?`<p class="pf-v">“${esc(m.versiculo)}”</p>`:''}</div></div>
+  <div class="pf-id"><h1>${esc(m.nome)}</h1><span class="chip g">Nível ${x.nivel} · ${esc(x.nome)}</span>${m.bio?`<p>${esc(m.bio)}</p>`:meu?'<p class="muted">Conte um pouco sobre você em Personalizar.</p>':''}${m.versiculo?`<p class="pf-v">“${esc(m.versiculo)}”</p>`:''}</div>${!meu?`<button class="btn" onclick="chAbreCom('${esc(m.id)}','${esc(m.nome)}')">${ic('chat',16)} Mensagem</button>`:''}</div>
  <div class="card"><div class="xpbar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct}%"></i></div><p class="muted" style="margin:6px 0 0;font-size:13px"><b>${x.xp} XP</b>${x.proximo?` · faltam ${x.proximo-x.xp} para o nível ${x.nivel+1} (${esc(NIVN[x.nivel])})`:' · nível máximo!'}</p>
   <button class="btn pf-ins" id="pf_ins" aria-expanded="${MEUOPEN}" onclick="faixaToggle()">${ic('star',16)} Insígnias (${bds.length})</button></div>
  <div class="faixa ${MEUOPEN?'open':''}" id="faixa"><div class="fx"><div class="fx-in"><h3>Insígnias</h3>${bds.length?`<div class="fx-g">${bds.map((b,i)=>`<button class="bd" style="--r:${((i*37)%7)-3}deg" onclick="bdInfo(${i})" aria-label="${esc(b.titulo)}">${bdSVG(b.codigo,b.ano,92)}<span>${esc(b.titulo)}</span></button>`).join('')}</div>`:'<p>Você ainda não tem insígnias. Complete seu perfil, vá aos eventos e conclua cursos!</p>'}
   ${base.length?`<p class="fx-sm">Para ganhar: ${base.map(b=>`${esc(b[1])}`).join(' · ')}</p>`:''}</div></div></div>
  ${m.destaques.length?`<div class="card"><h2>Destaques</h2><div class="pfd">${m.destaques.map((d,i)=>`<figure style="--r:${((i*53)%9)-4}deg"><img src="${d.foto}" alt="${esc(d.legenda)}"><figcaption>${esc(d.legenda)}</figcaption></figure>`).join('')}</div></div>`:''}
- <div class="card"><h2>Como ganhar XP</h2><ul class="pf-xp"><li>Acessar o app todo dia: <b>+5</b></li><li>Estar presente na célula: <b>+10</b></li><li>Perfil completo: <b>+100</b> · Decisão: <b>+150</b> · Batismo: <b>+200</b></li><li>Concluir um curso: <b>+300</b></li><li>Insígnias de eventos e da Corrida da Bíblia dão XP extra.</li></ul><p class="muted" style="font-size:13px">Cada nível libera capas, fundos, molduras animadas e destaques de fotos.</p></div></div>`}
+ ${envCard(m,meu)}
+ ${meu?`<div class="card"><h2>Como ganhar XP</h2><ul class="pf-xp"><li>Acessar o app todo dia: <b>+5</b></li><li>Estar presente na célula: <b>+10</b></li><li>Perfil completo: <b>+100</b> · Decisão: <b>+150</b> · Batismo: <b>+200</b></li><li>Concluir um curso: <b>+300</b></li><li>Insígnias de eventos e da Corrida da Bíblia dão XP extra.</li></ul><p class="muted" style="font-size:13px">Cada nível libera capas, fundos, molduras animadas e destaques de fotos.</p></div>`:''}</div>`}
 function faixaToggle(){MEUOPEN=!MEUOPEN;const f=$('#faixa');if(f)f.classList.toggle('open',MEUOPEN);const b=$('#pf_ins');if(b)b.setAttribute('aria-expanded',MEUOPEN);if(MEUOPEN)setTimeout(()=>{const f=$('#faixa');if(f)f.scrollIntoView({behavior:S.anim?'smooth':'auto',block:'nearest'})},350)}
-function bdInfo(i){const b=MEU.insignias[i];if(!b)return;const k=String(b.codigo).replace(/^corrida.*/,'corrida').split(':')[0];modal(`<div style="text-align:center"><div class="bdbig">${bdSVG(b.codigo,b.ano,170)}</div><h2>${esc(b.titulo)}</h2><p class="muted">${b.ano?'Ano '+esc(b.ano)+' · ':''}conquistada em ${fmt(b.data)}</p><p>${esc(BD_COMO[k]||'')}</p><button class="btn" onclick="closeL()">Fechar</button></div>`)}
-function meuAbrePers(){MEUC={bio:MEU.bio,fundo:MEU.fundo,moldura:MEU.moldura,versiculo:MEU.versiculo,capa:'__keep',capaV:MEU.capa};sub('meu','custom')}
+function bdInfo(i){const b=BDLIST[i];if(!b)return;const k=String(b.codigo).replace(/^corrida.*/,'corrida').split(':')[0];modal(`<div style="text-align:center"><div class="bdbig">${bdSVG(b.codigo,b.ano,170)}</div><h2>${esc(b.titulo)}</h2><p class="muted">${b.ano?'Ano '+esc(b.ano)+' · ':''}conquistada em ${fmt(b.data)}</p><p>${esc(BD_COMO[k]||'')}</p><button class="btn" onclick="closeL()">Fechar</button></div>`)}
+function meuAbrePers(){MEUC={oculto:!!MEU.oculto,bio:MEU.bio,fundo:MEU.fundo,moldura:MEU.moldura,versiculo:MEU.versiculo,capa:'__keep',capaV:MEU.capa};sub('meu','custom')}
 function meuCustom(){if(!MEUC)meuAbrePersSilent();const c=MEUC,L=MEU.libera||{},nv=MEU.xp.nivel,fl=L.fundos||{},ml=L.molduras||{},ini=(MEU.nome||'Z').trim()[0]?.toUpperCase()||'Z';
  const sw=(tipo,lista,rot,atual)=>Object.keys(lista).map(k=>{const need=lista[k],lock=nv<need;return `<button class="sw ${atual===k?'on':''} ${lock?'lock':''}" ${lock?'':`onclick="MEUC.${tipo}='${k}';renderKeep()"`} aria-label="${esc(rot[k][0])}${lock?', abre no nível '+need:''}">${tipo==='fundo'?`<span class="swf fb-${k}"></span>`:`<span class="pfav mold-${k} sm"><span class="pfp"></span></span>`}<small>${esc(rot[k][0])}</small>${lock?`<em>Nv ${need}</em>`:''}</button>`}).join('');
  const capaOk=nv>=(L.capa||2),vOk=nv>=(L.versiculo||2);
  return `<div class="card"><h2>Personalizar perfil</h2><p class="muted">Seu nível: <b>${nv}</b> (${esc(MEU.xp.nome)}). Ganhe XP para liberar mais opções.</p>
  <label class="f">Descrição<textarea id="pc_bio" maxlength="280" rows="3" oninput="MEUC.bio=this.value">${esc(c.bio)}</textarea></label>
  <label class="f">Versículo em destaque ${vOk?'':`<small>(abre no nível ${L.versiculo||2})</small>`}<input id="pc_v" maxlength="200" ${vOk?'':'disabled'} value="${esc(c.versiculo)}" oninput="MEUC.versiculo=this.value"></label>
+ <label class="chip" style="cursor:pointer;margin:6px 0"><input type="checkbox" ${c.oculto?'checked':''} onchange="MEUC.oculto=this.checked"> Ocultar meu envolvimento (célula, ministérios e cursos) dos outros membros</label>
  <h3>Fundo do perfil</h3><div class="sws">${sw('fundo',fl,FUNDOS_L,c.fundo)}</div>
  <h3>Moldura da foto (contorno)</h3><div class="sws">${sw('moldura',ml,MOLD_L,c.moldura)}</div>
  <h3>Capa do perfil ${capaOk?'':`<small>(abre no nível ${L.capa||2})</small>`}</h3>
@@ -1969,9 +1985,9 @@ function meuCustom(){if(!MEUC)meuAbrePersSilent();const c=MEUC,L=MEU.libera||{},
  <div class="card"><h2>Destaques de fotos</h2><p class="muted">${L.slots?`Você pode destacar até ${L.slots} foto(s) no seu perfil.`:'Os destaques de fotos abrem no nível 3.'}</p>
  <div class="pfd">${MEU.destaques.map((d,i)=>`<figure style="--r:${((i*53)%9)-4}deg"><img src="${d.foto}" alt=""><figcaption>${esc(d.legenda)}</figcaption><button class="x" onclick="meuDelDest('${esc(d.id)}')" aria-label="Remover foto">${ic('x',12)}</button></figure>`).join('')}</div>
  ${MEU.destaques.length<(L.slots||0)?`<label class="btn ghost sm">${ic('plus',14)} Adicionar foto<input type="file" accept="image/*" hidden onchange="meuAddDest(this)"></label>`:''}</div>`}
-function meuAbrePersSilent(){MEUC={bio:MEU.bio,fundo:MEU.fundo,moldura:MEU.moldura,versiculo:MEU.versiculo,capa:'__keep',capaV:MEU.capa}}
+function meuAbrePersSilent(){MEUC={oculto:!!MEU.oculto,bio:MEU.bio,fundo:MEU.fundo,moldura:MEU.moldura,versiculo:MEU.versiculo,capa:'__keep',capaV:MEU.capa}}
 function meuCapa(i){const f=i.files[0];if(!f)return;redimMax(f,d=>{MEUC.capa=d;renderKeep()})}
-async function meuSalva(){const c=MEUC;try{if(ONLINE){const d={bio:c.bio,fundo:c.fundo,moldura:c.moldura,versiculo:c.versiculo};if(c.capa!=='__keep')d.capa=c.capa;await api('saveProfile',d)}else{S.pfd=Object.assign(S.pfd||{},{bio:c.bio,fundo:c.fundo,moldura:c.moldura,versiculo:c.versiculo});if(c.capa!=='__keep')S.pfd.capa=c.capa;save()}toast('Perfil atualizado');R.sub.meu='ver';MEU=null;MEUC=null;render()}catch(e){toast(e.message)}}
+async function meuSalva(){const c=MEUC;try{if(ONLINE){const d={bio:c.bio,fundo:c.fundo,moldura:c.moldura,versiculo:c.versiculo,oculto:!!c.oculto};if(c.capa!=='__keep')d.capa=c.capa;await api('saveProfile',d)}else{S.pfd=Object.assign(S.pfd||{},{bio:c.bio,fundo:c.fundo,moldura:c.moldura,versiculo:c.versiculo,oculto:!!c.oculto});if(c.capa!=='__keep')S.pfd.capa=c.capa;save()}toast('Perfil atualizado');R.sub.meu='ver';MEU=null;MEUC=null;render()}catch(e){toast(e.message)}}
 function meuAddDest(i){const f=i.files[0];if(!f)return;redimMax(f,async d=>{try{if(ONLINE)await api('saveHighlight',{foto:d,legenda:''});else{S.pfd=S.pfd||{};(S.pfd.dest=S.pfd.dest||[]).push({id:'d'+Date.now(),foto:d,legenda:''});save()}const c=MEUC;await meuCarrega();MEUC=c;toast('Foto destacada');render()}catch(e){toast(e.message)}})}
 async function meuDelDest(id){try{if(ONLINE)await api('deleteHighlight',{id});else{S.pfd.dest=(S.pfd.dest||[]).filter(x=>x.id!==id);save()}const c=MEUC;await meuCarrega();MEUC=c;render()}catch(e){toast(e.message)}}
 /* ===== Botons de eventos (check-in) e Corrida da Bíblia ===== */
@@ -2037,6 +2053,60 @@ function lyTema(t){Object.assign(LY.d,LY_TEMAS[t]);render()}
 function lyPadrao(){LY.d=Object.assign({},LY_PAD);render()}
 function lyImprime(){imprimeCert()}
 async function lySalva(){const r=await push('saveCertLayout',{layout:LY.d},'Layout salvo');if(r===undefined)return;LY.orig=Object.assign({},LY.d)}
+/* ===== Pessoas (perfis abertos) e Chat ===== */
+let BDLIST=[];
+const PPL_DEMO=[{id:'dp1',nome:'Maria Silva'},{id:'dp2',nome:'João Pereira'},{id:'dp3',nome:'Ana Beatriz'},{id:'dp4',nome:'Pedro Lima'},{id:'dp5',nome:'Débora Rocha'}];
+const semAc=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+function perfilDemoOutro(id){const p=PPL_DEMO.find(x=>x.id===id)||PPL_DEMO[0],n=PPL_DEMO.indexOf(p),xp=nivInfo([180,520,900,1500,2100][n%5]);
+ const todas=[{codigo:'perfil',titulo:'Perfil completo',ano:'',data:TODAY},{codigo:'decisao',titulo:'Decisão por Cristo',ano:'2018',data:TODAY},{codigo:'batismo',titulo:'Batizado',ano:'2019',data:TODAY},{codigo:'curso:d',titulo:'Discipulado',ano:'2026',data:TODAY},{codigo:'evento:a',titulo:'Aniversário Zoe',ano:'2026',data:TODAY},{codigo:'presenca',titulo:'Presença total',ano:'2025',data:TODAY},{codigo:'corrida-ouro-1',titulo:'Corrida da Bíblia',ano:'2026',data:TODAY}];
+ return{id:p.id,meu:false,nome:p.nome,foto:'',bio:['Servindo com alegria!','Amo louvar e ler a Palavra.','Líder de célula e pai de família.','Novo na Zoe, feliz por estar aqui.','Intercessora e apaixonada por missões.'][n%5],capa:'',fundo:['verde','aurora','solpoente','noite','bordado'][n%5],moldura:['simples','verde','dourada','arco','chama'][n%5],versiculo:n%2?'O Senhor é o meu pastor, nada me faltará.':'',xp,insignias:todas.slice(0,3+n),destaques:[],
+  envolvimento:{celula:['Semeadores','Raízes','Sarar','Semeadores','Raízes'][n%5],ministerios:n%2?['Louvor','Recepção']:['Crianças'],cursos:n>1?[{nome:'Discipulado',ano:'2026'}]:[],desde:'2022-03-10',reunioes:10+n*7,eventos:2+n}}}
+function envCard(m,meu){const e=m.envolvimento;if(!e)return m.oculto===undefined&&!meu?'<div class="card"><h2>Envolvimento</h2><p class="muted">Esta pessoa preferiu não mostrar o envolvimento.</p></div>':'';
+ const ch=[e.celula?`<span class="chip g">${ic('users',14)} Célula ${esc(e.celula)}</span>`:'<span class="chip">Ainda sem célula</span>',...(e.ministerios||[]).map(x=>`<span class="chip">${ic('heart',14)} ${esc(x)}</span>`),...(e.cursos||[]).map(x=>`<span class="chip">${ic('grad',14)} ${esc(x.nome)}${x.ano?' · '+esc(x.ano):''}</span>`)];
+ return `<div class="card"><h2>Envolvimento</h2><div class="row" style="flex-wrap:wrap;gap:8px">${ch.join('')}</div><p class="muted" style="margin:10px 0 0;font-size:13px">${e.desde?`Na Zoe desde ${fmt(e.desde)} · `:''}${e.reunioes} reunião(ões) de célula · ${e.eventos} evento(s) com presença${meu?'<br>Todos os membros veem isto. Para ocultar, vá em Personalizar.':''}</p></div>`}
+const PS={q:'',res:[],perfil:null,busy:false,tm:0};
+async function pplApi(a,d){if(ONLINE)return api(a,d);
+ if(a==='searchPeople'){const q=semAc(d.q).trim();return q.length<2?[]:PPL_DEMO.filter(p=>semAc(p.nome).includes(q))}
+ if(a==='profileView')return perfilDemoOutro(d.membroId);return chDemo(a,d)}
+async function abrePerfil(id){try{PS.perfil=await pplApi('profileView',{membroId:id});BDLIST=PS.perfil.insignias;chFecha();go('pessoas')}catch(e){toast(e.message,'err')}}
+function pessoasHTML(){if(PS.perfil){const m=PS.perfil;BDLIST=m.insignias;return `<div class="row pf-tabs"><button class="btn sm ghost" onclick="PS.perfil=null;render()">‹ Pessoas</button></div>${perfilCorpo(m,false)}`}
+ return `<div class="card flat col"><h2>Pessoas</h2><p class="muted sm">Procure alguém pelo nome para ver o perfil, as insígnias e o envolvimento na igreja, ou para conversar.</p><input id="ps_q" placeholder="Buscar pelo nome" value="${esc(PS.q)}" oninput="psBusca(this.value)" autocomplete="off" aria-label="Buscar pessoa"><div id="ps_r">${psRes()}</div></div>`}
+const psRes=()=>PS.q.trim().length<2?'<p class="muted sm">Digite pelo menos 2 letras.</p>':PS.busy?'<div class="skel" aria-busy="true"></div>':PS.res.length?PS.res.map(p=>`<div class="opt">${av(p.id,p.nome)}<div style="flex:1"><b>${esc(p.nome)}</b></div><button class="btn sm ghost" onclick="chAbreCom('${esc(p.id)}','${esc(p.nome)}')">${ic('chat',14)} Conversar</button><button class="btn sm" onclick="abrePerfil('${esc(p.id)}')">Ver perfil</button></div>`).join(''):'<p class="muted sm">Ninguém encontrado com esse nome.</p>';
+function psBusca(v){PS.q=v;clearTimeout(PS.tm);if(v.trim().length<2){PS.res=[];PS.busy=false;const e=$('#ps_r');if(e)e.innerHTML=psRes();return}PS.busy=true;const e=$('#ps_r');if(e)e.innerHTML=psRes();
+ PS.tm=setTimeout(async()=>{try{PS.res=await pplApi('searchPeople',{q:v})}catch(er){PS.res=[]}PS.busy=false;const e=$('#ps_r');if(e){e.innerHTML=psRes();pedeFotos(PS.res.map(p=>p.id))}},300)}
+/* chat */
+const CH={open:false,view:'list',lista:[],q:'',res:[],com:null,msgs:[],unread:0,tm:null,busy:false,ult:0};
+function chDemo(a,d){const D=S.chatD=S.chatD||{},nome=id=>(PPL_DEMO.find(p=>p.id===id)||{}).nome||'—';
+ if(a==='listChats'){const c=Object.keys(D).filter(k=>D[k].length).map(k=>{const l=D[k][D[k].length-1];return{id:k,nome:nome(k),ultima:l.texto.slice(0,80),ts:l.ts,minha:l.minha,naoLidas:D[k].filter(m=>!m.minha&&!m.lida).length}}).sort((x,y)=>y.ts-x.ts);return{naoLidas:c.reduce((s,x)=>s+x.naoLidas,0),conversas:c}}
+ if(a==='getChat')return{com:{id:d.com,nome:nome(d.com)},msgs:(D[d.com]||[]).filter(m=>m.ts>(d.depois||0))};
+ if(a==='chatRead'){let n=0;(D[d.com]||[]).forEach(m=>{if(!m.minha&&!m.lida){m.lida=true;n++}});save();return{n}}
+ if(a==='sendChat'){const t=String(d.texto||'').trim();if(!t)throw new Error('Escreva a mensagem.');(D[d.para]=D[d.para]||[]).push({id:'m'+Date.now(),minha:true,texto:t,ts:Date.now(),lida:false});save();
+  setTimeout(()=>{(D[d.para]=D[d.para]||[]).push({id:'r'+Date.now(),minha:false,texto:['Paz! Recebi sua mensagem 😊','Que bom falar com você! Deus abençoe.','Amém! Nos vemos na célula.'][Math.floor(Math.random()*3)],ts:Date.now(),lida:false});save();chTick()},1600);return{ok:true}}
+ return null}
+const chApi=(a,d)=>ONLINE?api(a,d):Promise.resolve().then(()=>chDemo(a,d));
+function chBox(){let e=$('#chatp');if(!e){e=document.createElement('div');e.id='chatp';e.className='chatp';e.setAttribute('role','dialog');e.setAttribute('aria-label','Chat');document.body.appendChild(e)}return e}
+function chatToggle(){CH.open?chFecha():chAbre()}
+async function chAbre(){CH.open=true;CH.view=CH.view==='thread'&&CH.com?'thread':'list';chRender();chTimer();await chTick(true)}
+function chFecha(){CH.open=false;const e=$('#chatp');if(e)e.remove();chTimer()}
+function chTimer(){clearInterval(CH.tm);CH.tm=setInterval(()=>{if(document.visibilityState==='visible')chTick()},CH.open?4000:20000)}
+async function chAbreCom(id,nome){CH.com={id,nome};CH.view='thread';CH.msgs=[];CH.ult=0;CH.open=true;if(R.r!=='pessoas'||!PS.perfil){}chRender();chTimer();await chTick(true)}
+async function chTick(force){if(!READY&&ONLINE)return;try{
+  if(CH.open&&CH.view==='thread'&&CH.com){const r=await chApi('getChat',{com:CH.com.id,depois:CH.ult});if(r.msgs.length){CH.msgs=CH.msgs.concat(r.msgs.filter(m=>!CH.msgs.some(x=>x.id===m.id)));CH.ult=CH.msgs.length?CH.msgs[CH.msgs.length-1].ts:0;chMsgs(true);if(r.msgs.some(m=>!m.minha)){await chApi('chatRead',{com:CH.com.id})}}else if(force)chMsgs(true)}
+  const l=await chApi('listChats');CH.lista=l.conversas;CH.unread=CH.open&&CH.view==='thread'&&CH.com?l.conversas.filter(c=>c.id!==CH.com.id).reduce((s,c)=>s+c.naoLidas,0):l.naoLidas;
+  const bc=$('#bch');if(bc)bc.innerHTML=ic('chat')+(CH.unread?`<span class="dot">${CH.unread}</span>`:'');if(CH.open&&CH.view==='list')chCorpo()}catch(e){}}
+function chRender(){const e=chBox();
+ if(CH.view==='thread'&&CH.com){e.innerHTML=`<div class="chh"><button class="ib sm" onclick="CH.view='list';chRender();chTick()" aria-label="Voltar">${ic('chev',16)}</button>${av(CH.com.id,CH.com.nome,32)}<button class="chn" onclick="abrePerfil('${esc(CH.com.id)}')" title="Ver perfil"><b>${esc(CH.com.nome)}</b><small>Ver perfil</small></button><button class="ib sm" onclick="chFecha()" aria-label="Fechar">${ic('x',16)}</button></div><div class="chb" id="ch_m"></div><form class="chf" onsubmit="return chEnvia(event)"><input id="ch_t" maxlength="1000" placeholder="Escreva uma mensagem" autocomplete="off" aria-label="Mensagem"><button class="btn" type="submit" aria-label="Enviar">${ic('send',16)}</button></form>`;chMsgs(true);pedeFotos([CH.com.id]);setTimeout(()=>{const t=$('#ch_t');if(t)t.focus()},50)}
+ else e.innerHTML=`<div class="chh"><b style="flex:1">Conversas</b><button class="ib sm" onclick="chFecha()" aria-label="Fechar">${ic('x',16)}</button></div><div class="chs"><input id="ch_q" placeholder="Buscar pessoa pelo nome" value="${esc(CH.q)}" oninput="chBusca(this.value)" autocomplete="off" aria-label="Buscar pessoa"></div><div class="chb" id="ch_b"></div>`,chCorpo()}
+function chCorpo(){const b=$('#ch_b');if(!b)return;const q=CH.q.trim();
+ b.innerHTML=q.length>=2?(CH.busy?'<div class="skel" aria-busy="true"></div>':CH.res.length?CH.res.map(p=>`<button class="chr" onclick="chAbreCom('${esc(p.id)}','${esc(p.nome)}')">${av(p.id,p.nome,36)}<b>${esc(p.nome)}</b></button>`).join(''):'<p class="muted sm" style="padding:12px">Ninguém encontrado com esse nome.</p>'):
+ CH.lista.length?CH.lista.map(c=>`<button class="chr" onclick="chAbreCom('${esc(c.id)}','${esc(c.nome)}')">${av(c.id,c.nome,36)}<span style="flex:1;min-width:0"><b>${esc(c.nome)}</b><small class="ell">${c.minha?'Você: ':''}${esc(c.ultima)}</small></span>${c.naoLidas?`<span class="chu">${c.naoLidas}</span>`:''}</button>`).join(''):'<p class="muted sm" style="padding:12px">Nenhuma conversa ainda. Busque alguém pelo nome acima para começar.</p>';
+ pedeFotos((q.length>=2?CH.res:CH.lista).map(p=>p.id))}
+function chBusca(v){CH.q=v;clearTimeout(CH.bt);if(v.trim().length<2){CH.res=[];CH.busy=false;chCorpo();return}CH.busy=true;chCorpo();CH.bt=setTimeout(async()=>{try{CH.res=await pplApi('searchPeople',{q:v})}catch(e){CH.res=[]}CH.busy=false;chCorpo()},300)}
+const hm2=ts=>{const d=new Date(ts);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
+function chMsgs(bx){const b=$('#ch_m');if(!b)return;const perto=b.scrollHeight-b.scrollTop-b.clientHeight<80;b.innerHTML=CH.msgs.length?CH.msgs.map(m=>`<div class="chm ${m.minha?'me':'ou'}"><span>${esc(m.texto)}</span><small>${hm2(m.ts)}</small></div>`).join(''):'<p class="muted sm" style="padding:12px;text-align:center">Diga um oi! 👋</p>';if(bx||perto)b.scrollTop=b.scrollHeight}
+async function chEnvia(ev){ev.preventDefault();const i=$('#ch_t'),t=i.value.trim();if(!t)return false;i.value='';try{await chApi('sendChat',{para:CH.com.id,texto:t});await chTick(true)}catch(e){i.value=t;toast(e.message,'err')}return false}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&CH.open)chFecha()});
+function chStart(){chTimer();chTick()}
 function entra(){ENTER=true}
 function coreografia(){const v=$('#view');if(!v)return;v.classList.remove('enter');if(RVIO)RVIO.disconnect();if(!S.anim||!ENTER){ENTER=false;return}ENTER=false;
  if(!RVIO)RVIO=new IntersectionObserver(es=>es.forEach(en=>{if(!en.isIntersecting)return;RVIO.unobserve(en.target);en.target.classList.add('in');setTimeout(()=>en.target.classList.remove('rv','in'),700)}),{rootMargin:'0px 0px -6% 0px'});

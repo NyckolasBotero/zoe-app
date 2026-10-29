@@ -175,3 +175,7 @@ Administração › **Corrida da Bíblia (programar)**: início (1º de janeiro)
 - **Prévia** do certificado a qualquer momento (curso em andamento ou encerrado), com nome de exemplo ou de um aluno; leva marca d'água "PRÉVIA".
 - **Layout do certificado** (Área do professor › aba própria): cores, fundo, moldura, letra do nome, título, subtítulo, frase de abertura, rodapé e o que mostrar; prévia ao vivo e temas prontos. Cada professor tem o seu (tabela `CertLayout`).
 - **Excluir certificado emitido**: o aluno volta para "a avaliar", perde a insígnia/XP do curso e recebe aviso; dá para emitir de novo. Rotas `previewCert`, `getCertLayout`, `saveCertLayout`, `revokeCert`.
+
+## Pessoas e Chat
+- Aba **Pessoas**: busca por nome (mín. 2 letras, sem acento) e abre o **perfil de qualquer usuário**: foto, insígnias, nível, destaques e **envolvimento** (célula, ministérios, cursos concluídos, reuniões e eventos). Telefone, e-mail e endereço nunca aparecem. Em Personalizar dá para ocultar o envolvimento.
+- **Chat** ao lado do sino: conversas 1 a 1 com qualquer usuário ativo, busca por nome, contador de não lidas, atualização a cada 4 s com o chat aberto (20 s fechado), limite de 20 mensagens por minuto. Tabela `ChatMsgs`; rotas `searchPeople`, `profileView`, `sendChat`, `getChat`, `chatRead`, `listChats`.
