@@ -157,17 +157,26 @@ Em **Administração → Definições de Parâmetros → Regras Células** o adm
 ## Zoe participativa
 A Zoe avisa aniversariantes (com botão "Enviar parabéns" e Salmos 118:24), Natal, Dia do Pastor (2º domingo de junho), Independência, comemora decisão por Cristo, batismo, perfil completo e cada insígnia nova. Cada aviso aparece uma vez (`S.zMom`).
 
-## Meu perfil, insígnias bordadas e XP
-- Aba **Meu perfil**: foto com moldura, capa, fundo, descrição, versículo, destaques de fotos (estilo mural) e o botão **Insígnias**, que desce uma faixa verde bordada.
-- Insígnias são desenhos originais em SVG (aparência bordada: borda "merrow", textura de trama, ícone em relevo), inspiradas no estilo de patches de escoteiros, sem copiar nenhum.
-- **XP**: acesso diário +5, presença na célula +10, perfil completo +100, decisão +150, batismo +200, curso concluído +300, insígnias de eventos e da Corrida. 10 níveis (Semente … Vida em abundância) liberam fundos, molduras animadas (arco-íris, chama, luz), capa, versículo e mais destaques de fotos.
-- Tabelas: `Insignias`, `XpLog`, `Perfis`, `PerfilFotos`. Rotas: `profileView`, `saveProfile`, `saveHighlight`, `deleteHighlight`.
+## Meu perfil, níveis e insígnias
+- **Meu perfil** tem três abas: **Meu perfil**, **Personalizar** e **Editar perfil** (os dados pessoais, foto, endereço, família e senha agora ficam aqui dentro). A faixa de **insígnias já vem aberta**: as conquistadas aparecem normais e as que faltam aparecem **escuras** (com a regra e o progresso ao tocar).
+- **XP e níveis (1 a 100)**: acesso diário +5, presença na célula +10, perfil completo +100, decisão +150, batismo +200, curso +300, mais o XP de cada insígnia. O nível aparece no perfil.
+- **Personalização libera de 10 em 10 níveis**: nível 10 = contorno da foto 1, moldura 1, fundo animado 1, capa, versículo e mural de fotos (visível a todos no perfil); nível 20 = contorno 2, moldura 2, fundo 2, e assim até o 100. Os fundos se movem como o cartão de boas-vindas do Início. O mural ganha 2 espaços por faixa (até 12).
+- **Criar insígnias** (supervisores, pastor e administração; menu *Criar insígnias*): nome, descrição, XP, **o que precisa ser feito** (ir aos últimos N eventos de um tipo, ex.: retiro; servir N meses numa escala, ex.: 12 meses na Limpeza = “Mão no arado”; N eventos; N reuniões de célula; N cursos; N dias de acesso; ou concessão manual) e o **visual** (bordado, dourado, prateado ou bronze; 5 formas; 18 ícones; cores e texto). Quem cumpre a regra ganha sozinho; quem ainda não cumpriu vê a insígnia escura. A aba **Escalas e serviço** registra quem serviu em cada atividade por mês.
+- Tabelas: `Insignias`, `InsigniaDefs`, `Servicos`, `XpLog`, `Perfis` (Contorno, Quadro, Fundo), `PerfilFotos`. Rotas: `profileView`, `saveProfile`, `saveHighlight`, `deleteHighlight`, `listInsigniaDefs`, `saveInsigniaDef`, `grantBadge`, `logServico`, `listServicos`.
+
+## Feed social, Consolidação e “aceitou Jesus”
+- **Mural da igreja** (Início): quando alguém aceita Jesus (no culto ou na célula) a publicação cai no feed, a Zoe avisa todos e qualquer pessoa pode **curtir e comentar**. Tabelas `Posts`, `Comentarios` (curtidas na tabela `Curtidas` com `Tipo=post`). Rotas `listFeed`, `likePost`, `commentPost`, `listComments`, `deletePost`, `deleteComment`.
+- **Consolidação** (só líderes e acima): **Novo visitante** com mapa para marcar onde mora (latitude/longitude); o sistema acha a célula ativa mais próxima e avisa o líder dela (sino e Zoe) com nome, apelido, celular e **atalho do WhatsApp** com mensagem pronta editável. A aba **Visitantes** lista e marca quem já foi contatado; a aba **Aceitou Jesus** lança a decisão no culto (se já tem cadastro, os dados vêm preenchidos). Tabela `Visitantes`; rotas `saveVisitor`, `listVisitors`, `contactVisitor`, `registerDecision`.
+- **Relatório da célula**: ao registrar a frequência há **foto da célula do dia** e a caixa **Alguém aceitou Jesus**; a publicação no feed leva a foto, o nome e o termômetro da presença de Deus. Quem já tem cadastro é só marcado como frequentador que aceitou Jesus. Coluna nova `Reunioes.Foto`.
+
+## Bíblia: marcações e anotações do culto
+Toque em um versículo para **marcar com marca-texto ou sublinhar** (6 cores; fica para sempre no seu usuário), escrever um **comentário** (privado ou público: os outros veem sob o versículo) e **Adicionar às anotações do culto**. A anotação acumula os versículos com os seus comentários; ao **salvar**, o título é montado sozinho (ex.: *01/11/2026 Domingo - Tema Mordomia Cristã*) e ela cai no **feed da sua célula** (aba *Anotações do culto*) para os colegas curtirem e comentarem. Tabela `BibMarcas`; rotas `listMarks`, `saveMark`, `saveNote`. A **Maratona Bíblica** agora fica dentro da Bíblia (aba própria, com um ponto vermelho quando há uma em andamento).
 
 ## Botons de eventos
 Em Administração › Publicar evento, o campo **Insígnia exclusiva** cria um boton para quem comparecer. O card **Presença nos eventos** (check-in) marca quem veio (`checkinEvento`, tabela `EventoPresenca`); quem vai a todos os eventos do ano (mínimo 3) ganha **Presença total**. Curso concluído também dá insígnia com o ano.
 
 ## Maratona Bíblica
-Administração › **Maratona Bíblica (programar)**: início (1º de janeiro), máximo de capítulos por dia e total (1189). Aparece em Início, Eventos e na aba própria. Só se registra a leitura **do dia**, com um devocional de no mínimo 30 letras, que o líder da célula (ou a administração) valida ou recusa com motivo. Faixa pelos dias perdidos: 0 ouro, 1 prata, 2 ou mais bronze; em cada faixa os 3 primeiros a terminar ganham a insígnia do 1º, 2º e 3º lugar. Tabelas `Corridas`, `CorridaLeitura`, `CorridaConc`.
+Administração › **Maratona Bíblica (programar)**: início (1º de janeiro), máximo de capítulos por dia e total (1189). Fica dentro da **Bíblia** (aba Maratona Bíblica, com um ponto vermelho indicando que há uma em andamento) e em um cartão no Início. Só se registra a leitura **do dia**, com um devocional de no mínimo 30 letras, que o líder da célula (ou a administração) valida ou recusa com motivo. Faixa pelos dias perdidos: 0 ouro, 1 prata, 2 ou mais bronze; em cada faixa os 3 primeiros a terminar ganham a insígnia do 1º, 2º e 3º lugar. Tabelas `Corridas`, `CorridaLeitura`, `CorridaConc`.
 
 **Ao publicar o Code.gs:** cole o arquivo, rode `setup()` (cria as novas tabelas/colunas) e publique uma nova versão.
 
