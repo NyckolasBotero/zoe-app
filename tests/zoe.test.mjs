@@ -381,6 +381,26 @@ test('loja: produtos só pela administração, validação e número da loja', (
   assert.ok(e.call('deleteProduct', { id: r.data.id }, adm).ok); assert.equal(e.call('listProducts', {}, m).data.length, 1);
   assert.equal(e.call('saveConfig', { LojaWhatsApp: '+55 (61) 90000-0000' }, adm).data.lojaWhatsapp, '5561900000000');
 });
+test('loja: promoções por item, em lote, por categoria e na loja toda', () => {
+  const { e, adm, tok, mk } = boot(); mk('maria@zoe.com', 'membro'); const m = tok('maria@zoe.com', 'Temp12345');
+  const A = e.call('saveProduct', { nome: 'Camiseta', categoria: 'Camisetas', preco: 100 }, adm).data.id, B = e.call('saveProduct', { nome: 'Regata', categoria: 'Camisetas', preco: 50 }, adm).data.id, C = e.call('saveProduct', { nome: 'Boné', categoria: 'Bonés', preco: 40 }, adm).data.id;
+  const get = id => e.call('listProducts', {}, m).data.find(x => x.id === id);
+  assert.equal(e.call('setPromo', { escopo: 'todos', tipo: 'percent', valor: 10 }, m).error.code, 'FORBIDDEN');
+  assert.equal(e.call('setPromo', { escopo: 'item', id: A, tipo: 'valor', valor: 120 }, adm).error.code, 'VALIDATION'); // maior que o preço
+  assert.equal(e.call('setPromo', { escopo: 'todos', tipo: 'percent', valor: 95 }, adm).error.code, 'VALIDATION');
+  assert.equal(e.call('setPromo', { escopo: 'todos', tipo: 'valor', valor: 10 }, adm).error.code, 'VALIDATION');
+  assert.equal(e.call('setPromo', { escopo: 'lote', ids: [], tipo: 'percent', valor: 10 }, adm).error.code, 'VALIDATION');
+  assert.equal(e.call('setPromo', { escopo: 'item', id: A, tipo: 'valor', valor: 80, ate: '2000-01-01' }, adm).error.code, 'VALIDATION');
+  assert.ok(e.call('setPromo', { escopo: 'item', id: A, tipo: 'valor', valor: 80 }, adm).ok); assert.equal(get(A).promo, 80); assert.equal(get(A).preco, 100); assert.equal(get(B).promo, null);
+  assert.equal(e.call('setPromo', { escopo: 'categoria', categoria: 'Camisetas', tipo: 'percent', valor: 20, ate: '2999-12-31' }, adm).data.n, 2);
+  assert.equal(get(A).promo, 80); assert.equal(get(B).promo, 40); assert.equal(get(B).promoAte, '2999-12-31'); assert.equal(get(C).promo, null);
+  assert.equal(e.call('setPromo', { escopo: 'lote', ids: [C], tipo: 'percent', valor: 50 }, adm).data.n, 1); assert.equal(get(C).promo, 20);
+  assert.equal(e.call('setPromo', { escopo: 'todos', tipo: 'percent', valor: 10 }, adm).data.n, 3); assert.equal(get(A).promo, 90);
+  assert.ok(e.call('saveProduct', { id: A, nome: 'Camiseta', categoria: 'Camisetas', preco: 100, disponivel: false }, adm).ok); assert.equal(get(A).promo, 90); // editar não perde a promoção
+  assert.ok(e.call('saveProduct', { id: A, nome: 'Camiseta', categoria: 'Camisetas', preco: 85 }, adm).ok); assert.equal(get(A).promo, null); // promoção acima do novo preço é ignorada
+  assert.equal(e.call('setPromo', { escopo: 'categoria', categoria: 'Camisetas', limpar: true }, adm).data.n, 2); assert.equal(get(B).promo, null); assert.equal(get(C).promo, 36);
+  assert.equal(e.call('setPromo', { escopo: 'todos', limpar: true }, adm).data.n, 3); assert.equal(get(C).promo, null);
+});
 test('histórico: o % do passado não cai quando entra gente nova (usa o elenco da época)', () => {
   const { e, adm, tok, mk } = boot(); const l1 = mk('lider1@zoe.com', 'membro');
   e.call('createCell', { nome: 'Semeadores', liderId: l1, dia: 'Quinta', inicio: '20:00', fim: '21:30' }, adm);

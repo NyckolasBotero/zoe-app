@@ -139,3 +139,10 @@ Em **Administração → Definições de Parâmetros → Regras Células** o adm
 - **Ajudante:** passar o mouse mostra "Posso te ajudar em algo?". Clicar abre a conversa: a pessoa digita a dúvida ("Bíblia", "onde posso encontrar minha célula"…) e a Zoe presume o que é, e **Mostrar onde** leva até a aba com holofote. Se a pessoa está em célula, mostra a célula dela; se não, leva à busca de células. Há botão **Rever o tutorial**.
 - Depois de colar o novo `Code.gs`, rode `setup()` uma vez (cria a coluna `GuiaVisto`).
 - Em navegador automatizado (Playwright) o guia é pulado, a menos que `localStorage['zoe-force']='1'` (usado em `tests/e2e_zoe.py`).
+
+## Loja: promoções e produtos
+
+- Em **Administração › Loja Zoe**, o cartão **Promoções** aplica desconto em **um produto**, **vários (marcados na lista)**, **uma categoria** ou **a loja toda**. Tipo: desconto em % (1–90) ou preço promocional fixo (só item/lote). Data final opcional: ao passar, a promoção acaba sozinha. **Remover promoção** vale para o mesmo escopo.
+- O preço normal fica guardado (colunas `PromoPreco`/`PromoAte` em `Produtos`); a vitrine mostra o preço antigo riscado, o novo e o `-%`, e a mensagem do WhatsApp já vai com o valor promocional.
+- **Marcar esgotado / Voltou ao estoque** ativa ou desativa o produto sem apagá-lo.
+- Depois de colar o novo `Code.gs`, rode `setup()` para criar as colunas novas.

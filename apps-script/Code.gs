@@ -59,7 +59,7 @@ const SHEETS = {
   Noticias: ['NoticiaID', 'Titulo', 'Texto', 'Data', 'CriadoPor', 'Status'],
   Licoes: ['LicaoID', 'Titulo', 'Resumo', 'Categoria', 'Url', 'Status'],
   Dinamicas: ['DinamicaID', 'Titulo', 'Descricao', 'Minutos', 'MembroID', 'Data'],
-  Produtos: ['ProdutoID', 'Nome', 'Categoria', 'Preco', 'Descricao', 'Foto', 'Opcoes', 'Ativo', 'Ordem', 'Disponivel'],
+  Produtos: ['ProdutoID', 'Nome', 'Categoria', 'Preco', 'Descricao', 'Foto', 'Opcoes', 'Ativo', 'Ordem', 'Disponivel', 'PromoPreco', 'PromoAte'],
   Videos: ['VideoID', 'Titulo', 'Url', 'Ordem', 'Status', 'Tipo', 'AoVivo'],
   Permissoes: ['Papel'].concat(PERMS),
   Config: ['Chave', 'Valor'],
@@ -861,7 +861,8 @@ function saveVideo_(d, u) { const t = clip_(d.titulo, 120), url = clip_(d.url, 3
 function updateVideo_(d, u) { return withLock_(function () { const t = table_('Videos'), r = t.rows.filter(function (x) { return x.VideoID === d.id && x.Status !== 'Removido'; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Vídeo não encontrado.'); const p = {}; if (d.titulo !== undefined) { p.Titulo = clip_(d.titulo, 120); if (!p.Titulo) throw new ApiError('VALIDATION', 'Informe o título.'); } if (d.tipo !== undefined) p.Tipo = d.tipo === 'live' ? 'live' : 'video'; if (d.aoVivo !== undefined) p.AoVivo = d.aoVivo ? '1' : '0'; if ((p.Tipo || r.Tipo) !== 'live') p.AoVivo = '0'; writeRow_(t, r._row, p); audit_(u.email, 'VIDEO_EDIT', r.Titulo, 'OK'); return { ok: true }; }); }
 /* ============================== LOJA ZOE ============================== */
 const CATEGORIAS_LOJA = ['Camisetas', 'Pulseiras', 'Bonés', 'Garrafas', 'Marca-texto', 'Marcador de página', 'Porta-copos', 'Outros'];
-function prodOut_(p) { return { id: p.ProdutoID, nome: p.Nome, categoria: p.Categoria || 'Outros', preco: Number(p.Preco) || 0, descricao: p.Descricao || '', foto: p.Foto || '', opcoes: p.Opcoes || '', disponivel: p.Disponivel !== '0' }; }
+function promoVale_(p) { const v = Number(p.PromoPreco), o = Number(p.Preco); return !!(p.PromoPreco && isFinite(v) && v > 0 && v < o && (!p.PromoAte || String(p.PromoAte) >= today_())); }
+function prodOut_(p) { const pv = promoVale_(p); return { promo: pv ? Number(p.PromoPreco) : null, promoAte: pv ? String(p.PromoAte || '') : '', id: p.ProdutoID, nome: p.Nome, categoria: p.Categoria || 'Outros', preco: Number(p.Preco) || 0, descricao: p.Descricao || '', foto: p.Foto || '', opcoes: p.Opcoes || '', disponivel: p.Disponivel !== '0' }; }
 function listProducts_() { return table_('Produtos').rows.filter(function (p) { return p.Ativo !== '0'; }).sort(function (a, b) { return Number(a.Ordem) - Number(b.Ordem); }).map(prodOut_); }
 function saveProduct_(d, u) {
   return withLock_(function () {
@@ -874,6 +875,23 @@ function saveProduct_(d, u) {
     if (d.id) { const r = t.rows.filter(function (x) { return x.ProdutoID === d.id && x.Ativo !== '0'; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Produto não encontrado.'); writeRow_(t, r._row, row); audit_(u.email, 'PRODUTO_EDITADO', nome, 'OK'); return { id: d.id }; }
     row.ProdutoID = id_('PRD'); row.Ativo = '1'; row.Ordem = String(t.rows.length + 1); if (row.Foto === undefined) row.Foto = '';
     appendRow_(t, row); audit_(u.email, 'PRODUTO', nome, 'OK'); return { id: row.ProdutoID };
+  });
+}
+/* Promoções: escopo 'item' | 'lote' (ids marcados) | 'categoria' | 'todos'. tipo 'percent' (1–90) ou 'valor' (preço promocional fixo, só item/lote). limpar:true remove. */
+function setPromo_(d, u) {
+  return withLock_(function () {
+    const t = table_('Produtos'), esc = String(d.escopo || '');
+    if (['item', 'lote', 'categoria', 'todos'].indexOf(esc) < 0) throw new ApiError('VALIDATION', 'Escolha onde aplicar a promoção.');
+    let alvo = t.rows.filter(function (r) { return r.Ativo !== '0'; });
+    if (esc === 'item' || esc === 'lote') { const ids = (Array.isArray(d.ids) ? d.ids : [d.id]).map(String); alvo = alvo.filter(function (r) { return ids.indexOf(r.ProdutoID) >= 0; }); if (esc === 'item' && alvo.length !== 1) throw new ApiError('NOT_FOUND', 'Produto não encontrado.'); if (!alvo.length) throw new ApiError('VALIDATION', 'Marque ao menos um produto.'); }
+    if (esc === 'categoria') { if (CATEGORIAS_LOJA.indexOf(d.categoria) < 0) throw new ApiError('VALIDATION', 'Escolha a categoria.'); alvo = alvo.filter(function (r) { return (r.Categoria || 'Outros') === d.categoria; }); if (!alvo.length) throw new ApiError('VALIDATION', 'Não há produtos nessa categoria.'); }
+    if (d.limpar) { alvo.forEach(function (r) { writeRow_(t, r._row, { PromoPreco: '', PromoAte: '' }); }); audit_(u.email, 'PROMO_REMOVIDA', esc + ':' + alvo.length, 'OK'); return { n: alvo.length }; }
+    const ate = d.ate ? String(d.ate) : ''; if (ate && !/^\d{4}-\d{2}-\d{2}$/.test(ate)) throw new ApiError('VALIDATION', 'Data final inválida.'); if (ate && ate < today_()) throw new ApiError('VALIDATION', 'A data final já passou.');
+    const tipo = d.tipo === 'valor' ? 'valor' : 'percent', val = Number(d.valor);
+    if (tipo === 'percent') { if (!isFinite(val) || val < 1 || val > 90) throw new ApiError('VALIDATION', 'Informe um desconto entre 1% e 90%.'); }
+    else { if (esc === 'categoria' || esc === 'todos') throw new ApiError('VALIDATION', 'Preço fixo só vale para produtos escolhidos; use porcentagem.'); if (!isFinite(val) || val <= 0) throw new ApiError('VALIDATION', 'Informe o preço promocional.'); }
+    alvo.forEach(function (r) { const o = Number(r.Preco) || 0, pr = tipo === 'percent' ? Math.round(o * (1 - val / 100) * 100) / 100 : Math.round(val * 100) / 100; if (pr >= o || pr <= 0) { if (esc === 'item') throw new ApiError('VALIDATION', 'O preço promocional precisa ser menor que o preço normal.'); return; } writeRow_(t, r._row, { PromoPreco: String(pr), PromoAte: ate }); });
+    audit_(u.email, 'PROMO', esc + ':' + alvo.length, 'OK'); return { n: alvo.length };
   });
 }
 function deleteProduct_(d, u) { return withLock_(function () { const t = table_('Produtos'), r = t.rows.filter(function (x) { return x.ProdutoID === d.id; })[0]; if (r) writeRow_(t, r._row, { Ativo: '0' }); audit_(u.email, 'PRODUTO_REMOVIDO', d.id, 'OK'); return { ok: true }; }); }
@@ -1036,7 +1054,7 @@ const ROUTES = {
   listEvents: { auth: 'any', fn: listEvents_ }, enroll: { auth: 'any', write: 1, fn: enroll_ }, listNews: { auth: 'any', fn: listNews_ },
   listMinistries: { auth: 'any', fn: listMin_ }, interest: { auth: 'any', write: 1, fn: interest_ },
   listCourses: { auth: 'any', fn: listCourses_ }, enrollCourse: { auth: 'any', write: 1, fn: enrollCourse_ },
-  listLessons: { auth: 'any', fn: listLessons_ }, listDynamics: { auth: 'any', fn: listDyn_ }, addDynamic: { auth: 'any', write: 1, fn: addDyn_ }, listVideos: { auth: 'any', fn: listVideos_ }, listProducts: { auth: 'any', fn: listProducts_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
+  listLessons: { auth: 'any', fn: listLessons_ }, listDynamics: { auth: 'any', fn: listDyn_ }, addDynamic: { auth: 'any', write: 1, fn: addDyn_ }, listVideos: { auth: 'any', fn: listVideos_ }, listProducts: { auth: 'any', fn: listProducts_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
   searchCells: { auth: 'any', fn: searchCells_ }, addPrayer: { auth: 'any', write: 1, fn: addPrayer_ }, listPrayers: { auth: 'any', fn: listPrayers_ },
   cellMembers: { auth: 'any', fn: cellMembers_ }, saveCell: { auth: 'any', write: 1, fn: saveCell_ }, saveAttendance: { auth: 'any', write: 1, fn: saveAttendance_ }, history: { auth: 'any', fn: history_ },
   indicators: { auth: 'any', fn: indicators_ }, getPapeis: { auth: 'any', fn: getPapeis_ }, savePapeis: { auth: 'any', write: 1, fn: savePapeis_ }, createCellEvent: { auth: 'any', write: 1, fn: createCellEvent_ },
