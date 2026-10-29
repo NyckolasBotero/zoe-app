@@ -166,8 +166,8 @@ A Zoe avisa aniversariantes (com botão "Enviar parabéns" e Salmos 118:24), Nat
 ## Botons de eventos
 Em Administração › Publicar evento, o campo **Insígnia exclusiva** cria um boton para quem comparecer. O card **Presença nos eventos** (check-in) marca quem veio (`checkinEvento`, tabela `EventoPresenca`); quem vai a todos os eventos do ano (mínimo 3) ganha **Presença total**. Curso concluído também dá insígnia com o ano.
 
-## Corrida da Bíblia
-Administração › **Corrida da Bíblia (programar)**: início (1º de janeiro), máximo de capítulos por dia e total (1189). Aparece em Início, Eventos e na aba própria. Só se registra a leitura **do dia**, com um devocional de no mínimo 30 letras, que o líder da célula (ou a administração) valida ou recusa com motivo. Faixa pelos dias perdidos: 0 ouro, 1 prata, 2 ou mais bronze; em cada faixa os 3 primeiros a terminar ganham a insígnia do 1º, 2º e 3º lugar. Tabelas `Corridas`, `CorridaLeitura`, `CorridaConc`.
+## Maratona Bíblica
+Administração › **Maratona Bíblica (programar)**: início (1º de janeiro), máximo de capítulos por dia e total (1189). Aparece em Início, Eventos e na aba própria. Só se registra a leitura **do dia**, com um devocional de no mínimo 30 letras, que o líder da célula (ou a administração) valida ou recusa com motivo. Faixa pelos dias perdidos: 0 ouro, 1 prata, 2 ou mais bronze; em cada faixa os 3 primeiros a terminar ganham a insígnia do 1º, 2º e 3º lugar. Tabelas `Corridas`, `CorridaLeitura`, `CorridaConc`.
 
 **Ao publicar o Code.gs:** cole o arquivo, rode `setup()` (cria as novas tabelas/colunas) e publique uma nova versão.
 

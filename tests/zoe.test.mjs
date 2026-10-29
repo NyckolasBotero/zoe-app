@@ -666,7 +666,7 @@ test('botons de eventos: check-in dá insígnia exclusiva e "presença total"', 
   const pb = e.call('profileView', { membroId: b }, adm).data.insignias.map(x => x.codigo); assert.ok(!pb.includes('presenca')); assert.equal(pb.filter(x => x.startsWith('evento:')).length, 1);
   assert.equal(e.call('eventoPresenca', { eventoId: ids[0] }, adm).data.presentes.length, 2);
 });
-test('Corrida da Bíblia: limite diário, devocional validado pelo líder, faixas e lugares', () => {
+test('Maratona Bíblica: limite diário, devocional validado pelo líder, faixas e lugares', () => {
   const { e, adm, tok, mk } = boot(); const l = mk('lider@zoe.com', 'membro'), a = mk('ana@zoe.com', 'membro'), b = mk('bia@zoe.com', 'membro'), c = mk('cris@zoe.com', 'membro'); const L = tok('lider@zoe.com', 'Temp12345'), A = tok('ana@zoe.com', 'Temp12345'), B = tok('bia@zoe.com', 'Temp12345'), C = tok('cris@zoe.com', 'Temp12345');
   const cel = e.call('createCell', { nome: 'Semeadores', liderId: l, dia: 'Quinta', inicio: '20:00', fim: '21:30', categoria: 'Mulheres e Homens', faixa: 'Jovens', bairro: 'X', cidade: 'Y', uf: 'GO' }, adm).data.id;
   for (const m of [a, b]) assert.ok(e.call('adminSave', { tipo: 'membros', id: m, valores: { Nome: m === a ? 'Ana' : 'Bia', CelulaID: cel } }, adm).ok);
@@ -715,4 +715,37 @@ test('pessoas: busca por nome, perfil aberto com envolvimento (ou oculto) e chat
   assert.ok(e.call('sendChat', { para: a, texto: 'Tudo ótimo!' }, B).ok); assert.equal(e.call('getChat', { com: b, depois: g.msgs[1].ts }, A).data.msgs.length, 1);
   assert.equal(e.call('getChat', { com: a }, tok('carla@zoe.com', 'Temp12345')).data.msgs.length, 0); // outra pessoa não lê a conversa
   for (let i = 0; i < 20; i++) e.call('sendChat', { para: b, texto: 'spam ' + i }, A); assert.equal(e.call('sendChat', { para: b, texto: 'mais' }, A).error.code, 'RATE');
+});
+
+test('feed social: decisão, curtir, comentar, visibilidade', () => {
+  const { e, adm, tok, mk } = boot(); const a = mk('ana@zoe.com', 'membro'), A = tok('ana@zoe.com', 'Temp12345');
+  assert.equal(e.call('registerDecision', { nome: 'Carlos Souza' }, A).error.code, 'FORBIDDEN');
+  const r = e.call('registerDecision', { nome: 'Carlos Souza' }, adm); assert.ok(r.ok, JSON.stringify(r));
+  assert.equal(e.call('registerDecision', { nome: 'carlos souza' }, adm).error.code, 'DUPLICATE');
+  const f = e.call('listFeed', {}, A).data.itens; assert.equal(f.length, 1); assert.equal(f[0].tipo, 'decisao'); assert.equal(f[0].titulo, 'Carlos Souza aceitou Jesus!');
+  assert.equal(e.call('likePost', { id: f[0].id }, A).data.curtidas, 1); assert.equal(e.call('likePost', { id: f[0].id, on: false }, A).data.curtidas, 0);
+  assert.ok(e.call('commentPost', { id: f[0].id, texto: 'Glória a Deus!' }, A).ok); assert.equal(e.call('listComments', { id: f[0].id }, A).data.itens.length, 1);
+  assert.equal(e.call('listFeed', {}, A).data.itens[0].comentarios, 1);
+  assert.equal(e.call('deletePost', { id: f[0].id }, A).error.code, 'FORBIDDEN'); assert.ok(e.call('deletePost', { id: f[0].id }, adm).ok); assert.equal(e.call('listFeed', {}, A).data.itens.length, 0);
+});
+test('consolidação: visitante, célula mais próxima, alerta ao líder', () => {
+  const { e, adm, tok, mk } = boot(); const lid = mk('lid@zoe.com', 'membro'), A = (mk('ana@zoe.com', 'membro'), tok('ana@zoe.com', 'Temp12345'));
+  const c1 = e.call('createCell', { nome: 'Célula Norte', liderId: lid, coordenadas: '-23.50, -46.60' }, adm), c2 = e.call('createCell', { nome: 'Célula Sul', coordenadas: '-23.90, -46.60' }, adm); assert.ok(c1.ok && c2.ok, JSON.stringify(c1));
+  assert.equal(e.call('saveVisitor', { nome: 'Pedro', telefone: '11988887777', lat: -23.51, lng: -46.61 }, A).error.code, 'FORBIDDEN');
+  assert.equal(e.call('saveVisitor', { nome: 'Pedro', telefone: '11988887777' }, adm).error.code, 'VALIDATION');
+  const r = e.call('saveVisitor', { nome: 'Pedro Lima', apelido: 'Pedrão', telefone: '11988887777', lat: -23.51, lng: -46.61 }, adm); assert.ok(r.ok, JSON.stringify(r)); assert.equal(r.data.celula.nome, 'Célula Norte');
+  const L = (e.run(`(function(){const t=table_('Usuarios');return 1})()`), tok('lid@zoe.com', 'Temp12345'));
+  const n = e.sheets.Notificacoes.rows.slice(1).filter(x => x[1] === lid && x[2] === 'visitante'); assert.equal(n.length, 1);
+  const lv = e.call('listVisitors', {}, adm).data; assert.equal(lv.itens.length, 1); assert.ok(lv.itens[0].msg.includes('Pedrão'));
+  assert.ok(e.call('contactVisitor', { id: r.data.id, msg: 'Oi!' }, adm).ok); assert.equal(e.call('listVisitors', {}, adm).data.itens[0].contatado, true);
+});
+test('Bíblia: marcações, comentários públicos e anotação do culto na célula', () => {
+  const { e, adm, tok, mk } = boot(); const a = mk('ana@zoe.com', 'membro'), A = tok('ana@zoe.com', 'Temp12345'), B = (mk('bia@zoe.com', 'membro'), tok('bia@zoe.com', 'Temp12345'));
+  const c = e.call('createCell', { nome: 'Célula Norte' }, adm).data.id; e.run(`(function(){const t=table_('Membros');t.rows.forEach(function(m){if(m.Email==='ana@zoe.com'||m.Email==='bia@zoe.com')writeRow_(t,m._row,{CelulaID:'${c}'})})})()`);
+  assert.ok(e.call('saveMark', { ref: '43:3:16', cor: 'amarelo', coment: 'Amor!', publico: true }, A).ok); assert.equal(e.call('saveMark', { ref: 'x', cor: 'amarelo' }, A).error.code, 'VALIDATION');
+  const mb = e.call('listMarks', { b: 43, c: 3 }, B).data; assert.equal(mb.minhas.length, 0); assert.equal(mb.publicos.length, 1);
+  assert.equal(e.call('listMarks', { b: 43, c: 3 }, A).data.minhas[0].cor, 'amarelo');
+  assert.ok(e.call('saveMark', { ref: '43:3:16' }, A).data.removida);
+  const n = e.call('saveNote', { data: '2026-11-01', tema: 'Mordomia Cristã', itens: [{ ref: '43:3:16', texto: 'Porque Deus amou…', coment: 'minha nota' }] }, A); assert.ok(n.ok, JSON.stringify(n)); assert.equal(n.data.titulo, '01/11/2026 Domingo - Tema Mordomia Cristã');
+  const fc = e.call('listFeed', { escopo: 'celula' }, B).data.itens; assert.equal(fc.length, 1); assert.equal(fc[0].meta.itens.length, 1);
 });
