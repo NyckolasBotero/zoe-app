@@ -8,14 +8,17 @@ with sync_playwright() as p:
     pg.evaluate("api('guideDone')")
     pg.evaluate("api('saveMember',{membro:{Nome:'Pastor Admin',DataBatismo:'2020-01-05',DataDecisao:'2019-03-02'}})")
     pg.click('.nv[aria-label="Meu perfil"]'); pg.wait_for_selector('.pf-head')
-    assert pg.locator('.fx-g .bd').count()==2, pg.locator('.fx-g .bd').count()
-    assert 'Nível 3' in pg.inner_text('.pf-head'), pg.inner_text('.pf-head')
-    assert pg.locator('#faixa.open').count()==0
-    pg.click('#pf_ins'); pg.wait_for_selector('#faixa.open'); pg.wait_for_timeout(900); pg.screenshot(path=OUT+'/perfil_faixa.png')
-    pg.click('.bd >> nth=0'); pg.wait_for_selector('.modal .bdbig svg'); pg.click('.modal button:has-text("Fechar")')
-    pg.click('text=Personalizar'); pg.wait_for_selector('#pc_bio')
-    assert pg.locator('.sw.lock').count()>0
-    pg.fill('#pc_bio','Servo do Senhor'); pg.click('.sw:has-text("Pôr do sol")'); pg.click('.sw:has-text("Dourada")'); pg.click('text=Salvar perfil'); pg.wait_for_selector('.pf.fb-solpoente'); assert 'Servo do Senhor' in pg.inner_text('.pf-head'); assert pg.locator('.pfav.mold-dourada').count()==1
+    pg.wait_for_selector('#faixa.open'); pg.wait_for_timeout(900)
+    assert pg.locator('.fx-g .bd:not(.lock)').count()==2, pg.locator('.fx-g .bd:not(.lock)').count()
+    assert pg.locator('.fx-g .bd.lock').count()>=1
+    assert 'Nível 6' in pg.inner_text('.pf-head'), pg.inner_text('.pf-head')
+    pg.screenshot(path=OUT+'/perfil_faixa.png')
+    pg.click('.fx-g .bd.lock >> nth=0'); pg.wait_for_selector('.modal .bdbig.lock svg'); pg.click('.modal button:has-text("Fechar")')
+    pg.click('#pf_ins'); pg.wait_for_selector('#faixa:not(.open)',state='attached')
+    pg.click('.chip:has-text("Personalizar")'); pg.wait_for_selector('#pc_bio')
+    assert pg.locator('.sw.lock').count()>=10
+    pg.fill('#pc_bio','Servo do Senhor'); pg.click('.sws >> nth=0 >> .sw:has-text("Verde Zoe")'); pg.click('text=Salvar perfil'); pg.wait_for_selector('.pf.fb-zoe'); assert 'Servo do Senhor' in pg.inner_text('.pf-head')
+    pg.click('.chip:has-text("Editar perfil")'); pg.wait_for_selector('text=Minhas informações de perfil')
     pg.screenshot(path=OUT+'/perfil.png')
     print('ERROS',errs); assert not errs
 print('OK')
