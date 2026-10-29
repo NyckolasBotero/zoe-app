@@ -153,3 +153,20 @@ Em **Administração → Definições de Parâmetros → Regras Células** o adm
 - **Fluxo:** professor cria o curso (informa se a matrícula exige aprovação e a presença mínima do certificado) → vai para **Aprovações** (com resumo; o supervisor também recebe notificação) → aprovado, o professor monta o cronograma (uma aula, ou **em lote**: quantidade, dias da semana, horário, PDF e título de cada aula) → **pede o início** e o supervisor autoriza → aulas com **chamada** e **foto do dia** → o professor **encerra** e avalia cada aluno (presença sobre o total de aulas) → **emite o certificado**.
 - **Aluno** (aba *Cursos*): Cursos da igreja (se matricula), Meus cursos, Cursos que você fez (certificado) e Matrículas pendentes (permitidas só pelos supervisores). Vê o cronograma por dia, títulos e PDFs, e **avalia as aulas** (nota 1–10, feedback, dúvida e observação; a dúvida chega como notificação ao professor).
 - **Certificado digital** com a identidade da Zoe, carga horária, descrição, presença e **assinaturas** do professor e do supervisor/pastor que aprovou o curso. Cada um cadastra a sua (desenhar ou digitar o nome) em *Aulas › Minha assinatura* ou em *Aprovações*. Botão para imprimir/salvar em PDF.
+
+## Zoe participativa
+A Zoe avisa aniversariantes (com botão "Enviar parabéns" e Salmos 118:24), Natal, Dia do Pastor (2º domingo de junho), Independência, comemora decisão por Cristo, batismo, perfil completo e cada insígnia nova. Cada aviso aparece uma vez (`S.zMom`).
+
+## Meu perfil, insígnias bordadas e XP
+- Aba **Meu perfil**: foto com moldura, capa, fundo, descrição, versículo, destaques de fotos (estilo mural) e o botão **Insígnias**, que desce uma faixa verde bordada.
+- Insígnias são desenhos originais em SVG (aparência bordada: borda "merrow", textura de trama, ícone em relevo), inspiradas no estilo de patches de escoteiros, sem copiar nenhum.
+- **XP**: acesso diário +5, presença na célula +10, perfil completo +100, decisão +150, batismo +200, curso concluído +300, insígnias de eventos e da Corrida. 10 níveis (Semente … Vida em abundância) liberam fundos, molduras animadas (arco-íris, chama, luz), capa, versículo e mais destaques de fotos.
+- Tabelas: `Insignias`, `XpLog`, `Perfis`, `PerfilFotos`. Rotas: `profileView`, `saveProfile`, `saveHighlight`, `deleteHighlight`.
+
+## Botons de eventos
+Em Administração › Publicar evento, o campo **Insígnia exclusiva** cria um boton para quem comparecer. O card **Presença nos eventos** (check-in) marca quem veio (`checkinEvento`, tabela `EventoPresenca`); quem vai a todos os eventos do ano (mínimo 3) ganha **Presença total**. Curso concluído também dá insígnia com o ano.
+
+## Corrida da Bíblia
+Administração › **Corrida da Bíblia (programar)**: início (1º de janeiro), máximo de capítulos por dia e total (1189). Aparece em Início, Eventos e na aba própria. Só se registra a leitura **do dia**, com um devocional de no mínimo 30 letras, que o líder da célula (ou a administração) valida ou recusa com motivo. Faixa pelos dias perdidos: 0 ouro, 1 prata, 2 ou mais bronze; em cada faixa os 3 primeiros a terminar ganham a insígnia do 1º, 2º e 3º lugar. Tabelas `Corridas`, `CorridaLeitura`, `CorridaConc`.
+
+**Ao publicar o Code.gs:** cole o arquivo, rode `setup()` (cria as novas tabelas/colunas) e publique uma nova versão.
