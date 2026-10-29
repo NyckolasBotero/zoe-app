@@ -13,7 +13,7 @@ export function makeEnv() {
     appendRow: row => { s.rows.push(row.slice()); }, deleteRow: n => { s.rows.splice(n - 1, 1); }, setFrozenRows() {} }; sheets[name] = s; return s; };
   const store = {}, props = {};
   const ss = { getSheetByName: n => sheets[n] || null, insertSheet: n => mk(n), getId: () => 'SSID' };
-  const ctx = { Logger: { log() {} }, console: { error() {}, log() {} }, Date, Math, JSON, Number, String, Object, Array, isFinite, isNaN, RegExp, Error,
+  const ctx = { Logger: { log() {} }, console: { error(...a) { if (process.env.ZDEBUG) process.stderr.write(a.join(" ") + "\n"); }, log() {} }, Date, Math, JSON, Number, String, Object, Array, isFinite, isNaN, RegExp, Error,
     SpreadsheetApp: { create: () => ss, openById: () => ss },
     CacheService: { getScriptCache: () => ({ get: k => store[k] ?? null, put: (k, v) => { store[k] = v; }, remove: k => { delete store[k]; } }) },
     LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },

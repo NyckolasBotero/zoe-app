@@ -17,20 +17,21 @@
 const CFG = { TZ: 'America/Sao_Paulo', SESSION_TTL: 21600, MAX_FAILS: 5, LOCK_SECONDS: 900, HASH_ROUNDS: 1500, SHEET_NAME: 'Zoe - Dados' };
 // Nível de acesso ao app (Usuarios.Papel). Cargos de célula (líder, supervisor, líder em treinamento) NÃO são papéis:
 // derivam de Celulas.LiderID / SupervisorID / TreinamentoID e podem somar-se a qualquer nível (ex.: admin + líder).
-const PAPEIS = ['admin', 'pastor', 'membro', 'frequentador'];
+const PAPEIS = ['admin', 'pastor', 'professor', 'membro', 'frequentador'];
 const PAPEIS_BASE = PAPEIS;
-const ROTULOS_TIPO = { admin: 'Administrador', pastor: 'Pastor', membro: 'Membro', frequentador: 'Frequentador' };
+const ROTULOS_TIPO = { admin: 'Administrador', pastor: 'Pastor', professor: 'Professor', membro: 'Membro', frequentador: 'Frequentador' };
 // guias do menu que o administrador pode esconder por tipo de acesso (Início, Editar perfil, Aprovações e Administração seguem regras próprias)
-const ABAS_APP = ['membro', 'biblioteca', 'celula', 'familia', 'ministerios', 'buscar', 'licoes', 'dinamicas', 'cursos', 'eventos', 'aniversarios', 'tutoriais', 'loja'];
+const ABAS_APP = ['membro', 'biblioteca', 'celula', 'familia', 'ministerios', 'buscar', 'licoes', 'dinamicas', 'cursos', 'eventos', 'aniversarios', 'tutoriais', 'loja', 'aulas'];
 const GUIAS_CEL = ['freq', 'plan', 'papeis', 'oracao', 'ind', 'membros', 'perfilc', 'priv', 'pres', 'hist', 'mural', 'org'];
-const PERMS = ['eventos', 'transf', 'celulas', 'min', 'config'];
+const PERMS = ['eventos', 'transf', 'celulas', 'min', 'config', 'prof', 'cursos'];
 const DEFAULT_PERMS = {
-  admin: { eventos: 1, transf: 1, celulas: 1, min: 1, config: 1 },
-  pastor: { eventos: 1, transf: 1, celulas: 1, min: 1, config: 0 },
-  membro: { eventos: 0, transf: 0, celulas: 0, min: 0, config: 0 },
-  frequentador: { eventos: 0, transf: 0, celulas: 0, min: 0, config: 0 }
+  admin: { eventos: 1, transf: 1, celulas: 1, min: 1, config: 1, prof: 1, cursos: 1 },
+  pastor: { eventos: 1, transf: 1, celulas: 1, min: 1, config: 0, prof: 1, cursos: 1 },
+  professor: { eventos: 0, transf: 0, celulas: 0, min: 0, config: 0, prof: 1, cursos: 0 },
+  membro: { eventos: 0, transf: 0, celulas: 0, min: 0, config: 0, prof: 0, cursos: 0 },
+  frequentador: { eventos: 0, transf: 0, celulas: 0, min: 0, config: 0, prof: 0, cursos: 0 }
 };
-const PERMS_ZERO = { eventos: 0, transf: 0, celulas: 0, min: 0, config: 0 };
+const PERMS_ZERO = { eventos: 0, transf: 0, celulas: 0, min: 0, config: 0, prof: 0, cursos: 0 };
 const SHEETS = {
   Usuarios: ['Email', 'SenhaHash', 'Salt', 'Papel', 'Status', 'MembroID', 'TrocarSenha', 'CriadoEm', 'UltimoAcesso', 'GuiaVisto'],
   Membros: ['MembroID', 'Nome', 'Simples', 'Apelido', 'Sexo', 'Nascimento', 'Nacionalidade', 'Naturalidade', 'Sangue', 'Doador', 'Profissao', 'Telefone', 'Email', 'CEP', 'UF', 'Cidade', 'Endereco', 'Bairro', 'DataDecisao', 'Batizado', 'DataBatismo', 'IgrejaBatismo', 'Mae', 'Pai', 'EstadoCivil', 'Conjuge', 'DataCasamento', 'Filhos', 'Foto', 'CelulaID', 'EhMembro', 'Status', 'DataSaida', 'Extras', 'AceitePrivacidade', 'AceiteTermos', 'CriadoEm'],
@@ -54,8 +55,12 @@ const SHEETS = {
   Curtidas: ['Tipo', 'AlvoID', 'MembroID', 'Data'],
   Saidas: ['SaidaID', 'MembroID', 'CelulaID', 'Motivo', 'SolicitadoPor', 'Status', 'DecididoPor', 'Data', 'DataDecisao'],
   Transferencias: ['TransfID', 'MembroID', 'DeCelulaID', 'ParaCelulaID', 'SolicitadoPor', 'Status', 'DecididoPor', 'Data', 'DataDecisao', 'Motivo'],
-  Cursos: ['CursoID', 'Nome', 'Ativo'],
-  Matriculas: ['MatriculaID', 'CursoID', 'MembroID', 'Status', 'Data'],
+  Cursos: ['CursoID', 'Nome', 'Ativo', 'Descricao', 'ProfessorID', 'ExigeAprovacao', 'PresencaMin', 'CargaHoras', 'Status', 'InicioStatus', 'Motivo', 'Foto', 'CriadoEm', 'DecididoPor', 'DataDecisao'],
+  Matriculas: ['MatriculaID', 'CursoID', 'MembroID', 'Status', 'Data', 'DecididoPor', 'DataDecisao', 'Motivo', 'PresencaPct', 'Cert', 'CertCodigo', 'CertData', 'CertPor'],
+  Aulas: ['AulaID', 'CursoID', 'Numero', 'Titulo', 'Descricao', 'Data', 'Inicio', 'Fim', 'ArquivoID', 'PdfNome', 'Foto', 'Dada', 'Status'],
+  AulaPresenca: ['AulaID', 'MembroID', 'Presente'],
+  AulaAval: ['AulaID', 'CursoID', 'MembroID', 'Nota', 'Feedback', 'Duvida', 'Obs', 'Data'],
+  Assinaturas: ['MembroID', 'Tipo', 'Dado', 'Cargo', 'Atualizado'],
   Noticias: ['NoticiaID', 'Titulo', 'Texto', 'Data', 'CriadoPor', 'Status'],
   Licoes: ['LicaoID', 'Titulo', 'Resumo', 'Categoria', 'Url', 'Status'],
   Dinamicas: ['DinamicaID', 'Titulo', 'Descricao', 'Minutos', 'MembroID', 'Data'],
@@ -170,7 +175,7 @@ function tiposCustom_() { return jparse_(cfgMap_().TiposAcesso, []).filter(funct
 function papeis_() { return PAPEIS_BASE.concat(tiposCustom_().map(function (t) { return t.id; })); }
 function papelValido_(p) { return PAPEIS_BASE.indexOf(p) >= 0 || tiposCustom_().some(function (t) { return t.id === p; }); }
 function tiposOut_() { return PAPEIS_BASE.map(function (id) { return { id: id, nome: ROTULOS_TIPO[id], base: true }; }).concat(tiposCustom_().map(function (t) { return { id: t.id, nome: t.nome, base: false }; })); }
-function permMatrix_() { const o = {}, ps = papeis_(); table_('Permissoes').rows.forEach(function (r) { if (ps.indexOf(r.Papel) < 0) return; o[r.Papel] = {}; PERMS.forEach(function (k) { o[r.Papel][k] = r[k] === '1' || r[k] === 'true' ? 1 : 0; }); }); ps.forEach(function (p) { if (!o[p]) o[p] = Object.assign({}, DEFAULT_PERMS[p] || PERMS_ZERO); }); o.admin.config = 1; return o; }
+function permMatrix_() { const o = {}, ps = papeis_(); table_('Permissoes').rows.forEach(function (r) { if (ps.indexOf(r.Papel) < 0) return; o[r.Papel] = {}; PERMS.forEach(function (k) { o[r.Papel][k] = (r[k] === '' || r[k] === undefined) && (DEFAULT_PERMS[r.Papel] || {})[k] !== undefined ? (DEFAULT_PERMS[r.Papel][k] ? 1 : 0) : (r[k] === '1' || r[k] === 'true' || r[k] === 1 || r[k] === true ? 1 : 0); }); }); ps.forEach(function (p) { if (!o[p]) o[p] = Object.assign({}, DEFAULT_PERMS[p] || PERMS_ZERO); }); o.admin.config = 1; o.admin.prof = 1; o.admin.cursos = 1; return o; }
 // "Frequentador" é calculado: quem está numa célula e tem presença abaixo do limite (padrão 70%) nas últimas reuniões
 function pctMembro_(membroId, celulaId) {
   const cfg = cfgMap_(), janela = Math.max(1, Number(cfg.FrequentadorJanela) || 8), reun = table_('Reunioes').rows.filter(function (r) { return r.CelulaID === celulaId; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; });
@@ -483,7 +488,7 @@ function aprovItens_(u) {
   const out = [];
   const add = function (o) {
     o.hist = (logs[o.tipo + ':' + o.id] || []).sort(function (a, b) { return a.data < b.data ? -1 : 1; }); o.minha = !!o.decididoPorId && o.decididoPorId === u.membroId;
-    o.podeReverter = o.status !== 'pendente' && (o.minha || o.admOk); delete o.admOk;
+    o.podeReverter = !o.semDesfazer && o.status !== 'pendente' && (o.minha || o.admOk); delete o.admOk;
     if (o.status !== 'pendente') { const dec = o.hist.filter(function (h) { return h.acao === 'autorizado' || h.acao === 'negado'; }).pop(); o.motivoDecisao = dec ? dec.motivo : ''; }
     else if (out.length < 60) o.resumo = resumoPessoa_(o.pessoaId, o.ctxCel);
     delete o.ctxCel; out.push(o);
@@ -505,6 +510,16 @@ function aprovItens_(u) {
     add({ tipo: 'membresia', id: b.MembresiaID, pessoaId: b.MembroID, titulo: nm(b.MembroID) + ' pode se tornar membro', detalhe: 'Frequentou ' + b.Frequencias + ' células seguidas em ' + ((cel[b.CelulaID] || {}).Nome || '?') + '. Revise o cadastro antes de aprovar.', status: b.Status, data: b.Data, solicitante: 'Sistema', decididoPorId: b.DecididoPor, decididoPor: nm(b.DecididoPor), dataDecisao: b.DataDecisao, pode: true, admOk: adm, ctxCel: b.CelulaID, ctx: { de: (cel[b.CelulaID] || {}).Nome || '', frequencias: Number(b.Frequencias || 0) },
       revisar: { nome: m.Nome, telefone: m.Telefone, email: m.Email, nascimento: m.Nascimento, endereco: [m.Endereco, m.Bairro, m.Cidade].filter(String).join(', ') } });
   });
+  if (can_(u, 'cursos')) {
+    const aulasC = {}; table_('Aulas').rows.forEach(function (a) { if (a.Status !== 'Removida') (aulasC[a.CursoID] = aulasC[a.CursoID] || []).push(a); }); const cursosM = {};
+    table_('Cursos').rows.forEach(function (c) {
+      cursosM[c.CursoID] = c; if (!c.ProfessorID) return; const au = aulasC[c.CursoID] || [], ds = au.map(function (a) { return a.Data; }).sort(), ctx = { curso: c.Nome, professor: nm(c.ProfessorID), descricao: c.Descricao || '', aulas: au.length, periodo: ds.length ? dBR_(ds[0]) + ' a ' + dBR_(ds[ds.length - 1]) : '', carga: horasTxt_(cargaMin_(c, au)), exige: c.ExigeAprovacao === '1', presencaMin: Number(c.PresencaMin) || 75 }, s0 = cursoSt_(c);
+      add({ tipo: 'curso', id: c.CursoID, pessoaId: c.ProfessorID, titulo: 'Curso: ' + c.Nome, detalhe: 'Professor ' + nm(c.ProfessorID) + ' pede para publicar este curso.', status: s0 === 'pendente' ? 'pendente' : s0 === 'recusado' ? 'negado' : 'autorizado', data: c.CriadoEm || '', solicitante: nm(c.ProfessorID), decididoPorId: c.DecididoPor, decididoPor: nm(c.DecididoPor), dataDecisao: c.DataDecisao, pode: true, semDesfazer: 1, ctx: ctx });
+      if (c.InicioStatus) add({ tipo: 'inicio', id: c.CursoID, pessoaId: c.ProfessorID, titulo: 'Início das aulas: ' + c.Nome, detalhe: 'Professor ' + nm(c.ProfessorID) + ' pede para começar as aulas.', status: c.InicioStatus === 'solicitado' ? 'pendente' : c.InicioStatus, data: c.CriadoEm || '', solicitante: nm(c.ProfessorID), decididoPorId: '', decididoPor: '', dataDecisao: '', pode: true, semDesfazer: 1, ctx: ctx });
+    });
+    table_('Matriculas').rows.forEach(function (r) { const c = cursosM[r.CursoID]; if (!c || !c.ProfessorID || c.ExigeAprovacao !== '1') return; const st = mstat_(r); if (st === 'concluido') return;
+      add({ tipo: 'matricula', id: r.MatriculaID, pessoaId: r.MembroID, titulo: nm(r.MembroID) + ' quer fazer o curso ' + c.Nome, detalhe: 'Professor ' + nm(c.ProfessorID), status: st, data: r.Data, solicitante: nm(r.MembroID), decididoPorId: r.DecididoPor, decididoPor: nm(r.DecididoPor), dataDecisao: r.DataDecisao, pode: true, semDesfazer: 1, ctx: { curso: c.Nome, professor: nm(c.ProfessorID) } }); });
+  }
   return out.sort(function (a, b) { return a.data < b.data ? 1 : -1; });
 }
 function listApprovals_(d, u) { const l = aprovItens_(u).slice(0, 300); return { itens: l, pendentes: l.filter(function (x) { return x.status === 'pendente' && x.pode; }).length }; }
@@ -545,6 +560,8 @@ function notifyDecisao_(tipo, id, status, motivo, u) {
   else if (tipo === 'saida') { const r = table_('Saidas').rows.filter(function (x) { return x.SaidaID === id; })[0]; if (!r) return; pessoa = nome(r.MembroID); rot = 'Saída de ' + pessoa; dest = [r.SolicitadoPor, lider(r.CelulaID)]; }
   else if (tipo === 'interesse') { const r = table_('Interesses').rows.filter(function (x) { return x.InteresseID === id; })[0]; if (!r) return; const g = table_('Membros').rows.filter(function (x) { return x.MembroID === r.MembroID; })[0] || {}; pessoa = nome(r.MembroID); rot = 'Ministério de ' + pessoa; dest = [r.MembroID, lider(g.CelulaID)]; }
   else if (tipo === 'membresia') { const r = table_('Membresias').rows.filter(function (x) { return x.MembresiaID === id; })[0]; if (!r) return; pessoa = nome(r.MembroID); rot = 'Cadastro de membro de ' + pessoa; dest = [lider(r.CelulaID)]; }
+  else if (tipo === 'curso' || tipo === 'inicio') { const r = table_('Cursos').rows.filter(function (x) { return x.CursoID === id; })[0]; if (!r) return; pessoa = r.Nome; rot = (tipo === 'curso' ? 'Curso ' : 'Início das aulas de ') + r.Nome; dest = [r.ProfessorID]; }
+  else if (tipo === 'matricula') { const r = table_('Matriculas').rows.filter(function (x) { return x.MatriculaID === id; })[0]; if (!r) return; const c = table_('Cursos').rows.filter(function (x) { return x.CursoID === r.CursoID; })[0] || {}; rot = 'Matrícula no curso ' + (c.Nome || ''); dest = [r.MembroID]; }
   const seen = {}; dest.forEach(function (m) { if (!m || m === u.membroId || seen[m]) return; seen[m] = 1; notify_(m, 'aprovacao', rot + (status === 'autorizado' ? ' aprovada' : ' recusada'), (motivo ? 'Motivo: ' + motivo : 'Sem motivo informado.') + ' · por ' + nome(u.membroId), tipo + ':' + id); });
 }
 function decideInterest_(d, u) {
@@ -567,7 +584,7 @@ function decideMembership_(d, u) {
 function decideApproval_(d, u) {
   const tipo = String(d.tipo || ''), mot = clip_(d.motivo, 300); let r;
   if (d.decisao !== 'autorizado' && !mot) throw new ApiError('VALIDATION', 'Informe o motivo da recusa. Ele é enviado ao líder como notificação.');
-  if (tipo === 'transferencia') r = decideTransfer_(d, u); else if (tipo === 'saida') r = decideExit_(d, u); else if (tipo === 'interesse') r = decideInterest_(d, u); else if (tipo === 'membresia') r = decideMembership_(d, u); else throw new ApiError('VALIDATION', 'Tipo de pedido inválido.');
+  if (tipo === 'transferencia') r = decideTransfer_(d, u); else if (tipo === 'saida') r = decideExit_(d, u); else if (tipo === 'interesse') r = decideInterest_(d, u); else if (tipo === 'membresia') r = decideMembership_(d, u); else if (tipo === 'curso') r = decideCourse_(d, u); else if (tipo === 'inicio') r = decideStart_(d, u); else if (tipo === 'matricula') r = decideEnroll_(d, u); else throw new ApiError('VALIDATION', 'Tipo de pedido inválido.');
   logAprov_(tipo, d.id, r.status, u, mot);
   try { notifyDecisao_(tipo, d.id, r.status, mot, u); } catch (e) { /* a decisão já foi gravada */ }
   return r;
@@ -851,9 +868,6 @@ function saveMinistry_(d, u) {
   });
 }
 function deleteMinistry_(d, u) { return withLock_(function () { const t = table_('Ministerios'), r = t.rows.filter(function (x) { return x.MinisterioID === d.id; })[0]; if (r) writeRow_(t, r._row, { Ativo: '0' }); audit_(u.email, 'MINISTERIO_REMOVIDO', d.id, 'OK'); return { ok: true }; }); }
-function listCourses_(d, u) { const mine = {}; table_('Matriculas').rows.forEach(function (r) { if (r.MembroID === u.membroId) mine[r.CursoID] = r.Status; });
-  return table_('Cursos').rows.filter(function (c) { return c.Ativo !== '0'; }).map(function (c) { return { id: c.CursoID, nome: c.Nome, status: mine[c.CursoID] || '' }; }); }
-function enrollCourse_(d, u) { return withLock_(function () { const c = table_('Cursos').rows.filter(function (r) { return r.CursoID === d.cursoId && r.Ativo !== '0'; })[0]; if (!c) throw new ApiError('NOT_FOUND', 'Curso não encontrado.'); const t = table_('Matriculas'); if (!t.rows.some(function (r) { return r.CursoID === c.CursoID && r.MembroID === u.membroId; })) appendRow_(t, { MatriculaID: id_('MAT'), CursoID: c.CursoID, MembroID: u.membroId, Status: 'Pendente', Data: now_() }); return { status: 'Pendente' }; }); }
 function listLessons_() { return table_('Licoes').rows.filter(function (l) { return l.Status !== 'Removida'; }).map(function (l) { return { id: l.LicaoID, titulo: l.Titulo, resumo: l.Resumo, categoria: l.Categoria, url: l.Url }; }); }
 function listDyn_() { return table_('Dinamicas').rows.map(function (x) { return { id: x.DinamicaID, titulo: x.Titulo, descricao: x.Descricao, minutos: Number(x.Minutos || 10), meu: false, membroId: x.MembroID }; }); }
 function addDyn_(d, u) { const t = clip_(d.titulo, 100); if (!t) throw new ApiError('VALIDATION', 'Dê um nome à dinâmica.'); appendRow_(table_('Dinamicas'), { DinamicaID: id_('D'), Titulo: t, Descricao: clip_(d.descricao, 800), Minutos: String(Math.max(1, Math.min(240, Number(d.minutos) || 10))), MembroID: u.membroId, Data: now_() }); return { ok: true }; }
@@ -905,6 +919,232 @@ function setPromo_(d, u) {
 }
 function deleteProduct_(d, u) { return withLock_(function () { const t = table_('Produtos'), r = t.rows.filter(function (x) { return x.ProdutoID === d.id; })[0]; if (r) writeRow_(t, r._row, { Ativo: '0' }); audit_(u.email, 'PRODUTO_REMOVIDO', d.id, 'OK'); return { ok: true }; }); }
 function deleteVideo_(d, u) { return withLock_(function () { const t = table_('Videos'), r = t.rows.filter(function (x) { return x.VideoID === d.id; })[0]; if (r) writeRow_(t, r._row, { Status: 'Removido' }); return { ok: true }; }); }
+
+/* ============================== CURSOS, AULAS E CERTIFICADOS ==============================
+   Fluxo: professor cria o curso (pendente) → supervisor/pastor aprova (aprovado) → professor monta as aulas e pede o início →
+   supervisor autoriza (andamento) → aulas com chamada e foto → professor encerra → avalia e emite os certificados. */
+function hm_(s) { const m = /^(\d{1,2}):(\d{2})$/.exec(String(s || '')); return m ? Number(m[1]) * 60 + Number(m[2]) : null; }
+function hmOk_(s) { s = String(s || '').trim(); if (!s) return ''; const v = hm_(s); if (v === null || v > 1439) throw new ApiError('VALIDATION', 'Horário inválido. Use HH:mm.'); return ('0' + Math.floor(v / 60)).slice(-2) + ':' + ('0' + (v % 60)).slice(-2); }
+function dataOk_(s, obrig) { s = String(s || '').trim(); if (!s && !obrig) return ''; if (!/^\d{4}-\d{2}-\d{2}$/.test(s) || isNaN(new Date(s + 'T12:00:00').getTime())) throw new ApiError('VALIDATION', 'Data inválida.'); return s; }
+function mstat_(r) { const s = String(r.Status || '').toLowerCase(); return (s === 'matriculado' || s === 'autorizado') ? 'autorizado' : (s === 'negado' || s === 'recusada') ? 'negado' : s === 'concluido' ? 'concluido' : 'pendente'; }
+function cursoSt_(c) { return c.Status || 'aprovado'; }
+function cursoNoAr_(c) { const s = cursoSt_(c); return c.Ativo !== '0' && (s === 'aprovado' || s === 'andamento' || s === 'encerrado'); }
+function donoCurso_(u, c) { return !!c.ProfessorID && c.ProfessorID === u.membroId; }
+function gereCurso_(u, c) { return (donoCurso_(u, c) && can_(u, 'prof')) || can_(u, 'config'); }
+function verCurso_(u, c) { return cursoNoAr_(c) || donoCurso_(u, c) || can_(u, 'cursos') || can_(u, 'config'); }
+function getCurso_(id) { const c = table_('Cursos').rows.filter(function (r) { return r.CursoID === id; })[0]; if (!c) throw new ApiError('NOT_FOUND', 'Curso não encontrado.'); return c; }
+function aulasDe_(cid) { return table_('Aulas').rows.filter(function (a) { return a.CursoID === cid && a.Status !== 'Removida'; }).sort(function (a, b) { return (a.Data + (a.Inicio || '')) < (b.Data + (b.Inicio || '')) ? -1 : 1; }); }
+function cargaMin_(c, aulas) { if (c.CargaHoras && Number(c.CargaHoras) > 0) return Math.round(Number(c.CargaHoras) * 60); let t = 0; aulas.forEach(function (a) { const i = hm_(a.Inicio), f = hm_(a.Fim); if (i !== null && f !== null && f > i) t += f - i; }); return t; }
+function supervisoresCursos_() { const m = permMatrix_(), ps = papeis_().filter(function (p) { return m[p] && m[p].cursos; }); const seen = {}; return table_('Usuarios').rows.filter(function (r) { return r.Status !== 'Inativo' && r.MembroID && ps.indexOf(r.Papel) >= 0 && !seen[r.MembroID] && (seen[r.MembroID] = 1); }).map(function (r) { return r.MembroID; }); }
+function avisaSupervisores_(titulo, texto, ref, exceto) { supervisoresCursos_().forEach(function (m) { if (m !== exceto) notify_(m, 'curso', titulo, texto, ref); }); }
+function dBR_(s) { return s ? String(s).slice(8, 10) + '/' + String(s).slice(5, 7) + '/' + String(s).slice(0, 4) : ''; }
+function horasTxt_(min) { if (!min) return ''; const h = Math.floor(min / 60), m = min % 60; return h + 'h' + (m ? ('0' + m).slice(-2) : ''); }
+function resumoCurso_(c, aulas, nome) {
+  const ds = aulas.map(function (a) { return a.Data; }).sort(), carga = cargaMin_(c, aulas);
+  return [c.Descricao ? c.Descricao : 'Sem descrição', 'Professor: ' + (nome[c.ProfessorID] || '—'), aulas.length + ' aula(s)' + (ds.length ? ' de ' + dBR_(ds[0]) + ' a ' + dBR_(ds[ds.length - 1]) : ''), carga ? 'Carga horária: ' + horasTxt_(carga) : '', c.ExigeAprovacao === '1' ? 'Matrícula exige aprovação do supervisor' : 'Matrícula livre', 'Certificado com ' + (c.PresencaMin || 75) + '% de presença'].filter(String).join(' · ');
+}
+function cursoOut_(c, u, aulas, mats, nm) {
+  const mine = mats.filter(function (r) { return r.MembroID === u.membroId; })[0], ds = aulas.map(function (a) { return a.Data; }).sort();
+  const ativos = mats.filter(function (r) { return mstat_(r) === 'autorizado'; });
+  return { id: c.CursoID, nome: c.Nome, descricao: c.Descricao || '', foto: c.Foto || '', professorId: c.ProfessorID || '', professor: nm[c.ProfessorID] || '', exigeAprovacao: c.ExigeAprovacao === '1', presencaMin: Number(c.PresencaMin) || 75, cargaHoras: c.CargaHoras || '', cargaMin: cargaMin_(c, aulas),
+    status: cursoSt_(c), inicioStatus: c.InicioStatus || '', motivo: c.Motivo || '', legado: !c.ProfessorID, nAulas: aulas.length, de: ds[0] || '', ate: ds[ds.length - 1] || '', nAlunos: ativos.length, meu: donoCurso_(u, c),
+    minha: mine ? { id: mine.MatriculaID, status: mstat_(mine), cert: mine.Cert || '', presenca: mine.PresencaPct === '' || mine.PresencaPct === undefined ? null : Number(mine.PresencaPct), motivo: mine.Motivo || '' } : null };
+}
+function listCourses_(d, u) {
+  const nm = nomes_(), aulas = {}, mats = {}; table_('Aulas').rows.forEach(function (a) { if (a.Status !== 'Removida') (aulas[a.CursoID] = aulas[a.CursoID] || []).push(a); }); table_('Matriculas').rows.forEach(function (r) { (mats[r.CursoID] = mats[r.CursoID] || []).push(r); });
+  return table_('Cursos').rows.filter(function (c) { return verCurso_(u, c); }).map(function (c) { return cursoOut_(c, u, aulas[c.CursoID] || [], mats[c.CursoID] || [], nm); });
+}
+function saveCourse_(d, u) {
+  if (!can_(u, 'prof') && !can_(u, 'config')) throw new ApiError('FORBIDDEN', 'Só professores cadastrados criam cursos.');
+  return withLock_(function () {
+    const nome = clip_(d.nome, 120); if (!nome) throw new ApiError('VALIDATION', 'Informe o nome do curso.');
+    let pres = d.presencaMin === undefined || d.presencaMin === '' ? 75 : Number(d.presencaMin); if (!isFinite(pres) || pres < 0 || pres > 100) throw new ApiError('VALIDATION', 'A presença mínima vai de 0 a 100%.');
+    let carga = ''; if (d.cargaHoras !== undefined && d.cargaHoras !== '' && d.cargaHoras !== null) { carga = Number(d.cargaHoras); if (!isFinite(carga) || carga <= 0 || carga > 2000) throw new ApiError('VALIDATION', 'Carga horária inválida.'); carga = String(carga); }
+    const patch = { Nome: nome, Descricao: clip_(d.descricao, 1200), ExigeAprovacao: d.exigeAprovacao ? '1' : '0', PresencaMin: String(Math.round(pres)), CargaHoras: carga };
+    if (d.foto !== undefined && d.foto !== '__keep') patch.Foto = fotoOk_(d.foto);
+    const t = table_('Cursos');
+    if (d.id) {
+      const c = t.rows.filter(function (r) { return r.CursoID === d.id; })[0]; if (!c) throw new ApiError('NOT_FOUND', 'Curso não encontrado.'); if (!gereCurso_(u, c)) throw new ApiError('FORBIDDEN', 'Só o professor do curso edita.');
+      if (cursoSt_(c) === 'recusado') { patch.Status = 'pendente'; patch.Motivo = ''; }
+      writeRow_(t, c._row, patch); audit_(u.email, 'CURSO_EDITADO', c.CursoID, 'OK');
+      if (patch.Status === 'pendente') avisaSupervisores_('Curso reenviado para aprovação', nome + ' · ' + resumoCurso_(Object.assign({}, c, patch), aulasDe_(c.CursoID), nomes_()), 'curso:' + c.CursoID, u.membroId);
+      return { id: c.CursoID };
+    }
+    const id = id_('CUR'); appendRow_(t, Object.assign({ CursoID: id, Ativo: '1', ProfessorID: u.membroId, Status: 'pendente', CriadoEm: now_() }, patch));
+    audit_(u.email, 'CURSO_NOVO', id, 'OK'); avisaSupervisores_('Novo curso para aprovar', nome + ' · ' + resumoCurso_(Object.assign({ ProfessorID: u.membroId }, patch), [], nomes_()), 'curso:' + id, u.membroId);
+    return { id: id };
+  });
+}
+function renumera_(cid) { const t = table_('Aulas'); aulasDe_(cid).forEach(function (a, i) { if (String(a.Numero) !== String(i + 1)) writeRow_(t, a._row, { Numero: String(i + 1) }); }); }
+function saveAula_(d, u) {
+  return withLock_(function () {
+    const c = getCurso_(clip_(d.cursoId, 30)); if (!gereCurso_(u, c)) throw new ApiError('FORBIDDEN', 'Só o professor do curso monta as aulas.');
+    const st = cursoSt_(c); if (st === 'encerrado' || st === 'recusado') throw new ApiError('VALIDATION', 'Esse curso não aceita mais alterações nas aulas.');
+    const titulo = clip_(d.titulo, 150); if (!titulo) throw new ApiError('VALIDATION', 'Informe o título da aula.');
+    const patch = { Titulo: titulo, Descricao: clip_(d.descricao, 800), Data: dataOk_(d.data, true), Inicio: hmOk_(d.inicio), Fim: hmOk_(d.fim) };
+    if (patch.Inicio && patch.Fim && hm_(patch.Fim) <= hm_(patch.Inicio)) throw new ApiError('VALIDATION', 'O fim precisa ser depois do início.');
+    if (d.foto !== undefined && d.foto !== '__keep') patch.Foto = fotoOk_(d.foto);
+    const t = table_('Aulas'), ex = d.id ? t.rows.filter(function (r) { return r.AulaID === d.id && r.CursoID === c.CursoID && r.Status !== 'Removida'; })[0] : null; if (d.id && !ex) throw new ApiError('NOT_FOUND', 'Aula não encontrada.');
+    const pdf = String(d.pdf || '');
+    if (pdf) {
+      if (pdf.length > MAX_PDF_B64) throw new ApiError('VALIDATION', 'PDF muito grande (máximo ~10 MB).'); if (pdf.slice(0, 5) !== 'JVBER') throw new ApiError('VALIDATION', 'O arquivo precisa ser um PDF.');
+      const bytes = Utilities.base64Decode(pdf), nomeArq = clip_(d.pdfNome, 120) || (titulo + '.pdf'), file = pastaLivros_().createFile(Utilities.newBlob(bytes, 'application/pdf', nomeArq));
+      if (ex && ex.ArquivoID) { try { DriveApp.getFileById(ex.ArquivoID).setTrashed(true); } catch (e) { /* já removido */ } }
+      patch.ArquivoID = file.getId(); patch.PdfNome = nomeArq;
+    }
+    let id;
+    if (ex) { writeRow_(t, ex._row, patch); id = ex.AulaID; audit_(u.email, 'AULA_EDITADA', id, 'OK'); }
+    else { id = id_('AU'); appendRow_(t, Object.assign({ AulaID: id, CursoID: c.CursoID, Numero: '0', Status: 'Ativa' }, patch)); audit_(u.email, 'AULA_NOVA', id, 'OK'); }
+    renumera_(c.CursoID); return { id: id };
+  });
+}
+function deleteAula_(d, u) {
+  return withLock_(function () {
+    const t = table_('Aulas'), a = t.rows.filter(function (r) { return r.AulaID === d.id && r.Status !== 'Removida'; })[0]; if (!a) throw new ApiError('NOT_FOUND', 'Aula não encontrada.');
+    const c = getCurso_(a.CursoID); if (!gereCurso_(u, c)) throw new ApiError('FORBIDDEN', 'Só o professor do curso remove aulas.'); if (a.Dada === '1') throw new ApiError('VALIDATION', 'Essa aula já foi dada e tem chamada lançada.');
+    if (a.ArquivoID) { try { DriveApp.getFileById(a.ArquivoID).setTrashed(true); } catch (e) { /* já removido */ } }
+    writeRow_(t, a._row, { Status: 'Removida', ArquivoID: '' }); renumera_(c.CursoID); audit_(u.email, 'AULA_REMOVIDA', a.AulaID, 'OK'); return { ok: true };
+  });
+}
+function acessoMatricula_(u, c) { return table_('Matriculas').rows.some(function (r) { return r.CursoID === c.CursoID && r.MembroID === u.membroId && mstat_(r) === 'autorizado'; }); }
+function courseDetail_(d, u) {
+  const c = getCurso_(clip_(d.cursoId, 30)); if (!verCurso_(u, c)) throw new ApiError('FORBIDDEN', 'Curso indisponível.');
+  const nm = nomes_(), aulas = aulasDe_(c.CursoID), mats = table_('Matriculas').rows.filter(function (r) { return r.CursoID === c.CursoID; });
+  const staff = gereCurso_(u, c) || can_(u, 'cursos'), aluno = acessoMatricula_(u, c), full = staff || aluno;
+  const pres = {}, av = {}, stats = {};
+  table_('AulaPresenca').rows.forEach(function (p) { if (p.MembroID === u.membroId) pres[p.AulaID] = p.Presente === '1'; });
+  table_('AulaAval').rows.forEach(function (a) { if (a.CursoID !== c.CursoID) return; if (a.MembroID === u.membroId) av[a.AulaID] = { nota: a.Nota ? Number(a.Nota) : null, feedback: a.Feedback || '', duvida: a.Duvida || '', obs: a.Obs || '' }; const s = (stats[a.AulaID] = stats[a.AulaID] || { n: 0, soma: 0, c: 0 }); s.c++; if (a.Nota) { s.n++; s.soma += Number(a.Nota); } });
+  const hoje = today_();
+  return { curso: cursoOut_(c, u, aulas, mats, nm), pode: { gerir: gereCurso_(u, c), supervisor: can_(u, 'cursos'), aluno: aluno }, resumo: resumoCurso_(c, aulas, nm),
+    aulas: aulas.map(function (a) { const o = { id: a.AulaID, numero: Number(a.Numero) || 0, titulo: a.Titulo, data: a.Data, inicio: a.Inicio || '', fim: a.Fim || '', dada: a.Dada === '1', passou: a.Data < hoje };
+      if (full) { o.descricao = a.Descricao || ''; o.temPdf = !!a.ArquivoID; o.pdfNome = a.PdfNome || ''; o.foto = a.Foto || ''; o.presente = pres[a.AulaID] === undefined ? null : pres[a.AulaID]; o.minha = av[a.AulaID] || null; }
+      if (staff) { const s = stats[a.AulaID]; o.media = s && s.n ? Math.round(s.soma / s.n * 10) / 10 : null; o.nAval = s ? s.c : 0; } return o; }) };
+}
+function getAulaPdf_(d, u) {
+  const a = table_('Aulas').rows.filter(function (r) { return r.AulaID === d.id && r.Status !== 'Removida'; })[0]; if (!a || !a.ArquivoID) throw new ApiError('NOT_FOUND', 'Arquivo não encontrado.');
+  const c = getCurso_(a.CursoID); if (!(gereCurso_(u, c) || can_(u, 'cursos') || acessoMatricula_(u, c))) throw new ApiError('FORBIDDEN', 'O material é só para quem está matriculado.');
+  return { pdf: Utilities.base64Encode(DriveApp.getFileById(a.ArquivoID).getBlob().getBytes()), nome: a.PdfNome || 'aula.pdf' };
+}
+function enrollCourse_(d, u) {
+  return withLock_(function () {
+    const c = getCurso_(clip_(d.cursoId, 30)); if (!cursoNoAr_(c) || cursoSt_(c) === 'encerrado') throw new ApiError('VALIDATION', 'Esse curso não está aberto para matrícula.');
+    if (donoCurso_(u, c)) throw new ApiError('VALIDATION', 'Você é o professor deste curso.');
+    const t = table_('Matriculas'), ex = t.rows.filter(function (r) { return r.CursoID === c.CursoID && r.MembroID === u.membroId; })[0]; if (ex) return { status: mstat_(ex), id: ex.MatriculaID };
+    const exige = c.ExigeAprovacao === '1', st = exige ? 'pendente' : 'autorizado', id = id_('MAT');
+    appendRow_(t, { MatriculaID: id, CursoID: c.CursoID, MembroID: u.membroId, Status: st, Data: now_() });
+    if (exige) avisaSupervisores_('Matrícula para aprovar', (nomes_()[u.membroId] || 'Membro') + ' quer fazer o curso ' + c.Nome, 'matricula:' + id, u.membroId);
+    else notify_(c.ProfessorID, 'curso', 'Novo aluno em ' + c.Nome, (nomes_()[u.membroId] || 'Membro') + ' se matriculou.', 'curso:' + c.CursoID);
+    return { status: st, id: id };
+  });
+}
+function requestStart_(d, u) {
+  return withLock_(function () {
+    const c = getCurso_(clip_(d.cursoId, 30)); if (!gereCurso_(u, c)) throw new ApiError('FORBIDDEN', 'Só o professor do curso.'); if (cursoSt_(c) !== 'aprovado') throw new ApiError('VALIDATION', 'O curso precisa estar aprovado e ainda não iniciado.');
+    if (c.InicioStatus === 'solicitado') throw new ApiError('VALIDATION', 'O pedido de início já foi enviado.'); const aulas = aulasDe_(c.CursoID); if (!aulas.length) throw new ApiError('VALIDATION', 'Cadastre ao menos uma aula antes de pedir o início.');
+    writeRow_(table_('Cursos'), c._row, { InicioStatus: 'solicitado', Motivo: '' }); avisaSupervisores_('Pedido de início de aulas', c.Nome + ' · ' + resumoCurso_(c, aulas, nomes_()), 'inicio:' + c.CursoID, u.membroId); return { ok: true };
+  });
+}
+function decideCourse_(d, u) {
+  return withLock_(function () {
+    if (!can_(u, 'cursos')) throw new ApiError('FORBIDDEN', 'Só supervisores aprovam cursos.');
+    const t = table_('Cursos'), c = getCurso_(d.id); if (cursoSt_(c) !== 'pendente' || !c.ProfessorID) throw new ApiError('VALIDATION', 'Esse curso já foi decidido.');
+    const st = d.decisao === 'autorizado' ? 'autorizado' : 'negado'; writeRow_(t, c._row, { Status: st === 'autorizado' ? 'aprovado' : 'recusado', DecididoPor: u.membroId, DataDecisao: now_(), Motivo: st === 'negado' ? clip_(d.motivo, 300) : '' }); audit_(u.email, 'CURSO_' + st.toUpperCase(), c.CursoID, 'OK'); return { status: st };
+  });
+}
+function decideStart_(d, u) {
+  return withLock_(function () {
+    if (!can_(u, 'cursos')) throw new ApiError('FORBIDDEN', 'Só supervisores autorizam o início.');
+    const t = table_('Cursos'), c = getCurso_(d.id); if (c.InicioStatus !== 'solicitado') throw new ApiError('VALIDATION', 'Esse pedido já foi decidido.');
+    const st = d.decisao === 'autorizado' ? 'autorizado' : 'negado'; writeRow_(t, c._row, st === 'autorizado' ? { InicioStatus: 'autorizado', Status: 'andamento', Motivo: '' } : { InicioStatus: 'negado', Motivo: clip_(d.motivo, 300) }); audit_(u.email, 'CURSO_INICIO_' + st.toUpperCase(), c.CursoID, 'OK'); return { status: st };
+  });
+}
+function decideEnroll_(d, u) {
+  return withLock_(function () {
+    if (!can_(u, 'cursos')) throw new ApiError('FORBIDDEN', 'Só supervisores permitem matrículas.');
+    const t = table_('Matriculas'), r = t.rows.filter(function (x) { return x.MatriculaID === d.id; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Matrícula não encontrada.'); if (mstat_(r) !== 'pendente') throw new ApiError('VALIDATION', 'Essa matrícula já foi decidida.');
+    const st = d.decisao === 'autorizado' ? 'autorizado' : 'negado'; writeRow_(t, r._row, { Status: st, DecididoPor: u.membroId, DataDecisao: now_(), Motivo: st === 'negado' ? clip_(d.motivo, 300) : '' }); audit_(u.email, 'MATRICULA_' + st.toUpperCase(), r.MatriculaID, 'OK'); return { status: st };
+  });
+}
+function getClassRoll_(d, u) {
+  const a = table_('Aulas').rows.filter(function (r) { return r.AulaID === d.aulaId && r.Status !== 'Removida'; })[0]; if (!a) throw new ApiError('NOT_FOUND', 'Aula não encontrada.'); const c = getCurso_(a.CursoID); if (!gereCurso_(u, c)) throw new ApiError('FORBIDDEN', 'Só o professor do curso lança a chamada.');
+  const nm = nomes_(), pr = {}; table_('AulaPresenca').rows.forEach(function (p) { if (p.AulaID === a.AulaID) pr[p.MembroID] = p.Presente === '1'; });
+  return { aula: { id: a.AulaID, titulo: a.Titulo, data: a.Data, dada: a.Dada === '1', foto: a.Foto || '' }, curso: c.Nome, alunos: table_('Matriculas').rows.filter(function (r) { return r.CursoID === c.CursoID && mstat_(r) === 'autorizado'; }).map(function (r) { return { id: r.MembroID, nome: nm[r.MembroID] || 'Membro', presente: !!pr[r.MembroID] }; }).sort(function (x, y) { return x.nome.localeCompare(y.nome); }) };
+}
+function saveClassRoll_(d, u) {
+  return withLock_(function () {
+    const ta = table_('Aulas'), a = ta.rows.filter(function (r) { return r.AulaID === d.aulaId && r.Status !== 'Removida'; })[0]; if (!a) throw new ApiError('NOT_FOUND', 'Aula não encontrada.'); const c = getCurso_(a.CursoID); if (!gereCurso_(u, c)) throw new ApiError('FORBIDDEN', 'Só o professor do curso lança a chamada.');
+    if (cursoSt_(c) !== 'andamento') throw new ApiError('VALIDATION', 'A chamada só é lançada com o curso em andamento (depois que o supervisor autoriza o início).');
+    const ok = {}; table_('Matriculas').rows.forEach(function (r) { if (r.CursoID === c.CursoID && mstat_(r) === 'autorizado') ok[r.MembroID] = 1; });
+    const pres = {}; (Array.isArray(d.presentes) ? d.presentes : []).forEach(function (m) { if (ok[m]) pres[m] = 1; });
+    const t = table_('AulaPresenca'), mine = t.rows.filter(function (p) { return p.AulaID === a.AulaID; }); Object.keys(ok).forEach(function (m) { const ex = mine.filter(function (p) { return p.MembroID === m; })[0], v = pres[m] ? '1' : '0'; if (ex) writeRow_(t, ex._row, { Presente: v }); else appendRow_(t, { AulaID: a.AulaID, MembroID: m, Presente: v }); });
+    const patch = { Dada: '1' }; if (d.foto !== undefined && d.foto !== '__keep') patch.Foto = fotoOk_(d.foto); writeRow_(ta, a._row, patch); audit_(u.email, 'CHAMADA_AULA', a.AulaID, 'OK'); return { presentes: Object.keys(pres).length, total: Object.keys(ok).length };
+  });
+}
+function presencaPct_(cid, mid, nAulas, presRows) { if (!nAulas) return 0; let n = 0; presRows.forEach(function (p) { if (p.MembroID === mid && p.Presente === '1') n++; }); return Math.round(n / nAulas * 1000) / 10; }
+function finishCourse_(d, u) {
+  return withLock_(function () {
+    const c = getCurso_(clip_(d.cursoId, 30)); if (!gereCurso_(u, c)) throw new ApiError('FORBIDDEN', 'Só o professor do curso.'); if (cursoSt_(c) !== 'andamento') throw new ApiError('VALIDATION', 'Só é possível encerrar um curso em andamento.');
+    const aulas = aulasDe_(c.CursoID), ids = {}; aulas.forEach(function (a) { ids[a.AulaID] = 1; }); const pr = table_('AulaPresenca').rows.filter(function (p) { return ids[p.AulaID]; }), tm = table_('Matriculas');
+    tm.rows.forEach(function (r) { if (r.CursoID !== c.CursoID || mstat_(r) !== 'autorizado') return; writeRow_(tm, r._row, { PresencaPct: String(presencaPct_(c.CursoID, r.MembroID, aulas.length, pr)), Cert: 'pendente' }); notify_(r.MembroID, 'curso', 'Curso encerrado: ' + c.Nome, 'O professor vai avaliar a sua presença e liberar o certificado.', 'curso:' + c.CursoID); });
+    writeRow_(table_('Cursos'), c._row, { Status: 'encerrado' }); audit_(u.email, 'CURSO_ENCERRADO', c.CursoID, 'OK'); return { ok: true };
+  });
+}
+function certCodigo_(mid) { let h = 0; const s = String(mid) + 'zoe'; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 1679616; return 'ZOE-' + today_().slice(0, 4) + '-' + ('0000' + String(mid).replace(/\D/g, '')).slice(-4) + ('00' + h.toString(36).toUpperCase()).slice(-4); }
+function listCertificates_(d, u) {
+  const c = getCurso_(clip_(d.cursoId, 30)); if (!(gereCurso_(u, c) || can_(u, 'cursos'))) throw new ApiError('FORBIDDEN', 'Só o professor do curso.');
+  const nm = nomes_(), aulas = aulasDe_(c.CursoID), ids = {}; aulas.forEach(function (a) { ids[a.AulaID] = 1; }); const pr = table_('AulaPresenca').rows.filter(function (p) { return ids[p.AulaID]; }), min = Number(c.PresencaMin) || 75;
+  return { curso: c.Nome, presencaMin: min, encerrado: cursoSt_(c) === 'encerrado', alunos: table_('Matriculas').rows.filter(function (r) { return r.CursoID === c.CursoID && mstat_(r) === 'autorizado'; }).map(function (r) { const p = r.PresencaPct !== '' && r.PresencaPct !== undefined ? Number(r.PresencaPct) : presencaPct_(c.CursoID, r.MembroID, aulas.length, pr); return { id: r.MatriculaID, membroId: r.MembroID, nome: nm[r.MembroID] || 'Membro', presenca: p, atinge: p >= min, cert: r.Cert || '' }; }).sort(function (a, b) { return a.nome.localeCompare(b.nome); }) };
+}
+function decideCert_(d, u) {
+  return withLock_(function () {
+    const t = table_('Matriculas'), tc = table_('Cursos'); const ids = Array.isArray(d.ids) ? d.ids : [d.id]; let n = 0, c0 = null;
+    const ass = table_('Assinaturas').rows.filter(function (r) { return r.MembroID === u.membroId; })[0];
+    if (d.decisao === 'autorizado' && !ass) throw new ApiError('VALIDATION', 'Cadastre a sua assinatura antes de emitir certificados.');
+    ids.forEach(function (id) {
+      const r = t.rows.filter(function (x) { return x.MatriculaID === id; })[0]; if (!r) return; const c = tc.rows.filter(function (x) { return x.CursoID === r.CursoID; })[0]; if (!c || !gereCurso_(u, c)) throw new ApiError('FORBIDDEN', 'Só o professor do curso avalia.'); if (cursoSt_(c) !== 'encerrado') throw new ApiError('VALIDATION', 'Encerre o curso antes de emitir certificados.'); c0 = c;
+      if (d.decisao === 'autorizado') { writeRow_(t, r._row, { Cert: 'emitido', CertCodigo: certCodigo_(r.MatriculaID), CertData: today_(), CertPor: u.membroId, Status: 'concluido' }); notify_(r.MembroID, 'curso', 'Seu certificado está pronto', 'Curso ' + c.Nome + '. Veja em Cursos › Cursos que você fez.', 'curso:' + c.CursoID); }
+      else writeRow_(t, r._row, { Cert: 'negado', Motivo: clip_(d.motivo, 300) });
+      n++;
+    });
+    audit_(u.email, 'CERTIFICADO_' + (d.decisao === 'autorizado' ? 'EMITIDO' : 'NEGADO'), c0 ? c0.CursoID : '', 'OK'); return { n: n };
+  });
+}
+function sigOut_(mid) { const s = table_('Assinaturas').rows.filter(function (r) { return r.MembroID === mid; })[0]; return s ? { tipo: s.Tipo, dado: s.Dado, cargo: s.Cargo || '' } : null; }
+function getSignature_(d, u) { return { assinatura: sigOut_(u.membroId) }; }
+function saveSignature_(d, u) {
+  if (!(can_(u, 'prof') || can_(u, 'cursos') || can_(u, 'config'))) throw new ApiError('FORBIDDEN', 'Só professores e supervisores cadastram assinatura.');
+  return withLock_(function () {
+    const tipo = d.tipo === 'texto' ? 'texto' : 'desenho'; let dado = String(d.dado || ''); const cargo = clip_(d.cargo, 60);
+    if (tipo === 'desenho') { if (!/^data:image\/png;base64,/.test(dado) || dado.length > 40000) throw new ApiError('VALIDATION', 'Assinatura inválida ou grande demais. Desenhe de novo.'); } else { dado = clip_(dado, 60); if (!dado) throw new ApiError('VALIDATION', 'Digite o nome da assinatura.'); }
+    const t = table_('Assinaturas'), ex = t.rows.filter(function (r) { return r.MembroID === u.membroId; })[0], row = { Tipo: tipo, Dado: dado, Cargo: cargo, Atualizado: now_() };
+    if (ex) writeRow_(t, ex._row, row); else appendRow_(t, Object.assign({ MembroID: u.membroId }, row)); return { ok: true };
+  });
+}
+function certificate_(d, u) {
+  const r = table_('Matriculas').rows.filter(function (x) { return x.MatriculaID === d.id; })[0]; if (!r || r.Cert !== 'emitido') throw new ApiError('NOT_FOUND', 'Certificado não encontrado.');
+  const c = getCurso_(r.CursoID); if (!(r.MembroID === u.membroId || gereCurso_(u, c) || can_(u, 'cursos'))) throw new ApiError('FORBIDDEN', 'Este certificado é de outra pessoa.');
+  const mem = {}; table_('Membros').rows.forEach(function (m) { mem[m.MembroID] = m; }); const aulas = aulasDe_(c.CursoID), ds = aulas.map(function (a) { return a.Data; }).sort();
+  const us = {}; table_('Usuarios').rows.forEach(function (x) { us[x.MembroID] = x; });
+  const pess = function (mid, pad) { if (!mid) return null; const m = mem[mid] || {}, sg = sigOut_(mid), papel = (us[mid] || {}).Papel || ''; return { nome: m.Nome || m.Simples || '', cargo: (sg && sg.cargo) || pad(papel), assinatura: sg ? { tipo: sg.tipo, dado: sg.dado } : null }; };
+  const prof = pess(c.ProfessorID, function () { return 'Professor'; });
+  const sup = c.DecididoPor && c.DecididoPor !== c.ProfessorID ? pess(c.DecididoPor, function (p) { return p === 'pastor' ? 'Pastor e Supervisor' : p === 'admin' ? 'Administração e Supervisor' : 'Supervisor'; }) : null;
+  return { codigo: r.CertCodigo, data: r.CertData, aluno: (mem[r.MembroID] || {}).Nome || '', presenca: Number(r.PresencaPct) || 0, curso: { nome: c.Nome, descricao: c.Descricao || '', cargaMin: cargaMin_(c, aulas), nAulas: aulas.length, inicio: ds[0] || '', fim: ds[ds.length - 1] || '', presencaMin: Number(c.PresencaMin) || 75 }, professor: prof, supervisor: sup };
+}
+function rateAula_(d, u) {
+  return withLock_(function () {
+    const a = table_('Aulas').rows.filter(function (r) { return r.AulaID === d.aulaId && r.Status !== 'Removida'; })[0]; if (!a) throw new ApiError('NOT_FOUND', 'Aula não encontrada.'); const c = getCurso_(a.CursoID);
+    if (!acessoMatricula_(u, c)) throw new ApiError('FORBIDDEN', 'Só quem está matriculado avalia as aulas.'); if (a.Data > today_() && a.Dada !== '1') throw new ApiError('VALIDATION', 'Você poderá avaliar depois que a aula acontecer.');
+    let nota = ''; if (d.nota !== undefined && d.nota !== '' && d.nota !== null) { nota = Math.round(Number(d.nota)); if (!isFinite(nota) || nota < 1 || nota > 10) throw new ApiError('VALIDATION', 'A nota vai de 1 a 10.'); nota = String(nota); }
+    const fb = clip_(d.feedback, 500), dv = clip_(d.duvida, 500), ob = clip_(d.obs, 500); if (!nota && !fb && !dv && !ob) throw new ApiError('VALIDATION', 'Dê uma nota ou escreva um comentário.');
+    const t = table_('AulaAval'), ex = t.rows.filter(function (r) { return r.AulaID === a.AulaID && r.MembroID === u.membroId; })[0], row = { Nota: nota, Feedback: fb, Duvida: dv, Obs: ob, Data: now_() };
+    if (ex) writeRow_(t, ex._row, row); else appendRow_(t, Object.assign({ AulaID: a.AulaID, CursoID: c.CursoID, MembroID: u.membroId }, row));
+    if (dv) notify_(c.ProfessorID, 'curso', 'Dúvida na aula ' + a.Titulo, (nomes_()[u.membroId] || 'Aluno') + ': ' + dv, 'curso:' + c.CursoID); return { ok: true };
+  });
+}
+function aulaFeedback_(d, u) {
+  const a = table_('Aulas').rows.filter(function (r) { return r.AulaID === d.aulaId; })[0]; if (!a) throw new ApiError('NOT_FOUND', 'Aula não encontrada.'); const c = getCurso_(a.CursoID); if (!(gereCurso_(u, c) || can_(u, 'cursos'))) throw new ApiError('FORBIDDEN', 'Só o professor e os supervisores veem as avaliações.');
+  const nm = nomes_(); return { aula: a.Titulo, itens: table_('AulaAval').rows.filter(function (r) { return r.AulaID === a.AulaID; }).map(function (r) { return { aluno: nm[r.MembroID] || 'Aluno', nota: r.Nota ? Number(r.Nota) : null, feedback: r.Feedback || '', duvida: r.Duvida || '', obs: r.Obs || '', data: r.Data }; }) };
+}
 
 /* ============================== USUÁRIOS / PERMISSÕES ============================== */
 function listUsers_() { const mem = {}; table_('Membros').rows.forEach(function (m) { mem[m.MembroID] = m; }); return table_('Usuarios').rows.map(function (r) { return { email: r.Email, nome: (mem[r.MembroID] || {}).Nome || '', papel: r.Papel, status: r.Status || 'Ativo', ultimoAcesso: r.UltimoAcesso, membroId: r.MembroID }; }); }
@@ -1066,7 +1306,9 @@ const ROUTES = {
   saveMember: { auth: 'any', write: 1, fn: saveMember_ }, acceptLegal: { auth: 'any', write: 1, fn: acceptLegal_ }, birthdays: { auth: 'any', fn: birthdays_ },
   listEvents: { auth: 'any', fn: listEvents_ }, enroll: { auth: 'any', write: 1, fn: enroll_ }, listNews: { auth: 'any', fn: listNews_ },
   listMinistries: { auth: 'any', fn: listMin_ }, interest: { auth: 'any', write: 1, fn: interest_ },
-  listCourses: { auth: 'any', fn: listCourses_ }, enrollCourse: { auth: 'any', write: 1, fn: enrollCourse_ },
+  listCourses: { auth: 'any', fn: listCourses_ }, enrollCourse: { auth: 'any', write: 1, fn: enrollCourse_ }, saveCourse: { auth: 'any', write: 1, fn: saveCourse_ }, courseDetail: { auth: 'any', fn: courseDetail_ }, saveAula: { auth: 'any', write: 1, fn: saveAula_ }, deleteAula: { auth: 'any', write: 1, fn: deleteAula_ }, getAulaPdf: { auth: 'any', fn: getAulaPdf_ },
+  requestStart: { auth: 'any', write: 1, fn: requestStart_ }, getClassRoll: { auth: 'any', fn: getClassRoll_ }, saveClassRoll: { auth: 'any', write: 1, fn: saveClassRoll_ }, finishCourse: { auth: 'any', write: 1, fn: finishCourse_ }, listCertificates: { auth: 'any', fn: listCertificates_ }, decideCert: { auth: 'any', write: 1, fn: decideCert_ }, certificate: { auth: 'any', fn: certificate_ },
+  getSignature: { auth: 'any', fn: getSignature_ }, saveSignature: { auth: 'any', write: 1, fn: saveSignature_ }, rateAula: { auth: 'any', write: 1, fn: rateAula_ }, aulaFeedback: { auth: 'any', fn: aulaFeedback_ },
   listLessons: { auth: 'any', fn: listLessons_ }, listDynamics: { auth: 'any', fn: listDyn_ }, addDynamic: { auth: 'any', write: 1, fn: addDyn_ }, listVideos: { auth: 'any', fn: listVideos_ }, listProducts: { auth: 'any', fn: listProducts_ }, listFamilia: { auth: 'any', fn: listFamilia_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
   searchCells: { auth: 'any', fn: searchCells_ }, addPrayer: { auth: 'any', write: 1, fn: addPrayer_ }, listPrayers: { auth: 'any', fn: listPrayers_ },
   cellMembers: { auth: 'any', fn: cellMembers_ }, saveCell: { auth: 'any', write: 1, fn: saveCell_ }, saveAttendance: { auth: 'any', write: 1, fn: saveAttendance_ }, history: { auth: 'any', fn: history_ },

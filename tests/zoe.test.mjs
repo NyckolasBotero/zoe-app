@@ -413,6 +413,84 @@ test('família zoe: pastores e Quem somos cadastrados pela administração, vis�
   assert.ok(e.call('adminSave', { tipo: 'familia', valores: { Tipo: 'foto', Foto: 'data:image/png;base64,AAAA', Legenda: 'Batismo' } }, adm).ok);
   const md = e.call('listFamilia', {}, m).data.midia; assert.equal(md.length, 2); assert.deepEqual(md.map(x => x.tipo).sort(), ['foto', 'video']);
 });
+test('cursos: professor cria, supervisor aprova, aulas com chamada, certificado com assinaturas', () => {
+  const { e, adm, tok, mk } = boot();
+  const profId = mk('prof@zoe.com', 'professor'), supId = mk('sup@zoe.com', 'pastor'), anaId = mk('ana@zoe.com', 'membro'), biaId = mk('bia@zoe.com', 'membro'); mk('caio@zoe.com', 'membro');
+  const P = tok('prof@zoe.com', 'Temp12345'), S = tok('sup@zoe.com', 'Temp12345'), A = tok('ana@zoe.com', 'Temp12345'), B = tok('bia@zoe.com', 'Temp12345'), C = tok('caio@zoe.com', 'Temp12345');
+  const PDF = 'JVBERi0xLjQKJQ==';
+  assert.equal(e.call('saveCourse', { nome: 'Fundamentos' }, A).error.code, 'FORBIDDEN');
+  assert.equal(e.call('saveCourse', { nome: 'X', presencaMin: 150 }, P).error.code, 'VALIDATION');
+  const cid = e.call('saveCourse', { nome: 'Fundamentos da Fé', descricao: 'Base bíblica', exigeAprovacao: true, presencaMin: 75, cargaHoras: '' }, P).data.id;
+  assert.equal(e.call('listCourses', {}, A).data.length, 0); // só vai ao ar depois de aprovado
+  assert.equal(e.call('enrollCourse', { cursoId: cid }, A).error.code, 'VALIDATION');
+  assert.ok(e.call('listNotifications', {}, S).data.itens.some(n => n.titulo === 'Novo curso para aprovar' && n.texto.includes('Base bíblica')));
+  let it = e.call('listApprovals', {}, S).data.itens.find(x => x.tipo === 'curso'); assert.equal(it.status, 'pendente'); assert.equal(it.ctx.professor, 'prof'); assert.equal(it.podeReverter, false);
+  assert.equal(e.call('listApprovals', {}, P).data.itens.length, 0); // professor não decide
+  assert.equal(e.call('decideApproval', { tipo: 'curso', id: cid, decisao: 'negado' }, S).error.code, 'VALIDATION'); // exige motivo
+  assert.equal(e.call('decideApproval', { tipo: 'curso', id: cid, decisao: 'autorizado' }, P).error.code, 'FORBIDDEN');
+  assert.ok(e.call('decideApproval', { tipo: 'curso', id: cid, decisao: 'negado', motivo: 'Falta ementa' }, S).ok);
+  assert.ok(e.call('listNotifications', {}, P).data.itens.some(n => n.texto.includes('Falta ementa')));
+  assert.ok(e.call('saveCourse', { id: cid, nome: 'Fundamentos da Fé', descricao: 'Base bíblica completa', exigeAprovacao: true, presencaMin: 75 }, P).ok); // reenvia
+  assert.equal(e.call('listCourses', {}, P).data[0].status, 'pendente');
+  assert.ok(e.call('decideApproval', { tipo: 'curso', id: cid, decisao: 'autorizado' }, S).ok);
+  assert.equal(e.call('listCourses', {}, A).data[0].status, 'aprovado');
+  // aulas
+  assert.equal(e.call('saveAula', { cursoId: cid, titulo: 'A1', data: '2026-01-10' }, A).error.code, 'FORBIDDEN');
+  assert.equal(e.call('saveAula', { cursoId: cid, titulo: 'A1', data: '10/01/2026' }, P).error.code, 'VALIDATION');
+  assert.equal(e.call('saveAula', { cursoId: cid, titulo: 'A1', data: '2026-01-10', inicio: '10:00', fim: '09:00' }, P).error.code, 'VALIDATION');
+  assert.equal(e.call('saveAula', { cursoId: cid, titulo: 'A1', data: '2026-01-10', pdf: 'xxxx' }, P).error.code, 'VALIDATION');
+  assert.equal(e.call('requestStart', { cursoId: cid }, P).error.code, 'VALIDATION'); // sem aulas
+  const a2 = e.call('saveAula', { cursoId: cid, titulo: 'Aula 2', data: '2026-01-17', inicio: '09:00', fim: '11:00' }, P).data.id;
+  const a1 = e.call('saveAula', { cursoId: cid, titulo: 'Aula 1', descricao: 'Salvação', data: '2026-01-10', inicio: '09:00', fim: '10:30', pdf: PDF, pdfNome: 'aula1.pdf' }, P).data.id;
+  const a3 = e.call('saveAula', { cursoId: cid, titulo: 'Aula 3', data: '2999-01-01', inicio: '09:00', fim: '10:00' }, P).data.id;
+  let dt = e.call('courseDetail', { cursoId: cid }, P).data; assert.deepEqual(dt.aulas.map(a => a.titulo), ['Aula 1', 'Aula 2', 'Aula 3']); assert.deepEqual(dt.aulas.map(a => a.numero), [1, 2, 3]); assert.equal(dt.curso.cargaMin, 270); assert.ok(dt.pode.gerir);
+  assert.equal(e.call('saveClassRoll', { aulaId: a1, presentes: [] }, P).error.code, 'VALIDATION'); // ainda não começou
+  assert.ok(e.call('requestStart', { cursoId: cid }, P).ok); assert.equal(e.call('requestStart', { cursoId: cid }, P).error.code, 'VALIDATION');
+  assert.ok(e.call('listApprovals', {}, S).data.itens.some(x => x.tipo === 'inicio' && x.status === 'pendente'));
+  assert.ok(e.call('decideApproval', { tipo: 'inicio', id: cid, decisao: 'negado', motivo: 'Espere o mês que vem' }, S).ok); assert.equal(e.call('listCourses', {}, P).data[0].inicioStatus, 'negado');
+  assert.ok(e.call('requestStart', { cursoId: cid }, P).ok); assert.ok(e.call('decideApproval', { tipo: 'inicio', id: cid, decisao: 'autorizado' }, S).ok); assert.equal(e.call('listCourses', {}, P).data[0].status, 'andamento');
+  // matrículas: curso exige aprovação do supervisor
+  assert.equal(e.call('enrollCourse', { cursoId: cid }, A).data.status, 'pendente'); assert.equal(e.call('enrollCourse', { cursoId: cid }, B).data.status, 'pendente');
+  const mats = e.call('listApprovals', {}, S).data.itens.filter(x => x.tipo === 'matricula'); assert.equal(mats.length, 2);
+  assert.ok(e.call('decideApproval', { tipo: 'matricula', id: mats.find(x => x.pessoaId === anaId).id, decisao: 'autorizado' }, S).ok); assert.ok(e.call('decideApproval', { tipo: 'matricula', id: mats.find(x => x.pessoaId === biaId).id, decisao: 'negado', motivo: 'Turma cheia' }, S).ok);
+  assert.ok(e.call('listNotifications', {}, B).data.itens.some(n => n.texto.includes('Turma cheia')));
+  assert.equal(e.call('listCourses', {}, A).data[0].minha.status, 'autorizado'); assert.equal(e.call('listCourses', {}, B).data[0].minha.status, 'negado');
+  // material só para matriculado
+  assert.equal(e.call('getAulaPdf', { id: a1 }, A).data.pdf, PDF); assert.equal(e.call('getAulaPdf', { id: a1 }, B).error.code, 'FORBIDDEN'); assert.equal(e.call('getAulaPdf', { id: a1 }, C).error.code, 'FORBIDDEN');
+  dt = e.call('courseDetail', { cursoId: cid }, A).data; assert.equal(dt.aulas[0].temPdf, true); assert.equal(dt.aulas[0].descricao, 'Salvação'); assert.equal(e.call('courseDetail', { cursoId: cid }, B).data.aulas[0].temPdf, undefined);
+  // chamada
+  const roll = e.call('getClassRoll', { aulaId: a1 }, P).data; assert.deepEqual(roll.alunos.map(x => x.id), [anaId]); assert.equal(e.call('getClassRoll', { aulaId: a1 }, A).error.code, 'FORBIDDEN');
+  assert.equal(e.call('saveClassRoll', { aulaId: a1, presentes: [anaId, biaId], foto: 'data:image/jpeg;base64,AAAA' }, P).data.presentes, 1); // Bia não está matriculada
+  assert.ok(e.call('saveClassRoll', { aulaId: a2, presentes: [] }, P).ok);
+  dt = e.call('courseDetail', { cursoId: cid }, A).data; assert.equal(dt.aulas[0].presente, true); assert.equal(dt.aulas[1].presente, false); assert.equal(dt.aulas[0].foto, 'data:image/jpeg;base64,AAAA');
+  // avaliação das aulas
+  assert.equal(e.call('rateAula', { aulaId: a1, nota: 11 }, A).error.code, 'VALIDATION'); assert.equal(e.call('rateAula', { aulaId: a1 }, A).error.code, 'VALIDATION'); assert.equal(e.call('rateAula', { aulaId: a1, nota: 9 }, B).error.code, 'FORBIDDEN'); assert.equal(e.call('rateAula', { aulaId: a3, nota: 9 }, A).error.code, 'VALIDATION');
+  assert.ok(e.call('rateAula', { aulaId: a1, nota: 9, feedback: 'Ótima', duvida: 'O que é graça?' }, A).ok); assert.ok(e.call('rateAula', { aulaId: a1, nota: 10 }, A).ok);
+  assert.ok(e.call('listNotifications', {}, P).data.itens.some(n => n.texto.includes('O que é graça?'))); const fb = e.call('aulaFeedback', { aulaId: a1 }, P).data.itens; assert.equal(fb.length, 1); assert.equal(fb[0].nota, 10); assert.equal(e.call('aulaFeedback', { aulaId: a1 }, A).error.code, 'FORBIDDEN');
+  assert.equal(e.call('courseDetail', { cursoId: cid }, P).data.aulas[0].media, 10);
+  // encerrar e certificados
+  assert.equal(e.call('decideCert', { id: 'x', decisao: 'autorizado' }, P).error.code, 'VALIDATION'); // sem assinatura
+  assert.equal(e.call('finishCourse', { cursoId: cid }, A).error.code, 'FORBIDDEN'); assert.ok(e.call('finishCourse', { cursoId: cid }, P).ok); assert.equal(e.call('listCourses', {}, P).data[0].status, 'encerrado');
+  const lc = e.call('listCertificates', { cursoId: cid }, P).data; assert.equal(lc.alunos.length, 1); assert.equal(lc.alunos[0].presenca, 33.3); assert.equal(lc.alunos[0].atinge, false); assert.equal(lc.presencaMin, 75);
+  const mid = lc.alunos[0].id; assert.equal(e.call('decideCert', { id: mid, decisao: 'autorizado' }, P).error.code, 'VALIDATION');
+  assert.equal(e.call('saveSignature', { tipo: 'desenho', dado: 'http://x/a.png' }, P).error.code, 'VALIDATION'); assert.equal(e.call('saveSignature', { tipo: 'texto', dado: 'Fulano' }, A).error.code, 'FORBIDDEN');
+  assert.ok(e.call('saveSignature', { tipo: 'desenho', dado: 'data:image/png;base64,AAAA', cargo: 'Professor de Fundamentos' }, P).ok); assert.ok(e.call('saveSignature', { tipo: 'texto', dado: 'Pr. Sup', cargo: 'Pastor e Supervisor' }, S).ok);
+  assert.equal(e.call('certificate', { id: mid }, A).error.code, 'NOT_FOUND'); // ainda não emitido
+  assert.equal(e.call('decideCert', { ids: [mid], decisao: 'autorizado' }, A).error.code, 'VALIDATION'); // aluno sem assinatura
+  assert.ok(e.call('decideCert', { ids: [mid], decisao: 'autorizado' }, P).ok);
+  const cert = e.call('certificate', { id: mid }, A).data; assert.equal(cert.aluno, 'ana'); assert.equal(cert.curso.nome, 'Fundamentos da Fé'); assert.equal(cert.curso.cargaMin, 270); assert.equal(cert.curso.nAulas, 3); assert.equal(cert.curso.descricao, 'Base bíblica completa');
+  assert.equal(cert.professor.assinatura.tipo, 'desenho'); assert.equal(cert.professor.cargo, 'Professor de Fundamentos'); assert.equal(cert.supervisor.cargo, 'Pastor e Supervisor'); assert.equal(cert.supervisor.assinatura.dado, 'Pr. Sup'); assert.match(cert.codigo, /^ZOE-/);
+  assert.equal(e.call('certificate', { id: mid }, B).error.code, 'FORBIDDEN'); assert.equal(e.call('listCourses', {}, A).data[0].minha.cert, 'emitido');
+  assert.ok(e.call('listNotifications', {}, A).data.itens.some(n => n.titulo === 'Seu certificado está pronto'));
+});
+test('cursos: sem exigência de aprovação a matrícula é imediata; níveis e permissões do professor', () => {
+  const { e, adm, tok, mk } = boot(); mk('prof@zoe.com', 'professor'); mk('ana@zoe.com', 'membro'); const P = tok('prof@zoe.com', 'Temp12345'), A = tok('ana@zoe.com', 'Temp12345');
+  const perms = e.call('getPerms', {}, adm).data; assert.equal(perms.professor.prof, 1); assert.equal(perms.professor.cursos, 0); assert.equal(perms.pastor.cursos, 1); assert.equal(perms.membro.prof, 0);
+  assert.ok(e.call('listTypes', {}, adm) || true);
+  const cid = e.call('saveCourse', { nome: 'Casais', exigeAprovacao: false }, P).data.id; e.call('decideApproval', { tipo: 'curso', id: cid, decisao: 'autorizado' }, adm);
+  assert.equal(e.call('enrollCourse', { cursoId: cid }, A).data.status, 'autorizado'); assert.equal(e.call('enrollCourse', { cursoId: cid }, P).error.code, 'VALIDATION');
+  assert.equal(e.call('listApprovals', {}, adm).data.itens.filter(x => x.tipo === 'matricula').length, 0);
+});
 test('histórico: o % do passado não cai quando entra gente nova (usa o elenco da época)', () => {
   const { e, adm, tok, mk } = boot(); const l1 = mk('lider1@zoe.com', 'membro');
   e.call('createCell', { nome: 'Semeadores', liderId: l1, dia: 'Quinta', inicio: '20:00', fim: '21:30' }, adm);
