@@ -615,3 +615,49 @@ test('XP e insígnias: batismo/decisão, idempotência, nível e personalizaçã
   const d = e.call('profileView', {}, j).data.destaques; assert.equal(d.length, 1);
   assert.ok(e.call('deleteHighlight', { id: d[0].id }, j).ok); assert.equal(e.call('profileView', {}, j).data.destaques.length, 0);
 });
+test('botons de eventos: check-in dá insígnia exclusiva e "presença total"', () => {
+  const { e, adm, tok, mk } = boot(); const a = mk('ana@zoe.com', 'membro'), b = mk('bia@zoe.com', 'membro'); const A = tok('ana@zoe.com', 'Temp12345');
+  for (const [t, d, ins] of [['Dia do Amigo', '2026-03-10', 'Dia do Amigo'], ['Aniversário Zoe', '2026-05-10', 'Aniversário Zoe'], ['Culto Especial', '2026-07-10', '']]) assert.ok(e.call('createEvent', { titulo: t, data: d, insignia: ins }, adm).ok);
+  const evs = e.call('listEvents', {}, adm).data; assert.equal(evs.length, 0); // eventos antigos (mais de 30 dias) não aparecem na lista
+  const ids = e.sheets.Eventos.rows.slice(1).map(r => r[0]);
+  assert.equal(e.call('checkinEvento', { eventoId: ids[0], membros: [a] }, A).error.code, 'FORBIDDEN');
+  assert.equal(e.call('checkinEvento', { eventoId: 'X', membros: [a] }, adm).error.code, 'NOT_FOUND');
+  assert.equal(e.call('checkinEvento', { eventoId: ids[0], membros: [a, b, 'ZZ'] }, adm).data.n, 2);
+  assert.equal(e.call('checkinEvento', { eventoId: ids[0], membros: [a, b] }, adm).data.n, 0); // sem repetir
+  e.call('checkinEvento', { eventoId: ids[1], membros: [a] }, adm); e.call('checkinEvento', { eventoId: ids[2], membros: [a, b] }, adm);
+  const pa = e.call('profileView', {}, A).data.insignias.map(x => x.codigo + ':' + x.ano).sort();
+  assert.ok(pa.includes('presenca:2026') && pa.some(x => x.startsWith('evento:')), JSON.stringify(pa));
+  const pb = e.call('profileView', { membroId: b }, adm).data.insignias.map(x => x.codigo); assert.ok(!pb.includes('presenca')); assert.equal(pb.filter(x => x.startsWith('evento:')).length, 1);
+  assert.equal(e.call('eventoPresenca', { eventoId: ids[0] }, adm).data.presentes.length, 2);
+});
+test('Corrida da Bíblia: limite diário, devocional validado pelo líder, faixas e lugares', () => {
+  const { e, adm, tok, mk } = boot(); const l = mk('lider@zoe.com', 'membro'), a = mk('ana@zoe.com', 'membro'), b = mk('bia@zoe.com', 'membro'), c = mk('cris@zoe.com', 'membro'); const L = tok('lider@zoe.com', 'Temp12345'), A = tok('ana@zoe.com', 'Temp12345'), B = tok('bia@zoe.com', 'Temp12345'), C = tok('cris@zoe.com', 'Temp12345');
+  const cel = e.call('createCell', { nome: 'Semeadores', liderId: l, dia: 'Quinta', inicio: '20:00', fim: '21:30', categoria: 'Mulheres e Homens', faixa: 'Jovens', bairro: 'X', cidade: 'Y', uf: 'GO' }, adm).data.id;
+  for (const m of [a, b]) assert.ok(e.call('adminSave', { tipo: 'membros', id: m, valores: { Nome: m === a ? 'Ana' : 'Bia', CelulaID: cel } }, adm).ok);
+  assert.equal(e.call('getCorrida', {}, A).data.ativa, false);
+  const hoje = new Date().toISOString().slice(0, 10);
+  const cr = e.call('adminSave', { tipo: 'corridas', valores: { Titulo: 'Corrida 2026', Ano: '2026', Inicio: hoje, CapDia: '3', TotalCap: '3', Status: 'Ativo' } }, adm); assert.ok(cr.ok, JSON.stringify(cr));
+  const g = e.call('getCorrida', {}, A).data; assert.ok(g.ativa && g.capDia === 3 && g.total === 3); const cid = g.id;
+  assert.equal(e.call('corridaLer', { corridaId: cid, capitulos: 4, resumo: 'x'.repeat(40) }, A).error.code, 'VALIDATION'); // acima do limite
+  assert.equal(e.call('corridaLer', { corridaId: cid, capitulos: 3, resumo: 'curto' }, A).error.code, 'VALIDATION'); // sem devocional
+  assert.ok(e.call('corridaLer', { corridaId: cid, capitulos: 3, resumo: 'Li e entendi que Deus é fiel em todo tempo.' }, A).ok);
+  assert.equal(e.call('corridaLer', { corridaId: cid, capitulos: 1, resumo: 'y'.repeat(40) }, A).error.code, 'VALIDATION'); // só uma vez ao dia
+  assert.equal(e.call('getCorrida', {}, A).data.concluiu, null); // ainda não validado
+  assert.equal(e.call('listCorridaValidar', {}, A).data.length, 0); // ela mesma não valida
+  assert.equal(e.call('decideLeitura', { corridaId: cid, membroId: a, data: hoje, ok: true }, A).error.code, 'FORBIDDEN');
+  assert.equal(e.call('decideLeitura', { corridaId: cid, membroId: a, data: hoje, ok: true }, C).error.code, 'FORBIDDEN'); // outro membro não valida
+  const pend = e.call('listCorridaValidar', {}, L).data; assert.equal(pend.length, 1); assert.ok(pend[0].resumo.includes('fiel'));
+  assert.ok(e.sheets.Notificacoes.rows.some(n => n[1] === l && n[2] === 'corrida'));
+  assert.equal(e.call('decideLeitura', { corridaId: cid, membroId: a, data: hoje, ok: false }, L).error.code, 'VALIDATION'); // recusa exige motivo
+  assert.ok(e.call('decideLeitura', { corridaId: cid, membroId: a, data: hoje, ok: true }, L).data.terminou);
+  const ca = e.call('getCorrida', {}, A).data.concluiu; assert.deepEqual([ca.faixa, ca.pos], ['ouro', 1]);
+  assert.ok(e.call('profileView', {}, A).data.insignias.some(x => x.codigo === 'corrida-ouro-1' && x.ano === '2026'));
+  // segunda pessoa: o lugar seguinte na mesma faixa; recusa tira o dia e permite refazer hoje
+  assert.ok(e.call('corridaLer', { corridaId: cid, capitulos: 3, resumo: 'z'.repeat(40) }, B).ok); assert.ok(e.call('decideLeitura', { corridaId: cid, membroId: b, data: hoje, ok: false, obs: 'Resumo genérico' }, L).ok);
+  assert.equal(e.call('getCorrida', {}, B).data.hoje.status, 'Recusado'); assert.ok(e.call('corridaLer', { corridaId: cid, capitulos: 3, resumo: 'Agora com minhas palavras sobre o texto lido.' }, B).ok);
+  assert.ok(e.call('decideLeitura', { corridaId: cid, membroId: b, data: hoje, ok: true }, adm).data.terminou); // a administração também valida
+  assert.equal(e.call('getCorrida', {}, B).data.concluiu.pos, 2);
+  // quem perde um dia cai para prata (a faixa é calculada pelos dias sem leitura)
+  assert.equal(e.run(`corFaixa_(corFaltas_(${JSON.stringify({ Inicio: '2026-01-01' })}, [{Data:'2026-01-01',Status:'Validado'},{Data:'2026-01-03',Status:'Validado'}], '2026-01-03'))`), 'prata');
+  assert.equal(e.run(`corFaixa_(corFaltas_(${JSON.stringify({ Inicio: '2026-01-01' })}, [{Data:'2026-01-01',Status:'Validado'},{Data:'2026-01-04',Status:'Validado'}], '2026-01-04'))`), 'bronze');
+});

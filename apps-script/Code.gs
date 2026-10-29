@@ -40,7 +40,11 @@ const SHEETS = {
   Presencas: ['ReuniaoID', 'CelulaID', 'Data', 'MembroID'],
   Papeis: ['CelulaID', 'MembroID', 'Papel'],
   Oracoes: ['OracaoID', 'CelulaID', 'MembroID', 'Tema', 'Titulo', 'Texto', 'Data'],
-  Eventos: ['EventoID', 'Titulo', 'Data', 'Hora', 'Local', 'Descricao', 'Programacao', 'Escopo', 'CelulaID', 'CriadoPor', 'Status', 'Foto'],
+  Eventos: ['EventoID', 'Titulo', 'Data', 'Hora', 'Local', 'Descricao', 'Programacao', 'Escopo', 'CelulaID', 'CriadoPor', 'Status', 'Foto', 'Insignia'],
+  EventoPresenca: ['EventoID', 'MembroID', 'Data'],
+  Corridas: ['CorridaID', 'Titulo', 'Ano', 'Inicio', 'Fim', 'CapDia', 'TotalCap', 'Status'],
+  CorridaLeitura: ['CorridaID', 'MembroID', 'Data', 'Capitulos', 'Resumo', 'Status', 'ValidadoPor', 'Obs'],
+  CorridaConc: ['CorridaID', 'MembroID', 'Fim', 'Faltas', 'Faixa', 'Pos'],
   Inscricoes: ['EventoID', 'MembroID', 'Data'],
   Ministerios: ['MinisterioID', 'Nome', 'Ordem', 'Ativo', 'Descricao', 'Foto'],
   Interesses: ['InteresseID', 'MinisterioID', 'MembroID', 'Data', 'Status', 'DecididoPor', 'DataDecisao'],
@@ -834,13 +838,13 @@ function addNewMember_(d, u) {
 function listEvents_(d, u) {
   const ins = {}; table_('Inscricoes').rows.forEach(function (r) { if (r.MembroID === u.membroId) ins[r.EventoID] = 1; }); const lim = Utilities.formatDate(new Date(Date.now() - 30 * 86400000), CFG.TZ, 'yyyy-MM-dd');
   return table_('Eventos').rows.filter(function (e) { return e.Status !== 'Cancelado' && e.Data >= lim && (e.Escopo !== 'celula' || e.CelulaID === u.celulaId || can_(u, 'celulas')); }).sort(function (a, b) { return a.Data < b.Data ? -1 : 1; })
-    .map(function (e) { return { id: e.EventoID, titulo: e.Titulo, data: e.Data, hora: e.Hora, local: e.Local, descricao: e.Descricao, programacao: jparse_(e.Programacao, []), escopo: e.Escopo, celulaId: e.CelulaID, foto: e.Foto || '', inscrito: !!ins[e.EventoID], adm: e.Escopo !== 'celula' }; });
+    .map(function (e) { return { id: e.EventoID, titulo: e.Titulo, data: e.Data, hora: e.Hora, local: e.Local, descricao: e.Descricao, programacao: jparse_(e.Programacao, []), escopo: e.Escopo, celulaId: e.CelulaID, foto: e.Foto || '', insignia: e.Insignia || '', inscrito: !!ins[e.EventoID], adm: e.Escopo !== 'celula' }; });
 }
 function fotoOk_(v) { v = String(v || ''); if (v && (!/^data:image\/(jpeg|png|webp);base64,/.test(v) || v.length > 45000)) throw new ApiError('VALIDATION', 'Foto inválida ou muito grande.'); return v; }
 function createEvent_(d, u) {
   return withLock_(function () {
     const t = clip_(d.titulo, 120), data = clip_(d.data, 10); if (!t || !data || !dateOk_(data)) throw new ApiError('VALIDATION', 'Informe título e data válida.');
-    appendRow_(table_('Eventos'), { EventoID: id_('E'), Titulo: t, Data: data, Hora: clip_(d.hora, 5), Local: clip_(d.local, 150), Descricao: clip_(d.descricao, 1000), Programacao: JSON.stringify((d.programacao || []).slice(0, 30).map(function (x) { return clip_(x, 120); })), Escopo: 'igreja', CriadoPor: u.membroId, Status: 'Ativo', Foto: fotoOk_(d.foto) });
+    appendRow_(table_('Eventos'), { EventoID: id_('E'), Titulo: t, Data: data, Hora: clip_(d.hora, 5), Local: clip_(d.local, 150), Descricao: clip_(d.descricao, 1000), Programacao: JSON.stringify((d.programacao || []).slice(0, 30).map(function (x) { return clip_(x, 120); })), Escopo: 'igreja', CriadoPor: u.membroId, Status: 'Ativo', Foto: fotoOk_(d.foto), Insignia: clip_(d.insignia, 60) });
     audit_(u.email, 'EVENTO_CRIADO', t, 'OK'); return { ok: true };
   });
 }
@@ -1221,6 +1225,100 @@ function saveHighlight_(d, u) {
 }
 function deleteHighlight_(d, u) { return withLock_(function () { const t = table_('PerfilFotos'), r = t.rows.filter(function (x) { return x.FotoID === d.id && x.MembroID === u.membroId; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Foto não encontrada.'); t.sh.deleteRow(r._row); return { ok: true }; }); }
 
+/* ============================== EVENTOS (BOTONS) E CORRIDA DA BÍBLIA ============================== */
+function presencaTotal_(mid, ano) {
+  const hj = today_(), evs = table_('Eventos').rows.filter(function (e) { return e.Escopo !== 'celula' && e.Status !== 'Cancelado' && String(e.Data).slice(0, 4) === ano && e.Data <= hj; }); if (evs.length < 3) return false;
+  const meus = {}; table_('EventoPresenca').rows.forEach(function (r) { if (r.MembroID === mid) meus[r.EventoID] = 1; });
+  return evs.every(function (e) { return meus[e.EventoID]; }) ? awardBadge_(mid, 'presenca', 'Presença total', ano, 150) : false;
+}
+function checkinEvento_(d, u) {
+  return withLock_(function () {
+    const ev = table_('Eventos').rows.filter(function (e) { return e.EventoID === d.eventoId; })[0]; if (!ev) throw new ApiError('NOT_FOUND', 'Evento não encontrado.');
+    const ids = (Array.isArray(d.membros) ? d.membros : []).slice(0, 500).map(function (x) { return clip_(x, 30); }).filter(String), t = table_('EventoPresenca'), ja = {}, mem = {};
+    t.rows.forEach(function (r) { if (r.EventoID === ev.EventoID) ja[r.MembroID] = 1; }); table_('Membros').rows.forEach(function (m) { mem[m.MembroID] = 1; });
+    const ano = String(ev.Data).slice(0, 4); let n = 0;
+    ids.forEach(function (mid) {
+      if (!mem[mid] || ja[mid]) return; ja[mid] = 1; appendRow_(t, { EventoID: ev.EventoID, MembroID: mid, Data: today_() }); t.rows.push({ EventoID: ev.EventoID, MembroID: mid }); n++;
+      awardXp_(mid, 'evento:' + ev.EventoID, 20, 'Presença em ' + ev.Titulo);
+      if (ev.Insignia) awardBadge_(mid, 'evento:' + ev.EventoID, ev.Insignia, ano, 60);
+      presencaTotal_(mid, ano);
+    });
+    audit_(u.email, 'EVENTO_CHECKIN', ev.EventoID, 'OK'); return { n: n };
+  });
+}
+function eventoPresenca_(d, u) {
+  const ev = table_('Eventos').rows.filter(function (e) { return e.EventoID === d.eventoId; })[0]; if (!ev) throw new ApiError('NOT_FOUND', 'Evento não encontrado.');
+  const pres = [], ins = []; table_('EventoPresenca').rows.forEach(function (r) { if (r.EventoID === ev.EventoID) pres.push(r.MembroID); }); table_('Inscricoes').rows.forEach(function (r) { if (r.EventoID === ev.EventoID) ins.push(r.MembroID); });
+  return { titulo: ev.Titulo, insignia: ev.Insignia || '', presentes: pres, inscritos: ins, membros: table_('Membros').rows.filter(function (m) { return m.Status !== 'Inativo'; }).map(function (m) { return { id: m.MembroID, nome: m.Nome }; }).sort(function (a, b) { return a.nome < b.nome ? -1 : 1; }) };
+}
+// ---- Corrida da Bíblia: todos começam no dia 1º; só dá para registrar a leitura do dia, com limite de capítulos e devocional validado pelo líder
+const COR_TOTAL = 1189, COR_CAP = 5;
+function corAtiva_() { const h = today_(); return table_('Corridas').rows.filter(function (c) { return c.Status === 'Ativo' && (!c.Fim || c.Fim >= h); }).sort(function (a, b) { return a.Inicio < b.Inicio ? 1 : -1; })[0]; }
+function corDias_(a, b) { const out = []; let d = new Date(a + 'T12:00:00Z'); const f = new Date(b + 'T12:00:00Z'); while (d <= f && out.length < 800) { out.push(d.toISOString().slice(0, 10)); d = new Date(d.getTime() + 86400000); } return out; }
+function corTotal_(c) { return Number(c.TotalCap) || COR_TOTAL; }
+function corCap_(c) { return Number(c.CapDia) || COR_CAP; }
+function corEntradas_(cid, mid) { return table_('CorridaLeitura').rows.filter(function (r) { return r.CorridaID === cid && r.MembroID === mid; }); }
+function corFaltas_(c, ent, ate) { const dias = {}; ent.forEach(function (r) { if (r.Status !== 'Recusado') dias[r.Data] = 1; }); let f = 0; corDias_(c.Inicio, ate).forEach(function (dd) { if (!dias[dd]) f++; }); return f; }
+function corFaixa_(f) { return f === 0 ? 'ouro' : f === 1 ? 'prata' : 'bronze'; }
+function corLider_(mid) { const m = table_('Membros').rows.filter(function (x) { return x.MembroID === mid; })[0]; if (!m || !m.CelulaID) return null; const c = table_('Celulas').rows.filter(function (x) { return x.CelulaID === m.CelulaID; })[0]; return c || null; }
+function corPodeValidar_(u, mid) { if (mid === u.membroId) return false; if (can_(u, 'eventos')) return true; const c = corLider_(mid); return !!c && (c.LiderID === u.membroId || c.SupervisorID === u.membroId); }
+function corFecha_(c, mid) {
+  const t = table_('CorridaConc'); if (t.rows.some(function (r) { return r.CorridaID === c.CorridaID && r.MembroID === mid; })) return false;
+  const ent = corEntradas_(c.CorridaID, mid); if (ent.some(function (r) { return r.Status === 'Pendente'; })) return false;
+  const ok = ent.filter(function (r) { return r.Status === 'Validado'; }), lidos = ok.reduce(function (a, r) { return a + Number(r.Capitulos); }, 0); if (lidos < corTotal_(c)) return false;
+  const fim = ok.map(function (r) { return r.Data; }).sort().pop(), faltas = corFaltas_(c, ok, fim), faixa = corFaixa_(faltas), pos = t.rows.filter(function (r) { return r.CorridaID === c.CorridaID && r.Faixa === faixa; }).length + 1;
+  appendRow_(t, { CorridaID: c.CorridaID, MembroID: mid, Fim: fim, Faltas: String(faltas), Faixa: faixa, Pos: String(pos) }); t.rows.push({ CorridaID: c.CorridaID, MembroID: mid, Faixa: faixa });
+  if (pos <= 3) awardBadge_(mid, 'corrida-' + faixa + '-' + pos, 'Corrida da Bíblia', c.Ano || fim.slice(0, 4), ({ ouro: 600, prata: 400, bronze: 250 })[faixa] - (pos - 1) * 50);
+  else { awardXp_(mid, 'corrida:' + c.CorridaID, 150, 'Concluiu a Corrida da Bíblia'); notify_(mid, 'corrida', 'Você terminou a Corrida da Bíblia!', 'Parabéns! Você leu a Bíblia toda.', 'corf:' + c.CorridaID); }
+  return true;
+}
+function getCorrida_(d, u) {
+  const c = corAtiva_(); if (!c) return { ativa: false };
+  const hj = today_(), ent = corEntradas_(c.CorridaID, u.membroId), vivos = ent.filter(function (r) { return r.Status !== 'Recusado'; }), lidos = vivos.reduce(function (a, r) { return a + Number(r.Capitulos); }, 0);
+  const hoje = ent.filter(function (r) { return r.Data === hj; })[0], conc = table_('CorridaConc').rows.filter(function (r) { return r.CorridaID === c.CorridaID; });
+  const meuC = conc.filter(function (r) { return r.MembroID === u.membroId; })[0], ontem = new Date(new Date(hj + 'T12:00:00Z').getTime() - 86400000).toISOString().slice(0, 10);
+  const comecou = c.Inicio <= hj, faltas = comecou && ontem >= c.Inicio ? corFaltas_(c, vivos, ontem) - (vivos.some(function (r) { return r.Data === hj; }) ? 0 : 0) : 0;
+  const nome = {}; table_('Membros').rows.forEach(function (m) { nome[m.MembroID] = m.Simples || m.Nome; });
+  const soma = {}; table_('CorridaLeitura').rows.forEach(function (r) { if (r.CorridaID === c.CorridaID && r.Status !== 'Recusado') soma[r.MembroID] = (soma[r.MembroID] || 0) + Number(r.Capitulos); });
+  const rank = Object.keys(soma).map(function (k) { const cc = conc.filter(function (r) { return r.MembroID === k; })[0]; return { nome: nome[k] || '—', lidos: soma[k], faixa: cc ? cc.Faixa : '', pos: cc ? Number(cc.Pos) : 0, eu: k === u.membroId }; }).sort(function (a, b) { return b.lidos - a.lidos; }).slice(0, 10);
+  let pend = 0; if (true) { const sa = table_('CorridaLeitura').rows.filter(function (r) { return r.Status === 'Pendente' && r.CorridaID === c.CorridaID && corPodeValidar_(u, r.MembroID); }); pend = sa.length; }
+  return { ativa: true, id: c.CorridaID, titulo: c.Titulo, ano: c.Ano, inicio: c.Inicio, fim: c.Fim || '', capDia: corCap_(c), total: corTotal_(c), comecou: comecou, lidos: lidos, faltas: faltas, faixa: corFaixa_(faltas), hoje: hoje ? { cap: Number(hoje.Capitulos), status: hoje.Status, resumo: hoje.Resumo, obs: hoje.Obs || '' } : null,
+    concluiu: meuC ? { faixa: meuC.Faixa, pos: Number(meuC.Pos), fim: meuC.Fim } : null, ranking: rank, paraValidar: pend,
+    historico: ent.slice().sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).slice(0, 10).map(function (r) { return { data: r.Data, cap: Number(r.Capitulos), status: r.Status, obs: r.Obs || '' }; }) };
+}
+function corridaLer_(d, u) {
+  return withLock_(function () {
+    const c = corAtiva_(); if (!c || c.CorridaID !== d.corridaId) throw new ApiError('NOT_FOUND', 'Não há corrida ativa.'); const hj = today_(); if (c.Inicio > hj) throw new ApiError('VALIDATION', 'A corrida ainda não começou.');
+    const cap = Math.floor(Number(d.capitulos)), resumo = clip_(d.resumo, 800); if (!(cap >= 1)) throw new ApiError('VALIDATION', 'Informe quantos capítulos leu.');
+    if (cap > corCap_(c)) throw new ApiError('VALIDATION', 'O máximo é ' + corCap_(c) + ' capítulos por dia.');
+    if (resumo.length < 30) throw new ApiError('VALIDATION', 'Escreva seu devocional: um resumo, com pelo menos 30 letras, do que você entendeu da leitura.');
+    const t = table_('CorridaLeitura'), ent = corEntradas_(c.CorridaID, u.membroId), ex = ent.filter(function (r) { return r.Data === hj; })[0];
+    if (ex && ex.Status !== 'Recusado') throw new ApiError('VALIDATION', 'Você já registrou a leitura de hoje.');
+    if (table_('CorridaConc').rows.some(function (r) { return r.CorridaID === c.CorridaID && r.MembroID === u.membroId; })) throw new ApiError('VALIDATION', 'Você já terminou a corrida.');
+    const lidos = ent.filter(function (r) { return r.Status !== 'Recusado'; }).reduce(function (a, r) { return a + Number(r.Capitulos); }, 0), falta = corTotal_(c) - lidos; if (falta <= 0) throw new ApiError('VALIDATION', 'Você já leu todos os capítulos; aguarde a validação.');
+    const reg = { Capitulos: String(Math.min(cap, falta)), Resumo: resumo, Status: 'Pendente', ValidadoPor: '', Obs: '' };
+    if (ex) writeRow_(t, ex._row, reg); else appendRow_(t, Object.assign({ CorridaID: c.CorridaID, MembroID: u.membroId, Data: hj }, reg));
+    const cel = corLider_(u.membroId), nm = (table_('Membros').rows.filter(function (m) { return m.MembroID === u.membroId; })[0] || {}).Simples || '';
+    if (cel && cel.LiderID && cel.LiderID !== u.membroId) notify_(cel.LiderID, 'corrida', 'Devocional para validar', nm + ' registrou a leitura de hoje na Corrida da Bíblia.', 'cor:' + u.membroId + ':' + hj);
+    awardXp_(u.membroId, 'corrida-dia:' + c.CorridaID + ':' + hj, 5, 'Leitura do dia'); return { ok: true, cap: Number(reg.Capitulos) };
+  });
+}
+function listCorridaValidar_(d, u) {
+  const nome = {}; table_('Membros').rows.forEach(function (m) { nome[m.MembroID] = m.Simples || m.Nome; });
+  return table_('CorridaLeitura').rows.filter(function (r) { return r.Status === 'Pendente' && corPodeValidar_(u, r.MembroID); }).sort(function (a, b) { return a.Data < b.Data ? -1 : 1; }).slice(0, 100)
+    .map(function (r) { return { corridaId: r.CorridaID, membroId: r.MembroID, nome: nome[r.MembroID] || '—', data: r.Data, capitulos: Number(r.Capitulos), resumo: r.Resumo }; });
+}
+function decideLeitura_(d, u) {
+  return withLock_(function () {
+    const t = table_('CorridaLeitura'), r = t.rows.filter(function (x) { return x.CorridaID === d.corridaId && x.MembroID === d.membroId && x.Data === d.data; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Registro não encontrado.');
+    if (!corPodeValidar_(u, r.MembroID)) throw new ApiError('FORBIDDEN', 'Só o líder da célula (ou a administração) valida este devocional.'); if (r.Status !== 'Pendente') throw new ApiError('VALIDATION', 'Esse registro já foi decidido.');
+    const obs = clip_(d.obs, 300); if (!d.ok && !obs) throw new ApiError('VALIDATION', 'Explique ao membro por que recusou.');
+    writeRow_(t, r._row, { Status: d.ok ? 'Validado' : 'Recusado', ValidadoPor: u.membroId, Obs: obs }); r.Status = d.ok ? 'Validado' : 'Recusado';
+    notify_(r.MembroID, 'corrida', d.ok ? 'Devocional validado ✔' : 'Devocional recusado', d.ok ? 'Sua leitura de ' + r.Data + ' foi validada.' : 'Sua leitura de ' + r.Data + ' não foi aceita: ' + obs, 'cor:' + r.Data);
+    const c = table_('Corridas').rows.filter(function (x) { return x.CorridaID === r.CorridaID; })[0]; let fim = false; if (c && d.ok) fim = corFecha_(c, r.MembroID); return { ok: true, terminou: fim };
+  });
+}
+
 /* ============================== USUÁRIOS / PERMISSÕES ============================== */
 function listUsers_() { const mem = {}; table_('Membros').rows.forEach(function (m) { mem[m.MembroID] = m; }); return table_('Usuarios').rows.map(function (r) { return { email: r.Email, nome: (mem[r.MembroID] || {}).Nome || '', papel: r.Papel, status: r.Status || 'Ativo', ultimoAcesso: r.UltimoAcesso, membroId: r.MembroID }; }); }
 function createUser_(d, u) {
@@ -1288,8 +1386,12 @@ const ENT = {
     { k: 'Status', l: 'Situação', t: 'sel', op: [['Ativa', 'Ativa'], ['Inativa', 'Inativa']] }] },
   eventos: { titulo: 'Eventos', aba: 'Eventos', id: 'EventoID', pre: 'E', perm: 'eventos', rotulo: 'Titulo', sub: 'Data', status: { col: 'Status', ativo: 'Ativo', off: 'Cancelado' }, defaults: { Escopo: 'igreja' }, campos: [
     { k: 'Titulo', l: 'Título', t: 'text', max: 120, req: 1 }, { k: 'Data', l: 'Data', t: 'date', req: 1 }, { k: 'Hora', l: 'Hora', t: 'time' }, { k: 'Local', l: 'Local', t: 'text', max: 150 },
-    { k: 'Descricao', l: 'Descrição', t: 'area', max: 1000 }, { k: 'Programacao', l: 'Programação (uma linha por item)', t: 'lines' }, { k: 'Foto', l: 'Foto do evento', t: 'foto' },
+    { k: 'Descricao', l: 'Descrição', t: 'area', max: 1000 }, { k: 'Programacao', l: 'Programação (uma linha por item)', t: 'lines' }, { k: 'Foto', l: 'Foto do evento', t: 'foto' }, { k: 'Insignia', l: 'Insígnia exclusiva do evento (nome; deixe vazio se não houver)', t: 'text', max: 60 },
     { k: 'Status', l: 'Situação', t: 'sel', op: [['Ativo', 'Ativo'], ['Cancelado', 'Cancelado']] }] },
+  corridas: { titulo: 'Corrida da Bíblia', aba: 'Corridas', id: 'CorridaID', pre: 'CR', perm: 'eventos', rotulo: 'Titulo', sub: 'Inicio', status: { col: 'Status', ativo: 'Ativo', off: 'Encerrada' }, defaults: { Status: 'Ativo', CapDia: '5', TotalCap: '1189' }, campos: [
+    { k: 'Titulo', l: 'Título', t: 'text', max: 80, req: 1 }, { k: 'Ano', l: 'Ano', t: 'num' }, { k: 'Inicio', l: 'Início (1º de janeiro)', t: 'date', req: 1 }, { k: 'Fim', l: 'Fim (opcional)', t: 'date' },
+    { k: 'CapDia', l: 'Máximo de capítulos por dia', t: 'num' }, { k: 'TotalCap', l: 'Total de capítulos (Bíblia inteira = 1189)', t: 'num' },
+    { k: 'Status', l: 'Situação', t: 'sel', op: [['Ativo', 'Ativa'], ['Encerrada', 'Encerrada']] }] },
   noticias: { titulo: 'Notícias', aba: 'Noticias', id: 'NoticiaID', pre: 'N', perm: 'eventos', rotulo: 'Titulo', sub: 'Data', status: { col: 'Status', ativo: 'Ativo', off: 'Removida' }, defaults: {}, campos: [
     { k: 'Titulo', l: 'Título', t: 'text', max: 120, req: 1 }, { k: 'Texto', l: 'Texto', t: 'area', max: 1500 }, { k: 'Status', l: 'Situação', t: 'sel', op: [['Ativo', 'Publicada'], ['Removida', 'Removida']] }] },
   ministerios: { titulo: 'Ministérios', aba: 'Ministerios', id: 'MinisterioID', pre: 'MIN', perm: 'min', rotulo: 'Nome', status: { col: 'Ativo', ativo: '1', off: '0' }, campos: [
@@ -1384,7 +1486,7 @@ const ROUTES = {
   listCourses: { auth: 'any', fn: listCourses_ }, enrollCourse: { auth: 'any', write: 1, fn: enrollCourse_ }, saveCourse: { auth: 'any', write: 1, fn: saveCourse_ }, courseDetail: { auth: 'any', fn: courseDetail_ }, saveAula: { auth: 'any', write: 1, fn: saveAula_ }, deleteAula: { auth: 'any', write: 1, fn: deleteAula_ }, getAulaPdf: { auth: 'any', fn: getAulaPdf_ },
   requestStart: { auth: 'any', write: 1, fn: requestStart_ }, getClassRoll: { auth: 'any', fn: getClassRoll_ }, saveClassRoll: { auth: 'any', write: 1, fn: saveClassRoll_ }, finishCourse: { auth: 'any', write: 1, fn: finishCourse_ }, listCertificates: { auth: 'any', fn: listCertificates_ }, decideCert: { auth: 'any', write: 1, fn: decideCert_ }, certificate: { auth: 'any', fn: certificate_ },
   getSignature: { auth: 'any', fn: getSignature_ }, saveSignature: { auth: 'any', write: 1, fn: saveSignature_ }, rateAula: { auth: 'any', write: 1, fn: rateAula_ }, aulaFeedback: { auth: 'any', fn: aulaFeedback_ },
-  listLessons: { auth: 'any', fn: listLessons_ }, listDynamics: { auth: 'any', fn: listDyn_ }, addDynamic: { auth: 'any', write: 1, fn: addDyn_ }, listVideos: { auth: 'any', fn: listVideos_ }, listProducts: { auth: 'any', fn: listProducts_ }, listFamilia: { auth: 'any', fn: listFamilia_ }, profileView: { auth: 'any', fn: profileView_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
+  listLessons: { auth: 'any', fn: listLessons_ }, listDynamics: { auth: 'any', fn: listDyn_ }, addDynamic: { auth: 'any', write: 1, fn: addDyn_ }, listVideos: { auth: 'any', fn: listVideos_ }, listProducts: { auth: 'any', fn: listProducts_ }, listFamilia: { auth: 'any', fn: listFamilia_ }, profileView: { auth: 'any', fn: profileView_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
   searchCells: { auth: 'any', fn: searchCells_ }, addPrayer: { auth: 'any', write: 1, fn: addPrayer_ }, listPrayers: { auth: 'any', fn: listPrayers_ },
   cellMembers: { auth: 'any', fn: cellMembers_ }, saveCell: { auth: 'any', write: 1, fn: saveCell_ }, saveAttendance: { auth: 'any', write: 1, fn: saveAttendance_ }, history: { auth: 'any', fn: history_ },
   indicators: { auth: 'any', fn: indicators_ }, getPapeis: { auth: 'any', fn: getPapeis_ }, savePapeis: { auth: 'any', write: 1, fn: savePapeis_ }, createCellEvent: { auth: 'any', write: 1, fn: createCellEvent_ },
