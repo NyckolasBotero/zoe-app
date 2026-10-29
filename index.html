@@ -14,7 +14,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700&family=Montserrat:ital,wght@0,500;0,800;1,500;1,800&family=Poppins:ital,wght@0,500;0,800;1,500;1,800&family=Playfair+Display:ital,wght@0,500;0,800;1,500;1,800&family=Bebas+Neue&family=Oswald:wght@500;700&family=Lora:ital,wght@0,500;0,700;1,500;1,700&family=Cinzel:wght@500;800&family=Great+Vibes&family=Dancing+Script:wght@600&family=Allura&family=Sacramento&family=Mr+Dafoe&family=Homemade+Apple&family=Caveat:wght@600&family=Satisfy&display=swap">
-<link rel="stylesheet" href="${fonts}">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <style>
 /* Layout: menu lateral retrátil em vidro à esquerda, barra superior com sino, conteúdo em cards translúcidos sobre fundo líquido.
@@ -479,7 +478,6 @@ html.theming *,html.theming *::before,html.theming *::after{transition:backgroun
 .mm-r input{width:100%}.mm-ck{display:flex;gap:8px;align-items:center}.mm-c input[type=color],.mm-cc input[type=color]{width:56px;height:36px;padding:0;border:1px solid var(--line,#ccc);border-radius:8px;background:none}.mm-cc{display:inline-flex;align-items:center;gap:4px}
 @media(max-width:900px){.mm-ed,.mm-pj{grid-template-columns:1fr}.mm-sticky{position:static}}
 </style>
-<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}#st{position:absolute;inset:0}#dica{position:fixed;left:50%;bottom:4%;transform:translateX(-50%);background:rgba(0,0,0,.7);color:#fff;font:600 15px Arial;padding:10px 16px;border-radius:12px;opacity:0;transition:opacity .4s;pointer-events:none}</style>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><filter id="goo"><feGaussianBlur in="SourceGraphic" stdDeviation="14" result="b"/><feColorMatrix in="b" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -8"/></filter></defs></svg>
@@ -2510,7 +2508,7 @@ async function mmIniciar(){const p=MM.pj;let tela=null,multi=false;
  if(MM.win&&!MM.win.closed){p.ativa=true;p.modo=MM.modo||'janela';p.pausado=false;mmEnvia(true);renderKeep();return}
  const w=window.open('','zoe_projecao',f+',popup=yes');if(!w)return toast('O navegador bloqueou a janela. Permita pop-ups para este site e tente de novo.');
  const fonts=(document.querySelector('link[href*="fonts.googleapis.com/css2"]')||{}).href||'';
- w.document.open();w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Zoe · Projeção</title>${fonts?``:''}</head><body><div id="st" style="position:absolute;left:0;top:0;right:0;bottom:0"></div><div id="dica">Clique ou aperte F para tela cheia</div><script>const MMR=(${mmRenderer.toString()})();const R=MMR(document.getElementById('st'),{anim:true});let logo='',fsOk=${tela?'true':'false'};
+ w.document.open();w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Zoe · Projeção</title>${fonts?`${'<'}link rel="stylesheet" href="${fonts}">`:''}${'<'}style>html,body{margin:0;height:100%;background:#000;overflow:hidden}#st{position:absolute;inset:0}#dica{position:fixed;left:50%;bottom:4%;transform:translateX(-50%);background:rgba(0,0,0,.7);color:#fff;font:600 15px Arial;padding:10px 16px;border-radius:12px;opacity:0;transition:opacity .4s;pointer-events:none}${'<'}/style></head><body><div id="st" style="position:absolute;left:0;top:0;right:0;bottom:0"></div><div id="dica">Clique ou aperte F para tela cheia</div><script>const MMR=(${mmRenderer.toString()})();const R=MMR(document.getElementById('st'),{anim:true});let logo='',fsOk=${tela?'true':'false'};
 const dica=document.getElementById('dica');function fs(){const d=document.documentElement;if(!document.fullscreenElement&&d.requestFullscreen)d.requestFullscreen().catch(()=>{})}
 addEventListener('message',e=>{const m=e.data;if(!m||m.mm!==1)return;if(m.logo)logo=m.logo;R.set({L:m.L,slide:m.slide,pausado:m.pausado,logo:logo})});
 addEventListener('keydown',e=>{if(e.key==='f'||e.key==='F')fs()});addEventListener('click',()=>{if(fsOk)fs()});

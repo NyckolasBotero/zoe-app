@@ -830,3 +830,10 @@ test('multimídia: só ministério Som; músicas com layout; layout padrão; bus
   assert.equal(e.call('searchLyrics', { q: 'x' }, ta).error.code, 'VALIDATION');
   assert.ok(e.call('deleteSong', { id: r.data.id }, ta).ok); assert.equal(e.call('listSongs', {}, ta).data.itens.length, 0);
 });
+test('index.html: nenhum <style>/<link> dentro de scripts (build os moveria para o head e travaria a rolagem)', async () => {
+  const fs = await import('node:fs'); const h = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const scripts = [...h.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]).join('\n');
+  assert.ok(!/<style/.test(scripts) && !/<link /.test(scripts));
+  assert.equal((h.match(/<style/g) || []).length, 2);
+  assert.ok(!/html,body\{[^}]*overflow:hidden/.test(h.split('<body>')[0]));
+});
