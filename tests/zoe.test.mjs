@@ -255,7 +255,7 @@ test('organograma: todos veem a árvore; célula gerada de outra', () => {
   const { e, adm, tok, mk } = boot(); const sup = mk('sup@zoe.com', 'membro'), l1 = mk('l1@zoe.com', 'membro'), l2 = mk('l2@zoe.com', 'membro');
   const c1 = e.call('createCell', { nome: 'Semeadores', liderId: l1, supervisorId: sup }, adm).data.id;
   e.call('createCell', { nome: 'Seara', liderId: l2, supervisorId: sup, maeId: c1 }, adm);
-  const X = (mk('x@zoe.com', 'membro'), tok('x@zoe.com', 'Temp12345')); assert.equal(e.call('orgTree', {}, X).error.code, 'FORBIDDEN'); assert.equal(e.call('orgTree', {}, tok('l1@zoe.com', 'Temp12345')).error.code, 'FORBIDDEN');
+  const X = (mk('x@zoe.com', 'membro'), tok('x@zoe.com', 'Temp12345')); assert.equal(e.call('orgTree', {}, X).error.code, 'FORBIDDEN'); { const L1 = e.call('orgTree', {}, tok('l1@zoe.com', 'Temp12345')); assert.ok(L1.ok); assert.ok(L1.data.grupos[0].celulas.every(c => !c.editavel)); } // líder vê, mas só supervisor/admin edita
   const SU = tok('sup@zoe.com', 'Temp12345'), o = e.call('orgTree', {}, SU).data.grupos;
   assert.equal(o.length, 1); assert.equal(o[0].celulas.length, 2); assert.equal(o[0].celulas.find(c => c.nome === 'Seara').maeId, c1); assert.equal(o[0].celulas[0].membros, 1);
   // mover célula para outro supervisor muda quem recebe os pedidos
@@ -379,4 +379,51 @@ test('loja: produtos só pela administração, validação e número da loja', (
   const a = e.call('listProducts', {}, m).data[0]; assert.equal(a.preco, 55); assert.equal(a.disponivel, false); assert.equal(a.foto, 'data:image/jpeg;base64,AAAA');
   assert.ok(e.call('deleteProduct', { id: r.data.id }, adm).ok); assert.equal(e.call('listProducts', {}, m).data.length, 1);
   assert.equal(e.call('saveConfig', { LojaWhatsApp: '+55 (61) 90000-0000' }, adm).data.lojaWhatsapp, '5561900000000');
+});
+test('histórico: o % do passado não cai quando entra gente nova (usa o elenco da época)', () => {
+  const { e, adm, tok, mk } = boot(); const l1 = mk('lider1@zoe.com', 'membro');
+  e.call('createCell', { nome: 'Semeadores', liderId: l1, dia: 'Quinta', inicio: '20:00', fim: '21:30' }, adm);
+  const L1 = tok('lider1@zoe.com', 'Temp12345');
+  for (const n of ['Ana Souza', 'Bia Lima', 'Caio Reis']) assert.ok(e.call('addNewMember', { nome: n, endereco: 'Rua 1', celular: '61999990000' }, L1).ok);
+  const ids = e.call('cellMembers', {}, L1).data.map(m => m.id); assert.equal(ids.length, 4);
+  e.call('saveAttendance', { data: '2026-10-01', presentes: ids, deus: false }, L1);
+  assert.ok(e.call('addNewMember', { nome: 'Davi Novo', endereco: 'Rua 2', celular: '61999990001' }, L1).ok);
+  const h = e.call('history', {}, L1).data; assert.equal(h.reunioes[0].presentes, 4); assert.equal(h.reunioes[0].total, 4); assert.equal(h.indicadores.mediaPresenca, 100);
+  const ids5 = e.call('cellMembers', {}, L1).data.map(m => m.id); assert.equal(ids5.length, 5);
+  e.call('saveAttendance', { data: '2026-10-08', presentes: ids5.slice(0, 4), deus: false }, L1);
+  const h2 = e.call('history', {}, L1).data; assert.equal(h2.reunioes.length, 2);
+  const nova = h2.reunioes.find(r => r.data === '2026-10-08'), velha = h2.reunioes.find(r => r.data === '2026-10-01');
+  assert.equal(nova.total, 5); assert.equal(nova.presentes, 4); assert.equal(velha.total, 4); assert.equal(velha.nomesAusentes.length, 0); assert.equal(nova.nomesAusentes.length, 1);
+});
+test('tipos de acesso: frequentador por presença, tipo novo, abas e regras por guia da célula', () => {
+  const { e, adm, tok, mk } = boot(); const l1 = mk('lider1@zoe.com', 'membro'), m1 = mk('maria@zoe.com', 'membro'), semcel = mk('pedro@zoe.com', 'membro');
+  const c = e.call('createCell', { nome: 'Semeadores', liderId: l1, dia: 'Quinta', inicio: '20:00', fim: '21:30' }, adm).data.id;
+  e.call('saveMember', { membroId: m1, membro: { CelulaID: c } }, adm);
+  const rows = e.sheets.Membros; const hdr = rows.header || null; void hdr;
+  const R = e.call('getAccessRules', {}, adm); assert.ok(R.ok, JSON.stringify(R)); assert.ok(R.data.tipos.some(t => t.id === 'frequentador'));
+  assert.equal(R.data.regras.membro.oracao.e, 1); assert.equal(R.data.regras.membro.freq.v, 0); assert.equal(R.data.regras.lider.freq.e, 1);
+  const bad = e.call('saveAccessRules', { novoTipo: 'Membro' }, adm); assert.equal(bad.error.code, 'VALIDATION');
+  const ok = e.call('saveAccessRules', { novoTipo: 'Visitante Especial' }, adm); assert.ok(ok.ok, JSON.stringify(ok)); const novo = ok.data.tipos.find(t => t.nome === 'Visitante Especial'); assert.ok(novo && !novo.base);
+  assert.ok(e.call('createUser', { email: 'vis@zoe.com', nome: 'Vis', senha: 'Temp12345', papel: novo.id }, adm).ok);
+  assert.equal(e.call('createUser', { email: 'x@zoe.com', nome: 'X', senha: 'Temp12345', papel: 'inexistente' }, adm).error.code, 'VALIDATION');
+  const M = tok('maria@zoe.com', 'Temp12345'); const me = e.call('me', {}, M).data; assert.ok(['membro', 'frequentador'].includes(me.usuario.tipo));
+  assert.equal(e.call('saveAccessRules', { regras: { membro: { org: { v: 1, e: 0 } } } }, M).error.code, 'FORBIDDEN');
+  assert.ok(e.call('saveAccessRules', { regras: { membro: { freq: { v: 1, e: 0 }, mural: { v: 1, e: 1 } } }, abas: { frequentador: { loja: 0 } } }, adm).ok);
+  const R2 = e.call('getAccessRules', {}, adm).data; assert.equal(R2.regras.membro.freq.v, 1); assert.equal(R2.regras.membro.freq.e, 0); assert.equal(R2.abas.frequentador.loja, 0);
+  const L = tok('lider1@zoe.com', 'Temp12345'); assert.ok(e.call('cellMembers', {}, L).ok);
+  const sp = tok('pedro@zoe.com', 'Temp12345'); assert.equal(e.call('cellMembers', {}, sp).ok, false);
+  void semcel;
+});
+test('supervisor: precisa multiplicar X células, com exceção aberta por quem administra', () => {
+  const { e, adm, tok, mk } = boot(); const sup = mk('sup@zoe.com', 'membro'), l1 = mk('lider1@zoe.com', 'membro');
+  assert.ok(e.call('createCell', { nome: 'A', liderId: l1, supervisorId: sup, dia: 'Quinta' }, adm).ok, 'regra desligada por padrão');
+  assert.ok(e.call('saveConfig', { CelulasParaSupervisor: 2 }, adm).ok);
+  assert.equal(e.call('saveConfig', { CelulasParaSupervisor: -1 }, adm).error.code, 'VALIDATION');
+  const l2 = mk('lider2@zoe.com', 'membro');
+  const r = e.call('createCell', { nome: 'B', liderId: l2, supervisorId: l1, dia: 'Segunda' }, adm); assert.equal(r.error.code, 'REGRA_SUPERVISOR');
+  assert.ok(e.call('createCell', { nome: 'B', liderId: l2, supervisorId: l1, dia: 'Segunda', excecao: true }, adm).ok);
+  const mae = e.call('createCell', { nome: 'M', liderId: l1, dia: 'Terça' }, adm).data.id;
+  e.call('createCell', { nome: 'F1', liderId: l2, dia: 'Sexta', maeId: mae }, adm); e.call('createCell', { nome: 'F2', liderId: mk('l3@zoe.com', 'membro'), dia: 'Sábado', maeId: mae }, adm);
+  assert.ok(e.call('createCell', { nome: 'C', liderId: mk('l4@zoe.com', 'membro'), supervisorId: l1, dia: 'Domingo' }, adm).ok, 'multiplicou 2 células');
+  void tok;
 });
