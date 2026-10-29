@@ -1087,9 +1087,9 @@ const NOTICIAS=[{t:'Aniversário Zoe será em 31/10',d:'Hoje',s:'Venha celebrar 
 const PAPEIS=['Louvor','Recepcionar visitantes','Dinâmica e quebra-gelo','Registro semanal de presença','Eventos do grupo'];
 const TEMAS=['Proteção e Livramento','Direção de Deus e sabedoria para decisões','Agradecimentos','Liderança e Ministério'];
 // Abas liberadas por tipo de acesso (Administração > Níveis de acesso). Exceção: quem já está numa célula sempre vê a aba Células.
-const ABAS_FIXAS=new Set(['feed','meu','pessoas','corrida','perfil','aprovacoes','admin']);
+const ABAS_FIXAS=new Set(['feed','meu','insignias','pessoas','corrida','perfil','aprovacoes','admin']);
 const abaOk=k=>{if(!ONLINE||ABAS_FIXAS.has(k)||S.role==='admin'||!S.abas||S.abas[k]!==0)return true;return k==='celula'&&!!(S.celulaId||(S.minhas||[]).length)};
-const NAV=[['feed','home','Início'],['meu','star','Meu perfil'],['pessoas','users','Pessoas'],['membro','book','Bíblia e Anotações'],['biblioteca','lib','Biblioteca virtual'],['celula','users','Células'],['familia','heart','Família Zoe'],['ministerios','grid','Ministérios'],['buscar','pin','Buscar células'],['licoes','file','Lições / Extras'],['dinamicas','bulb','Dinâmicas'],['cursos','grad','Cursos'],['aulas','file','Aulas'],['eventos','cal','Eventos'],['corrida','book','Maratona Bíblica'],['aniversarios','cake','Aniversariantes'],['tutoriais','play','Lives e Vídeos'],['loja','bag','Loja Zoe'],['aprovacoes','check','Aprovações'],['admin','gear','Administração']];
+const NAV=[['feed','home','Início'],['meu','star','Meu perfil'],['pessoas','users','Pessoas'],['membro','book','Bíblia e Anotações'],['biblioteca','lib','Biblioteca virtual'],['celula','users','Células'],['familia','heart','Família Zoe'],['ministerios','grid','Ministérios'],['buscar','pin','Buscar células'],['licoes','file','Lições / Extras'],['dinamicas','bulb','Dinâmicas'],['cursos','grad','Cursos'],['aulas','file','Aulas'],['eventos','cal','Eventos'],['insignias','star','Criar insígnias'],['corrida','book','Maratona Bíblica'],['aniversarios','cake','Aniversariantes'],['tutoriais','play','Lives e Vídeos'],['loja','bag','Loja Zoe'],['aprovacoes','check','Aprovações'],['admin','gear','Administração']];
 const R={r:'feed',sub:{meu:'ver',cursos:'igreja',aulas:'meus',aprovacoes:'pend',perfil:'info',membro:'biblia',celula:'freq',familia:'fale',licoes:'todas',dinamicas:'buscar'},mi:null};
 const can=k=>!!(S.perm[S.role]&&S.perm[S.role][k]);
 // Cargos de célula ≠ nível de acesso: um administrador também pode ser líder e/ou supervisor.
@@ -1113,7 +1113,7 @@ function shell(){
   if(S.theme)document.documentElement.setAttribute('data-theme',S.theme);else document.documentElement.removeAttribute('data-theme');
   document.body.classList.toggle('collapsed',!!S.collapsed);
   const ini=(S.apelido||'Z').trim()[0]?.toUpperCase()||'Z';
-  const nav=NAV.filter(n=>abaOk(n[0])&&(n[0]!=='admin'||can('config')||can('min')||can('eventos')||canTransf())&&(n[0]!=='aprovacoes'||canAprov())&&(n[0]!=='aulas'||(ONLINE&&can('prof')))&&(n[0]!=='corrida'||(CORR&&CORR.ativa)));
+  const nav=NAV.filter(n=>abaOk(n[0])&&(n[0]!=='admin'||can('config')||can('min')||can('eventos')||canTransf())&&(n[0]!=='aprovacoes'||canAprov())&&(n[0]!=='aulas'||(ONLINE&&can('prof')))&&(n[0]!=='corrida'||(CORR&&CORR.ativa))&&(n[0]!=='insignias'||canCurar()));
   $('#side').innerHTML=`<div class="brand">${logoImg(140)}</div>
   <div class="me"><div class="av"><div class="pic" ${S.foto?`style="background-image:url('${S.foto}')"`:''}>${S.foto?'':esc(ini)}</div><button class="pen" onclick="go('perfil','foto')" aria-label="Alterar foto">${ic('pen',12)}</button></div>
   <div class="nm"><input id="apelido" value="${esc(S.apelido)}" maxlength="24" aria-label="Apelido" onchange="setApelido(this.value)"><small>Toque para mudar o apelido</small></div></div>
@@ -1304,7 +1304,7 @@ dinamicas(){const s=R.sub.dinamicas;const q=(R.q||'').toLowerCase();let l=[...(S
 
 cursos(){return cursosHTML()},
 aulas(){return aulasHTML()},
-meu(){return meuHTML()},
+meu(){return meuHTML()},insignias(){return insigniasHTML()},
 pessoas(){return pessoasHTML()},
 corrida(){return corridaHTML()},
 
@@ -2058,6 +2058,64 @@ function meuCapa(i){const f=i.files[0];if(!f)return;redimMax(f,d=>{MEUC.capa=d;r
 async function meuSalva(){const c=MEUC;try{if(ONLINE){const d={bio:c.bio,fundo:c.fundo,contorno:c.contorno,moldura:c.moldura,versiculo:c.versiculo,oculto:!!c.oculto};if(c.capa!=='__keep')d.capa=c.capa;await api('saveProfile',d)}else{S.pfd=Object.assign(S.pfd||{},{bio:c.bio,fundo:c.fundo,contorno:c.contorno,moldura:c.moldura,versiculo:c.versiculo,oculto:!!c.oculto});if(c.capa!=='__keep')S.pfd.capa=c.capa;save()}toast('Perfil atualizado');R.sub.meu='ver';MEU=null;MEUC=null;render()}catch(e){toast(e.message)}}
 function meuAddDest(i){const f=i.files[0];if(!f)return;redimMax(f,async d=>{try{if(ONLINE)await api('saveHighlight',{foto:d,legenda:''});else{S.pfd=S.pfd||{};(S.pfd.dest=S.pfd.dest||[]).push({id:'d'+Date.now(),foto:d,legenda:''});save()}const c=MEUC;await meuCarrega();MEUC=c;toast('Foto colocada no mural');render()}catch(e){toast(e.message)}})}
 async function meuDelDest(id){try{if(ONLINE)await api('deleteHighlight',{id});else{S.pfd.dest=(S.pfd.dest||[]).filter(x=>x.id!==id);save()}const c=MEUC;await meuCarrega();MEUC=c;render()}catch(e){toast(e.message)}}
+/* ===== Criar insígnias (supervisores) e escalas de serviço ===== */
+const canCurar=()=>S.role==='admin'||S.role==='pastor'||can('config')||can('eventos')||can('celulas')||!!cg().supervisor;
+const CR={defs:null,ed:null,sub:'lista',serv:null,q:'',res:[],sel:[],busy:false};
+const CRIT_T=[['eventos_ultimos','Ir aos últimos N eventos de um tipo (ex.: retiro)'],['servico','Servir numa escala/atividade por N meses'],['eventos_total','Ir a N eventos da igreja'],['reunioes','Estar em N reuniões de célula'],['cursos','Concluir N cursos'],['acessos','Acessar o app em N dias'],['manual','Concedida manualmente pelos líderes']];
+const crVisPad=()=>({estilo:'bordado',forma:'circ',cor1:'#2f6b3a',cor2:'#efe3b0',icone:'estrela',texto:''});
+function crRegra(c){switch(c.tipo){case'eventos_ultimos':return `Ir aos ${c.n} últimos eventos de “${c.palavra}”`;case'servico':return `Servir em “${c.atividade}” por ${c.meses} ${c.consecutivos?'meses seguidos':'meses'}`;case'eventos_total':return `Ir a ${c.n} eventos da igreja`;case'reunioes':return `Estar em ${c.n} reuniões de célula`;case'cursos':return `Concluir ${c.n} curso(s)`;case'acessos':return `Acessar o app em ${c.n} dias`;default:return 'Concedida pelos líderes'}}
+async function crCarrega(){try{if(ONLINE){const r=await api('listInsigniaDefs');CR.defs=r.defs}else CR.defs=(S.bdDefs=S.bdDefs||[]).map(d=>({...d,ganharam:(S.bdGanhas||[]).includes(d.id)?1:0}))}catch(e){CR.defs=[];toast(e.message)}if(R.r==='insignias')render()}
+function insigniasHTML(){
+ if(!canCurar())return '<div class="card"><p>Só supervisores e a administração criam insígnias.</p></div>';
+ const T=[['lista','Insígnias'],['servico','Escalas e serviço']],s=CR.sub,tb=tabs(T,s,'insignias').replace(/sub\('insignias','(\w+)'\)/g,"crSub('$1')");
+ if(CR.defs===null){crCarrega();return tb+'<div class="skel" aria-busy="true"></div>'}
+ if(s==='servico')return tb+crServicoHTML();
+ if(CR.ed)return tb+crForm();
+ return tb+`<div class="card flat col"><h2>Insígnias da igreja</h2><p class="muted sm">Crie insígnias com a regra do que a pessoa precisa fazer e o visual. Quem cumprir a regra ganha a insígnia (e o XP) automaticamente; quem ainda não cumpriu a vê escura no perfil.</p><div><button class="btn" onclick="crNova()">${ic('plus',14)} Nova insígnia</button></div></div>
+ <div class="card flat col">${CR.defs.length?CR.defs.map((d,i)=>`<div class="opt" style="align-items:center;gap:12px">${bdSVG('cust:'+d.id,'',64,d.visual)}<div style="flex:1"><b>${esc(d.titulo)}${d.ativo===false?' <span class="chip">desativada</span>':''}</b><div class="muted sm">${esc(d.regra||crRegra(d.criterio))} · ${d.xp} XP · ${d.ganharam||0} pessoa(s) já ganharam</div></div><button class="btn sm ghost" onclick="crEdita(${i})">Editar</button>${d.criterio.tipo==='manual'?`<button class="btn sm" onclick="crConcede(${i})">Conceder</button>`:''}</div>`).join(''):'<p class="muted">Nenhuma insígnia criada ainda.</p>'}</div>`}
+function crSub(k){CR.sub=k;CR.ed=null;if(k==='servico')CR.serv=null;render()}
+function crNova(){CR.ed={id:'',titulo:'',descricao:'',xp:100,ativo:true,visual:crVisPad(),criterio:{tipo:'eventos_ultimos',palavra:'retiro',n:3}};render()}
+function crEdita(i){const d=CR.defs[i];CR.ed=JSON.parse(JSON.stringify({id:d.id,titulo:d.titulo,descricao:d.descricao,xp:d.xp,ativo:d.ativo!==false,visual:d.visual,criterio:d.criterio}));render()}
+function crSet(k,v){CR.ed[k]=v;crPrev()}function crVis(k,v){CR.ed.visual[k]=v;crPrev(k==='forma'||k==='icone'||k==='estilo')}
+function crCrit(k,v){CR.ed.criterio[k]=k==='tipo'?v:(k==='consecutivos'?!!v:(['n','meses'].includes(k)?Number(v):v));if(k==='tipo'){const c=CR.ed.criterio;c.n=c.n||3;c.meses=c.meses||12;c.palavra=c.palavra||'retiro';c.atividade=c.atividade||'Limpeza';renderKeep()}}
+function crPrev(full){const e=$('#cr_prev');if(e)e.innerHTML=bdSVG('cust:x',CR.ed.visual.texto,150,CR.ed.visual);if(full)renderKeep()}
+function crForm(){const d=CR.ed,v=d.visual,c=d.criterio,f=(k,l,x='')=>`<label class="f">${l}<input value="${esc(d[k])}" ${x} oninput="crSet('${k}',this.value)"></label>`;
+ return `<div class="card flat col"><h2>${d.id?'Editar insígnia':'Nova insígnia'}</h2>
+ <div class="row" style="align-items:flex-start;gap:18px;flex-wrap:wrap"><div style="text-align:center"><div id="cr_prev">${bdSVG('cust:x',v.texto,150,v)}</div><small class="muted">Prévia</small></div>
+ <div class="form" style="flex:1;min-width:240px">${f('titulo','Nome da insígnia (ex.: Mão no arado)','maxlength="40"')}${f('descricao','Descrição (opcional)','maxlength="200"')}<label class="f">XP ao ganhar<input type="number" min="10" max="1000" value="${d.xp}" oninput="crSet('xp',Number(this.value))"></label></div></div>
+ <h3>O que precisa ser feito</h3>
+ <label class="f">Regra<select onchange="crCrit('tipo',this.value)">${CRIT_T.map(t=>`<option value="${t[0]}" ${c.tipo===t[0]?'selected':''}>${t[1]}</option>`).join('')}</select></label>
+ <div class="form">${c.tipo==='eventos_ultimos'?`<label class="f">Palavra no título do evento<input value="${esc(c.palavra||'')}" maxlength="40" oninput="crCrit('palavra',this.value)"></label>`:''}${c.tipo==='servico'?`<label class="f">Escala/atividade<input value="${esc(c.atividade||'')}" maxlength="60" oninput="crCrit('atividade',this.value)"></label>`:''}
+ ${['eventos_ultimos','eventos_total','reunioes','cursos','acessos'].includes(c.tipo)?`<label class="f">Quantidade (N)<input type="number" min="1" value="${c.n||1}" oninput="crCrit('n',this.value)"></label>`:''}${c.tipo==='servico'?`<label class="f">Meses<input type="number" min="1" value="${c.meses||1}" oninput="crCrit('meses',this.value)"></label><label class="chip" style="cursor:pointer"><input type="checkbox" ${c.consecutivos?'checked':''} onchange="crCrit('consecutivos',this.checked)"> Meses seguidos</label>`:''}</div>
+ <p class="muted sm">${esc(crRegra(c))}</p>
+ <h3>Visual</h3>
+ <div class="f">Acabamento</div><div class="row" style="flex-wrap:wrap">${[['bordado','Bordado'],['ouro','Dourado'],['prata','Prateado'],['bronze','Bronze']].map(e=>`<button class="chip ${v.estilo===e[0]?'on':''}" onclick="crVis('estilo','${e[0]}')">${e[1]}</button>`).join('')}</div>
+ <div class="f">Forma</div><div class="row" style="flex-wrap:wrap">${BD_FORMAS.map(k=>`<button class="chip ${v.forma===k?'on':''}" onclick="crVis('forma','${k}')" aria-label="Forma ${k}"><svg viewBox="0 0 100 100" width="26" height="26"><path d="${BD_SH[k]}" fill="currentColor"/></svg></button>`).join('')}</div>
+ <div class="f">Ícone</div><div class="row" style="flex-wrap:wrap">${BD_ICONES.map(k=>`<button class="chip ${v.icone===k?'on':''}" onclick="crVis('icone','${k}')" aria-label="Ícone ${k}"><svg viewBox="0 0 100 100" width="26" height="26" fill="currentColor">${BD_IC[k]}</svg></button>`).join('')}</div>
+ <div class="form"><label class="f">Cor principal<input type="color" value="${v.cor1}" oninput="crVis('cor1',this.value)"></label><label class="f">Cor do ícone/bordado<input type="color" value="${v.cor2}" oninput="crVis('cor2',this.value)"></label><label class="f">Texto curto (até 4 letras)<input maxlength="4" value="${esc(v.texto)}" oninput="crVis('texto',this.value)"></label></div>
+ <label class="chip" style="cursor:pointer"><input type="checkbox" ${d.ativo?'checked':''} onchange="CR.ed.ativo=this.checked"> Insígnia ativa</label>
+ <div class="row"><button class="btn" onclick="crSalva()">Salvar insígnia</button><button class="btn ghost" onclick="CR.ed=null;render()">Cancelar</button></div></div>`}
+async function crSalva(){const d=CR.ed;try{if(!String(d.titulo).trim())throw new Error('Dê um nome à insígnia.');
+ if(ONLINE)await api('saveInsigniaDef',{id:d.id||undefined,titulo:d.titulo,descricao:d.descricao,xp:d.xp,ativo:d.ativo,visual:d.visual,criterio:d.criterio});
+ else{const L=S.bdDefs=S.bdDefs||[],o={...d,id:d.id||'D'+Date.now(),codigo:'cust:'+(d.id||'D'+Date.now()),regra:crRegra(d.criterio)};if(d.id){const i=L.findIndex(x=>x.id===d.id);L[i]={...o,codigo:L[i].codigo}}else L.push(o);save()}
+ toast('Insígnia salva');CR.ed=null;CR.defs=null;MEU=null;render()}catch(e){toast(e.message)}}
+function crConcede(i){CR.cd=CR.defs[i];CR.sel=[];CR.q='';CR.res=[];modal(`<h2>Conceder “${esc(CR.cd.titulo)}”</h2><input id="cr_q" placeholder="Buscar pessoa pelo nome" oninput="crBusca(this.value)" autocomplete="off"><div id="cr_r"></div><div id="cr_s" class="row" style="flex-wrap:wrap;margin:8px 0"></div><div class="row"><button class="btn" onclick="crConcedeOk()">Conceder</button><button class="btn ghost" onclick="closeL()">Cancelar</button></div>`)}
+let crTm=0;function crBusca(v){clearTimeout(crTm);crTm=setTimeout(async()=>{try{CR.res=v.trim().length<2?[]:await pplApi('searchPeople',{q:v})}catch(e){CR.res=[]}const e=$('#cr_r');if(e)e.innerHTML=CR.res.map(p=>`<button class="opt" onclick="crPick('${esc(p.id)}','${esc(p.nome)}')">${esc(p.nome)}</button>`).join('')},250)}
+function crPick(id,n){if(!CR.sel.find(x=>x.id===id))CR.sel.push({id,nome:n});const e=$('#cr_s');if(e)e.innerHTML=CR.sel.map(x=>`<span class="chip g">${esc(x.nome)}</span>`).join('')}
+async function crConcedeOk(){if(!CR.sel.length){toast('Escolha ao menos uma pessoa.');return}try{if(ONLINE){const r=await api('grantBadge',{defId:CR.cd.id,membros:CR.sel.map(x=>x.id)});toast(r.n+' pessoa(s) receberam a insígnia')}else{S.bdGanhas=S.bdGanhas||[];if(!S.bdGanhas.includes(CR.cd.id))S.bdGanhas.push(CR.cd.id);save();toast('Insígnia concedida (demonstração)')}closeL();CR.defs=null;render()}catch(e){toast(e.message)}}
+function crServicoHTML(){
+ if(!CR.serv){CR.serv={ativ:'',mes:TODAY.slice(0,7),lista:null};crServCarrega()}
+ const s=CR.serv;return `<div class="card flat col"><h2>Escalas e serviço</h2><p class="muted sm">Registre quem serviu em cada escala por mês (ex.: Limpeza). As insígnias de serviço, como “Mão no arado”, usam esses registros.</p>
+ <div class="form"><label class="f">Escala/atividade<input id="sv_a" list="sv_l" maxlength="60" value="${esc(s.ativ)}" placeholder="Ex.: Limpeza" oninput="CR.serv.ativ=this.value"><datalist id="sv_l">${((s.lista&&s.lista.atividades)||[]).map(a=>`<option value="${esc(a)}">`).join('')}</datalist></label><label class="f">Mês<input type="month" value="${esc(s.mes)}" oninput="CR.serv.mes=this.value"></label></div>
+ <input id="sv_q" placeholder="Buscar pessoa pelo nome" oninput="svBusca(this.value)" autocomplete="off"><div id="sv_r"></div><div id="sv_s" class="row" style="flex-wrap:wrap;margin:8px 0">${CR.sel.map(x=>`<span class="chip g">${esc(x.nome)}</span>`).join('')}</div>
+ <div><button class="btn" onclick="svSalva()">Registrar participação</button></div></div>
+ <div class="card flat col"><h3>Últimos registros</h3>${s.lista?(s.lista.itens.length?s.lista.itens.map(i=>`<div class="opt"><b>${esc(i.nome)}</b><span class="muted sm"> · ${esc(i.atividade)} · ${esc(i.mes)}</span></div>`).join(''):'<p class="muted">Nenhum registro ainda.</p>'):'<div class="skel"></div>'}</div>`}
+async function crServCarrega(){try{CR.serv.lista=ONLINE?await api('listServicos',{}):{atividades:[...new Set((S.servicos||[]).map(x=>x.atividade))],itens:(S.servicos||[]).slice().reverse()}}catch(e){CR.serv.lista={atividades:[],itens:[]}}if(R.r==='insignias'&&CR.sub==='servico')render()}
+let svTm=0;function svBusca(v){clearTimeout(svTm);svTm=setTimeout(async()=>{try{CR.res=v.trim().length<2?[]:await pplApi('searchPeople',{q:v})}catch(e){CR.res=[]}const e=$('#sv_r');if(e)e.innerHTML=CR.res.map(p=>`<button class="opt" onclick="svPick('${esc(p.id)}','${esc(p.nome)}')">${esc(p.nome)}</button>`).join('')},250)}
+function svPick(id,n){if(!CR.sel.find(x=>x.id===id))CR.sel.push({id,nome:n});const e=$('#sv_s');if(e)e.innerHTML=CR.sel.map(x=>`<span class="chip g">${esc(x.nome)}</span>`).join('')}
+async function svSalva(){const s=CR.serv;try{if(!s.ativ.trim())throw new Error('Informe a escala/atividade.');if(!CR.sel.length)throw new Error('Escolha ao menos uma pessoa.');
+ if(ONLINE){const r=await api('logServico',{atividade:s.ativ,mes:s.mes,membros:CR.sel.map(x=>x.id)});toast(r.n+' registro(s) novo(s)')}else{(S.servicos=S.servicos||[]);CR.sel.forEach(x=>S.servicos.push({atividade:s.ativ,mes:s.mes,nome:x.nome}));save();toast('Registrado (demonstração)')}
+ CR.sel=[];CR.serv=null;render()}catch(e){toast(e.message)}}
 /* ===== Botons de eventos (check-in) e Maratona Bíblica ===== */
 const checkinCard=()=>{const d=ADMC.eventos;return `<div class="card flat col"><h3>Presença nos eventos (botons)</h3><p class="muted sm">Marque quem compareceu. Se o evento tem insígnia exclusiva, quem estiver na lista ganha o boton; quem for a todos os eventos do ano ganha “Presença total”.</p>${d?`<div class="row"><select id="ck_ev" style="flex:1">${d.itens.filter(i=>!i.off).slice().sort((a,b)=>String(b.sub).localeCompare(String(a.sub))).map(i=>`<option value="${esc(i.id)}">${esc(i.rotulo)} · ${esc(i.sub||'')}</option>`).join('')}</select><button class="btn" onclick="ckAbre()">Abrir lista de presença</button></div>`:`<div><button class="btn ghost" onclick="admCarga('eventos')">Carregar eventos</button></div>`}</div>`};
 let CK=null;
