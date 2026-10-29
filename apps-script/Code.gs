@@ -60,6 +60,8 @@ const SHEETS = {
   Licoes: ['LicaoID', 'Titulo', 'Resumo', 'Categoria', 'Url', 'Status'],
   Dinamicas: ['DinamicaID', 'Titulo', 'Descricao', 'Minutos', 'MembroID', 'Data'],
   Produtos: ['ProdutoID', 'Nome', 'Categoria', 'Preco', 'Descricao', 'Foto', 'Opcoes', 'Ativo', 'Ordem', 'Disponivel', 'PromoPreco', 'PromoAte'],
+  Pastores: ['PastorID', 'Nome', 'Cargo', 'Foto', 'Ordem', 'Ativo'],
+  FamiliaMidia: ['MidiaID', 'Tipo', 'Url', 'Foto', 'Legenda', 'Ordem', 'Ativo'],
   Videos: ['VideoID', 'Titulo', 'Url', 'Ordem', 'Status', 'Tipo', 'AoVivo'],
   Permissoes: ['Papel'].concat(PERMS),
   Config: ['Chave', 'Valor'],
@@ -96,7 +98,7 @@ function criarAdmin(email, senha, nome) {
   const u = table_('Usuarios'); if (u.rows.some(function (r) { return String(r.Email).toLowerCase() === email; })) throw new Error('Usuário já existe.');
   const mid = id_('M'); appendRow_(table_('Membros'), { MembroID: mid, Nome: nome || email, Simples: nome || email, Apelido: String(nome || email).split(' ')[0], Email: email, EhMembro: '1', Status: 'Ativo', CriadoEm: now_() });
   const salt = Utilities.getUuid();
-  appendRow_(u, { Email: email, SenhaHash: hash_(salt, String(senha)), Salt: salt, Papel: 'admin', Status: 'Ativo', MembroID: mid, TrocarSenha: '', CriadoEm: now_() });
+  appendRow_(u, { Email: email, SenhaHash: hash_(salt, String(senha)), Salt: salt, Papel: 'admin', Status: 'Ativo', GuiaVisto: '0', MembroID: mid, TrocarSenha: '', CriadoEm: now_() });
   Logger.log('Administrador criado: ' + email);
 }
 function ensureSheet_(ss, name, headers) {
@@ -236,7 +238,7 @@ function me_(d, u) {
   const nivelCel = !cel ? '' : (full || (cel.LiderID === u.membroId) ? 'lider' : cel.SupervisorID === u.membroId ? 'supervisor' : cel.TreinamentoID === u.membroId ? 'treinamento' : 'membro');
   const tef = tipoEf_(u), abas = abasPorTipo_()[tef] || {}, cp = cel ? (full ? allCelPerm_() : celPermMap_(u, cel)) : null;
   const urow = table_('Usuarios').rows.filter(function (r) { return String(r.Email).toLowerCase() === u.email; })[0] || {};
-  return { guiaVisto: urow.GuiaVisto === '1', usuario: { email: u.email, papel: u.papel, tipo: tef }, abas: abas, permCelula: cp, membro: memberFull_(mm), celula: cel ? cellOut_(cel, nivelCel !== 'membro') : null, nivelCelula: nivelCel, cargos: cg, minhasCelulas: minhas, permissoes: permMatrix_()[tef], config: publicConfig_(), interesses: interessesDe_(u.membroId), membresia: membresiaDe_(u.membroId) };
+  return { guiaVisto: urow.GuiaVisto !== '0', usuario: { email: u.email, papel: u.papel, tipo: tef }, abas: abas, permCelula: cp, membro: memberFull_(mm), celula: cel ? cellOut_(cel, nivelCel !== 'membro') : null, nivelCelula: nivelCel, cargos: cg, minhasCelulas: minhas, permissoes: permMatrix_()[tef], config: publicConfig_(), interesses: interessesDe_(u.membroId), membresia: membresiaDe_(u.membroId) };
 }
 function saveMember_(d, u) {
   return withLock_(function () {
@@ -863,6 +865,13 @@ function updateVideo_(d, u) { return withLock_(function () { const t = table_('V
 const CATEGORIAS_LOJA = ['Camisetas', 'Pulseiras', 'Bonés', 'Garrafas', 'Marca-texto', 'Marcador de página', 'Porta-copos', 'Outros'];
 function promoVale_(p) { const v = Number(p.PromoPreco), o = Number(p.Preco); return !!(p.PromoPreco && isFinite(v) && v > 0 && v < o && (!p.PromoAte || String(p.PromoAte) >= today_())); }
 function prodOut_(p) { const pv = promoVale_(p); return { promo: pv ? Number(p.PromoPreco) : null, promoAte: pv ? String(p.PromoAte || '') : '', id: p.ProdutoID, nome: p.Nome, categoria: p.Categoria || 'Outros', preco: Number(p.Preco) || 0, descricao: p.Descricao || '', foto: p.Foto || '', opcoes: p.Opcoes || '', disponivel: p.Disponivel !== '0' }; }
+function listFamilia_() {
+  const ord = function (a, b) { return Number(a.Ordem || 999) - Number(b.Ordem || 999); }, on = function (r) { return r.Ativo !== '0'; };
+  return {
+    pastores: table_('Pastores').rows.filter(on).sort(ord).map(function (r) { return { id: r.PastorID, nome: r.Nome, cargo: r.Cargo || '', foto: r.Foto || '' }; }),
+    midia: table_('FamiliaMidia').rows.filter(on).sort(ord).map(function (r) { return { id: r.MidiaID, tipo: r.Tipo === 'video' ? 'video' : 'foto', url: r.Url || '', foto: r.Foto || '', legenda: r.Legenda || '' }; })
+  };
+}
 function listProducts_() { return table_('Produtos').rows.filter(function (p) { return p.Ativo !== '0'; }).sort(function (a, b) { return Number(a.Ordem) - Number(b.Ordem); }).map(prodOut_); }
 function saveProduct_(d, u) {
   return withLock_(function () {
@@ -906,7 +915,7 @@ function createUser_(d, u) {
     if (!papelValido_(papel)) throw new ApiError('VALIDATION', 'Papel inválido.'); if (papel === 'admin' && u.papel !== 'admin') throw new ApiError('FORBIDDEN', 'Só administrador cria administrador.');
     const t = table_('Usuarios'); if (t.rows.some(function (r) { return String(r.Email).toLowerCase() === email; })) throw new ApiError('VALIDATION', 'Já existe usuário com esse e-mail.');
     const mid = d.membroId ? getMember_(d.membroId).m.MembroID : id_('M'); if (!d.membroId) appendRow_(table_('Membros'), { MembroID: mid, Nome: nome || email, Simples: nome || email, Apelido: (nome || email).split(' ')[0], Email: email, CelulaID: clip_(d.celulaId, 30), EhMembro: '1', Status: 'Ativo', CriadoEm: now_() });
-    const salt = Utilities.getUuid(); appendRow_(t, { Email: email, SenhaHash: hash_(salt, pw), Salt: salt, Papel: papel, Status: 'Ativo', MembroID: mid, TrocarSenha: '1', CriadoEm: now_() }); audit_(u.email, 'USUARIO_CRIADO', email + ':' + papel, 'OK'); return { ok: true, membroId: mid };
+    const salt = Utilities.getUuid(); appendRow_(t, { Email: email, SenhaHash: hash_(salt, pw), Salt: salt, Papel: papel, Status: 'Ativo', GuiaVisto: '0', MembroID: mid, TrocarSenha: '1', CriadoEm: now_() }); audit_(u.email, 'USUARIO_CRIADO', email + ':' + papel, 'OK'); return { ok: true, membroId: mid };
   });
 }
 function setUser_(d, u) {
@@ -976,6 +985,10 @@ const ENT = {
     { k: 'Bairro', l: 'Bairro', t: 'text', max: 80 }, { k: 'Cidade', l: 'Cidade', t: 'text', max: 80 }, { k: 'UF', l: 'UF', t: 'text', max: 2 }, { k: 'EstadoCivil', l: 'Estado civil', t: 'text', max: 30 },
     { k: 'DataBatismo', l: 'Data do batismo', t: 'date' }, { k: 'CelulaID', l: 'Célula', t: 'celula' }, { k: 'Foto', l: 'Foto', t: 'foto' },
     { k: 'Status', l: 'Situação', t: 'sel', op: [['Ativo', 'Ativo'], ['Inativo', 'Inativo']] }] },
+  pastores: { titulo: 'Nossos Pastores', aba: 'Pastores', id: 'PastorID', pre: 'PAS', perm: 'config', rotulo: 'Nome', sub: 'Cargo', status: { col: 'Ativo', ativo: '1', off: '0' }, campos: [
+    { k: 'Nome', l: 'Nome', t: 'text', max: 80, req: 1 }, { k: 'Cargo', l: 'Cargo (ex.: Pastor titular)', t: 'text', max: 60 }, { k: 'Foto', l: 'Foto', t: 'foto' }, { k: 'Ordem', l: 'Ordem', t: 'num' }, { k: 'Ativo', l: 'Situação', t: 'sel', op: [['1', 'Ativo'], ['0', 'Inativo']] }] },
+  familia: { titulo: 'Quem somos (fotos e vídeos)', aba: 'FamiliaMidia', id: 'MidiaID', pre: 'FM', perm: 'config', rotulo: 'Legenda', sub: 'Tipo', status: { col: 'Ativo', ativo: '1', off: '0' }, campos: [
+    { k: 'Tipo', l: 'Tipo', t: 'sel', op: [['foto', 'Foto (carrossel)'], ['video', 'Vídeo (toca sozinho)']] }, { k: 'Foto', l: 'Foto (para o tipo Foto)', t: 'foto' }, { k: 'Url', l: 'Link do vídeo (YouTube https:// ou arquivo .mp4)', t: 'url' }, { k: 'Legenda', l: 'Legenda', t: 'text', max: 120 }, { k: 'Ordem', l: 'Ordem', t: 'num' }, { k: 'Ativo', l: 'Situação', t: 'sel', op: [['1', 'Ativo'], ['0', 'Inativo']] }] },
   cursos: { titulo: 'Cursos', aba: 'Cursos', id: 'CursoID', pre: 'CUR', perm: 'config', rotulo: 'Nome', status: { col: 'Ativo', ativo: '1', off: '0' }, campos: [
     { k: 'Nome', l: 'Nome do curso', t: 'text', max: 100, req: 1 }, { k: 'Ativo', l: 'Situação', t: 'sel', op: [['1', 'Ativo'], ['0', 'Inativo']] }] },
   licoes: { titulo: 'Lições / Extras', aba: 'Licoes', id: 'LicaoID', pre: 'L', perm: 'config', rotulo: 'Titulo', status: { col: 'Status', ativo: 'Ativa', off: 'Removida' }, campos: [
@@ -1054,7 +1067,7 @@ const ROUTES = {
   listEvents: { auth: 'any', fn: listEvents_ }, enroll: { auth: 'any', write: 1, fn: enroll_ }, listNews: { auth: 'any', fn: listNews_ },
   listMinistries: { auth: 'any', fn: listMin_ }, interest: { auth: 'any', write: 1, fn: interest_ },
   listCourses: { auth: 'any', fn: listCourses_ }, enrollCourse: { auth: 'any', write: 1, fn: enrollCourse_ },
-  listLessons: { auth: 'any', fn: listLessons_ }, listDynamics: { auth: 'any', fn: listDyn_ }, addDynamic: { auth: 'any', write: 1, fn: addDyn_ }, listVideos: { auth: 'any', fn: listVideos_ }, listProducts: { auth: 'any', fn: listProducts_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
+  listLessons: { auth: 'any', fn: listLessons_ }, listDynamics: { auth: 'any', fn: listDyn_ }, addDynamic: { auth: 'any', write: 1, fn: addDyn_ }, listVideos: { auth: 'any', fn: listVideos_ }, listProducts: { auth: 'any', fn: listProducts_ }, listFamilia: { auth: 'any', fn: listFamilia_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
   searchCells: { auth: 'any', fn: searchCells_ }, addPrayer: { auth: 'any', write: 1, fn: addPrayer_ }, listPrayers: { auth: 'any', fn: listPrayers_ },
   cellMembers: { auth: 'any', fn: cellMembers_ }, saveCell: { auth: 'any', write: 1, fn: saveCell_ }, saveAttendance: { auth: 'any', write: 1, fn: saveAttendance_ }, history: { auth: 'any', fn: history_ },
   indicators: { auth: 'any', fn: indicators_ }, getPapeis: { auth: 'any', fn: getPapeis_ }, savePapeis: { auth: 'any', write: 1, fn: savePapeis_ }, createCellEvent: { auth: 'any', write: 1, fn: createCellEvent_ },

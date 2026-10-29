@@ -401,6 +401,18 @@ test('loja: promoções por item, em lote, por categoria e na loja toda', () => 
   assert.equal(e.call('setPromo', { escopo: 'categoria', categoria: 'Camisetas', limpar: true }, adm).data.n, 2); assert.equal(get(B).promo, null); assert.equal(get(C).promo, 36);
   assert.equal(e.call('setPromo', { escopo: 'todos', limpar: true }, adm).data.n, 3); assert.equal(get(C).promo, null);
 });
+test('família zoe: pastores e Quem somos cadastrados pela administração, visíveis a todos', () => {
+  const { e, adm, tok, mk } = boot(); mk('maria@zoe.com', 'membro'); const m = tok('maria@zoe.com', 'Temp12345');
+  assert.equal(e.call('adminSave', { tipo: 'pastores', valores: { Nome: 'Pr. João' } }, m).error.code, 'FORBIDDEN');
+  assert.deepEqual(e.call('listFamilia', {}, m).data, { pastores: [], midia: [] });
+  assert.ok(e.call('adminSave', { tipo: 'pastores', valores: { Nome: 'Pr. João', Cargo: 'Pastor titular', Foto: 'data:image/jpeg;base64,AAAA', Ordem: '2' } }, adm).ok);
+  assert.ok(e.call('adminSave', { tipo: 'pastores', valores: { Nome: 'Pra. Maria', Cargo: 'Pastora titular', Ordem: '1' } }, adm).ok);
+  assert.equal(e.call('adminSave', { tipo: 'pastores', valores: { Nome: 'X', Foto: 'http://x/a.jpg' } }, adm).error.code, 'VALIDATION');
+  const p = e.call('listFamilia', {}, m).data.pastores; assert.equal(p.length, 2); assert.equal(p[0].nome, 'Pra. Maria'); assert.equal(p[1].foto, 'data:image/jpeg;base64,AAAA');
+  assert.ok(e.call('adminSave', { tipo: 'familia', valores: { Tipo: 'video', Url: 'https://youtu.be/M7lc1UVf-VE', Legenda: 'Nosso culto' } }, adm).ok);
+  assert.ok(e.call('adminSave', { tipo: 'familia', valores: { Tipo: 'foto', Foto: 'data:image/png;base64,AAAA', Legenda: 'Batismo' } }, adm).ok);
+  const md = e.call('listFamilia', {}, m).data.midia; assert.equal(md.length, 2); assert.deepEqual(md.map(x => x.tipo).sort(), ['foto', 'video']);
+});
 test('histórico: o % do passado não cai quando entra gente nova (usa o elenco da época)', () => {
   const { e, adm, tok, mk } = boot(); const l1 = mk('lider1@zoe.com', 'membro');
   e.call('createCell', { nome: 'Semeadores', liderId: l1, dia: 'Quinta', inicio: '20:00', fim: '21:30' }, adm);
@@ -495,4 +507,5 @@ test('guia de primeiro acesso: aparece até a pessoa concluir', () => {
   assert.equal(e.call('guideDone', {}, N).data.guiaVisto, true);
   assert.equal(e.call('me', {}, N).data.guiaVisto, true);
   const M = (mk('outra@zoe.com', 'membro'), tok('outra@zoe.com', 'Temp12345')); assert.equal(e.call('me', {}, M).data.guiaVisto, false); // por pessoa
+  e.run(`(function(){const t=table_('Usuarios'),r=t.rows.filter(function(x){return x.Email==='outra@zoe.com'})[0];writeRow_(t,r._row,{GuiaVisto:''})})()`); assert.equal(e.call('me', {}, M).data.guiaVisto, true); // conta antiga (sem marca) não vê o tutorial
 });
