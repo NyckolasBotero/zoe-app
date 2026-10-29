@@ -678,3 +678,22 @@ test('Corrida da Bíblia: limite diário, devocional validado pelo líder, faixa
   assert.equal(e.run(`corFaixa_(corFaltas_(${JSON.stringify({ Inicio: '2026-01-01' })}, [{Data:'2026-01-01',Status:'Validado'},{Data:'2026-01-03',Status:'Validado'}], '2026-01-03'))`), 'prata');
   assert.equal(e.run(`corFaixa_(corFaltas_(${JSON.stringify({ Inicio: '2026-01-01' })}, [{Data:'2026-01-01',Status:'Validado'},{Data:'2026-01-04',Status:'Validado'}], '2026-01-04'))`), 'bronze');
 });
+
+test('pessoas: busca por nome, perfil aberto com envolvimento (ou oculto) e chat entre usuários', () => {
+  const { e, adm, tok, mk } = boot(); const a = mk('ana@zoe.com', 'membro'), b = mk('bruno@zoe.com', 'membro'); mk('carla@zoe.com', 'membro'); const A = tok('ana@zoe.com', 'Temp12345'), B = tok('bruno@zoe.com', 'Temp12345');
+  assert.ok(e.call('adminSave', { tipo: 'membros', id: b, valores: { Nome: 'Bruno Álvares' } }, adm).ok);
+  assert.deepEqual(e.call('searchPeople', { q: 'b' }, A).data, []); assert.deepEqual(e.call('searchPeople', { q: 'alvares' }, A).data.map(x => x.id), [b]); assert.equal(e.call('searchPeople', { q: 'ana' }, A).data.length, 0); // não lista a si mesma
+  assert.ok(e.call('searchPeople', { q: 'carla' }, A).data.length === 1);
+  const pb = e.call('profileView', { membroId: b }, A).data; assert.equal(pb.meu, false); assert.ok(pb.envolvimento && Array.isArray(pb.envolvimento.cursos)); assert.equal(pb.libera, undefined);
+  assert.ok(e.call('saveProfile', { oculto: true }, e.call('login', { email: 'bruno@zoe.com', senha: 'Temp12345' }).data.token).ok);
+  assert.equal(e.call('profileView', { membroId: b }, A).data.envolvimento, null); assert.ok(e.call('profileView', {}, B).data.envolvimento);
+  // chat
+  assert.equal(e.call('sendChat', { para: a, texto: 'oi' }, A).error.code, 'VALIDATION'); assert.equal(e.call('sendChat', { para: b, texto: '  ' }, A).error.code, 'VALIDATION'); assert.equal(e.call('sendChat', { para: 'ZZ', texto: 'oi' }, A).error.code, 'NOT_FOUND');
+  assert.ok(e.call('sendChat', { para: b, texto: 'Paz, Bruno!' }, A).ok); assert.ok(e.call('sendChat', { para: b, texto: 'Tudo bem?' }, A).ok);
+  assert.equal(e.call('listChats', {}, B).data.naoLidas, 2); assert.equal(e.call('listChats', {}, A).data.naoLidas, 0); const lc = e.call('listChats', {}, B).data.conversas; assert.equal(lc[0].id, a); assert.equal(lc[0].ultima, 'Tudo bem?');
+  const g = e.call('getChat', { com: a }, B).data; assert.equal(g.msgs.length, 2); assert.equal(g.msgs[0].minha, false); assert.equal(g.com.nome, 'ana');
+  assert.equal(e.call('chatRead', { com: a }, B).data.n, 2); assert.equal(e.call('listChats', {}, B).data.naoLidas, 0);
+  assert.ok(e.call('sendChat', { para: a, texto: 'Tudo ótimo!' }, B).ok); assert.equal(e.call('getChat', { com: b, depois: g.msgs[1].ts }, A).data.msgs.length, 1);
+  assert.equal(e.call('getChat', { com: a }, tok('carla@zoe.com', 'Temp12345')).data.msgs.length, 0); // outra pessoa não lê a conversa
+  for (let i = 0; i < 20; i++) e.call('sendChat', { para: b, texto: 'spam ' + i }, A); assert.equal(e.call('sendChat', { para: b, texto: 'mais' }, A).error.code, 'RATE');
+});

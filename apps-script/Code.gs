@@ -67,7 +67,8 @@ const SHEETS = {
   CertLayout: ['MembroID', 'Dados', 'Atualizado'],
   Insignias: ['MembroID', 'Codigo', 'Titulo', 'Ano', 'Data', 'Ref'],
   XpLog: ['MembroID', 'Ref', 'Pontos', 'Motivo', 'Data'],
-  Perfis: ['MembroID', 'Bio', 'Capa', 'Fundo', 'Moldura', 'Versiculo'],
+  Perfis: ['MembroID', 'Bio', 'Capa', 'Fundo', 'Moldura', 'Versiculo', 'Oculto'],
+  ChatMsgs: ['MsgID', 'ConvID', 'De', 'Para', 'Texto', 'Ts', 'Lida'],
   PerfilFotos: ['MembroID', 'FotoID', 'Foto', 'Legenda', 'Ordem'],
   Assinaturas: ['MembroID', 'Tipo', 'Dado', 'Cargo', 'Atualizado'],
   Noticias: ['NoticiaID', 'Titulo', 'Texto', 'Data', 'CriadoPor', 'Status'],
@@ -1245,7 +1246,7 @@ function perfilRow_(mid) { return table_('Perfis').rows.filter(function (r) { re
 function profileView_(d, u) {
   const mid = clip_(d.membroId, 30) || u.membroId, m = table_('Membros').rows.filter(function (x) { return x.MembroID === mid && x.Status !== 'Inativo'; })[0]; if (!m) throw new ApiError('NOT_FOUND', 'Perfil não encontrado.');
   const p = perfilRow_(mid) || {}, rs = xpResumo_(mid), meu = mid === u.membroId;
-  const out = { id: mid, meu: meu, nome: m.Simples || m.Nome, apelido: m.Apelido || '', foto: m.Foto || '', bio: p.Bio || '', capa: p.Capa || '', fundo: p.Fundo || 'verde', moldura: p.Moldura || 'simples', versiculo: p.Versiculo || '', xp: rs, insignias: listInsignias_(mid),
+  const out = { id: mid, meu: meu, nome: m.Simples || m.Nome, apelido: m.Apelido || '', foto: m.Foto || '', bio: p.Bio || '', capa: p.Capa || '', fundo: p.Fundo || 'verde', moldura: p.Moldura || 'simples', versiculo: p.Versiculo || '', xp: rs, insignias: listInsignias_(mid), oculto: p.Oculto === '1', envolvimento: (p.Oculto === '1' && !meu) ? null : envolvimento_(m),
     destaques: table_('PerfilFotos').rows.filter(function (r) { return r.MembroID === mid; }).sort(function (a, b) { return Number(a.Ordem) - Number(b.Ordem); }).map(function (r) { return { id: r.FotoID, foto: r.Foto, legenda: r.Legenda || '' }; }) };
   if (meu) out.libera = { fundos: FUNDOS_NV, molduras: MOLDURAS_NV, capa: NV_CAPA, versiculo: NV_VERSICULO, slots: slotsDestaque_(rs.nivel), niveis: NIVEIS, nomes: NIVEL_NOMES };
   return out;
@@ -1257,6 +1258,7 @@ function saveProfile_(d, u) {
     if (d.fundo !== undefined) { if (!FUNDOS_NV[d.fundo]) throw new ApiError('VALIDATION', 'Fundo inválido.'); if (nv < FUNDOS_NV[d.fundo]) throw new ApiError('FORBIDDEN', 'Esse fundo abre no nível ' + FUNDOS_NV[d.fundo] + '.'); patch.Fundo = d.fundo; }
     if (d.moldura !== undefined) { if (!MOLDURAS_NV[d.moldura]) throw new ApiError('VALIDATION', 'Moldura inválida.'); if (nv < MOLDURAS_NV[d.moldura]) throw new ApiError('FORBIDDEN', 'Essa moldura abre no nível ' + MOLDURAS_NV[d.moldura] + '.'); patch.Moldura = d.moldura; }
     if (d.capa !== undefined && d.capa !== '__keep') { if (d.capa && nv < NV_CAPA) throw new ApiError('FORBIDDEN', 'A capa personalizada abre no nível ' + NV_CAPA + '.'); patch.Capa = fotoOk_(d.capa); }
+    if (d.oculto !== undefined) patch.Oculto = d.oculto ? '1' : '0';
     if (d.versiculo !== undefined) { if (d.versiculo && nv < NV_VERSICULO) throw new ApiError('FORBIDDEN', 'O versículo em destaque abre no nível ' + NV_VERSICULO + '.'); patch.Versiculo = clip_(d.versiculo, 200); }
     if (ex) writeRow_(t, ex._row, patch); else appendRow_(t, Object.assign({ MembroID: u.membroId }, patch)); return { ok: true };
   });
@@ -1363,6 +1365,50 @@ function decideLeitura_(d, u) {
     notify_(r.MembroID, 'corrida', d.ok ? 'Devocional validado ✔' : 'Devocional recusado', d.ok ? 'Sua leitura de ' + r.Data + ' foi validada.' : 'Sua leitura de ' + r.Data + ' não foi aceita: ' + obs, 'cor:' + r.Data);
     const c = table_('Corridas').rows.filter(function (x) { return x.CorridaID === r.CorridaID; })[0]; let fim = false; if (c && d.ok) fim = corFecha_(c, r.MembroID); return { ok: true, terminou: fim };
   });
+}
+
+/* ============================== PESSOAS (perfis abertos) E CHAT ============================== */
+function semAcento_(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+function usuarioAtivo_(mid) { return table_('Usuarios').rows.some(function (r) { return r.MembroID === mid && r.Status === 'Ativo'; }); }
+function envolvimento_(m) {
+  const mid = m.MembroID, cel = m.CelulaID ? table_('Celulas').rows.filter(function (c) { return c.CelulaID === m.CelulaID && c.Status !== 'Inativa'; })[0] : null;
+  const mi = {}; table_('Ministerios').rows.forEach(function (x) { mi[x.MinisterioID] = x.Nome; }); const cu = {}; table_('Cursos').rows.forEach(function (x) { cu[x.CursoID] = x.Nome; });
+  return { celula: cel ? cel.Nome : '', ministerios: table_('Interesses').rows.filter(function (r) { return r.MembroID === mid && stN_(r.Status) === 'autorizado' && mi[r.MinisterioID]; }).map(function (r) { return mi[r.MinisterioID]; }),
+    cursos: table_('Matriculas').rows.filter(function (r) { return r.MembroID === mid && r.Cert === 'emitido' && cu[r.CursoID]; }).map(function (r) { return { nome: cu[r.CursoID], ano: String(r.CertData || '').slice(0, 4) }; }),
+    desde: String(m.CriadoEm || '').slice(0, 10), reunioes: table_('Presencas').rows.filter(function (r) { return r.MembroID === mid; }).length, eventos: table_('EventoPresenca').rows.filter(function (r) { return r.MembroID === mid; }).length };
+}
+function findPeople_(d, u) {
+  const q = semAcento_(clip_(d.q, 40)).trim(); if (q.length < 2) return [];
+  const ativos = {}; table_('Usuarios').rows.forEach(function (r) { if (r.Status === 'Ativo' && r.MembroID) ativos[r.MembroID] = 1; });
+  return table_('Membros').rows.filter(function (m) { return ativos[m.MembroID] && m.MembroID !== u.membroId && m.Status !== 'Inativo' && semAcento_((m.Nome || '') + ' ' + (m.Simples || '') + ' ' + (m.Apelido || '')).indexOf(q) >= 0; }).slice(0, 15)
+    .map(function (m) { return { id: m.MembroID, nome: m.Simples || m.Apelido || m.Nome }; });
+}
+const CHAT_MAX = 1000, CHAT_POR_MIN = 20;
+function convId_(a, b) { return a < b ? a + '|' + b : b + '|' + a; }
+function sendChat_(d, u) {
+  return withLock_(function () {
+    const para = clip_(d.para, 30), texto = clip_(d.texto, CHAT_MAX).trim(); if (!texto) throw new ApiError('VALIDATION', 'Escreva a mensagem.');
+    if (para === u.membroId) throw new ApiError('VALIDATION', 'Você não pode conversar consigo mesmo.'); if (!usuarioAtivo_(para)) throw new ApiError('NOT_FOUND', 'Essa pessoa não está disponível para conversar.');
+    const t = table_('ChatMsgs'), agora = Date.now(); let n = 0; for (let i = t.rows.length - 1; i >= 0 && i > t.rows.length - 200; i--) { const r = t.rows[i]; if (r.De === u.membroId && agora - Number(r.Ts) < 60000) n++; }
+    if (n >= CHAT_POR_MIN) throw new ApiError('RATE', 'Muitas mensagens seguidas. Espere um minuto.');
+    const id = id_('MS'); appendRow_(t, { MsgID: id, ConvID: convId_(u.membroId, para), De: u.membroId, Para: para, Texto: texto, Ts: String(agora), Lida: '0' }); return { id: id, ts: agora };
+  });
+}
+function msgOut_(r, eu) { return { id: r.MsgID, minha: r.De === eu, texto: r.Texto, ts: Number(r.Ts), lida: r.Lida === '1' }; }
+function getChat_(d, u) {
+  const com = clip_(d.com, 30), cid = convId_(u.membroId, com), depois = Number(d.depois) || 0;
+  const m = table_('Membros').rows.filter(function (x) { return x.MembroID === com; })[0]; if (!m) throw new ApiError('NOT_FOUND', 'Pessoa não encontrada.');
+  const ms = table_('ChatMsgs').rows.filter(function (r) { return r.ConvID === cid && Number(r.Ts) > depois; }).slice(-100).map(function (r) { return msgOut_(r, u.membroId); });
+  return { com: { id: com, nome: m.Simples || m.Apelido || m.Nome }, msgs: ms };
+}
+function chatRead_(d, u) {
+  return withLock_(function () { const t = table_('ChatMsgs'), cid = convId_(u.membroId, clip_(d.com, 30)); let n = 0; t.rows.forEach(function (r) { if (r.ConvID === cid && r.Para === u.membroId && r.Lida !== '1') { writeRow_(t, r._row, { Lida: '1' }); n++; } }); return { n: n }; });
+}
+function listChats_(d, u) {
+  const por = {}, nome = nomes_(); let nao = 0;
+  table_('ChatMsgs').rows.forEach(function (r) { if (r.De !== u.membroId && r.Para !== u.membroId) return; const outro = r.De === u.membroId ? r.Para : r.De, c = por[outro] || (por[outro] = { id: outro, nome: nome[outro] || '—', ultima: '', ts: 0, minha: false, naoLidas: 0 });
+    if (Number(r.Ts) >= c.ts) { c.ts = Number(r.Ts); c.ultima = String(r.Texto).slice(0, 80); c.minha = r.De === u.membroId; } if (r.Para === u.membroId && r.Lida !== '1') { c.naoLidas++; nao++; } });
+  return { naoLidas: nao, conversas: Object.keys(por).map(function (k) { return por[k]; }).sort(function (a, b) { return b.ts - a.ts; }).slice(0, 40) };
 }
 
 /* ============================== USUÁRIOS / PERMISSÕES ============================== */
@@ -1532,7 +1578,7 @@ const ROUTES = {
   listCourses: { auth: 'any', fn: listCourses_ }, enrollCourse: { auth: 'any', write: 1, fn: enrollCourse_ }, saveCourse: { auth: 'any', write: 1, fn: saveCourse_ }, courseDetail: { auth: 'any', fn: courseDetail_ }, saveAula: { auth: 'any', write: 1, fn: saveAula_ }, deleteAula: { auth: 'any', write: 1, fn: deleteAula_ }, getAulaPdf: { auth: 'any', fn: getAulaPdf_ },
   requestStart: { auth: 'any', write: 1, fn: requestStart_ }, getClassRoll: { auth: 'any', fn: getClassRoll_ }, saveClassRoll: { auth: 'any', write: 1, fn: saveClassRoll_ }, finishCourse: { auth: 'any', write: 1, fn: finishCourse_ }, listCertificates: { auth: 'any', fn: listCertificates_ }, decideCert: { auth: 'any', write: 1, fn: decideCert_ }, certificate: { auth: 'any', fn: certificate_ },
   getSignature: { auth: 'any', fn: getSignature_ }, saveSignature: { auth: 'any', write: 1, fn: saveSignature_ }, rateAula: { auth: 'any', write: 1, fn: rateAula_ }, aulaFeedback: { auth: 'any', fn: aulaFeedback_ },
-  listLessons: { auth: 'any', fn: listLessons_ }, listDynamics: { auth: 'any', fn: listDyn_ }, addDynamic: { auth: 'any', write: 1, fn: addDyn_ }, listVideos: { auth: 'any', fn: listVideos_ }, listProducts: { auth: 'any', fn: listProducts_ }, listFamilia: { auth: 'any', fn: listFamilia_ }, profileView: { auth: 'any', fn: profileView_ }, getCertLayout: { auth: 'any', fn: getCertLayout_ }, saveCertLayout: { auth: 'any', write: 1, fn: saveCertLayout_ }, previewCert: { auth: 'any', fn: previewCert_ }, revokeCert: { auth: 'any', write: 1, fn: revokeCert_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
+  listLessons: { auth: 'any', fn: listLessons_ }, listDynamics: { auth: 'any', fn: listDyn_ }, addDynamic: { auth: 'any', write: 1, fn: addDyn_ }, listVideos: { auth: 'any', fn: listVideos_ }, listProducts: { auth: 'any', fn: listProducts_ }, listFamilia: { auth: 'any', fn: listFamilia_ }, profileView: { auth: 'any', fn: profileView_ }, searchPeople: { auth: 'any', fn: findPeople_ }, sendChat: { auth: 'any', write: 1, fn: sendChat_ }, getChat: { auth: 'any', fn: getChat_ }, chatRead: { auth: 'any', write: 1, fn: chatRead_ }, listChats: { auth: 'any', fn: listChats_ }, getCertLayout: { auth: 'any', fn: getCertLayout_ }, saveCertLayout: { auth: 'any', write: 1, fn: saveCertLayout_ }, previewCert: { auth: 'any', fn: previewCert_ }, revokeCert: { auth: 'any', write: 1, fn: revokeCert_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
   searchCells: { auth: 'any', fn: searchCells_ }, addPrayer: { auth: 'any', write: 1, fn: addPrayer_ }, listPrayers: { auth: 'any', fn: listPrayers_ },
   cellMembers: { auth: 'any', fn: cellMembers_ }, saveCell: { auth: 'any', write: 1, fn: saveCell_ }, saveAttendance: { auth: 'any', write: 1, fn: saveAttendance_ }, history: { auth: 'any', fn: history_ },
   indicators: { auth: 'any', fn: indicators_ }, getPapeis: { auth: 'any', fn: getPapeis_ }, savePapeis: { auth: 'any', write: 1, fn: savePapeis_ }, createCellEvent: { auth: 'any', write: 1, fn: createCellEvent_ },
