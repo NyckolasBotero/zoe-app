@@ -146,3 +146,10 @@ Em **Administração → Definições de Parâmetros → Regras Células** o adm
 - O preço normal fica guardado (colunas `PromoPreco`/`PromoAte` em `Produtos`); a vitrine mostra o preço antigo riscado, o novo e o `-%`, e a mensagem do WhatsApp já vai com o valor promocional.
 - **Marcar esgotado / Voltou ao estoque** ativa ou desativa o produto sem apagá-lo.
 - Depois de colar o novo `Code.gs`, rode `setup()` para criar as colunas novas.
+
+## Professor, Cursos, Aulas e Certificados
+
+- **Nível Professor** (abaixo de Pastor, acima de Membro) e duas permissões novas em *Níveis de acesso*: **Dar aulas** (`prof`: criar cursos/aulas/certificados) e **Supervisão de cursos** (`cursos`: aprovar cursos, início e matrículas; padrão: Administrador e Pastor). Depois de colar o novo `Code.gs`, rode `setup()` (novas abas: `Aulas`, `AulaPresenca`, `AulaAval`, `Assinaturas` e colunas novas em `Cursos`/`Matriculas`/`Permissoes`).
+- **Fluxo:** professor cria o curso (informa se a matrícula exige aprovação e a presença mínima do certificado) → vai para **Aprovações** (com resumo; o supervisor também recebe notificação) → aprovado, o professor monta o cronograma (uma aula, ou **em lote**: quantidade, dias da semana, horário, PDF e título de cada aula) → **pede o início** e o supervisor autoriza → aulas com **chamada** e **foto do dia** → o professor **encerra** e avalia cada aluno (presença sobre o total de aulas) → **emite o certificado**.
+- **Aluno** (aba *Cursos*): Cursos da igreja (se matricula), Meus cursos, Cursos que você fez (certificado) e Matrículas pendentes (permitidas só pelos supervisores). Vê o cronograma por dia, títulos e PDFs, e **avalia as aulas** (nota 1–10, feedback, dúvida e observação; a dúvida chega como notificação ao professor).
+- **Certificado digital** com a identidade da Zoe, carga horária, descrição, presença e **assinaturas** do professor e do supervisor/pastor que aprovou o curso. Cada um cadastra a sua (desenhar ou digitar o nome) em *Aulas › Minha assinatura* ou em *Aprovações*. Botão para imprimir/salvar em PDF.
