@@ -596,3 +596,22 @@ test('guia de primeiro acesso: aparece até a pessoa concluir', () => {
   const M = (mk('outra@zoe.com', 'membro'), tok('outra@zoe.com', 'Temp12345')); assert.equal(e.call('me', {}, M).data.guiaVisto, false); // por pessoa
   e.run(`(function(){const t=table_('Usuarios'),r=t.rows.filter(function(x){return x.Email==='outra@zoe.com'})[0];writeRow_(t,r._row,{GuiaVisto:''})})()`); assert.equal(e.call('me', {}, M).data.guiaVisto, true); // conta antiga (sem marca) não vê o tutorial
 });
+test('XP e insígnias: batismo/decisão, idempotência, nível e personalização por nível', () => {
+  const { e, tok, mk } = boot(); mk('joao@zoe.com', 'membro'); const j = tok('joao@zoe.com', 'Temp12345');
+  assert.equal(e.call('me', {}, j).data.xp.nivel, 1);
+  assert.ok(e.call('saveMember', { membro: { Nome: 'João Silva', DataBatismo: '2020-01-05', DataDecisao: '2019-03-02' } }, j).ok);
+  assert.ok(e.call('saveMember', { membro: { Nome: 'João Silva', DataBatismo: '2020-01-05', DataDecisao: '2019-03-02' } }, j).ok); // repetir não duplica
+  const pv = e.call('profileView', {}, j).data; const cods = pv.insignias.map(x => x.codigo).sort();
+  assert.deepEqual(cods, ['batismo', 'decisao']); assert.equal(pv.xp.xp, 350); assert.equal(pv.xp.nivel, 3);
+  assert.equal(pv.insignias.find(x => x.codigo === 'batismo').ano, '2020');
+  assert.equal(e.call('saveProfile', { fundo: 'ouro' }, j).error.code, 'FORBIDDEN');
+  assert.equal(e.call('saveProfile', { fundo: 'nada' }, j).error.code, 'VALIDATION');
+  assert.ok(e.call('saveProfile', { bio: 'Olá!', fundo: 'solpoente', moldura: 'dourada', versiculo: 'Sl 23' }, j).ok);
+  const p2 = e.call('profileView', {}, j).data; assert.equal(p2.bio, 'Olá!'); assert.equal(p2.fundo, 'solpoente');
+  assert.equal(p2.libera.slots, 1);
+  const f = 'data:image/jpeg;base64,/9j/4AAQSkZJRg==';
+  assert.ok(e.call('saveHighlight', { foto: f, legenda: 'Batismo' }, j).ok);
+  assert.equal(e.call('saveHighlight', { foto: f }, j).error.code, 'FORBIDDEN');
+  const d = e.call('profileView', {}, j).data.destaques; assert.equal(d.length, 1);
+  assert.ok(e.call('deleteHighlight', { id: d[0].id }, j).ok); assert.equal(e.call('profileView', {}, j).data.destaques.length, 0);
+});

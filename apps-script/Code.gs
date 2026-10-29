@@ -60,6 +60,10 @@ const SHEETS = {
   Aulas: ['AulaID', 'CursoID', 'Numero', 'Titulo', 'Descricao', 'Data', 'Inicio', 'Fim', 'ArquivoID', 'PdfNome', 'Foto', 'Dada', 'Status'],
   AulaPresenca: ['AulaID', 'MembroID', 'Presente'],
   AulaAval: ['AulaID', 'CursoID', 'MembroID', 'Nota', 'Feedback', 'Duvida', 'Obs', 'Data'],
+  Insignias: ['MembroID', 'Codigo', 'Titulo', 'Ano', 'Data', 'Ref'],
+  XpLog: ['MembroID', 'Ref', 'Pontos', 'Motivo', 'Data'],
+  Perfis: ['MembroID', 'Bio', 'Capa', 'Fundo', 'Moldura', 'Versiculo'],
+  PerfilFotos: ['MembroID', 'FotoID', 'Foto', 'Legenda', 'Ordem'],
   Assinaturas: ['MembroID', 'Tipo', 'Dado', 'Cargo', 'Atualizado'],
   Noticias: ['NoticiaID', 'Titulo', 'Texto', 'Data', 'CriadoPor', 'Status'],
   Licoes: ['LicaoID', 'Titulo', 'Resumo', 'Categoria', 'Url', 'Status'],
@@ -243,7 +247,7 @@ function me_(d, u) {
   const nivelCel = !cel ? '' : (full || (cel.LiderID === u.membroId) ? 'lider' : cel.SupervisorID === u.membroId ? 'supervisor' : cel.TreinamentoID === u.membroId ? 'treinamento' : 'membro');
   const tef = tipoEf_(u), abas = abasPorTipo_()[tef] || {}, cp = cel ? (full ? allCelPerm_() : celPermMap_(u, cel)) : null;
   const urow = table_('Usuarios').rows.filter(function (r) { return String(r.Email).toLowerCase() === u.email; })[0] || {};
-  return { guiaVisto: urow.GuiaVisto !== '0', usuario: { email: u.email, papel: u.papel, tipo: tef }, abas: abas, permCelula: cp, membro: memberFull_(mm), celula: cel ? cellOut_(cel, nivelCel !== 'membro') : null, nivelCelula: nivelCel, cargos: cg, minhasCelulas: minhas, permissoes: permMatrix_()[tef], config: publicConfig_(), interesses: interessesDe_(u.membroId), membresia: membresiaDe_(u.membroId) };
+  return { xp: xpResumo_(u.membroId), guiaVisto: urow.GuiaVisto !== '0', usuario: { email: u.email, papel: u.papel, tipo: tef }, abas: abas, permCelula: cp, membro: memberFull_(mm), celula: cel ? cellOut_(cel, nivelCel !== 'membro') : null, nivelCelula: nivelCel, cargos: cg, minhasCelulas: minhas, permissoes: permMatrix_()[tef], config: publicConfig_(), interesses: interessesDe_(u.membroId), membresia: membresiaDe_(u.membroId) };
 }
 function saveMember_(d, u) {
   return withLock_(function () {
@@ -254,7 +258,7 @@ function saveMember_(d, u) {
     if (p.DataBatismo) p.Batizado = 'sim';
     if (p.Email !== undefined) delete p.Email; // e-mail de acesso só muda pelo administrador
     if (src.Filhos !== undefined) p.Filhos = JSON.stringify((src.Filhos || []).slice(0, 15).map(function (f) { return { n: clip_(f.n, 120), idade: clip_(f.idade, 30) }; }));
-    writeRow_(g.t, g.m._row, p); audit_(u.email, 'MEMBRO_SALVO', u.membroId, 'OK'); return memberFull_(Object.assign({}, g.m, p));
+    writeRow_(g.t, g.m._row, p); audit_(u.email, 'MEMBRO_SALVO', u.membroId, 'OK'); const novo = Object.assign({}, g.m, p); conquistasMembro_(novo); return memberFull_(novo);
   });
 }
 function acceptLegal_(d, u) { return withLock_(function () { const g = getMember_(u.membroId), k = d.tipo === 'termos' ? 'AceiteTermos' : 'AceitePrivacidade'; writeRow_(g.t, g.m._row, (function () { const o = {}; o[k] = now_(); return o; })()); return { ok: true }; }); }
@@ -373,7 +377,7 @@ function saveAttendance_(d, u) {
     let term = d.termometro !== undefined && d.termometro !== '' ? Math.round(Number(d.termometro)) : (d.deus ? 80 : 0); if (!isFinite(term)) throw new ApiError('VALIDATION', 'Termômetro inválido.'); term = Math.max(0, Math.min(100, term));
     const patch = { Presentes: String(pres.length), PresencaDeDeus: term >= 50 ? '1' : '0', Termometro: String(term), Obs: clip_(d.obs, 500), ForaDoDia: fora ? '1' : '0', Elenco: elenco.join(',') };
     if (ex) writeRow_(rt, ex._row, patch); else appendRow_(rt, Object.assign({ ReuniaoID: rid, CelulaID: id, Data: data }, patch));
-    const pt2 = table_('Presencas'); pres.forEach(function (m) { appendRow_(pt2, { ReuniaoID: rid, CelulaID: id, Data: data, MembroID: m }); });
+    const pt2 = table_('Presencas'); pres.forEach(function (m) { appendRow_(pt2, { ReuniaoID: rid, CelulaID: id, Data: data, MembroID: m }); awardXp_(m, 'celula:' + id + ':' + data, 10, 'Presença na célula'); });
     membresiaCheck_(id, pres);
     audit_(u.email, 'FREQUENCIA', id + ' ' + data + (fora ? ' (fora do dia)' : ''), 'OK'); return { reuniaoId: rid, presentes: pres.length, total: mem.length, foraDoDia: fora, atualizada: !!ex };
   });
@@ -627,7 +631,7 @@ function track_(d, u) {
       const seg = Math.max(0, Math.min(900, Math.round(Number(x.seg) || 0))), vis = x.visita ? Math.min(20, Math.round(Number(x.visita)) || 1) : 0; if (!seg && !vis) return;
       upsertUso_(mes, u.membroId, tela, seg, vis); n++;
     });
-    return { ok: true, n: n };
+    awardXp_(u.membroId, 'dia:' + today_(), 5, 'Acesso diário'); return { ok: true, n: n };
   });
 }
 function usageReport_(d, u) {
@@ -1112,7 +1116,7 @@ function decideCert_(d, u) {
     if (d.decisao === 'autorizado' && !ass) throw new ApiError('VALIDATION', 'Cadastre a sua assinatura antes de emitir certificados.');
     ids.forEach(function (id) {
       const r = t.rows.filter(function (x) { return x.MatriculaID === id; })[0]; if (!r) return; const c = tc.rows.filter(function (x) { return x.CursoID === r.CursoID; })[0]; if (!c || !gereCurso_(u, c)) throw new ApiError('FORBIDDEN', 'Só o professor do curso avalia.'); if (cursoSt_(c) !== 'encerrado') throw new ApiError('VALIDATION', 'Encerre o curso antes de emitir certificados.'); c0 = c;
-      if (d.decisao === 'autorizado') { writeRow_(t, r._row, { Cert: 'emitido', CertCodigo: certCodigo_(r.MatriculaID), CertData: today_(), CertPor: u.membroId, Status: 'concluido' }); notify_(r.MembroID, 'curso', 'Seu certificado está pronto', 'Curso ' + c.Nome + '. Veja em Cursos › Cursos que você fez.', 'curso:' + c.CursoID); }
+      if (d.decisao === 'autorizado') { writeRow_(t, r._row, { Cert: 'emitido', CertCodigo: certCodigo_(r.MatriculaID), CertData: today_(), CertPor: u.membroId, Status: 'concluido' }); awardBadge_(r.MembroID, 'curso:' + c.CursoID, c.Nome, today_().slice(0, 4), 300); notify_(r.MembroID, 'curso', 'Seu certificado está pronto', 'Curso ' + c.Nome + '. Veja em Cursos › Cursos que você fez.', 'curso:' + c.CursoID); }
       else writeRow_(t, r._row, { Cert: 'negado', Motivo: clip_(d.motivo, 300) });
       n++;
     });
@@ -1155,6 +1159,67 @@ function aulaFeedback_(d, u) {
   const a = table_('Aulas').rows.filter(function (r) { return r.AulaID === d.aulaId; })[0]; if (!a) throw new ApiError('NOT_FOUND', 'Aula não encontrada.'); const c = getCurso_(a.CursoID); if (!(gereCurso_(u, c) || can_(u, 'cursos'))) throw new ApiError('FORBIDDEN', 'Só o professor e os supervisores veem as avaliações.');
   const nm = nomes_(); return { aula: a.Titulo, itens: table_('AulaAval').rows.filter(function (r) { return r.AulaID === a.AulaID; }).map(function (r) { return { aluno: nm[r.MembroID] || 'Aluno', nota: r.Nota ? Number(r.Nota) : null, feedback: r.Feedback || '', duvida: r.Duvida || '', obs: r.Obs || '', data: r.Data }; }) };
 }
+
+/* ============================== INSÍGNIAS, XP E PERFIL ==============================
+   XP vem de tarefas e insígnias (cada prêmio é gravado uma única vez, por "ref"). O nível libera personalização do perfil. */
+const NIVEIS = [0, 100, 250, 450, 700, 1000, 1400, 1900, 2500, 3200];
+const NIVEL_NOMES = ['Semente', 'Broto', 'Raiz', 'Tronco', 'Ramo', 'Folha', 'Fruto', 'Árvore', 'Floresta', 'Vida em abundância'];
+const FUNDOS_NV = { verde: 1, aurora: 2, solpoente: 3, noite: 4, bordado: 5, ouro: 8 };
+const MOLDURAS_NV = { simples: 1, verde: 2, dourada: 3, arco: 5, chama: 7, luz: 9 };
+const SLOTS_DESTAQUE = [[8, 6], [6, 3], [4, 2], [3, 1]]; // [nível mínimo, fotos em destaque]
+const NV_CAPA = 2, NV_VERSICULO = 2;
+function nivelDe_(xp) { let n = 1; for (let i = 0; i < NIVEIS.length; i++) if (xp >= NIVEIS[i]) n = i + 1; return n; }
+function slotsDestaque_(nv) { for (let i = 0; i < SLOTS_DESTAQUE.length; i++) if (nv >= SLOTS_DESTAQUE[i][0]) return SLOTS_DESTAQUE[i][1]; return 0; }
+function xpDe_(mid) { let t = 0; table_('XpLog').rows.forEach(function (r) { if (r.MembroID === mid) t += Number(r.Pontos) || 0; }); return t; }
+function xpResumo_(mid) { const xp = xpDe_(mid), nv = nivelDe_(xp), ini = NIVEIS[nv - 1], prox = NIVEIS[nv] === undefined ? null : NIVEIS[nv]; return { xp: xp, nivel: nv, nome: NIVEL_NOMES[nv - 1], proximo: prox, base: ini }; }
+function awardXp_(mid, ref, pts, motivo) {
+  if (!mid || !ref) return false; const t = table_('XpLog'); if (t.rows.some(function (r) { return r.MembroID === mid && r.Ref === ref; })) return false;
+  appendRow_(t, { MembroID: mid, Ref: ref, Pontos: String(pts), Motivo: clip_(motivo, 120), Data: now_() }); t.rows.push({ MembroID: mid, Ref: ref, Pontos: String(pts) }); return true;
+}
+// Insígnia: grava uma vez por (pessoa, código, ano), soma o XP e avisa a pessoa (a Zoe comemora na tela)
+function awardBadge_(mid, codigo, titulo, ano, pts) {
+  if (!mid || !codigo) return false; const t = table_('Insignias'), ref = codigo + (ano ? ':' + ano : '');
+  if (t.rows.some(function (r) { return r.MembroID === mid && r.Ref === ref; })) return false;
+  appendRow_(t, { MembroID: mid, Codigo: codigo, Titulo: clip_(titulo, 80), Ano: String(ano || ''), Data: today_(), Ref: ref }); t.rows.push({ MembroID: mid, Ref: ref });
+  awardXp_(mid, 'insignia:' + ref, pts || 50, 'Insígnia: ' + titulo); notify_(mid, 'insignia', 'Nova insígnia: ' + titulo, 'Você ganhou +' + (pts || 50) + ' XP. Veja em Meu perfil › Insígnias.', 'insignia:' + codigo); return true;
+}
+const PERFIL_COMPLETO = ['Nome', 'Simples', 'Apelido', 'Sexo', 'Nascimento', 'Nacionalidade', 'Naturalidade', 'Sangue', 'Profissao', 'Telefone', 'Email', 'CEP', 'UF', 'Cidade', 'Endereco', 'Bairro', 'Mae', 'Pai', 'EstadoCivil', 'Foto'];
+function conquistasMembro_(m) {
+  if (!m) return; const mid = m.MembroID, ano = today_().slice(0, 4);
+  if (PERFIL_COMPLETO.every(function (k) { return String(m[k] || '').trim(); })) { awardBadge_(mid, 'perfil', 'Perfil completo', '', 100); }
+  if (m.DataDecisao) awardBadge_(mid, 'decisao', 'Decisão por Cristo', String(m.DataDecisao).slice(0, 4), 150);
+  if (m.DataBatismo) awardBadge_(mid, 'batismo', 'Batizado', String(m.DataBatismo).slice(0, 4), 200);
+}
+function listInsignias_(mid) { return table_('Insignias').rows.filter(function (r) { return r.MembroID === mid; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).map(function (r) { return { codigo: r.Codigo, titulo: r.Titulo, ano: r.Ano || '', data: r.Data }; }); }
+function perfilRow_(mid) { return table_('Perfis').rows.filter(function (r) { return r.MembroID === mid; })[0]; }
+function profileView_(d, u) {
+  const mid = clip_(d.membroId, 30) || u.membroId, m = table_('Membros').rows.filter(function (x) { return x.MembroID === mid && x.Status !== 'Inativo'; })[0]; if (!m) throw new ApiError('NOT_FOUND', 'Perfil não encontrado.');
+  const p = perfilRow_(mid) || {}, rs = xpResumo_(mid), meu = mid === u.membroId;
+  const out = { id: mid, meu: meu, nome: m.Simples || m.Nome, apelido: m.Apelido || '', foto: m.Foto || '', bio: p.Bio || '', capa: p.Capa || '', fundo: p.Fundo || 'verde', moldura: p.Moldura || 'simples', versiculo: p.Versiculo || '', xp: rs, insignias: listInsignias_(mid),
+    destaques: table_('PerfilFotos').rows.filter(function (r) { return r.MembroID === mid; }).sort(function (a, b) { return Number(a.Ordem) - Number(b.Ordem); }).map(function (r) { return { id: r.FotoID, foto: r.Foto, legenda: r.Legenda || '' }; }) };
+  if (meu) out.libera = { fundos: FUNDOS_NV, molduras: MOLDURAS_NV, capa: NV_CAPA, versiculo: NV_VERSICULO, slots: slotsDestaque_(rs.nivel), niveis: NIVEIS, nomes: NIVEL_NOMES };
+  return out;
+}
+function saveProfile_(d, u) {
+  return withLock_(function () {
+    const rs = xpResumo_(u.membroId), nv = rs.nivel, t = table_('Perfis'), ex = perfilRow_(u.membroId), patch = {};
+    if (d.bio !== undefined) patch.Bio = clip_(d.bio, 280);
+    if (d.fundo !== undefined) { if (!FUNDOS_NV[d.fundo]) throw new ApiError('VALIDATION', 'Fundo inválido.'); if (nv < FUNDOS_NV[d.fundo]) throw new ApiError('FORBIDDEN', 'Esse fundo abre no nível ' + FUNDOS_NV[d.fundo] + '.'); patch.Fundo = d.fundo; }
+    if (d.moldura !== undefined) { if (!MOLDURAS_NV[d.moldura]) throw new ApiError('VALIDATION', 'Moldura inválida.'); if (nv < MOLDURAS_NV[d.moldura]) throw new ApiError('FORBIDDEN', 'Essa moldura abre no nível ' + MOLDURAS_NV[d.moldura] + '.'); patch.Moldura = d.moldura; }
+    if (d.capa !== undefined && d.capa !== '__keep') { if (d.capa && nv < NV_CAPA) throw new ApiError('FORBIDDEN', 'A capa personalizada abre no nível ' + NV_CAPA + '.'); patch.Capa = fotoOk_(d.capa); }
+    if (d.versiculo !== undefined) { if (d.versiculo && nv < NV_VERSICULO) throw new ApiError('FORBIDDEN', 'O versículo em destaque abre no nível ' + NV_VERSICULO + '.'); patch.Versiculo = clip_(d.versiculo, 200); }
+    if (ex) writeRow_(t, ex._row, patch); else appendRow_(t, Object.assign({ MembroID: u.membroId }, patch)); return { ok: true };
+  });
+}
+function saveHighlight_(d, u) {
+  return withLock_(function () {
+    const nv = xpResumo_(u.membroId).nivel, slots = slotsDestaque_(nv), t = table_('PerfilFotos'), meus = t.rows.filter(function (r) { return r.MembroID === u.membroId; });
+    if (!slots) throw new ApiError('FORBIDDEN', 'O destaque de fotos abre no nível 3.'); if (meus.length >= slots) throw new ApiError('FORBIDDEN', 'Você usou todos os seus destaques (' + slots + '). Suba de nível para ganhar mais.');
+    const foto = fotoOk_(d.foto); if (!foto) throw new ApiError('VALIDATION', 'Escolha uma foto.');
+    const id = id_('PF'); appendRow_(t, { MembroID: u.membroId, FotoID: id, Foto: foto, Legenda: clip_(d.legenda, 80), Ordem: String(meus.length + 1) }); return { id: id };
+  });
+}
+function deleteHighlight_(d, u) { return withLock_(function () { const t = table_('PerfilFotos'), r = t.rows.filter(function (x) { return x.FotoID === d.id && x.MembroID === u.membroId; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Foto não encontrada.'); t.sh.deleteRow(r._row); return { ok: true }; }); }
 
 /* ============================== USUÁRIOS / PERMISSÕES ============================== */
 function listUsers_() { const mem = {}; table_('Membros').rows.forEach(function (m) { mem[m.MembroID] = m; }); return table_('Usuarios').rows.map(function (r) { return { email: r.Email, nome: (mem[r.MembroID] || {}).Nome || '', papel: r.Papel, status: r.Status || 'Ativo', ultimoAcesso: r.UltimoAcesso, membroId: r.MembroID }; }); }
@@ -1319,7 +1384,7 @@ const ROUTES = {
   listCourses: { auth: 'any', fn: listCourses_ }, enrollCourse: { auth: 'any', write: 1, fn: enrollCourse_ }, saveCourse: { auth: 'any', write: 1, fn: saveCourse_ }, courseDetail: { auth: 'any', fn: courseDetail_ }, saveAula: { auth: 'any', write: 1, fn: saveAula_ }, deleteAula: { auth: 'any', write: 1, fn: deleteAula_ }, getAulaPdf: { auth: 'any', fn: getAulaPdf_ },
   requestStart: { auth: 'any', write: 1, fn: requestStart_ }, getClassRoll: { auth: 'any', fn: getClassRoll_ }, saveClassRoll: { auth: 'any', write: 1, fn: saveClassRoll_ }, finishCourse: { auth: 'any', write: 1, fn: finishCourse_ }, listCertificates: { auth: 'any', fn: listCertificates_ }, decideCert: { auth: 'any', write: 1, fn: decideCert_ }, certificate: { auth: 'any', fn: certificate_ },
   getSignature: { auth: 'any', fn: getSignature_ }, saveSignature: { auth: 'any', write: 1, fn: saveSignature_ }, rateAula: { auth: 'any', write: 1, fn: rateAula_ }, aulaFeedback: { auth: 'any', fn: aulaFeedback_ },
-  listLessons: { auth: 'any', fn: listLessons_ }, listDynamics: { auth: 'any', fn: listDyn_ }, addDynamic: { auth: 'any', write: 1, fn: addDyn_ }, listVideos: { auth: 'any', fn: listVideos_ }, listProducts: { auth: 'any', fn: listProducts_ }, listFamilia: { auth: 'any', fn: listFamilia_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
+  listLessons: { auth: 'any', fn: listLessons_ }, listDynamics: { auth: 'any', fn: listDyn_ }, addDynamic: { auth: 'any', write: 1, fn: addDyn_ }, listVideos: { auth: 'any', fn: listVideos_ }, listProducts: { auth: 'any', fn: listProducts_ }, listFamilia: { auth: 'any', fn: listFamilia_ }, profileView: { auth: 'any', fn: profileView_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
   searchCells: { auth: 'any', fn: searchCells_ }, addPrayer: { auth: 'any', write: 1, fn: addPrayer_ }, listPrayers: { auth: 'any', fn: listPrayers_ },
   cellMembers: { auth: 'any', fn: cellMembers_ }, saveCell: { auth: 'any', write: 1, fn: saveCell_ }, saveAttendance: { auth: 'any', write: 1, fn: saveAttendance_ }, history: { auth: 'any', fn: history_ },
   indicators: { auth: 'any', fn: indicators_ }, getPapeis: { auth: 'any', fn: getPapeis_ }, savePapeis: { auth: 'any', write: 1, fn: savePapeis_ }, createCellEvent: { auth: 'any', write: 1, fn: createCellEvent_ },
