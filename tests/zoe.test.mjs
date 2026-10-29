@@ -749,3 +749,15 @@ test('Bíblia: marcações, comentários públicos e anotação do culto na cél
   const n = e.call('saveNote', { data: '2026-11-01', tema: 'Mordomia Cristã', itens: [{ ref: '43:3:16', texto: 'Porque Deus amou…', coment: 'minha nota' }] }, A); assert.ok(n.ok, JSON.stringify(n)); assert.equal(n.data.titulo, '01/11/2026 Domingo - Tema Mordomia Cristã');
   const fc = e.call('listFeed', { escopo: 'celula' }, B).data.itens; assert.equal(fc.length, 1); assert.equal(fc[0].meta.itens.length, 1);
 });
+
+test('um acesso por pessoa; limpar notificações; notificações definidas pelo adm', () => {
+  const { e, adm, tok, mk } = boot(); const id = e.call('saveMember', { membro: { Nome: 'Sem Acesso', Email: 'sem@zoe.com' } }, adm);
+  e.run(`appendRow_(table_('Membros'), { MembroID: 'MX1', Nome: 'Maria Cadastro', Simples: 'Maria', Email: 'maria@zoe.com', Status: 'Ativo', EhMembro: '1' })`);
+  const r = e.call('createUser', { email: 'maria@zoe.com', nome: 'Maria Cadastro', senha: 'Temp12345', papel: 'membro' }, adm); assert.ok(r.ok); assert.equal(r.data.membroId, 'MX1');
+  assert.equal(e.sheets.Membros.rows.slice(1).filter(x => x[1] === 'Maria Cadastro').length, 1);
+  assert.equal(e.call('createUser', { email: 'outra@zoe.com', nome: 'x', senha: 'Temp12345', papel: 'membro', membroId: 'MX1' }, adm).error.code, 'VALIDATION');
+  const M = tok('maria@zoe.com', 'Temp12345'); e.run(`notify_('MX1','x','A','a',''); notify_('MX1','x','B','b','')`);
+  const l = e.call('listNotifications', {}, M).data; assert.equal(l.itens.length, 2);
+  assert.equal(e.call('clearNotifications', { ids: [l.itens[0].id] }, M).data.itens.length, 1); assert.equal(e.call('clearNotifications', {}, M).data.itens.length, 0);
+  const c = e.call('saveConfig', { notifTipos: { aniv: false } }, adm).data; assert.equal(c.notifTipos.aniv, false); assert.equal(c.notifTipos.celula, true);
+});

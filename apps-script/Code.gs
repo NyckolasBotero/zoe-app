@@ -71,7 +71,7 @@ const SHEETS = {
   CertLayout: ['MembroID', 'Dados', 'Atualizado'],
   Insignias: ['MembroID', 'Codigo', 'Titulo', 'Ano', 'Data', 'Ref'],
   XpLog: ['MembroID', 'Ref', 'Pontos', 'Motivo', 'Data'],
-  Perfis: ['MembroID', 'Bio', 'Capa', 'Fundo', 'Moldura', 'Versiculo', 'Oculto', 'Contorno', 'Quadro'],
+  Perfis: ['MembroID', 'Bio', 'Capa', 'Fundo', 'Moldura', 'Versiculo', 'Oculto', 'Contorno', 'Quadro', 'Top'],
   InsigniaDefs: ['DefID', 'Nome', 'Descricao', 'Estilo', 'Forma', 'Cor1', 'Cor2', 'Icone', 'Texto', 'XP', 'Criterio', 'Ativo', 'CriadoPor'],
   Servicos: ['Atividade', 'MembroID', 'Mes', 'RegistradoPor'],
   ChatMsgs: ['MsgID', 'ConvID', 'De', 'Para', 'Texto', 'Ts', 'Lida'],
@@ -291,7 +291,9 @@ function greet_(d, u) {
 }
 /* ============================== CONFIG PÚBLICA ============================== */
 function cfgMap_() { const o = {}; table_('Config').rows.forEach(function (r) { o[r.Chave] = r.Valor; }); return o; }
-function publicConfig_() { const c = cfgMap_(); return { nomeIgreja: c.NomeIgreja, whatsapp: c.WhatsApp, localNome: c.LocalNome, localEndereco: c.LocalEndereco, linkMapa: c.LinkMapa || '', colunasExtras: jparse_(c.ColunasExtras, []), canalYoutube: c.CanalYoutube || '', lojaWhatsapp: c.LojaWhatsApp || '', frequentadorPct: Number(c.FrequentadorPct) || 70, frequentadorJanela: Number(c.FrequentadorJanela) || 8, celulasParaSupervisor: Math.max(0, Number(c.CelulasParaSupervisor) || 0), frequenciasParaMembro: freqMembro_() }; }
+function publicConfig_() { const c = cfgMap_(); return { nomeIgreja: c.NomeIgreja, whatsapp: c.WhatsApp, localNome: c.LocalNome, localEndereco: c.LocalEndereco, linkMapa: c.LinkMapa || '', colunasExtras: jparse_(c.ColunasExtras, []), canalYoutube: c.CanalYoutube || '', lojaWhatsapp: c.LojaWhatsApp || '', frequentadorPct: Number(c.FrequentadorPct) || 70, frequentadorJanela: Number(c.FrequentadorJanela) || 8, celulasParaSupervisor: Math.max(0, Number(c.CelulasParaSupervisor) || 0), frequenciasParaMembro: freqMembro_(), notifTipos: notifTipos_(c) }; }
+const NOTIF_CATS = ['aniv', 'celula', 'eventos', 'oracao', 'cursos', 'transf', 'escala'];
+function notifTipos_(c) { const o = jparse_((c || cfgMap_()).NotifTipos, {}), r = {}; NOTIF_CATS.forEach(function (k) { r[k] = o[k] !== false; }); return r; }
 function saveConfig_(d, u) {
   return withLock_(function () {
     const t = table_('Config'), allow = { NomeIgreja: 120, WhatsApp: 20, LojaWhatsApp: 20, LocalNome: 120, LocalEndereco: 250, LinkMapa: 300 };
@@ -308,6 +310,7 @@ function saveConfig_(d, u) {
       if (k === 'LinkMapa' && v && !/^https:\/\/(maps\.app\.goo\.gl|goo\.gl\/maps|www\.google\.com\/maps|google\.com\/maps|maps\.google\.com)\//.test(v)) throw new ApiError('VALIDATION', 'Use um link do Google Maps (https://maps.app.goo.gl/...).');
       const r = t.rows.filter(function (x) { return x.Chave === k; })[0]; if (r) writeRow_(t, r._row, { Valor: v }); else appendRow_(t, { Chave: k, Valor: v });
     });
+    if (d.notifTipos !== undefined) { const o = {}; NOTIF_CATS.forEach(function (k) { o[k] = !(d.notifTipos && d.notifTipos[k] === false); }); const v = JSON.stringify(o), r = t.rows.filter(function (x) { return x.Chave === 'NotifTipos'; })[0]; if (r) writeRow_(t, r._row, { Valor: v }); else appendRow_(t, { Chave: 'NotifTipos', Valor: v }); }
     if (d.colunasExtras !== undefined) { const v = JSON.stringify((d.colunasExtras || []).slice(0, 20).map(function (s) { return clip_(s, 60); }).filter(String)); const r = t.rows.filter(function (x) { return x.Chave === 'ColunasExtras'; })[0]; if (r) writeRow_(t, r._row, { Valor: v }); else appendRow_(t, { Chave: 'ColunasExtras', Valor: v }); }
     audit_(u.email, 'CONFIG_SALVA', '', 'OK'); return publicConfig_();
   });
@@ -576,6 +579,13 @@ function readNotifications_(d, u) {
   return withLock_(function () {
     const t = table_('Notificacoes'), ids = Array.isArray(d.ids) ? d.ids : null;
     t.rows.forEach(function (n) { if (n.MembroID === u.membroId && n.Lida !== '1' && (!ids || ids.indexOf(n.NotifID) >= 0)) writeRow_(t, n._row, { Lida: '1' }); });
+    return listNotifications_({}, u);
+  });
+}
+function clearNotifications_(d, u) {
+  return withLock_(function () {
+    const t = table_('Notificacoes'), ids = Array.isArray(d.ids) ? d.ids : null;
+    for (let i = t.rows.length - 1; i >= 0; i--) { const n = t.rows[i]; if (n.MembroID === u.membroId && (!ids || ids.indexOf(n.NotifID) >= 0)) t.sh.deleteRow(n._row); }
     return listNotifications_({}, u);
   });
 }
@@ -1360,7 +1370,7 @@ function profileView_(d, u) {
   const meu = mid === u.membroId; if (meu) withLock_(function () { avaliaDefs_(mid); });
   const p = perfilRow_(mid) || {}, rs = xpResumo_(mid), ganhas = listInsignias_(mid);
   const contorno = CONTORNOS.indexOf(p.Contorno) >= 0 ? p.Contorno : (CONTORNOS.indexOf(p.Moldura) >= 0 ? p.Moldura : 'simples');
-  const out = { id: mid, meu: meu, nome: m.Simples || m.Nome, apelido: m.Apelido || '', foto: m.Foto || '', bio: p.Bio || '', capa: p.Capa || '', fundo: FUNDOS.indexOf(p.Fundo) >= 0 ? p.Fundo : 'zoe', contorno: contorno, moldura: MOLDURAS.indexOf(p.Quadro) >= 0 ? p.Quadro : 'nenhuma', versiculo: p.Versiculo || '', xp: rs, insignias: ganhas, bloqueadas: bloqueadas_(mid, meu, ganhas), oculto: p.Oculto === '1', envolvimento: (p.Oculto === '1' && !meu) ? null : envolvimento_(m),
+  const out = { id: mid, meu: meu, nome: m.Simples || m.Nome, apelido: m.Apelido || '', foto: m.Foto || '', bio: p.Bio || '', capa: p.Capa || '', fundo: FUNDOS.indexOf(p.Fundo) >= 0 ? p.Fundo : 'zoe', contorno: contorno, moldura: MOLDURAS.indexOf(p.Quadro) >= 0 ? p.Quadro : 'nenhuma', versiculo: p.Versiculo || '', xp: rs, insignias: ganhas, top: jparse_(p.Top, []).map(function (r) { return ganhas.filter(function (g) { return g.codigo + (g.ano ? ':' + g.ano : '') === r; })[0]; }).filter(Boolean).slice(0, 3), bloqueadas: bloqueadas_(mid, meu, ganhas), oculto: p.Oculto === '1', envolvimento: (p.Oculto === '1' && !meu) ? null : envolvimento_(m),
     destaques: table_('PerfilFotos').rows.filter(function (r) { return r.MembroID === mid; }).sort(function (a, b) { return Number(a.Ordem) - Number(b.Ordem); }).map(function (r) { return { id: r.FotoID, foto: r.Foto, legenda: r.Legenda || '' }; }) };
   if (meu) out.libera = { fundos: reqMap_(FUNDOS), contornos: reqMap_(CONTORNOS), molduras: reqMap_(MOLDURAS), capa: NV_CAPA, versiculo: NV_VERSICULO, mural: NV_MURAL, slots: slotsMural_(rs.nivel), tiers: TIER_NOMES };
   return out;
@@ -1372,6 +1382,10 @@ function saveProfile_(d, u) {
     if (d.bio !== undefined) patch.Bio = clip_(d.bio, 280);
     escolha('fundo', FUNDOS, 'Fundo', 'Esse fundo'); escolha('contorno', CONTORNOS, 'Contorno', 'Esse contorno'); escolha('moldura', MOLDURAS, 'Quadro', 'Essa moldura');
     if (d.capa !== undefined && d.capa !== '__keep') { if (d.capa && nv < NV_CAPA) throw new ApiError('FORBIDDEN', 'A capa personalizada abre no nível ' + NV_CAPA + '.'); patch.Capa = fotoOk_(d.capa); }
+    if (d.insigniasTop !== undefined) {
+      const tem = {}; listInsignias_(u.membroId).forEach(function (g) { tem[g.codigo + (g.ano ? ':' + g.ano : '')] = 1; });
+      const top = (Array.isArray(d.insigniasTop) ? d.insigniasTop : []).map(function (x) { return clip_(x, 60); }).filter(function (x, i, a) { return tem[x] && a.indexOf(x) === i; }).slice(0, 3); patch.Top = JSON.stringify(top);
+    }
     if (d.oculto !== undefined) patch.Oculto = d.oculto ? '1' : '0';
     if (d.versiculo !== undefined) { if (d.versiculo && nv < NV_VERSICULO) throw new ApiError('FORBIDDEN', 'O versículo em destaque abre no nível ' + NV_VERSICULO + '.'); patch.Versiculo = clip_(d.versiculo, 200); }
     if (ex) writeRow_(t, ex._row, patch); else appendRow_(t, Object.assign({ MembroID: u.membroId }, patch)); return { ok: true };
@@ -1533,7 +1547,12 @@ function createUser_(d, u) {
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new ApiError('VALIDATION', 'E-mail inválido.'); if (pw.length < 8) throw new ApiError('VALIDATION', 'A senha temporária precisa ter 8+ caracteres.');
     if (!papelValido_(papel)) throw new ApiError('VALIDATION', 'Papel inválido.'); if (papel === 'admin' && u.papel !== 'admin') throw new ApiError('FORBIDDEN', 'Só administrador cria administrador.');
     const t = table_('Usuarios'); if (t.rows.some(function (r) { return String(r.Email).toLowerCase() === email; })) throw new ApiError('VALIDATION', 'Já existe usuário com esse e-mail.');
-    const mid = d.membroId ? getMember_(d.membroId).m.MembroID : id_('M'); if (!d.membroId) appendRow_(table_('Membros'), { MembroID: mid, Nome: nome || email, Simples: nome || email, Apelido: (nome || email).split(' ')[0], Email: email, CelulaID: clip_(d.celulaId, 30), EhMembro: '1', Status: 'Ativo', CriadoEm: now_() });
+    // um acesso = uma pessoa: o vínculo é o MembroID. Se já existe cadastro com este e-mail (e sem acesso), o acesso é ligado a ele em vez de criar outra pessoa.
+    let mid = d.membroId ? getMember_(d.membroId).m.MembroID : '', novo = false;
+    if (!mid) { const ja = table_('Membros').rows.filter(function (m) { return String(m.Email).toLowerCase() === email && m.Status !== 'Inativo'; })[0]; if (ja) mid = ja.MembroID; }
+    if (mid && t.rows.some(function (r) { return r.MembroID === mid; })) throw new ApiError('VALIDATION', 'Esta pessoa já tem um acesso. Cada pessoa tem um só acesso.');
+    if (!mid) { mid = id_('M'); novo = true; }
+    if (novo) appendRow_(table_('Membros'), { MembroID: mid, Nome: nome || email, Simples: nome || email, Apelido: (nome || email).split(' ')[0], Email: email, CelulaID: clip_(d.celulaId, 30), EhMembro: '1', Status: 'Ativo', CriadoEm: now_() });
     const salt = Utilities.getUuid(); appendRow_(t, { Email: email, SenhaHash: hash_(salt, pw), Salt: salt, Papel: papel, Status: 'Ativo', GuiaVisto: '0', MembroID: mid, TrocarSenha: '1', CriadoEm: now_() }); audit_(u.email, 'USUARIO_CRIADO', email + ':' + papel, 'OK'); return { ok: true, membroId: mid };
   });
 }
@@ -1833,7 +1852,7 @@ const ROUTES = {
   lookup: { auth: 'any', fn: lookup_ }, requestTransfer: { auth: 'any', write: 1, fn: requestTransfer_ }, requestExit: { auth: 'any', write: 1, fn: requestExit_ }, decideExit: { auth: 'any', write: 1, fn: decideExit_ }, addNewMember: { auth: 'any', write: 1, fn: addNewMember_ }, orgTree: { auth: 'any', fn: orgTree_ },
   listTransfers: { auth: 'any', fn: listTransfers_ }, decideTransfer: { auth: 'any', write: 1, fn: decideTransfer_ },
   createEvent: { auth: 'eventos', write: 1, fn: createEvent_ }, postNews: { auth: 'eventos', write: 1, fn: postNews_ },
-  listApprovals: { auth: 'any', fn: listApprovals_ }, guideDone: { auth: 'any', write: 1, fn: guideDone_ }, listNotifications: { auth: 'any', fn: listNotifications_ }, readNotifications: { auth: 'any', write: 1, fn: readNotifications_ }, decideApproval: { auth: 'any', fn: decideApproval_ }, undoApproval: { auth: 'any', fn: undoApproval_ }, track: { auth: 'any', fn: track_ }, usageReport: { auth: 'config', fn: usageReport_ },
+  listApprovals: { auth: 'any', fn: listApprovals_ }, guideDone: { auth: 'any', write: 1, fn: guideDone_ }, listNotifications: { auth: 'any', fn: listNotifications_ }, clearNotifications: { auth: 'any', write: 1, fn: clearNotifications_ }, readNotifications: { auth: 'any', write: 1, fn: readNotifications_ }, decideApproval: { auth: 'any', fn: decideApproval_ }, undoApproval: { auth: 'any', fn: undoApproval_ }, track: { auth: 'any', fn: track_ }, usageReport: { auth: 'config', fn: usageReport_ },
   orgMove: { auth: 'any', write: 1, fn: orgMove_ }, saveOrgLayout: { auth: 'any', write: 1, fn: saveOrgLayout_ }, rateBook: { auth: 'any', write: 1, fn: rateBook_ }, fotos: { auth: 'any', fn: fotos_ },
   listBooks: { auth: 'any', fn: listBooks_ }, saveBook: { auth: 'any', write: 1, fn: saveBook_ }, deleteBook: { auth: 'any', write: 1, fn: deleteBook_ }, getBookFile: { auth: 'any', fn: getBookFile_ },
   listBookComments: { auth: 'any', fn: listBookComments_ }, addBookComment: { auth: 'any', write: 1, fn: addBookComment_ }, deleteBookComment: { auth: 'any', write: 1, fn: deleteBookComment_ },
