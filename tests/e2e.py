@@ -21,13 +21,13 @@ with sync_playwright() as p:
     pg.fill('#nc_n','Semeadores'); pg.select_option('#nc_l',label='Lider Um'); pg.fill('#nc_ci','Águas Lindas'); pg.fill('#nc_u','GO'); pg.click("text=Criar célula"); pg.wait_for_timeout(600)
     pg.evaluate("go('buscar')"); pg.wait_for_selector("h3:has-text('Semeadores')")
     # config + ministério + evento
-    pg.evaluate("go('admin')"); pg.wait_for_selector('#aw'); pg.fill('#aw','+55 61 99999-0000'); pg.fill('#al','Rua A, 1'); pg.click("text=Salvar >> nth=0"); pg.wait_for_timeout(400)
-    pg.fill('#am','Teatro'); pg.click("text=Adicionar >> nth=0"); pg.wait_for_timeout(500)
-    pg.fill('#ev1','Culto de Natal'); pg.fill('#ev2','2026-12-24'); pg.click("text=Publicar evento"); pg.wait_for_timeout(500)
+    pg.evaluate("go('admin')"); pg.wait_for_selector('#aw'); pg.fill('#aw','+55 61 99999-0000'); pg.fill('#al','Rua A, 1'); pg.click("button[onclick='salvarIgreja()']"); pg.wait_for_timeout(400)
+    pg.fill('#am','Teatro'); pg.click("button[onclick='addM()']"); pg.wait_for_timeout(500)
+    pg.fill('#ev1','Culto de Natal'); pg.fill('#ev2','2026-12-24'); pg.click("button[onclick='addEv()']"); pg.wait_for_timeout(500)
     pg.evaluate("go('ministerios')"); assert 'Teatro' in pg.inner_text('#view')
     pg.evaluate("go('eventos')"); assert 'Culto de Natal' in pg.inner_text('#view')
     # perfil salva no servidor
-    pg.evaluate("go('perfil','info')"); pg.wait_for_selector('#p_nome'); pg.fill('#p_prof','Pastor'); pg.click("text=Salvar >> nth=0"); pg.wait_for_timeout(500)
+    pg.evaluate("go('perfil','info')"); pg.wait_for_selector('#p_nome'); pg.fill('#p_prof','Pastor'); pg.click("button[onclick='salvarInfo()']"); pg.wait_for_timeout(500)
     # sai e entra como líder (troca de senha obrigatória)
     pg.click("text=Abrir menu") if False else None
     with pg.expect_navigation(): pg.evaluate("sair()")
