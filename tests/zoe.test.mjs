@@ -491,6 +491,15 @@ test('cursos: sem exigência de aprovação a matrícula é imediata; níveis e 
   assert.equal(e.call('enrollCourse', { cursoId: cid }, A).data.status, 'autorizado'); assert.equal(e.call('enrollCourse', { cursoId: cid }, P).error.code, 'VALIDATION');
   assert.equal(e.call('listApprovals', {}, adm).data.itens.filter(x => x.tipo === 'matricula').length, 0);
 });
+test('parabéns de aniversário: só no dia, uma vez por dia, sem auto-parabéns', () => {
+  const { e, adm, tok, mk } = boot(); const ana = mk('ana@zoe.com', 'membro'), bia = mk('bia@zoe.com', 'membro'); const A = tok('ana@zoe.com', 'Temp12345'), B = tok('bia@zoe.com', 'Temp12345'); const hoje = e.run('today_()');
+  assert.equal(e.call('greet', { membroId: bia }, A).error.code, 'VALIDATION'); // não é o dia
+  e.run(`(function(){const t=table_('Membros'),r=t.rows.filter(function(x){return x.MembroID==='${bia}'})[0];writeRow_(t,r._row,{Nascimento:'1990-${hoje.slice(5)}'})})()`);
+  assert.ok(e.call('greet', { membroId: bia }, A).ok); assert.ok(e.call('greet', { membroId: bia }, A).data.repetido);
+  assert.equal(e.call('greet', { membroId: bia }, B).error.code, 'VALIDATION'); // a si mesma
+  const n = e.call('listNotifications', {}, B).data.itens.filter(x => x.titulo.includes('te parabenizou')); assert.equal(n.length, 1); assert.ok(n[0].texto.includes('Salmos 118:24'));
+  assert.equal(e.call('greet', { membroId: 'ZZ' }, A).error.code, 'NOT_FOUND');
+});
 test('histórico: o % do passado não cai quando entra gente nova (usa o elenco da época)', () => {
   const { e, adm, tok, mk } = boot(); const l1 = mk('lider1@zoe.com', 'membro');
   e.call('createCell', { nome: 'Semeadores', liderId: l1, dia: 'Quinta', inicio: '20:00', fim: '21:30' }, adm);

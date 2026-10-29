@@ -264,6 +264,15 @@ function birthdays_(d, u) {
   l.sort(function (a, b) { return a.dia < b.dia ? -1 : 1; }); return { mes: mes, lista: l };
 }
 
+// Parabéns de aniversário: só no dia, uma vez por pessoa por dia, avisa o aniversariante com uma notificação
+function greet_(d, u) {
+  return withLock_(function () {
+    const id = clip_(d.membroId, 30), m = table_('Membros').rows.filter(function (x) { return x.MembroID === id && x.Status !== 'Inativo'; })[0]; if (!m) throw new ApiError('NOT_FOUND', 'Pessoa não encontrada.');
+    const hoje = today_(); if (!m.Nascimento || m.Nascimento.slice(5) !== hoje.slice(5)) throw new ApiError('VALIDATION', 'Hoje não é o aniversário dessa pessoa.'); if (id === u.membroId) throw new ApiError('VALIDATION', 'Esse parabéns é para os outros. 😉');
+    const ref = 'greet:' + u.membroId + ':' + hoje; if (table_('Notificacoes').rows.some(function (n) { return n.MembroID === id && n.Ref === ref; })) return { ok: true, repetido: true };
+    notify_(id, 'parabens', (nomes_()[u.membroId] || 'Alguém') + ' te parabenizou! 🎂', 'Feliz aniversário! “Este é o dia que o Senhor fez; regozijemo-nos e alegremo-nos nele.” (Salmos 118:24)', ref); return { ok: true };
+  });
+}
 /* ============================== CONFIG PÚBLICA ============================== */
 function cfgMap_() { const o = {}; table_('Config').rows.forEach(function (r) { o[r.Chave] = r.Valor; }); return o; }
 function publicConfig_() { const c = cfgMap_(); return { nomeIgreja: c.NomeIgreja, whatsapp: c.WhatsApp, localNome: c.LocalNome, localEndereco: c.LocalEndereco, linkMapa: c.LinkMapa || '', colunasExtras: jparse_(c.ColunasExtras, []), canalYoutube: c.CanalYoutube || '', lojaWhatsapp: c.LojaWhatsApp || '', frequentadorPct: Number(c.FrequentadorPct) || 70, frequentadorJanela: Number(c.FrequentadorJanela) || 8, celulasParaSupervisor: Math.max(0, Number(c.CelulasParaSupervisor) || 0), frequenciasParaMembro: freqMembro_() }; }
@@ -1310,7 +1319,7 @@ const ROUTES = {
   listCourses: { auth: 'any', fn: listCourses_ }, enrollCourse: { auth: 'any', write: 1, fn: enrollCourse_ }, saveCourse: { auth: 'any', write: 1, fn: saveCourse_ }, courseDetail: { auth: 'any', fn: courseDetail_ }, saveAula: { auth: 'any', write: 1, fn: saveAula_ }, deleteAula: { auth: 'any', write: 1, fn: deleteAula_ }, getAulaPdf: { auth: 'any', fn: getAulaPdf_ },
   requestStart: { auth: 'any', write: 1, fn: requestStart_ }, getClassRoll: { auth: 'any', fn: getClassRoll_ }, saveClassRoll: { auth: 'any', write: 1, fn: saveClassRoll_ }, finishCourse: { auth: 'any', write: 1, fn: finishCourse_ }, listCertificates: { auth: 'any', fn: listCertificates_ }, decideCert: { auth: 'any', write: 1, fn: decideCert_ }, certificate: { auth: 'any', fn: certificate_ },
   getSignature: { auth: 'any', fn: getSignature_ }, saveSignature: { auth: 'any', write: 1, fn: saveSignature_ }, rateAula: { auth: 'any', write: 1, fn: rateAula_ }, aulaFeedback: { auth: 'any', fn: aulaFeedback_ },
-  listLessons: { auth: 'any', fn: listLessons_ }, listDynamics: { auth: 'any', fn: listDyn_ }, addDynamic: { auth: 'any', write: 1, fn: addDyn_ }, listVideos: { auth: 'any', fn: listVideos_ }, listProducts: { auth: 'any', fn: listProducts_ }, listFamilia: { auth: 'any', fn: listFamilia_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
+  listLessons: { auth: 'any', fn: listLessons_ }, listDynamics: { auth: 'any', fn: listDyn_ }, addDynamic: { auth: 'any', write: 1, fn: addDyn_ }, listVideos: { auth: 'any', fn: listVideos_ }, listProducts: { auth: 'any', fn: listProducts_ }, listFamilia: { auth: 'any', fn: listFamilia_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
   searchCells: { auth: 'any', fn: searchCells_ }, addPrayer: { auth: 'any', write: 1, fn: addPrayer_ }, listPrayers: { auth: 'any', fn: listPrayers_ },
   cellMembers: { auth: 'any', fn: cellMembers_ }, saveCell: { auth: 'any', write: 1, fn: saveCell_ }, saveAttendance: { auth: 'any', write: 1, fn: saveAttendance_ }, history: { auth: 'any', fn: history_ },
   indicators: { auth: 'any', fn: indicators_ }, getPapeis: { auth: 'any', fn: getPapeis_ }, savePapeis: { auth: 'any', write: 1, fn: savePapeis_ }, createCellEvent: { auth: 'any', write: 1, fn: createCellEvent_ },

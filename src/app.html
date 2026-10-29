@@ -479,7 +479,7 @@ async function boot(){$('#gate').innerHTML='';splashShow();try{await hydrate();R
 const dBR=iso=>iso?String(iso).slice(0,10).split('-').reverse().join('/'):'';
 function fromMembro(m){const f=m.Filhos||[];return{nome:m.Nome,simples:m.Simples,sexo:m.Sexo,nasc:m.Nascimento,nacionalidade:m.Nacionalidade,natural:m.Naturalidade,sangue:m.Sangue,doador:m.Doador,prof:m.Profissao,tel:m.Telefone,email:m.Email,cep:m.CEP,uf:m.UF,cidade:m.Cidade,end:m.Endereco,bairro:m.Bairro,decisao:m.DataDecisao,batizado:m.Batizado,dataBat:m.DataBatismo,igrejaBat:m.IgrejaBatismo,mae:m.Mae,pai:m.Pai,civil:m.EstadoCivil||'Solteiro(a)',conj:m.Conjuge,dataCas:m.DataCasamento,filhos:f,temFilhos:f.length?'sim':'nao',acPriv:String(m.AceitePrivacidade||'').slice(0,10),acTermos:String(m.AceiteTermos||'').slice(0,10)}}
 function toMembro(p){return{Nome:p.nome,Simples:p.simples,Apelido:S.apelido,Sexo:p.sexo,Nascimento:p.nasc,Nacionalidade:p.nacionalidade,Naturalidade:p.natural,Sangue:p.sangue,Doador:p.doador,Profissao:p.prof,Telefone:p.tel,CEP:p.cep,UF:p.uf,Cidade:p.cidade,Endereco:p.end,Bairro:p.bairro,DataDecisao:p.decisao,Batizado:p.batizado,DataBatismo:p.dataBat,IgrejaBatismo:p.igrejaBat,Mae:p.mae,Pai:p.pai,EstadoCivil:p.civil,Conjuge:p.conj,DataCasamento:p.dataCas,Foto:S.foto,Filhos:p.temFilhos==='sim'?p.filhos:[]}}
-function pushMember(msg){return push('saveMember',{membro:toMembro(S.perfil)},msg)}
+async function pushMember(msg){const r=await push('saveMember',{membro:toMembro(S.perfil)},msg);setTimeout(zMomRun,900);return r}
 const mapM=m=>({id:m.id,n:m.nome,a:m.apelido,nasc:dBR(m.nasc),m:m.membro,f:!!m.foto});
 function mapEvents(l){EVENTOS.length=0;S.agenda=[];S.inscr=[];l.forEach((e,i)=>{if(e.escopo==='celula')S.agenda.push({d:e.data,t:e.titulo,h:e.hora,loc:e.local||'A definir',adm:false});else EVENTOS.push({id:i+1,sid:e.id,t:e.titulo,d:e.data,h:e.hora,loc:e.local,desc:e.descricao||'',prog:e.programacao||[],foto:e.foto||''});if(e.inscrito)S.inscr.push(e.titulo)})}
 function mapNews(l){NOTICIAS.length=0;l.forEach(n=>NOTICIAS.push({t:n.titulo,d:dBR(n.data),s:n.texto,r:0}))}
@@ -629,6 +629,30 @@ async function abreChamada(id){try{PR.roll=await api('getClassRoll',{aulaId:id})
  <div class="row"><button class="btn" onclick="salvaChamada('${id}')">Salvar chamada</button><button class="btn ghost" onclick="closeL()">Cancelar</button></div>`)}
 function rlFoto(i){const f=i.files[0];if(!f)return;redimMax(f,d=>{PR.foto3=d;const s=$('#rl_fs');if(s)s.textContent='Foto pronta'})}
 async function salvaChamada(id){const ps=[...document.querySelectorAll('.rl:checked')].map(i=>i.value),d={aulaId:id,presentes:ps};if(PR.foto3!==undefined)d.foto=PR.foto3;const r=await push('saveClassRoll',d,'Chamada salva');if(r===undefined)return;closeL();await carregaAulas()}
+/* ---------- Zoe participativa: datas especiais, aniversários e conquistas ---------- */
+const ZVERSO={aniv:['Este é o dia que o Senhor fez; regozijemo-nos e alegremo-nos nele.','Salmos 118:24'],natal:['Hoje vos nasceu, na cidade de Davi, o Salvador, que é Cristo, o Senhor.','Lucas 2:11'],natal2:['Porque um menino nos nasceu, um filho se nos deu.','Isaías 9:6'],pastor:['Dar-vos-ei pastores segundo o meu coração, que vos apascentem com ciência e com inteligência.','Jeremias 3:15'],indep:['Feliz é a nação cujo Deus é o Senhor.','Salmos 33:12'],dec:['Mas, a todos quantos o receberam, deu-lhes o poder de serem feitos filhos de Deus, aos que creem no seu nome.','João 1:12'],dec2:['Se alguém está em Cristo, nova criatura é; as coisas velhas já passaram; eis que tudo se fez novo.','2 Coríntios 5:17'],bat:['Fomos sepultados com ele pelo batismo na morte, para que andemos em novidade de vida.','Romanos 6:4'],bat2:['Ide, fazei discípulos de todas as nações, batizando-os em nome do Pai, e do Filho, e do Espírito Santo.','Mateus 28:19'],perfil:['Confia ao Senhor as tuas obras, e os teus pensamentos serão estabelecidos.','Provérbios 16:3']};
+const zv=k=>`“${ZVERSO[k][0]}” (${ZVERSO[k][1]})`;
+function zDomJun(y){const d=new Date(y,5,1);while(d.getDay()!==0)d.setDate(d.getDate()+1);d.setDate(d.getDate()+7);return isoD(d)} // 2º domingo de junho (Lei 14.970/2024)
+const zRecente=(d,dias)=>{if(!d)return false;const t=new Date(String(d).slice(0,10)+'T12:00:00'),n=Math.round((new Date(TODAY+'T12:00:00')-t)/864e5);return n>=0&&n<=dias};
+function perfilCompleto(){const p=S.perfil||{};return ['nome','simples','sexo','nasc','nacionalidade','natural','sangue','prof','tel','email','cep','uf','cidade','end','bairro','mae','pai','civil'].every(k=>String(p[k]||'').trim())&&!!S.foto&&!!(S.apelido||'').trim()}
+function zMomList(dt){const hj=dt||TODAY,L=[],y=+hj.slice(0,4),mmdd=hj.slice(5),eu=S.membroId;
+ const hoje=(()=>{try{return anivList().hoje||[]}catch(e){return[]}})(),meus=hoje.filter(x=>x.id&&x.id===eu),outros=hoje.filter(x=>!(x.id&&x.id===eu));
+ if(meus.length)L.push({key:'aniv:'+hj+':eu',t:'Feliz aniversário! 🎂',x:`Hoje é o **seu** dia, ${S.apelido||''}! A família Zoe celebra a sua vida. 🎉\n${zv('aniv')}`});
+ outros.slice(0,4).forEach(x=>L.push({key:'aniv:'+hj+':'+(x.id||x.n),t:'Aniversário hoje! 🎉',x:`Ei! Hoje é aniversário de **${x.n}**! Parabenize! 🎈\n${zv('aniv')}`,btns:x.id&&ONLINE?[['Enviar parabéns',`zParabeniza('${x.id}')`]]:[]}));
+ if(mmdd==='12-25')L.push({key:'natal:'+y,t:'Feliz Natal! 🎄',x:`Hoje é **Natal**! Que alegria celebrar o nascimento de Jesus com você! 🥳\n${zv('natal')}\n${zv('natal2')}`});
+ if(hj===zDomJun(y))L.push({key:'pastor:'+y,t:'Dia do Pastor 🙏',x:`Hoje é o **Dia do Pastor**! Ore e agradeça pela vida dos nossos pastores. 💚\n${zv('pastor')}`});
+ if(mmdd==='09-07')L.push({key:'indep:'+y,t:'Dia da Independência 🇧🇷',x:`Hoje é **7 de Setembro**! Oremos pela nossa nação. 🙏\n${zv('indep')}`});
+ const p=S.perfil||{};
+ if(p.decisao&&zRecente(p.decisao,45))L.push({key:'dec:'+p.decisao,t:'Você aceitou Jesus! 🕊️',x:`Que alegria, ${S.apelido||''}! Parabéns pela sua **decisão por Cristo**! O céu está em festa. 🎉\n${zv('dec')}\n${zv('dec2')}`});
+ if(p.dataBat&&zRecente(p.dataBat,45))L.push({key:'bat:'+p.dataBat,t:'Parabéns pelo batismo! 💧',x:`Parabéns, ${S.apelido||''}! Seu **batismo** é um passo lindo de obediência. 🙌\n${zv('bat')}\n${zv('bat2')}`});
+ if(perfilCompleto())L.push({key:'perfilok',t:'Perfil completo! ✅',x:`Uau, você preencheu **todos os dados** do seu perfil! Isso ajuda a igreja a cuidar de você. 🥳\n${zv('perfil')}`});
+ return L}
+function zMomRun(){if(!READY||ZE.on||ZE.chat||!S.guiaVisto||zAuto())return;const vistos=S.zMom||(S.zMom={}),l=zMomList().filter(m=>!vistos[m.key]);if(!l.length)return;const m=l[0];vistos[m.key]=1;save();ZE.mom=m;
+ const r=$('#zoe');if(r){r.classList.add('entra');setTimeout(()=>r.classList.remove('entra'),900)}
+ zFala(m.x,{titulo:m.t,vel:16,btns:[...(m.btns||[]),['Obrigado, Zoe!','zMomOk()',1]]})}
+function zMomOk(){zFecha();ZE.mom=null;setTimeout(zMomRun,900)}
+async function zParabeniza(id){const r=await push('greet',{membroId:id},'Parabéns enviado! 🎂');if(r===undefined)return;zMomOk()}
+setInterval(()=>{if(!document.hidden)zMomRun()},300000);
 /* ---------- Zoe, espírito de luz: guia de primeiro acesso e ajudante ---------- */
 const ZE={passo:-1,passos:[],on:false,chat:false,typing:0,msgs:[],acao:null};
 const zNorm=t=>String(t||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ').trim();
@@ -688,7 +712,7 @@ function zElDe(sel){if(!sel)return null;if(sel.startsWith('nav:'))return zNavEl(
 function zBloco(on,dim){let b=$('#zblock');if(!on){if(b)b.remove();return}if(!b){b=document.createElement('div');b.id='zblock';document.body.appendChild(b)}b.className=dim?'dim':''}
 /* ---- fluxo: Zoe aparece → verso → "vou te ensinar" → passos → tchau ---- */
 const zAuto=()=>{try{return navigator.webdriver&&!localStorage.getItem('zoe-force')}catch(e){return false}};
-function zInit(){zMount();if(zAuto())return;if(!S.guiaVisto&&!ZE.on)setTimeout(()=>{if(!S.guiaVisto&&!ZE.on&&READY)zIntro()},1800)}
+function zInit(){zMount();if(zAuto())return;if(!S.guiaVisto&&!ZE.on)setTimeout(()=>{if(!S.guiaVisto&&!ZE.on&&READY)zIntro()},1800);else setTimeout(zMomRun,3500)}
 function zIntro(){ZE.on=true;ZE.chat=false;const c=$('#zchat');if(c)c.hidden=true;zBloco(true,true);const r=$('#zoe');r.classList.add('entra');setTimeout(()=>r.classList.remove('entra'),900);
  setTimeout(()=>zFala('Olá! Eu sou a **Zoe**, o espírito de luz da igreja! ✨\n“Tua palavra é lâmpada para os meus pés e luz para o meu caminho.” (Salmos 119:105)',{grande:true,vel:26,btns:[['Continuar','zIntro2()']]}),500)}
 function zIntro2(){zFala('Então, como a Palavra de Deus diz, **precisamos saber o que fazer!** Por isso eu vou te ensinar! 🔥🙌\nVem comigo, vai ser rapidinho!',{grande:true,vel:20,btns:[['Vamos lá!','zStart()']]})}
@@ -705,7 +729,7 @@ async function zPasso(){const i=ZE.passo,P=ZE.passos;if(i>=P.length)return zFim(
  zFala(p.x,{titulo:`${p.t}`,prog:Math.round((i+1)/P.length*100),btns:[...(i>0?[['Voltar','zVolta()',1]]:[]),[last?'Concluir':'Próximo','zProx()']]})}
 function zFim(){zSpot(null);zBloco(true,true);if(zMob())menu(false);if(R.r!=='feed')go('feed');
  zFala('Pronto! Agora você conhece a casa toda! 🎉 Sempre que tiver dúvida, é só passar o mouse em mim e perguntar. **Tchau, e que a luz de Deus guie o seu caminho!** 👋✨',{grande:true,vel:20,btns:[['Tchau, Zoe!','zTchau()']]})}
-async function zTchau(){zFecha();zBloco(false);zSpot(null);ZE.on=false;S.guiaVisto=true;save();const r=$('#zoe');r.classList.add('tchau');setTimeout(()=>r.classList.remove('tchau'),2200);if(ONLINE){try{await api('guideDone')}catch(e){}}}
+async function zTchau(){zFecha();zBloco(false);zSpot(null);ZE.on=false;S.guiaVisto=true;save();setTimeout(zMomRun,4000);const r=$('#zoe');r.classList.add('tchau');setTimeout(()=>r.classList.remove('tchau'),2200);if(ONLINE){try{await api('guideDone')}catch(e){}}}
 function zRever(){const c=$('#zchat');if(c)c.hidden=true;ZE.chat=false;zIntro()}
 /* ---- conversa: a Zoe presume o que a pessoa procura ---- */
 const ZI=[
@@ -924,7 +948,7 @@ const fmt=d=>{const[a,m,x]=d.split('-');return `${x}/${m}/${a}`};
 function toast(t,tipo){document.querySelectorAll('.toast').forEach(x=>x.remove());const e=document.createElement('div');tipo=tipo||'ok';e.className='toast '+tipo;e.setAttribute('role',tipo==='err'?'alert':'status');e.innerHTML=`<i>${ic(tipo==='err'?'x':tipo==='info'?'bell':'check',13)}</i><span></span>`;e.lastChild.textContent=t;document.body.appendChild(e);setTimeout(()=>{e.classList.add('out');setTimeout(()=>e.remove(),230)},tipo==='err'?5000:tipo==='info'?2200:2600);if(tipo==='ok'){try{navigator.vibrate&&navigator.vibrate(12)}catch(x){}}}
 
 /* ---------- dados de exemplo e estado ---------- */
-const DEF={guiaVisto:false,theme:null,anim:true,collapsed:false,apelido:'Nyckolas',foto:'',role:'admin',
+const DEF={zMom:{},guiaVisto:false,theme:null,anim:true,collapsed:false,apelido:'Nyckolas',foto:'',role:'admin',
  alerts:{aniv:true,celula:true,eventos:true,oracao:true,cursos:true,transf:true},
  perfil:{nome:'Fábio Nyckolas Figueiredo Botero',simples:'Fábio Botero',sexo:'M',nasc:'1999-08-07',nacionalidade:'Brasileira',natural:'',sangue:'',doador:'',prof:'Líder de Operações',tel:'61994379971',email:'nyckolasbotero@gmail.com',
   cep:'72911-476',uf:'GO',cidade:'Águas Lindas de Goiás',end:'Quadra C, Chácara 2A, Casa 15',bairro:'Chácaras Coimbra',decisao:'',batizado:'',dataBat:'',igrejaBat:'',acPriv:'2026-10-15',acTermos:'2026-10-15',
@@ -946,7 +970,7 @@ let S;
 try{S=JSON.parse(localStorage.getItem(ONLINE?'zoe-prefs':'zoe-app')||'null')}catch(e){S=null}
 S=S?Object.assign({},DEF,S):JSON.parse(JSON.stringify(DEF));
 for(const k of Object.keys(DEF)){if(S[k]===undefined)S[k]=DEF[k]}
-const PREF=['theme','anim','collapsed','notas','fav','favD','mural','muralItems','alerts','bib','celId','pos'];
+const PREF=['zMom','theme','anim','collapsed','notas','fav','favD','mural','muralItems','alerts','bib','celId','pos'];
 function save(){try{if(ONLINE){const o={};PREF.forEach(k=>o[k]=S[k]);localStorage.setItem('zoe-prefs',JSON.stringify(o))}else localStorage.setItem('zoe-app',JSON.stringify(S))}catch(e){}}
 const CELULAS=[
  {n:'Semeadores',dia:'Quinta',ini:'20:00',fim:'21:30',cat:'Mulheres e Homens',faixa:'Jovens',bairro:'Chácaras Coimbra',cid:'Águas Lindas de Goiás',uf:'GO',lider:'Fábio Botero',x:34,y:42,sup:'Supervisão Norte'},
