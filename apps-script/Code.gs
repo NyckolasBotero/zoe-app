@@ -1607,9 +1607,13 @@ function findPeople_(d, u) {
   const q = semAcento_(clip_(d.q, 40)).trim(); if (q.length < 2) return [];
   const ativos = {}; table_('Usuarios').rows.forEach(function (r) { if (r.Status === 'Ativo' && r.MembroID) ativos[r.MembroID] = 1; });
   return table_('Membros').rows.filter(function (m) { return ativos[m.MembroID] && m.MembroID !== u.membroId && m.Status !== 'Inativo' && semAcento_((m.Nome || '') + ' ' + (m.Simples || '') + ' ' + (m.Apelido || '')).indexOf(q) >= 0; }).slice(0, 15)
-    .map(function (m) { return { id: m.MembroID, nome: m.Simples || m.Apelido || m.Nome }; });
+    .map(function (m) { const p = presDe_(m.MembroID, d); return { id: m.MembroID, nome: m.Simples || m.Apelido || m.Nome, online: p.online, visto: p.visto }; });
 }
-const CHAT_MAX = 1000, CHAT_POR_MIN = 20;
+const CHAT_MAX = 1000, CHAT_POR_MIN = 20, PRES_MS = 90000, DIG_MS = 6000;
+/* presença (online) e "digitando": ficam só no cache temporário, sem gravar na planilha */
+function presTouch_(u, d) { const c = CacheService.getScriptCache(); if (d && d.inv) c.remove('p:' + u.membroId); else c.put('p:' + u.membroId, String(Date.now()), 21600); }
+function presDe_(id, d) { if (d && d.inv) return { online: false, visto: 0 }; const v = Number(CacheService.getScriptCache().get('p:' + id) || 0); return { online: v > 0 && Date.now() - v < PRES_MS, visto: v }; }
+function chatTyping_(d, u) { if (d && d.inv) return { ok: true }; CacheService.getScriptCache().put('t:' + u.membroId + ':' + clip_(d.para, 30), String(Date.now()), 30); return { ok: true }; }
 function convId_(a, b) { return a < b ? a + '|' + b : b + '|' + a; }
 function sendChat_(d, u) {
   return withLock_(function () {
@@ -1617,24 +1621,25 @@ function sendChat_(d, u) {
     if (para === u.membroId) throw new ApiError('VALIDATION', 'Você não pode conversar consigo mesmo.'); if (!usuarioAtivo_(para)) throw new ApiError('NOT_FOUND', 'Essa pessoa não está disponível para conversar.');
     const t = table_('ChatMsgs'), agora = Date.now(); let n = 0; for (let i = t.rows.length - 1; i >= 0 && i > t.rows.length - 200; i--) { const r = t.rows[i]; if (r.De === u.membroId && agora - Number(r.Ts) < 60000) n++; }
     if (n >= CHAT_POR_MIN) throw new ApiError('RATE', 'Muitas mensagens seguidas. Espere um minuto.');
-    const id = id_('MS'); appendRow_(t, { MsgID: id, ConvID: convId_(u.membroId, para), De: u.membroId, Para: para, Texto: texto, Ts: String(agora), Lida: '0' }); return { id: id, ts: agora };
+    CacheService.getScriptCache().remove('t:' + u.membroId + ':' + para); const id = id_('MS'); appendRow_(t, { MsgID: id, ConvID: convId_(u.membroId, para), De: u.membroId, Para: para, Texto: texto, Ts: String(agora), Lida: '0' }); return { id: id, ts: agora };
   });
 }
 function msgOut_(r, eu) { return { id: r.MsgID, minha: r.De === eu, texto: r.Texto, ts: Number(r.Ts), lida: r.Lida === '1' }; }
 function getChat_(d, u) {
-  const com = clip_(d.com, 30), cid = convId_(u.membroId, com), depois = Number(d.depois) || 0;
+  const com = clip_(d.com, 30), cid = convId_(u.membroId, com), depois = Number(d.depois) || 0; presTouch_(u, d);
   const m = table_('Membros').rows.filter(function (x) { return x.MembroID === com; })[0]; if (!m) throw new ApiError('NOT_FOUND', 'Pessoa não encontrada.');
   const ms = table_('ChatMsgs').rows.filter(function (r) { return r.ConvID === cid && Number(r.Ts) > depois; }).slice(-100).map(function (r) { return msgOut_(r, u.membroId); });
-  return { com: { id: com, nome: m.Simples || m.Apelido || m.Nome }, msgs: ms };
+  const pr = presDe_(com, d), dg = !(d && d.inv) && Date.now() - Number(CacheService.getScriptCache().get('t:' + com + ':' + u.membroId) || 0) < DIG_MS;
+  return { com: { id: com, nome: m.Simples || m.Apelido || m.Nome }, msgs: ms, online: pr.online, visto: pr.visto, digitando: dg };
 }
 function chatRead_(d, u) {
   return withLock_(function () { const t = table_('ChatMsgs'), cid = convId_(u.membroId, clip_(d.com, 30)); let n = 0; t.rows.forEach(function (r) { if (r.ConvID === cid && r.Para === u.membroId && r.Lida !== '1') { writeRow_(t, r._row, { Lida: '1' }); n++; } }); return { n: n }; });
 }
 function listChats_(d, u) {
-  const por = {}, nome = nomes_(); let nao = 0;
+  const por = {}, nome = nomes_(); let nao = 0; presTouch_(u, d);
   table_('ChatMsgs').rows.forEach(function (r) { if (r.De !== u.membroId && r.Para !== u.membroId) return; const outro = r.De === u.membroId ? r.Para : r.De, c = por[outro] || (por[outro] = { id: outro, nome: nome[outro] || '—', ultima: '', ts: 0, minha: false, naoLidas: 0 });
     if (Number(r.Ts) >= c.ts) { c.ts = Number(r.Ts); c.ultima = String(r.Texto).slice(0, 80); c.minha = r.De === u.membroId; } if (r.Para === u.membroId && r.Lida !== '1') { c.naoLidas++; nao++; } });
-  return { naoLidas: nao, conversas: Object.keys(por).map(function (k) { return por[k]; }).sort(function (a, b) { return b.ts - a.ts; }).slice(0, 40) };
+  return { naoLidas: nao, conversas: Object.keys(por).map(function (k) { return por[k]; }).sort(function (a, b) { return b.ts - a.ts; }).slice(0, 40).map(function (c) { const p = presDe_(c.id, d); c.online = p.online; c.visto = p.visto; return c; }) };
 }
 
 /* ============================== USUÁRIOS / PERMISSÕES ============================== */
@@ -2525,7 +2530,7 @@ const ROUTES = {
   boot: { auth: 'any', fn: boot_ },
   sodGet: { auth: 'any', write: 1, fn: sodGet_ }, sodAbrir: { auth: 'any', write: 1, fn: sodAbrir_ }, sodEquipar: { auth: 'any', write: 1, fn: sodEquipar_ }, sodDescartar: { auth: 'any', write: 1, fn: sodDescartar_ }, sodAparencia: { auth: 'any', write: 1, fn: sodAparencia_ }, sodOrar: { auth: 'any', write: 1, fn: sodOrar_ }, sodComprar: { auth: 'any', write: 1, fn: sodComprar_ },
   listMarks: { auth: 'any', fn: listMarks_ }, saveMark: { auth: 'any', write: 1, fn: saveMark_ }, saveNote: { auth: 'any', write: 1, fn: saveNote_ }, listCultoNotes: { auth: 'any', fn: listCultoNotes_ }, getMural: { auth: 'any', fn: getMural_ },
-  listInsigniaDefs: { auth: 'any', fn: listInsigniaDefs_ }, saveInsigniaDef: { auth: 'any', write: 1, fn: saveInsigniaDef_ }, grantBadge: { auth: 'any', write: 1, fn: grantBadge_ }, logServico: { auth: 'any', write: 1, fn: logServico_ }, listServicos: { auth: 'any', fn: listServicos_ }, searchPeople: { auth: 'any', fn: findPeople_ }, sendChat: { auth: 'any', write: 1, fn: sendChat_ }, getChat: { auth: 'any', fn: getChat_ }, chatRead: { auth: 'any', write: 1, fn: chatRead_ }, listChats: { auth: 'any', fn: listChats_ }, getCertLayout: { auth: 'any', fn: getCertLayout_ }, saveCertLayout: { auth: 'any', write: 1, fn: saveCertLayout_ }, previewCert: { auth: 'any', fn: previewCert_ }, revokeCert: { auth: 'any', write: 1, fn: revokeCert_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
+  listInsigniaDefs: { auth: 'any', fn: listInsigniaDefs_ }, saveInsigniaDef: { auth: 'any', write: 1, fn: saveInsigniaDef_ }, grantBadge: { auth: 'any', write: 1, fn: grantBadge_ }, logServico: { auth: 'any', write: 1, fn: logServico_ }, listServicos: { auth: 'any', fn: listServicos_ }, searchPeople: { auth: 'any', fn: findPeople_ }, sendChat: { auth: 'any', write: 1, fn: sendChat_ }, getChat: { auth: 'any', fn: getChat_ }, chatRead: { auth: 'any', write: 1, fn: chatRead_ }, chatTyping: { auth: 'any', fn: chatTyping_ }, listChats: { auth: 'any', fn: listChats_ }, getCertLayout: { auth: 'any', fn: getCertLayout_ }, saveCertLayout: { auth: 'any', write: 1, fn: saveCertLayout_ }, previewCert: { auth: 'any', fn: previewCert_ }, revokeCert: { auth: 'any', write: 1, fn: revokeCert_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
   searchCells: { auth: 'any', fn: searchCells_ }, addPrayer: { auth: 'any', write: 1, fn: addPrayer_ }, listPrayers: { auth: 'any', fn: listPrayers_ },
   cellMembers: { auth: 'any', fn: cellMembers_ }, saveCell: { auth: 'any', write: 1, fn: saveCell_ }, saveAttendance: { auth: 'any', write: 1, fn: saveAttendance_ }, history: { auth: 'any', fn: history_ },
   indicators: { auth: 'any', fn: indicators_ }, getPapeis: { auth: 'any', fn: getPapeis_ }, savePapeis: { auth: 'any', write: 1, fn: savePapeis_ }, createCellEvent: { auth: 'any', write: 1, fn: createCellEvent_ },

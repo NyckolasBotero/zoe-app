@@ -291,3 +291,6 @@ Em **Multimídia › Controle remoto** (mesma regra de acesso do ministério Som
 
 ## Documentação e notas de atualização (Administração › Documentação)
 Mostra a documentação do site e as **notas de atualização por versão** (versão atual destacada). Fonte: `docs/atualizacoes.json` e `docs/documentacao.json`, embutidas pelo `build.py`. **A cada mudança**, acrescente no início de `atualizacoes.json` um item `{titulo, melhorias:[...]}` sem o campo `v`; o build atribui a versão (e a data) e grava no arquivo. Teste: `tests/e2e_docs.py`.
+
+## Chat: online e digitando
+Presença no cache do Apps Script (`p:<membro>` e `t:<de>:<para>`), sem gravar na planilha: online = visto nos últimos 90 s (o chat consulta a cada 20 s fechado, 2,5 s em conversa aberta); “digitando” vale 6 s e é limpo ao enviar. O botão **Online/Oculto** (guardado no aparelho, `zoe-inv`) é recíproco. Rotas novas: `chatTyping`; `listChats`, `getChat` e `searchPeople` devolvem `online`/`visto`. Teste: `tests/e2e_presenca.py`.

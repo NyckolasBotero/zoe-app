@@ -717,6 +717,19 @@ test('pessoas: busca por nome, perfil aberto com envolvimento (ou oculto) e chat
   for (let i = 0; i < 20; i++) e.call('sendChat', { para: b, texto: 'spam ' + i }, A); assert.equal(e.call('sendChat', { para: b, texto: 'mais' }, A).error.code, 'RATE');
 });
 
+test('chat: online, visto por último e digitando (só no cache, com modo invisível)', () => {
+  const { e, tok, mk } = boot(); const a = mk('ana@zoe.com', 'membro'), b = mk('bruno@zoe.com', 'membro'); const A = tok('ana@zoe.com', 'Temp12345'), B = tok('bruno@zoe.com', 'Temp12345');
+  assert.equal(e.call('getChat', { com: b }, A).data.online, false); // Bruno ainda não apareceu
+  e.call('listChats', {}, B); // Bruno abre o app: presença
+  let g = e.call('getChat', { com: b }, A).data; assert.equal(g.online, true); assert.ok(g.visto > 0); assert.equal(g.digitando, false);
+  assert.equal(e.call('searchPeople', { q: 'bruno' }, A).data[0].online, true); assert.equal(e.call('listChats', {}, A).data.conversas.length, 0);
+  assert.ok(e.call('chatTyping', { para: a }, B).ok); assert.equal(e.call('getChat', { com: b }, A).data.digitando, true);
+  assert.equal(e.call('getChat', { com: b, inv: true }, A).data.online, false); // quem está invisível também não vê os outros
+  assert.ok(e.call('chatTyping', { para: a }, B).ok); assert.ok(e.call('sendChat', { para: a, texto: 'oi' }, B).ok); assert.equal(e.call('getChat', { com: b }, A).data.digitando, false); // enviar limpa o "digitando"
+  e.call('listChats', { inv: true }, B); assert.equal(e.call('getChat', { com: b }, A).data.online, false); assert.equal(e.call('getChat', { com: b }, A).data.visto, 0);
+  assert.equal(e.call('listChats', {}, A).data.conversas[0].online, false);
+});
+
 test('feed social: decisão, curtir, comentar, visibilidade', () => {
   const { e, adm, tok, mk } = boot(); const a = mk('ana@zoe.com', 'membro'), A = tok('ana@zoe.com', 'Temp12345');
   assert.equal(e.call('registerDecision', { nome: 'Carlos Souza' }, A).error.code, 'FORBIDDEN');

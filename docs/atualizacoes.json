@@ -1,5 +1,16 @@
 [
  {
+  "titulo": "Chat: online, visto por último e digitando",
+  "melhorias": [
+   "Bolinha verde ao lado de quem está online (lista de conversas, busca e Pessoas).",
+   "No topo da conversa aparece “online”, “digitando…” ou “visto há X min”.",
+   "Botão Online/Oculto no chat: quem se oculta não aparece online nem vê os outros online.",
+   "A presença fica só em cache temporário, sem gravar na planilha."
+  ],
+  "v": "1.13",
+  "data": "30/10/2026"
+ },
+ {
   "titulo": "Documentação e notas de atualização na Administração",
   "melhorias": [
    "Nova seção Administração › Documentação com a documentação do site e as notas de atualização por versão.",
