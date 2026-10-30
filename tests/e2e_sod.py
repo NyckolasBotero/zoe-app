@@ -9,9 +9,8 @@ with sync_playwright() as p:
     pg.on('console',lambda m:errs.append(m.text) if m.type=='error' and 'ERR_TUNNEL' not in m.text else None)
     pg.goto(URL); pg.wait_for_selector('#lg_e'); pg.fill('#lg_e','admin@zoe.com'); pg.fill('#lg_s','SenhaForte123'); pg.click('#lg_b'); pg.wait_for_selector('#view h1')
     pg.wait_for_selector('#splash',state='detached',timeout=15000); pg.evaluate("api('guideDone')")
-    pg.wait_for_selector('#sd_home canvas'); pg.wait_for_function('SDA.st===1',timeout=15000); pg.wait_for_timeout(500); assert pixels(pg,'#sd_mini')>12, 'cena vazia'
-    pg.screenshot(path=OUT+'/sod_home.png')
-    pg.click('#sd_home'); pg.wait_for_selector('#sd_cv'); pg.wait_for_timeout(600); assert 'Intimidade e conselho' in pg.inner_text('#view') and pixels(pg,'#sd_cv')>12
+    assert pg.locator('#sd_home').count()==0, 'o Sod saiu do Início'
+    pg.evaluate("go('meu','sod')"); pg.wait_for_function('SDA.st===1',timeout=15000); pg.wait_for_selector('#sd_cv'); pg.wait_for_timeout(600); assert 'Intimidade e conselho' in pg.inner_text('#view') and pixels(pg,'#sd_cv')>12
     assert 'Entrar no app hoje' in pg.inner_text('#view'); pg.screenshot(path=OUT+'/sod_cena.png',full_page=True)
     # caixa
     n0=pg.evaluate("SD.d.itens.length"); pg.click('button:has-text("Abrir caixa")'); pg.wait_for_selector('.sdnovo'); pg.screenshot(path=OUT+'/sod_caixa.png'); pg.click('button:has-text("Guardar na mochila")')
