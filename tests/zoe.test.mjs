@@ -821,6 +821,15 @@ test('insígnia com acabamento Celeste (último nível) é aceita; acabamento de
   assert.equal(e.call('saveInsigniaDef', { titulo: 'X', visual: { estilo: 'diamante', forma: 'hex', icone: 'arado' }, criterio: { tipo: 'manual' }, xp: 1 }, adm).error.code, 'VALIDATION');
 });
 
+test('som da conquista por insígnia e por nível; som inválido vira padrão', () => {
+  const { e, adm } = boot();
+  const r = e.call('saveInsigniaDef', { titulo: 'Escriba', visual: { estilo: 'ouro', forma: 'hex', icone: 'arado', som: 'harpa' }, criterio: { tipo: 'manual' }, xp: 50, niveis: [{ nome: 'A', n: 1 }, { nome: 'B', n: 2, visual: { estilo: 'celeste', som: 'epico' } }, { nome: 'C', n: 3, visual: { som: 'inexistente' } }] }, adm); assert.ok(r.ok, JSON.stringify(r));
+  const d = e.call('listInsigniaDefs', {}, adm).data.defs.find(x => x.titulo === 'Escriba');
+  assert.equal(d.visual.som, 'harpa'); assert.deepEqual(d.niveis.map(n => n.visual.som), ['harpa', 'epico', '']); assert.equal(d.niveis[1].visual.estilo, 'celeste');
+  const s = e.call('saveInsigniaDef', { titulo: 'Simples', visual: { estilo: 'prata', forma: 'hex', icone: 'arado', som: 'xxx' }, criterio: { tipo: 'manual' }, xp: 50 }, adm); assert.ok(s.ok);
+  assert.equal(e.call('listInsigniaDefs', {}, adm).data.defs.find(x => x.titulo === 'Simples').visual.som, '');
+});
+
 test('um acesso por pessoa; limpar notificações; notificações definidas pelo adm', () => {
   const { e, adm, tok, mk } = boot(); const id = e.call('saveMember', { membro: { Nome: 'Sem Acesso', Email: 'sem@zoe.com' } }, adm);
   e.run(`appendRow_(table_('Membros'), { MembroID: 'MX1', Nome: 'Maria Cadastro', Simples: 'Maria', Email: 'maria@zoe.com', Status: 'Ativo', EhMembro: '1' })`);

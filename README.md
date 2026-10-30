@@ -271,3 +271,6 @@ Os arquivos ficam em `assets/sod/` (`char.png`, `tools.png`, `room.png`, `manife
 
 ## Acabamento Celeste (último nível de insígnia)
 Ordem dos acabamentos: Bordado, Bronze, Prateado, Dourado e **Celeste** (platina perolada, com reflexos em branco, lilás e rosa). Ao criar insígnias com vários níveis, o último nível sugerido já vem em Celeste.
+
+## Conquista de insígnia (pop-up 3D e som)
+Quando chega uma notificação de insígnia nova, aparece um pop-up de tela cheia: a insígnia sobe girando em 3D com brilho, raios, anéis, confete e o XP ganho, com som sintetizado no próprio aparelho (sem arquivos de áudio). Cada insígnia, e cada nível dela, tem o **Som da conquista** definido no editor (Sino, Moeda, Harpa, Fanfarra, Celestial, Varinha mágica, Épico, Coral); em branco usa o padrão do acabamento (Celeste = Celestial). No editor há “Ouvir som” e “Testar pop-up”. Coluna `Som` em `InsigniaDefs` (criada pelo `setup()`).

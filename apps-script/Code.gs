@@ -76,7 +76,7 @@ const SHEETS = {
   Insignias: ['MembroID', 'Codigo', 'Titulo', 'Ano', 'Data', 'Ref'],
   XpLog: ['MembroID', 'Ref', 'Pontos', 'Motivo', 'Data'],
   Perfis: ['MembroID', 'Bio', 'Capa', 'Fundo', 'Moldura', 'Versiculo', 'Oculto', 'Contorno', 'Quadro', 'Top'],
-  InsigniaDefs: ['DefID', 'Nome', 'Descricao', 'Estilo', 'Forma', 'Cor1', 'Cor2', 'Icone', 'Texto', 'XP', 'Criterio', 'Ativo', 'CriadoPor', 'Niveis'],
+  InsigniaDefs: ['DefID', 'Nome', 'Descricao', 'Estilo', 'Forma', 'Cor1', 'Cor2', 'Icone', 'Texto', 'XP', 'Criterio', 'Ativo', 'CriadoPor', 'Niveis', 'Som'],
   Servicos: ['Atividade', 'MembroID', 'Mes', 'RegistradoPor'],
   ChatMsgs: ['MsgID', 'ConvID', 'De', 'Para', 'Texto', 'Ts', 'Lida'],
   PerfilFotos: ['MembroID', 'FotoID', 'Foto', 'Legenda', 'Ordem'],
@@ -1298,6 +1298,7 @@ function conquistasMembro_(m) {
 /* ---- insígnias criadas pelos supervisores: o que precisa ser feito (critério) e o visual ---- */
 const ICONES_BD = ['estrela', 'user', 'flame', 'gota', 'livro', 'coroa', 'cruz', 'coracao', 'pomba', 'trigo', 'chave', 'escudo', 'sino', 'maos', 'arado', 'ancora', 'vela', 'raio', 'caneta', 'pergaminho', 'biblia', 'microfone', 'violao', 'nota', 'camera', 'casa', 'mundo', 'presente', 'taca', 'peixe', 'arvore', 'folha', 'sol', 'lua', 'montanha', 'olho', 'relogio', 'medalha', 'trofeu', 'megafone', 'asa', 'tenda', 'barco', 'cordeiro', 'leao', 'calendario', 'balao', 'pegada', 'bandeira', 'diamante', 'semente', 'foguete', 'alvo', 'bussola', 'lanterna', 'harpa', 'trombeta', 'candelabro', 'tabuas', 'sorriso', 'joia', 'pao', 'fogueira', 'carta', 'convite', 'abraco', 'cafe'];
 const FORMAS_BD = ['circ', 'esc', 'hex', 'oct', 'losango'];
+const SONS_BD = ['', 'sino', 'moeda', 'harpa', 'fanfarra', 'celestial', 'magico', 'epico', 'coral'];
 const ESTILOS_BD = ['bordado', 'bronze', 'prata', 'ouro', 'celeste'];
 function podeCurar_(u) { return can_(u, 'config') || can_(u, 'eventos') || can_(u, 'celulas') || (u.supervisiona && u.supervisiona.length > 0) || u.papel === 'pastor' || u.papel === 'admin'; }
 function exigeCurar_(u) { if (!podeCurar_(u)) throw new ApiError('FORBIDDEN', 'Só supervisores e a administração criam insígnias.'); }
@@ -1353,7 +1354,7 @@ function critProg_(c, mid) {
 }
 function visualLimpo_(v, base) {
   v = v || {}; base = base || {}; const cor = function (x, pad) { x = String(x || pad); if (!/^#[0-9a-fA-F]{6}$/.test(x)) throw new ApiError('VALIDATION', 'Cor inválida.'); return x.toLowerCase(); };
-  const o = { estilo: v.estilo || base.estilo || 'bordado', forma: v.forma || base.forma || 'circ', icone: v.icone || base.icone || 'estrela', cor1: cor(v.cor1, base.cor1 || '#2f6b3a'), cor2: cor(v.cor2, base.cor2 || '#efe3b0'), texto: clip_(v.texto === undefined ? (base.texto || '') : v.texto, 4) };
+  const o = { estilo: v.estilo || base.estilo || 'bordado', forma: v.forma || base.forma || 'circ', icone: v.icone || base.icone || 'estrela', cor1: cor(v.cor1, base.cor1 || '#2f6b3a'), cor2: cor(v.cor2, base.cor2 || '#efe3b0'), texto: clip_(v.texto === undefined ? (base.texto || '') : v.texto, 4), som: SONS_BD.indexOf(v.som === undefined ? (base.som || '') : v.som) >= 0 ? (v.som === undefined ? (base.som || '') : v.som) : '' };
   if (ESTILOS_BD.indexOf(o.estilo) < 0 || FORMAS_BD.indexOf(o.forma) < 0 || ICONES_BD.indexOf(o.icone) < 0) throw new ApiError('VALIDATION', 'Visual inválido.'); return o;
 }
 // níveis (variações) da insígnia: cada um com nome, parâmetro (n), XP e visual próprios
@@ -1366,7 +1367,7 @@ function niveisLimpo_(arr, base, xpBase) {
   return out;
 }
 function defNiveis_(r) {
-  const base = { estilo: r.Estilo || 'bordado', forma: r.Forma || 'circ', cor1: r.Cor1 || '#2f6b3a', cor2: r.Cor2 || '#efe3b0', icone: r.Icone || 'estrela', texto: r.Texto || '' }, c = jparse_(r.Criterio, { tipo: 'manual' }), ex = jparse_(r.Niveis, []);
+  const base = { estilo: r.Estilo || 'bordado', forma: r.Forma || 'circ', cor1: r.Cor1 || '#2f6b3a', cor2: r.Cor2 || '#efe3b0', icone: r.Icone || 'estrela', texto: r.Texto || '', som: r.Som || '' }, c = jparse_(r.Criterio, { tipo: 'manual' }), ex = jparse_(r.Niveis, []);
   if (ex.length) return ex.map(function (x, i) { return { k: i + 1, nome: x.nome || '', n: x.n, xp: x.xp, visual: Object.assign({}, base, x.visual || {}) }; });
   return [{ k: 1, nome: '', n: c.tipo === 'servico' ? c.meses : c.n, xp: Number(r.XP) || 100, visual: base }];
 }
@@ -1375,7 +1376,7 @@ const nivelTitulo_ = function (r, nv, total) { return total > 1 || nv.nome ? r.N
 function defOut_(r) {
   const c = jparse_(r.Criterio, { tipo: 'manual' }), ex = jparse_(r.Niveis, []), nvs = defNiveis_(r), cc = Object.assign({}, c);
   if (ex.length && c.tipo !== 'manual') { if (c.tipo === 'servico') cc.meses = nvs[0].n; else cc.n = nvs[0].n; }
-  const o = { id: r.DefID, codigo: 'cust:' + r.DefID, titulo: r.Nome, descricao: r.Descricao || '', criterio: c, regra: critTexto_(cc) + (ex.length > 1 ? ' (' + ex.length + ' níveis)' : ''), xp: Number(r.XP) || 100, ativo: r.Ativo !== '0', visual: { estilo: r.Estilo || 'bordado', forma: r.Forma || 'circ', cor1: r.Cor1 || '#2f6b3a', cor2: r.Cor2 || '#efe3b0', icone: r.Icone || 'estrela', texto: r.Texto || '' } };
+  const o = { id: r.DefID, codigo: 'cust:' + r.DefID, titulo: r.Nome, descricao: r.Descricao || '', criterio: c, regra: critTexto_(cc) + (ex.length > 1 ? ' (' + ex.length + ' níveis)' : ''), xp: Number(r.XP) || 100, ativo: r.Ativo !== '0', visual: { estilo: r.Estilo || 'bordado', forma: r.Forma || 'circ', cor1: r.Cor1 || '#2f6b3a', cor2: r.Cor2 || '#efe3b0', icone: r.Icone || 'estrela', texto: r.Texto || '', som: r.Som || '' } };
   if (ex.length) o.niveis = nvs.map(function (x) { return { k: x.k, nome: x.nome, n: x.n, xp: x.xp, visual: x.visual }; });
   return o;
 }
@@ -1402,10 +1403,10 @@ function saveInsigniaDef_(d, u) {
     if (nome.length < 2) throw new ApiError('VALIDATION', 'Dê um nome à insígnia.');
     const v = d.visual || {}, estilo = v.estilo || 'bordado', forma = v.forma || 'circ', icone = v.icone || 'estrela';
     if (ESTILOS_BD.indexOf(estilo) < 0 || FORMAS_BD.indexOf(forma) < 0 || ICONES_BD.indexOf(icone) < 0) throw new ApiError('VALIDATION', 'Visual inválido.');
-    const crit0 = d.criterio || {}, vb = { estilo: estilo, forma: forma, icone: icone, cor1: cor(v.cor1, '#2f6b3a'), cor2: cor(v.cor2, '#efe3b0'), texto: clip_(v.texto, 4) };
+    const crit0 = d.criterio || {}, vb = { estilo: estilo, forma: forma, icone: icone, cor1: cor(v.cor1, '#2f6b3a'), cor2: cor(v.cor2, '#efe3b0'), texto: clip_(v.texto, 4), som: SONS_BD.indexOf(String(v.som || '')) >= 0 ? String(v.som || '') : '' };
     const niv = niveisLimpo_(d.niveis, vb, Number(d.xp)); if (niv.length && String(crit0.tipo || 'manual') === 'eventos_ultimos') throw new ApiError('VALIDATION', 'Esta regra não tem níveis.');
     const xp = Math.max(10, Math.min(1000, Math.floor(Number(d.xp) || 100))), t = table_('InsigniaDefs'), ex = d.id ? t.rows.filter(function (r) { return r.DefID === d.id; })[0] : null; if (d.id && !ex) throw new ApiError('NOT_FOUND', 'Insígnia não encontrada.');
-    const row = { Nome: nome, Descricao: clip_(d.descricao, 200), Estilo: estilo, Forma: forma, Cor1: cor(v.cor1, '#2f6b3a'), Cor2: cor(v.cor2, '#efe3b0'), Icone: icone, Texto: clip_(v.texto, 4), XP: String(xp), Criterio: JSON.stringify(criterioLimpo_(d.criterio, niv.length > 0)), Niveis: niv.length ? JSON.stringify(niv) : '', Ativo: d.ativo === false ? '0' : '1' };
+    const row = { Nome: nome, Descricao: clip_(d.descricao, 200), Estilo: estilo, Forma: forma, Cor1: cor(v.cor1, '#2f6b3a'), Cor2: cor(v.cor2, '#efe3b0'), Icone: icone, Texto: clip_(v.texto, 4), Som: vb.som, XP: String(xp), Criterio: JSON.stringify(criterioLimpo_(d.criterio, niv.length > 0)), Niveis: niv.length ? JSON.stringify(niv) : '', Ativo: d.ativo === false ? '0' : '1' };
     let id; if (ex) { writeRow_(t, ex._row, row); id = ex.DefID; } else { id = id_('IB'); appendRow_(t, Object.assign({ DefID: id, CriadoPor: u.membroId }, row)); }
     audit_(u.email, 'INSIGNIA_DEF', id + ' ' + nome, 'OK'); return { id: id };
   });
