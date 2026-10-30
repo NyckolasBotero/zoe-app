@@ -23,6 +23,7 @@ with sync_playwright() as p:
     adm.wait_for_selector('text=pessoas escaladas por ministério',timeout=8000) if False else adm.wait_for_selector('text=Pessoas escaladas por ministério')
     adm.screenshot(path=OUT+'/escalas_geral.png')
     ana=entra(b,'ana@zoe.com','Temp12345','NovaSenha123',vw=390)
+    ana.evaluate("go('feed')"); ana.wait_for_selector('#esc_home .escl'); assert 'Minhas escalas' in ana.inner_text('#esc_home'); ana.click('#esc_home button:has-text("Abrir escalas"), #esc_home button:has-text("Ver todas")'); ana.wait_for_selector('.tabs >> text=Minhas escalas'); assert 'Vou estar lá' in ana.inner_text('#view')
     ana.evaluate("go('escalas')"); ana.wait_for_selector('.tabs >> text=Minhas escalas'); assert not ana.query_selector('text=Lançar escala')
     ana.click('.tabs >> text=Minhas escalas'); ana.wait_for_selector('text=Vou estar lá')
     ana.click('button:has-text("Vou estar lá") >> nth=0'); ana.wait_for_selector('.chip:has-text("Confirmada")',timeout=8000)

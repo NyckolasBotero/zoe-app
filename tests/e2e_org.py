@@ -14,14 +14,14 @@ def entra(b,email,senha,nova=None,w=1400):
 with sync_playwright() as p:
     b=p.chromium.launch(); adm=entra(b,'admin@zoe.com','SenhaForte123')
     # --- carrossel sem eventos: versículos
-    adm.evaluate("go('feed')"); adm.wait_for_selector('#car .cs.on')
+    adm.evaluate("go('feed')"); adm.wait_for_selector('#car .cvi')
     assert adm.query_selector('#car .vs'), 'sem eventos deve mostrar versículos'
-    t0=adm.inner_text('#car .cs.on'); adm.wait_for_function("(t)=>document.querySelector('#car .cs.on').innerText!==t",arg=t0,timeout=5000)
+    t0=adm.evaluate("document.querySelector('#cartr').scrollLeft"); adm.wait_for_function("(t)=>Math.abs(document.querySelector('#cartr').scrollLeft-t)>20",arg=t0,timeout=8000)
     # --- cards ocupam a largura da tela
     w=adm.evaluate("document.querySelector('#view').getBoundingClientRect().width"); c=adm.evaluate("document.querySelector('.content').getBoundingClientRect().width"); assert c>1100, c
     # --- evento -> carrossel
     adm.evaluate("async()=>{await api('createEvent',{titulo:'Noite de Louvor',data:'2099-01-10',hora:'19:00',local:'Templo',escopo:'igreja'})}")
-    adm=entra(b,'admin@zoe.com','SenhaForte123'); adm.wait_for_selector('#car .cs.on'); assert 'Noite de Louvor' in adm.inner_text('#car'), adm.inner_text('#car')
+    adm=entra(b,'admin@zoe.com','SenhaForte123'); adm.wait_for_selector('#car .cvi'); assert 'Noite de Louvor' in adm.inner_text('#car'), adm.inner_text('#car')
     # --- usuários e células
     adm.evaluate("async()=>{await api('createUser',{nome:'Ana Souza',email:'ana@zoe.com',senha:'Temp12345',papel:'membro'});await api('createUser',{nome:'Beto Lima',email:'beto@zoe.com',senha:'Temp12345',papel:'membro'})}")
     ids=adm.evaluate("async()=>Object.fromEntries((await api('listUsers')).map(u=>[u.email,u.membroId]))")
