@@ -241,3 +241,11 @@ A arte do Sod vem de projetos livres do **Liberated Pixel Cup**, todos no mesmo 
 As licenças exigem **créditos visíveis**: o app mostra o link "Créditos" na aba do Sod, que abre `assets/sod/CREDITS.txt` com todos os autores.
 
 Os arquivos ficam em `assets/sod/` (`char.png`, `tools.png`, `room.png`, `manifest.json`). As cores (pele, cabelo, roupas, metal das ferramentas) são trocadas no navegador pelas paletas do LPC. Para regerar (por exemplo, para incluir novas roupas), clone os dois repositórios em `/tmp/lpc` e `/tmp/elz` e rode `python3 tools/sod_assets.py`.
+
+### Sod: roupas em camadas, talentos e loja
+
+- O personagem veste **uma peça de cada tipo ao mesmo tempo**: blusa, algo por cima (jardineira, suspensório, colete, cota, couraça), calça ou saia, calçado, chapéu, óculos, pescoço (gravata, cachecol, colar) e luvas. Cada peça tem a sua cor (paletas LPC de tecido ou metal); peças com cores próprias não mostram a paleta.
+- **Talentos** (moeda do Sod): 1 a cada 40 pontos de pedra quebrados, +10 ao cumprir as missões do dia, +50 ao libertar o Sod. Coluna `Talentos` na aba `Sod` (rode `setup()` para criá-la).
+- **Loja** (Meu perfil › Sod › Loja): roupas por raridade (comum 40, raro 100, épico 250, lendário 600) e caixa extra (80). Rota `sodComprar`.
+- Com **0% de pedra**, o personagem para de minerar e fica feliz ao lado do Sod.
+- Em **Meu perfil**, o Sod aparece numa janela ao lado das insígnias, e as abas (Meu perfil, Personalizar, Sod, Editar perfil) viraram uma barra de navegação com ícones.

@@ -907,3 +907,19 @@ test('Sod: caixa diária, ferramentas, aparência, atraso e libertação em 7 di
   // boot traz o Sod
   assert.ok(e.call('boot', {}, t).data.sod.itens.length >= 1);
 });
+test('Sod: loja com talentos e várias peças ao mesmo tempo', () => {
+  const { e, tok, mk } = boot(); const mid = mk('loja@zoe.com', 'membro'), t = tok('loja@zoe.com', 'Temp12345');
+  e.call('sodGet', {}, t);
+  const setSod = (o) => e.run(`(function(){const t=table_('Sod'),r=t.rows.filter(function(x){return x.MembroID==='${mid}'})[0];writeRow_(t,r._row,${JSON.stringify(o)});})()`);
+  assert.equal(e.call('sodComprar', { c: 'sobre:jardineira' }, t).error.code, 'VALIDATION', 'sem talentos');
+  setSod({ Talentos: '300' });
+  let v = e.call('sodComprar', { c: 'sobre:jardineira' }, t).data; assert.equal(v.talentos, 200); assert.ok(v.itens.some(x => x.c === 'sobre:jardineira'));
+  assert.equal(e.call('sodComprar', { c: 'sobre:jardineira' }, t).error.code, 'VALIDATION', 'repetido');
+  assert.equal(e.call('sodComprar', { c: 'xx:yy' }, t).error.code, 'NOT_FOUND');
+  v = e.call('sodComprar', { c: 'oculos:classico' }, t).data; assert.equal(v.talentos, 160);
+  v = e.call('sodComprar', { c: 'caixa' }, t).data; assert.equal(v.talentos, 80); assert.equal(v.caixas, 2);
+  const a = e.call('sodAparencia', { aparencia: { blusa: 'camiseta', sobre: 'jardineira', oculos: 'classico', pescoco: 'gravata', corSobre: 'gold' } }, t).data.aparencia;
+  assert.equal(a.sobre, 'jardineira'); assert.equal(a.oculos, 'classico'); assert.equal(a.pescoco, 'nenhum', 'gravata não comprada'); assert.equal(a.blusa, 'camiseta'); assert.equal(a.corSobre, 'gold');
+  // mineração rende talentos
+  setSod({ Talentos: '0', Pedra: '700', MinAte: String(Date.now() - 20000), Atraso: '0' }); v = e.call('sodGet', {}, t).data; assert.ok(v.talentos >= 0 && v.pedra < 700);
+});

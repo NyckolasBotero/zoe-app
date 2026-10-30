@@ -57,7 +57,7 @@ const SHEETS = {
   Escalas: ['EscalaID', 'MinisterioID', 'MembroID', 'Data', 'Hora', 'Funcao', 'Status', 'Motivo', 'TrocaMembroID', 'TrocaEscalaID', 'TrocaMsg', 'OrigemMembroID', 'SerieID', 'CriadoPor', 'ConfirmadoEm', 'Reesc', 'Presente', 'Avisos'],
   EscalaPedidos: ['PedidoID', 'MinisterioID', 'MembroID', 'Data', 'Msg', 'Status', 'DecididoPor', 'DataDecisao', 'CriadoEm'],
   Musicas: ['MusicaID', 'Titulo', 'Artista', 'Youtube', 'Letra', 'Layout', 'CriadoPor', 'CriadoEm', 'AtualizadoPor', 'AtualizadoEm', 'Ativo'],
-  Sod: ['MembroID', 'Pedra', 'Livre', 'LivreDesde', 'UltimoDia', 'Seq', 'Atraso', 'Caixas', 'CaixaBonus', 'Orou', 'MinAte', 'Golpes', 'Soltos', 'Abertas', 'Itens', 'Equip', 'Aparencia', 'Sala'],
+  Sod: ['MembroID', 'Pedra', 'Livre', 'LivreDesde', 'UltimoDia', 'Seq', 'Atraso', 'Caixas', 'CaixaBonus', 'Orou', 'MinAte', 'Golpes', 'Soltos', 'Abertas', 'Talentos', 'Itens', 'Equip', 'Aparencia', 'Sala'],
   Notificacoes: ['NotifID', 'MembroID', 'Tipo', 'Titulo', 'Texto', 'Ref', 'Data', 'Lida'],
   Uso: ['Mes', 'MembroID', 'Tela', 'Segundos', 'Visitas'],
   Livros: ['LivroID', 'Titulo', 'Autor', 'Descricao', 'Capa', 'ArquivoID', 'Tamanho', 'Status', 'CriadoEm'],
@@ -2160,15 +2160,19 @@ const SOD_FERR = {
   martelete: { nome: 'Martelete', v: 2.2, d: 2, min: 'raro' }, broca: { nome: 'Furadeira de impacto', v: 2.6, d: 2, min: 'epico' }, britadeira: { nome: 'Britadeira', v: 3.0, d: 2.5, min: 'lendario' }
 };
 const SOD_ROUPAS = {
-  'blusa:gola_v': ['Camiseta gola V', 'comum'], 'blusa:polo': ['Camisa polo', 'comum'], 'blusa:regata': ['Regata', 'comum'], 'blusa:manga_longa': ['Manga longa', 'comum'], 'blusa:cardigan': ['Cardigã', 'raro'], 'blusa:social': ['Camisa social', 'raro'], 'blusa:jardineira': ['Jardineira', 'raro'], 'blusa:couro': ['Colete de couro', 'epico'], 'blusa:cota': ['Cota de malha', 'epico'], 'blusa:couraca': ['Couraça da justiça', 'lendario'],
+  'blusa:gola_v': ['Camiseta gola V', 'comum'], 'blusa:polo': ['Camisa polo', 'comum'], 'blusa:regata': ['Regata', 'comum'], 'blusa:manga_longa': ['Manga longa', 'comum'], 'blusa:cardigan': ['Cardigã', 'raro'], 'blusa:social': ['Camisa social', 'raro'],
+  'sobre:suspensorio': ['Suspensório', 'comum'], 'sobre:jardineira': ['Jardineira', 'raro'], 'sobre:couro': ['Colete de couro', 'epico'], 'sobre:cota': ['Cota de malha', 'epico'], 'sobre:couraca': ['Couraça da justiça', 'lendario'],
   'calca:bermuda': ['Bermuda', 'comum'], 'calca:dobrada': ['Calça dobrada', 'comum'], 'calca:legging': ['Legging', 'comum'], 'calca:saia': ['Saia', 'comum'], 'calca:social': ['Calça social', 'raro'], 'calca:listrada': ['Calça listrada', 'raro'],
   'tenis:bota': ['Bota', 'comum'], 'tenis:sandalia': ['Sandália', 'comum'], 'tenis:chinelo': ['Chinelo', 'comum'], 'tenis:bota_dobrada': ['Bota dobrada', 'raro'], 'tenis:botina': ['Botina', 'raro'], 'tenis:armadura': ['Calçado da paz', 'lendario'],
-  'bone:bandana': ['Bandana', 'comum'], 'bone:faixa': ['Faixa', 'comum'], 'bone:boina': ['Boina de couro', 'comum'], 'bone:capuz': ['Capuz', 'raro'], 'bone:chapeu': ['Chapéu-coco', 'raro'], 'bone:cartola': ['Cartola', 'epico'], 'bone:tiara': ['Tiara', 'epico'], 'bone:capacete': ['Capacete da salvação', 'epico'], 'bone:coroa': ['Coroa', 'lendario']
+  'bone:bandana': ['Bandana', 'comum'], 'bone:faixa': ['Faixa', 'comum'], 'bone:boina': ['Boina de couro', 'comum'], 'bone:capuz': ['Capuz', 'raro'], 'bone:chapeu': ['Chapéu-coco', 'raro'], 'bone:cartola': ['Cartola', 'epico'], 'bone:tiara': ['Tiara', 'epico'], 'bone:capacete': ['Capacete da salvação', 'epico'], 'bone:coroa': ['Coroa', 'lendario'],
+  'oculos:classico': ['Óculos', 'comum'], 'oculos:redondo': ['Óculos redondo', 'comum'], 'oculos:nerd': ['Óculos nerd', 'raro'], 'oculos:sol': ['Óculos de sol', 'raro'], 'oculos:escuro': ['Óculos escuro', 'epico'],
+  'pescoco:gravata': ['Gravata', 'comum'], 'pescoco:cachecol': ['Cachecol', 'comum'], 'pescoco:borboleta': ['Gravata-borboleta', 'raro'], 'pescoco:colar': ['Colar', 'raro'], 'luvas:luvas': ['Luvas', 'raro']
 };
-// Aparência do personagem (arte LPC): cores são nomes de paletas (pele, cabelo, tecido)
-const SOD_APAR = { corpo: 'm', pele: 'light', olhos: 'blue', cabelo: 'curto', corCabelo: 'chestnut', blusa: 'camiseta', corBlusa: 'blue', calca: 'calca', corCalca: 'navy', tenis: 'sapato', corTenis: 'brown', bone: 'nenhum', corBone: 'red' };
+const SOD_PRECO = { comum: 40, raro: 100, epico: 250, lendario: 600 }, SOD_CAIXA_PRECO = 80;
+// Aparência do personagem (arte LPC): uma peça por parte do corpo; cores são nomes de paletas (pele, cabelo, tecido, metal)
+const SOD_APAR = { corpo: 'm', pele: 'light', olhos: 'blue', cabelo: 'curto', corCabelo: 'chestnut', blusa: 'camiseta', corBlusa: 'blue', sobre: 'nenhum', corSobre: 'steel', calca: 'calca', corCalca: 'navy', tenis: 'sapato', corTenis: 'brown', bone: 'nenhum', corBone: 'red', oculos: 'nenhum', pescoco: 'nenhum', corPescoco: 'red', luvas: 'nenhum', corLuvas: 'brown' };
 const SOD_CAB = ['curto', 'repartido', 'franja', 'rabo', 'coque', 'cacheado', 'afro', 'longo', 'chanel', 'moicano', 'raspado', 'espetado', 'tranca', 'pixie', 'dreads', 'ondulado', 'careca'];
-const SOD_LIVRE = { blusa: ['camiseta'], calca: ['calca'], tenis: ['sapato'], bone: ['nenhum'] };
+const SOD_LIVRE = { blusa: ['camiseta'], sobre: ['nenhum'], calca: ['calca'], tenis: ['sapato'], bone: ['nenhum'], oculos: ['nenhum'], pescoco: ['nenhum'], luvas: ['nenhum'] };
 function sodAparOk_(a) { const o = Object.assign({}, SOD_APAR); Object.keys(SOD_APAR).forEach(function (k) { const v = String(a && a[k] !== undefined ? a[k] : ''); if (/^[a-z_]{1,20}$/.test(v)) o[k] = v; }); if (o.corpo !== 'm' && o.corpo !== 'f') o.corpo = 'm'; return o; }
 function sodTab_() {
   try { return table_('Sod'); } catch (e) { if (e.code !== 'SETUP') throw e; ensureSheet_(ss_(), 'Sod', SHEETS.Sod); return table_('Sod'); }
@@ -2204,11 +2208,11 @@ function sodComunhao_(mid, ate) { // presença em célula/evento nos 7 dias que 
 }
 function sodNivelPedra_(p) { return p <= 0 ? 0 : p < 400 ? 1 : p < 1000 ? 2 : p < 1800 ? 3 : p < 2500 ? 4 : 5; }
 function sodEst_(r) {
-  return { Pedra: Number(r.Pedra || 0), Livre: r.Livre === '1', LivreDesde: r.LivreDesde || '', UltimoDia: r.UltimoDia || '', Seq: Number(r.Seq || 0), Atraso: Number(r.Atraso || 0), Caixas: Number(r.Caixas || 0), CaixaBonus: r.CaixaBonus || '', Orou: r.Orou || '', MinAte: Number(r.MinAte || 0), Golpes: Number(r.Golpes || 0), Soltos: Number(r.Soltos || 0), Abertas: Number(r.Abertas || 0),
+  return { Pedra: Number(r.Pedra || 0), Livre: r.Livre === '1', LivreDesde: r.LivreDesde || '', UltimoDia: r.UltimoDia || '', Seq: Number(r.Seq || 0), Atraso: Number(r.Atraso || 0), Caixas: Number(r.Caixas || 0), CaixaBonus: r.CaixaBonus || '', Orou: r.Orou || '', MinAte: Number(r.MinAte || 0), Golpes: Number(r.Golpes || 0), Talentos: Number(r.Talentos || 0), Soltos: Number(r.Soltos || 0), Abertas: Number(r.Abertas || 0),
     itens: jparse_(r.Itens, []), equip: jparse_(r.Equip, {}), apar: sodAparOk_(jparse_(r.Aparencia, {})), sala: jparse_(r.Sala, {}) };
 }
 function sodSalva_(t, r, e) {
-  writeRow_(t, r._row, { Pedra: String(Math.round(e.Pedra)), Livre: e.Livre ? '1' : '0', LivreDesde: e.LivreDesde, UltimoDia: e.UltimoDia, Seq: String(e.Seq), Atraso: String(e.Atraso), Caixas: String(e.Caixas), CaixaBonus: e.CaixaBonus, Orou: e.Orou, MinAte: String(e.MinAte), Golpes: String(Math.round(e.Golpes)), Soltos: String(e.Soltos), Abertas: String(e.Abertas), Itens: JSON.stringify(e.itens), Equip: JSON.stringify(e.equip), Aparencia: JSON.stringify(e.apar), Sala: JSON.stringify(e.sala) });
+  writeRow_(t, r._row, { Pedra: String(Math.round(e.Pedra)), Livre: e.Livre ? '1' : '0', LivreDesde: e.LivreDesde, UltimoDia: e.UltimoDia, Seq: String(e.Seq), Atraso: String(e.Atraso), Caixas: String(e.Caixas), CaixaBonus: e.CaixaBonus, Orou: e.Orou, MinAte: String(e.MinAte), Golpes: String(Math.round(e.Golpes)), Talentos: String(Math.round(e.Talentos * 100) / 100), Soltos: String(e.Soltos), Abertas: String(e.Abertas), Itens: JSON.stringify(e.itens), Equip: JSON.stringify(e.equip), Aparencia: JSON.stringify(e.apar), Sala: JSON.stringify(e.sala) });
 }
 // Sincroniza o Sod: vira o dia (atrasos, pedras, domingo), entrega a caixa do dia, minera o que passou e confere a liberdade
 function sodSync_(mid, salvar) {
@@ -2238,13 +2242,13 @@ function sodSync_(mid, salvar) {
   }
   if (!e.Livre) { // mineração: tempo desde a última visita (até 20 min), com o castigo por dias sem entrar
     const seg = Math.max(0, Math.min(SOD_OFFLINE, (agora - e.MinAte) / 1000)), it = e.itens.filter(function (x) { return x.i === e.equip.ferr; })[0] || e.itens.filter(function (x) { return x.k === 'ferr'; })[0];
-    const hp = seg * sodTaxa_(it) * SOD_NERF[Math.min(3, e.Atraso)]; if (hp > 0 && e.Pedra > 0) { e.Pedra = Math.max(0, e.Pedra - hp); e.Golpes += seg * (it ? it.v : 0) * SOD_NERF[Math.min(3, e.Atraso)]; }
+    const hp = seg * sodTaxa_(it) * SOD_NERF[Math.min(3, e.Atraso)]; if (hp > 0 && e.Pedra > 0) { e.Talentos += Math.min(hp, e.Pedra) / 40; e.Pedra = Math.max(0, e.Pedra - hp); e.Golpes += seg * (it ? it.v : 0) * SOD_NERF[Math.min(3, e.Atraso)]; }
   }
   e.MinAte = agora;
   const mis = sodMiss_(mid, hoje, e.Orou);
-  if (mis.completo && e.CaixaBonus !== hoje) { e.CaixaBonus = hoje; e.Caixas++; aviso.push('bonus'); }
+  if (mis.completo && e.CaixaBonus !== hoje) { e.CaixaBonus = hoje; e.Caixas++; e.Talentos += 10; aviso.push('bonus'); }
   if (!e.Livre && e.Pedra <= 0 && e.Seq + (mis.completo ? 1 : 0) >= SOD_SEMANA) {
-    e.Livre = true; e.LivreDesde = hoje; e.Soltos++; awardXp_(mid, 'sod:livre:' + hoje, 50, 'Sod libertado'); notify_(mid, 'sod_livre', 'O Sod está livre! ✨', 'Sete dias firmes com Deus: a luz saiu das pedras e agora brinca com o seu personagem. Domingo ele pode ser preso de novo, continue entrando!', 'sod:' + hoje); aviso.push('livre');
+    e.Livre = true; e.LivreDesde = hoje; e.Soltos++; e.Talentos += 50; awardXp_(mid, 'sod:livre:' + hoje, 50, 'Sod libertado'); notify_(mid, 'sod_livre', 'O Sod está livre! ✨', 'Sete dias firmes com Deus: a luz saiu das pedras e agora brinca com o seu personagem. Domingo ele pode ser preso de novo, continue entrando!', 'sod:' + hoje); aviso.push('livre');
   }
   if (salvar !== false) sodSalva_(t, r, e);
   return { t: t, r: r, e: e, mis: mis, aviso: aviso };
@@ -2257,7 +2261,7 @@ function sodView_(mid, s) {
     { k: 'oracao', t: 'Orar hoje (toque em “Já orei”)', ok: s.mis.oracao, g: 'dia' }, { k: 'anotar', t: 'Escrever uma anotação ou devocional', ok: s.mis.anotar, g: 'bonus' },
     { k: 'comunhao', t: 'Ir à célula ou ao culto nesta semana', ok: com, g: 'semana' }];
   return { hoje: hoje, domingo: dom === 0, pedra: Math.round(e.Pedra), pedraMax: SOD_MAX, nivelPedra: sodNivelPedra_(e.Pedra), atraso: e.Atraso, nerf: nerf, sentado: e.Atraso >= 3 && !e.Livre, seq: e.Seq + (s.mis.completo ? 1 : 0), seqMeta: SOD_SEMANA, livre: e.Livre, livreDesde: e.LivreDesde, soltos: e.Soltos,
-    caixas: e.Caixas, abertas: e.Abertas, golpes: Math.round(e.Golpes), taxa: sodRound_(sodTaxa_(it) * nerf, 2), ferramenta: it, itens: e.itens, equip: e.equip, aparencia: e.apar, sala: e.sala, missoes: missoes, aviso: s.aviso, bag: SOD_BAG };
+    caixas: e.Caixas, abertas: e.Abertas, golpes: Math.round(e.Golpes), taxa: sodRound_(sodTaxa_(it) * nerf, 2), ferramenta: it, itens: e.itens, equip: e.equip, aparencia: e.apar, sala: e.sala, missoes: missoes, aviso: s.aviso, bag: SOD_BAG, talentos: Math.floor(e.Talentos), loja: { precos: SOD_PRECO, caixa: SOD_CAIXA_PRECO, roupas: SOD_ROUPAS } };
 }
 function sodGet_(d, u) { return withLock_(function () { const s = sodSync_(u.membroId); return sodView_(u.membroId, s); }); }
 function sodAbrir_(d, u) {
@@ -2286,15 +2290,30 @@ function sodAparencia_(d, u) {
   return withLock_(function () {
     const s = sodSync_(u.membroId), e = s.e, src = d.aparencia || {}, a = Object.assign({}, e.apar), nome = function (x) { const v = String(x === undefined ? '' : x); return /^[a-z_]{1,20}$/.test(v) ? v : ''; };
     const tem = function (slot, est) { return SOD_LIVRE[slot].indexOf(est) >= 0 || e.itens.some(function (x) { return x.k === 'rou' && x.c === slot + ':' + est; }); };
-    ['pele', 'corCabelo', 'corBlusa', 'corCalca', 'corTenis', 'corBone'].forEach(function (k) { const v = nome(src[k]); if (v) a[k] = v; });
+    ['pele', 'corCabelo', 'corBlusa', 'corSobre', 'corCalca', 'corTenis', 'corBone', 'corPescoco', 'corLuvas'].forEach(function (k) { const v = nome(src[k]); if (v) a[k] = v; });
     if (src.corpo === 'm' || src.corpo === 'f') a.corpo = src.corpo;
     if (['blue', 'brown', 'green', 'gray'].indexOf(src.olhos) >= 0) a.olhos = src.olhos;
     if (SOD_CAB.indexOf(src.cabelo) >= 0) a.cabelo = src.cabelo;
-    ['blusa', 'calca', 'tenis', 'bone'].forEach(function (k) { const v = nome(src[k]); if (v && tem(k, v)) a[k] = v; });
+    Object.keys(SOD_LIVRE).forEach(function (k) { const v = nome(src[k]); if (v && tem(k, v)) a[k] = v; });
     e.apar = a; sodSalva_(s.t, s.r, e); return sodView_(u.membroId, s);
   });
 }
-function sodOrar_(d, u) { return withLock_(function () { const s = sodSync_(u.membroId, false), e = s.e; e.Orou = today_(); const m = sodMiss_(u.membroId, today_(), e.Orou); s.mis = m; if (m.completo && e.CaixaBonus !== today_()) { e.CaixaBonus = today_(); e.Caixas++; s.aviso.push('bonus'); } sodSalva_(s.t, s.r, e); return sodView_(u.membroId, s); }); }
+function sodComprar_(d, u) {
+  return withLock_(function () {
+    const s = sodSync_(u.membroId), e = s.e, c = clip_(d.c, 40); let preco, it;
+    if (c === 'caixa') { preco = SOD_CAIXA_PRECO; }
+    else {
+      const def = SOD_ROUPAS[c]; if (!def) throw new ApiError('NOT_FOUND', 'Item não encontrado na loja.');
+      if (e.itens.some(function (x) { return x.k === 'rou' && x.c === c; })) throw new ApiError('VALIDATION', 'Você já tem este item.');
+      if (e.itens.length >= SOD_BAG) throw new ApiError('VALIDATION', 'Mochila cheia (' + SOD_BAG + '). Descarte itens antes de comprar.');
+      preco = SOD_PRECO[def[1]]; it = { i: id_('IT'), k: 'rou', c: c, r: def[1] };
+    }
+    if (Math.floor(e.Talentos) < preco) throw new ApiError('VALIDATION', 'Talentos insuficientes: faltam ' + (preco - Math.floor(e.Talentos)) + '.');
+    e.Talentos -= preco; if (it) e.itens.push(it); else e.Caixas++;
+    sodSalva_(s.t, s.r, e); const v = sodView_(u.membroId, s); v.comprado = it || 'caixa'; return v;
+  });
+}
+function sodOrar_(d, u) { return withLock_(function () { const s = sodSync_(u.membroId, false), e = s.e; e.Orou = today_(); const m = sodMiss_(u.membroId, today_(), e.Orou); s.mis = m; if (m.completo && e.CaixaBonus !== today_()) { e.CaixaBonus = today_(); e.Caixas++; e.Talentos += 10; s.aviso.push('bonus'); } sodSalva_(s.t, s.r, e); return sodView_(u.membroId, s); }); }
 
 /* Carga inicial em UMA requisição (antes eram ~20 idas e voltas ao Apps Script) */
 function boot_(d, u) {
@@ -2335,7 +2354,7 @@ const ROUTES = {
   listScales: { auth: 'any', fn: listScales_ }, saveScale: { auth: 'any', write: 1, fn: saveScale_ }, rescheduleScale: { auth: 'any', write: 1, fn: rescheduleScale_ }, deleteScale: { auth: 'any', write: 1, fn: deleteScale_ }, respondScale: { auth: 'any', write: 1, fn: respondScale_ }, requestSwap: { auth: 'any', write: 1, fn: requestSwap_ }, answerSwap: { auth: 'any', write: 1, fn: answerSwap_ }, markScale: { auth: 'any', write: 1, fn: markScale_ }, requestJoin: { auth: 'any', write: 1, fn: requestJoin_ }, decideJoin: { auth: 'any', write: 1, fn: decideJoin_ },
   listSongs: { auth: 'any', fn: listSongs_ }, saveSong: { auth: 'any', write: 1, fn: saveSong_ }, deleteSong: { auth: 'any', write: 1, fn: deleteSong_ }, saveSongDefault: { auth: 'any', write: 1, fn: saveSongDefault_ }, searchLyrics: { auth: 'any', fn: searchLyrics_ }, importLyrics: { auth: 'any', fn: importLyrics_ },
   boot: { auth: 'any', fn: boot_ },
-  sodGet: { auth: 'any', write: 1, fn: sodGet_ }, sodAbrir: { auth: 'any', write: 1, fn: sodAbrir_ }, sodEquipar: { auth: 'any', write: 1, fn: sodEquipar_ }, sodDescartar: { auth: 'any', write: 1, fn: sodDescartar_ }, sodAparencia: { auth: 'any', write: 1, fn: sodAparencia_ }, sodOrar: { auth: 'any', write: 1, fn: sodOrar_ },
+  sodGet: { auth: 'any', write: 1, fn: sodGet_ }, sodAbrir: { auth: 'any', write: 1, fn: sodAbrir_ }, sodEquipar: { auth: 'any', write: 1, fn: sodEquipar_ }, sodDescartar: { auth: 'any', write: 1, fn: sodDescartar_ }, sodAparencia: { auth: 'any', write: 1, fn: sodAparencia_ }, sodOrar: { auth: 'any', write: 1, fn: sodOrar_ }, sodComprar: { auth: 'any', write: 1, fn: sodComprar_ },
   listMarks: { auth: 'any', fn: listMarks_ }, saveMark: { auth: 'any', write: 1, fn: saveMark_ }, saveNote: { auth: 'any', write: 1, fn: saveNote_ },
   listInsigniaDefs: { auth: 'any', fn: listInsigniaDefs_ }, saveInsigniaDef: { auth: 'any', write: 1, fn: saveInsigniaDef_ }, grantBadge: { auth: 'any', write: 1, fn: grantBadge_ }, logServico: { auth: 'any', write: 1, fn: logServico_ }, listServicos: { auth: 'any', fn: listServicos_ }, searchPeople: { auth: 'any', fn: findPeople_ }, sendChat: { auth: 'any', write: 1, fn: sendChat_ }, getChat: { auth: 'any', fn: getChat_ }, chatRead: { auth: 'any', write: 1, fn: chatRead_ }, listChats: { auth: 'any', fn: listChats_ }, getCertLayout: { auth: 'any', fn: getCertLayout_ }, saveCertLayout: { auth: 'any', write: 1, fn: saveCertLayout_ }, previewCert: { auth: 'any', fn: previewCert_ }, revokeCert: { auth: 'any', write: 1, fn: revokeCert_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
   searchCells: { auth: 'any', fn: searchCells_ }, addPrayer: { auth: 'any', write: 1, fn: addPrayer_ }, listPrayers: { auth: 'any', fn: listPrayers_ },

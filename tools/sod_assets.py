@@ -39,9 +39,14 @@ for iid, nome, p in HAIR:
     else: add('cabelo', iid, nome, base)
 TOR = [('camiseta', 'Camiseta', 'torso/clothes/shortsleeve/tshirt'), ('gola_v', 'Camiseta gola V', 'torso/clothes/shortsleeve/tshirt_vneck'), ('polo', 'Camisa polo', 'torso/clothes/shortsleeve/shortsleeve_polo'),
        ('regata', 'Regata', 'torso/clothes/sleeveless/sleeveless1'), ('manga_longa', 'Manga longa', 'torso/clothes/longsleeve/longsleeve2'), ('cardigan', 'Cardigã', 'torso/clothes/longsleeve/longsleeve2_cardigan'),
-       ('social', 'Camisa social', 'torso/clothes/longsleeve/longsleeve2_buttoned'), ('jardineira', 'Jardineira', 'torso/aprons/overalls'), ('couro', 'Colete de couro', 'torso/armour/leather'),
-       ('cota', 'Cota de malha', 'torso/chainmail'), ('couraca', 'Couraça da justiça', 'torso/armour/plate')]
+       ('social', 'Camisa social', 'torso/clothes/longsleeve/longsleeve2_buttoned')]
 for iid, nome, p in TOR: add('blusa', iid, nome, p + '/male', p + '/female')
+SOB = [('jardineira', 'Jardineira', 'torso/aprons/overalls'), ('suspensorio', 'Suspensório', 'torso/aprons/suspenders'), ('couro', 'Colete de couro', 'torso/armour/leather'),
+       ('cota', 'Cota de malha', 'torso/chainmail'), ('couraca', 'Couraça da justiça', 'torso/armour/plate')]
+for iid, nome, p in SOB: add('sobre', iid, nome, p + '/male', p + '/female')
+for iid, nome, p in [('classico', 'Óculos', 'glasses'), ('redondo', 'Óculos redondo', 'round'), ('nerd', 'Óculos nerd', 'nerd'), ('sol', 'Óculos de sol', 'sunglasses'), ('escuro', 'Óculos escuro', 'shades')]: add('oculos', iid, nome, 'facial/glasses/%s/adult' % p)
+add('pescoco', 'gravata', 'Gravata', 'neck/tie/necktie/male', 'neck/tie/necktie/female'); add('pescoco', 'borboleta', 'Gravata-borboleta', 'neck/tie/bowtie/adult'); add('pescoco', 'colar', 'Colar', 'neck/necklace/beaded_small/male', 'neck/necklace/beaded_small/thin'); add('pescoco', 'cachecol', 'Cachecol', 'neck/scarf')
+add('luvas', 'luvas', 'Luvas', 'arms/hands/gloves/male', 'arms/hands/gloves/thin')
 LEG = [('calca', 'Calça', 'pants'), ('bermuda', 'Bermuda', 'shorts/shorts'), ('dobrada', 'Calça dobrada', 'cuffed'), ('social', 'Calça social', 'formal'), ('listrada', 'Calça listrada', 'formal_striped'), ('legging', 'Legging', 'leggings'), ('saia', 'Saia', 'skirts/plain')]
 for iid, nome, p in LEG: add('calca', iid, nome, 'legs/%s/male' % p, 'legs/%s/thin' % p)
 FEET = [('sapato', 'Sapato', 'shoes/basic'), ('bota', 'Bota', 'boots/basic'), ('sandalia', 'Sandália', 'sandals'), ('chinelo', 'Chinelo', 'slippers'), ('bota_dobrada', 'Bota dobrada', 'boots/fold'), ('botina', 'Botina', 'boots/rimmed'), ('armadura', 'Calçado da paz', 'armour/plate')]

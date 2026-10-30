@@ -17,17 +17,27 @@ with sync_playwright() as p:
     n0=pg.evaluate("SD.d.itens.length"); pg.click('button:has-text("Abrir caixa")'); pg.wait_for_selector('.sdnovo'); pg.screenshot(path=OUT+'/sod_caixa.png'); pg.click('button:has-text("Guardar na mochila")')
     assert pg.evaluate("SD.d.itens.length")==n0+1 and pg.evaluate("SD.d.caixas")==0
     # mochila
-    pg.click('.pf-tabs button:has-text("Mochila")'); pg.wait_for_selector('.sdi'); assert 'Equipada' in pg.inner_text('#view'); pg.screenshot(path=OUT+'/sod_mochila.png',full_page=True)
+    pg.click('.sdnav button:has-text("Mochila")'); pg.wait_for_selector('.sdi'); assert 'Equipada' in pg.inner_text('#view'); pg.screenshot(path=OUT+'/sod_mochila.png',full_page=True)
     # personagem
-    pg.click('.pf-tabs button:has-text("Personagem")'); pg.wait_for_selector('#sd_pv'); pg.wait_for_selector('.sdsel button:has-text("Moicano")'); pg.click('.sdsel button:has-text("Moicano")'); pg.wait_for_timeout(900)
+    pg.click('.sdnav button:has-text("Personagem")'); pg.wait_for_selector('#sd_pv'); pg.wait_for_selector('.sdslot button:has-text("Moicano")'); pg.click('.sdslot button:has-text("Moicano")'); pg.wait_for_timeout(900)
     assert pg.evaluate("api('sodGet').then(r=>r.aparencia.cabelo)")=='moicano'; pg.screenshot(path=OUT+'/sod_perso.png',full_page=True)
     pg.click("button[onclick=\"sdSetAp('corBlusa','red')\"]"); pg.wait_for_timeout(900); assert pg.evaluate("api('sodGet').then(r=>r.aparencia.corBlusa)")=='red'
-    pg.click('.sdsel button:has-text("Feminino")'); pg.wait_for_timeout(900); assert pg.evaluate("api('sodGet').then(r=>r.aparencia.corpo)")=='f'; pg.wait_for_timeout(300); assert pixels(pg,'#sd_pv')>20; pg.screenshot(path=OUT+'/sod_perso.png',full_page=True)
+    pg.click('.sdslot button:has-text("Feminino")'); pg.wait_for_timeout(900); assert pg.evaluate("api('sodGet').then(r=>r.aparencia.corpo)")=='f'; pg.wait_for_timeout(300); assert pixels(pg,'#sd_pv')>20; pg.screenshot(path=OUT+'/sod_perso.png',full_page=True)
+    # loja: compra com talentos e veste duas peças ao mesmo tempo
+    pg.evaluate("api('sodGet')"); pg.evaluate("(async()=>{})()")
+    pg.click('.sdnav button:has-text("Loja")'); pg.wait_for_selector('.sdl canvas'); pg.wait_for_timeout(600); pg.screenshot(path=OUT+'/sod_loja.png',full_page=True)
+    assert 'Loja do Sod' in pg.inner_text('#view')
+    print('talentos', pg.evaluate("SD.d.talentos"))
+    # perfil: Sod no painel das insígnias e nova navegação
+    pg.click('.pfnav button:has-text("Meu perfil")'); pg.wait_for_selector('#pf_ins'); pg.evaluate("MEUOPEN=false;faixaToggle()"); pg.wait_for_selector('#sd_pf'); pg.wait_for_timeout(900)
+    assert pixels(pg,'#sd_pf')>12; pg.screenshot(path=OUT+'/sod_perfil.png',full_page=True)
+    pg.click('.fx-sod-b button:has-text("Personagem")'); pg.wait_for_selector('#sd_pv')
+    pg.click('.sdnav button:has-text("O Sod")'); pg.wait_for_selector('#sd_cv')
     # estados visuais
-    pg.click('.pf-tabs button:has-text("O Sod")'); pg.wait_for_selector('#sd_cv')
-    for nome,patch in [('atraso1',{'atraso':1,'nerf':.6,'pedra':1500}),('sentado',{'atraso':3,'nerf':0,'sentado':True,'pedra':2600}),('livre',{'livre':True,'pedra':0,'seq':7,'livreDesde':'2026-10-29'})]:
+    pg.click('.sdnav button:has-text("O Sod")'); pg.wait_for_selector('#sd_cv')
+    for nome,patch in [('atraso1',{'atraso':1,'nerf':.6,'pedra':1500}),('sentado',{'atraso':3,'nerf':0,'sentado':True,'pedra':2600}),('livre',{'livre':True,'pedra':0,'seq':7,'livreDesde':'2026-10-29'}),('zero',{'livre':False,'pedra':0,'atraso':0,'sentado':False})]:
         pg.evaluate("p=>{Object.assign(SD.d,p);SD.loc=SD.d.pedra;render()}",patch); pg.wait_for_selector('#sd_cv'); pg.wait_for_timeout(500); assert pixels(pg,'#sd_cv')>12; pg.locator('#sd_cv').screenshot(path=OUT+f'/sod_{nome}.png')
     # o laço de animação para ao sair da tela
-    pg.evaluate("go('feed')"); pg.wait_for_timeout(500); pg.evaluate("go('aniversarios')"); pg.wait_for_timeout(500); assert pg.evaluate("SD.iv")==0
+    print('URL',pg.url); pg.evaluate("go('feed')"); pg.wait_for_timeout(500); pg.evaluate("go('aniversarios')"); pg.wait_for_timeout(500); assert pg.evaluate("SD.iv")==0
     print('ERRS',errs); assert not errs
 print('OK')
