@@ -1,4 +1,4 @@
-# Sod Adonai: janela no início, aba no perfil, caixa, mochila, personagem, estados (preso, atrasado, sentado, livre)
+# Sod: janela no início, aba no perfil, caixa, mochila, personagem, estados (preso, atrasado, sentado, livre)
 from playwright.sync_api import sync_playwright
 import os
 URL='http://localhost:8799/'; errs=[]; OUT=os.environ.get('SHOTS','/tmp')
@@ -11,7 +11,7 @@ with sync_playwright() as p:
     pg.wait_for_selector('#splash',state='detached',timeout=15000); pg.evaluate("api('guideDone')")
     pg.wait_for_selector('#sd_home canvas'); pg.wait_for_function('SDA.st===1',timeout=15000); pg.wait_for_timeout(500); assert pixels(pg,'#sd_mini')>12, 'cena vazia'
     pg.screenshot(path=OUT+'/sod_home.png')
-    pg.click('#sd_home'); pg.wait_for_selector('#sd_cv'); pg.wait_for_timeout(600); assert 'Sod Adonai' in pg.inner_text('#view') and pixels(pg,'#sd_cv')>12
+    pg.click('#sd_home'); pg.wait_for_selector('#sd_cv'); pg.wait_for_timeout(600); assert 'Intimidade e conselho' in pg.inner_text('#view') and pixels(pg,'#sd_cv')>12
     assert 'Entrar no app hoje' in pg.inner_text('#view'); pg.screenshot(path=OUT+'/sod_cena.png',full_page=True)
     # caixa
     n0=pg.evaluate("SD.d.itens.length"); pg.click('button:has-text("Abrir caixa")'); pg.wait_for_selector('.sdnovo'); pg.screenshot(path=OUT+'/sod_caixa.png'); pg.click('button:has-text("Guardar na mochila")')
@@ -29,7 +29,7 @@ with sync_playwright() as p:
     assert 'Loja do Sod' in pg.inner_text('#view')
     print('talentos', pg.evaluate("SD.d.talentos"))
     # perfil: Sod no painel das insígnias e nova navegação
-    pg.click('.pfnav button:has-text("Meu perfil")'); pg.wait_for_selector('#pf_ins'); pg.evaluate("MEUOPEN=false;faixaToggle()"); pg.wait_for_selector('#sd_pf'); pg.wait_for_timeout(900)
+    pg.click('.pfnav button:has-text("Meu perfil")'); pg.wait_for_selector('#faixa'); pg.wait_for_selector('#sd_pf'); pg.wait_for_timeout(900)
     assert pixels(pg,'#sd_pf')>12; pg.screenshot(path=OUT+'/sod_perfil.png',full_page=True)
     pg.click('.fx-sod-b button:has-text("Personagem")'); pg.wait_for_selector('#sd_pv')
     pg.click('.sdnav button:has-text("O Sod")'); pg.wait_for_selector('#sd_cv')

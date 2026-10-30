@@ -217,7 +217,7 @@ Administração › **Maratona Bíblica (programar)**: início (1º de janeiro),
 - Novas regras: dias consecutivos, devocionais, capítulos lidos, notas no feed, anotações na Bíblia, pedidos de oração e escalas servidas. Mais de 60 ícones (pomba, caneta, pergaminho, trofeu etc.).
 - Luz vermelha piscando em **Aprovações** na barra lateral quando há pendências.
 
-## Sod Adonai (gamificação estilo Tamagotchi)
+## Sod (gamificação estilo Tamagotchi)
 
 O **Sod** ("Intimidade e conselho do Senhor") é um orbe de luz branca: o Espírito Santo no centro da vida da pessoa. Fica no **Início** (janela) e em **Meu perfil › Sod** (abas *O Sod*, *Personagem*, *Mochila*). Tudo é calculado no servidor (`sodGet` e rotas `sod*` no `Code.gs`, aba `Sod` da planilha); o app só desenha em pixel art (canvas).
 
