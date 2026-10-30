@@ -878,10 +878,10 @@ function zCaber(r,esq,alto,cx,cy,w,h){const bw=Math.min(340,innerWidth-32),edge=
  r.style.setProperty('--zsh',sh+'px');const livre=(alto?innerHeight-(cy+h/2):cy-h/2)-24;r.style.setProperty('--zmax',Math.max(180,livre-(ZE.chat?0:0))+'px')}
 function zReposiciona(){requestAnimationFrame(()=>zPosAplica())}
 let ZDRAG=null;
-document.addEventListener('pointerdown',e=>{const a=e.target.closest&&e.target.closest('#zav');if(!a||(e.pointerType==='mouse'&&e.button!==0))return;ZDRAG={id:e.pointerId,x:e.clientX,y:e.clientY,mov:false}});
+document.addEventListener('pointerdown',e=>{const a=e.target.closest&&e.target.closest('#zav');if(!a||(e.pointerType==='mouse'&&e.button!==0))return;ZDRAG={id:e.pointerId,x:e.clientX,y:e.clientY,mov:false};if(ZE.chat)zIdle()});
 document.addEventListener('pointermove',e=>{const d=ZDRAG;if(!d||e.pointerId!==d.id)return;if(!d.mov){if(Math.hypot(e.clientX-d.x,e.clientY-d.y)<8)return;d.mov=true;const a=$('#zav');try{a.setPointerCapture(e.pointerId)}catch(x){}$('#zoe').classList.add('arrasta')}
  e.preventDefault();d.p={x:e.clientX/innerWidth,y:e.clientY/innerHeight};zPosAplica(d.p)},{passive:false});
-function zDragFim(e){const d=ZDRAG;if(!d||e.pointerId!==d.id)return;ZDRAG=null;const r=$('#zoe');if(r)r.classList.remove('arrasta');if(d.mov){ZE.dragT=Date.now();if(d.p){try{localStorage.setItem('zoePos',JSON.stringify(d.p))}catch(x){}}}}
+function zDragFim(e){const d=ZDRAG;if(!d||e.pointerId!==d.id)return;ZDRAG=null;const r=$('#zoe');if(r)r.classList.remove('arrasta');if(d.mov){ZE.dragT=Date.now();if(ZE.chat)zIdle();if(d.p){try{localStorage.setItem('zoePos',JSON.stringify(d.p))}catch(x){}}}}
 document.addEventListener('pointerup',zDragFim);document.addEventListener('pointercancel',zDragFim);
 addEventListener('resize',()=>zPosAplica());
 function zSeg(t){return t.split('**').map((x,i)=>({b:i%2===1,t:x}))}
