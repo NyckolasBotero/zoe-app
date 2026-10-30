@@ -86,6 +86,7 @@ const SHEETS = {
   Dinamicas: ['DinamicaID', 'Titulo', 'Descricao', 'Minutos', 'MembroID', 'Data'],
   Produtos: ['ProdutoID', 'Nome', 'Categoria', 'Preco', 'Descricao', 'Foto', 'Opcoes', 'Ativo', 'Ordem', 'Disponivel', 'PromoPreco', 'PromoAte'],
   Pastores: ['PastorID', 'Nome', 'Cargo', 'Foto', 'Ordem', 'Ativo'],
+  MuralFam: ['ItemID', 'Pagina', 'Tipo', 'X', 'Y', 'W', 'R', 'Z', 'Texto', 'Cor', 'Foto', 'Dados', 'CriadoEm'],
   FamiliaMidia: ['MidiaID', 'Tipo', 'Url', 'Foto', 'Legenda', 'Ordem', 'Ativo'],
   Videos: ['VideoID', 'Titulo', 'Url', 'Ordem', 'Status', 'Tipo', 'AoVivo'],
   Permissoes: ['Papel'].concat(PERMS),
@@ -1297,7 +1298,7 @@ function conquistasMembro_(m) {
 /* ---- insígnias criadas pelos supervisores: o que precisa ser feito (critério) e o visual ---- */
 const ICONES_BD = ['estrela', 'user', 'flame', 'gota', 'livro', 'coroa', 'cruz', 'coracao', 'pomba', 'trigo', 'chave', 'escudo', 'sino', 'maos', 'arado', 'ancora', 'vela', 'raio', 'caneta', 'pergaminho', 'biblia', 'microfone', 'violao', 'nota', 'camera', 'casa', 'mundo', 'presente', 'taca', 'peixe', 'arvore', 'folha', 'sol', 'lua', 'montanha', 'olho', 'relogio', 'medalha', 'trofeu', 'megafone', 'asa', 'tenda', 'barco', 'cordeiro', 'leao', 'calendario', 'balao', 'pegada', 'bandeira', 'diamante', 'semente', 'foguete', 'alvo', 'bussola', 'lanterna', 'harpa', 'trombeta', 'candelabro', 'tabuas', 'sorriso', 'joia', 'pao', 'fogueira', 'carta', 'convite', 'abraco', 'cafe'];
 const FORMAS_BD = ['circ', 'esc', 'hex', 'oct', 'losango'];
-const ESTILOS_BD = ['bordado', 'ouro', 'prata', 'bronze'];
+const ESTILOS_BD = ['bordado', 'bronze', 'prata', 'ouro', 'celeste'];
 function podeCurar_(u) { return can_(u, 'config') || can_(u, 'eventos') || can_(u, 'celulas') || (u.supervisiona && u.supervisiona.length > 0) || u.papel === 'pastor' || u.papel === 'admin'; }
 function exigeCurar_(u) { if (!podeCurar_(u)) throw new ApiError('FORBIDDEN', 'Só supervisores e a administração criam insígnias.'); }
 function ehLider_(u) { return can_(u, 'celulas') || (u.lidera && u.lidera.length > 0) || (u.supervisiona && u.supervisiona.length > 0) || u.papel === 'pastor' || u.papel === 'admin'; }
@@ -1945,6 +1946,37 @@ function listCultoNotes_(d, u) {
   return { cultos: ult, itens: itens };
 }
 
+/* ===== Mural livre da Família Zoe (Nossos Pastores) e foto da frente da igreja (Onde estamos): só quem tem permissão de configuração edita; todos veem ===== */
+const MURAL_PAGS = ['pastores', 'onde'];
+function muralOut_(r) { const dd = jparse_(r.Dados, {}); return { id: r.ItemID, t: r.Tipo, x: Number(r.X) || 0, y: Number(r.Y) || 0, w: Number(r.W) || 0, r: Number(r.R) || 0, z: Number(r.Z) || 0, l: r.Texto || '', c: r.Cor || '', img: r.Foto || '', k: dd.k || '', s: dd.s || 0, tl: dd.tl || '', p: dd.p || [] }; }
+function getMural_(d, u) {
+  const pg = clip_(d.pagina, 20); if (MURAL_PAGS.indexOf(pg) < 0) throw new ApiError('VALIDATION', 'Página inválida.');
+  return { itens: table_('MuralFam').rows.filter(function (r) { return r.Pagina === pg; }).sort(function (a, b) { return (Number(a.Z) || 0) - (Number(b.Z) || 0) || a._row - b._row; }).map(muralOut_) };
+}
+function saveMural_(d, u) {
+  return withLock_(function () {
+    const pg = clip_(d.pagina, 20); if (MURAL_PAGS.indexOf(pg) < 0) throw new ApiError('VALIDATION', 'Página inválida.');
+    const arr = Array.isArray(d.itens) ? d.itens : []; if (arr.length > 500) throw new ApiError('VALIDATION', 'Itens demais no mural.');
+    const t = table_('MuralFam'), ex = {}; t.rows.forEach(function (r) { if (r.Pagina === pg) ex[r.ItemID] = r; });
+    const num = function (v, lo, hi, def) { v = Math.round(Number(v)); return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : def; };
+    const out = []; let fotos = 0, outros = 0, ids = {};
+    arr.forEach(function (i) {
+      if (!i || ['foto', 'adesivo', 'texto', 'traco'].indexOf(i.t) < 0) return; let id = clip_(String(i.id || ''), 30).replace(/[^A-Za-z0-9_-]/g, ''); if (!id || ids[id]) id = id_('MF'); ids[id] = 1;
+      const row = { ItemID: id, Pagina: pg, Tipo: i.t, X: num(i.x, -300, 1500, 0), Y: num(i.y, -300, 1100, 0), W: num(i.w, 0, 1400, 0), R: num(i.r, -45, 45, 0), Z: num(i.z, 0, 999, 0), Texto: '', Cor: /^#[0-9a-fA-F]{6}$/.test(String(i.c || '')) ? i.c : '#FFFFFF', Foto: '', Dados: '', CriadoEm: now_() };
+      if (i.t === 'foto') {
+        if (++fotos > 30) throw new ApiError('VALIDATION', 'No máximo 30 fotos no mural.'); row.Texto = clip_(i.l, 60);
+        if (i.img === '__keep' && ex[id]) row.Foto = ex[id].Foto; else { const f = String(i.img || ''); if (!/^data:image\/(jpeg|png|webp);base64,/.test(f) || f.length > 45000) throw new ApiError('VALIDATION', 'Foto inválida ou muito grande.'); row.Foto = f; }
+      } else if (i.t === 'adesivo') { if (++outros > 300) return; row.Dados = JSON.stringify({ k: ['star', 'heart', 'circle', 'cross'].indexOf(i.k) >= 0 ? i.k : 'star' }); }
+      else if (i.t === 'texto') { if (++outros > 300) return; row.Texto = clip_(i.l, 120); if (!row.Texto) return; row.Dados = JSON.stringify({ s: num(i.s, 10, 120, 28) }); }
+      else { if (++outros > 300) return; const pts = (Array.isArray(i.p) ? i.p : []).slice(0, 4000).map(function (n) { return Math.round(Number(n)) || 0; }); if (pts.length < 2) return; const dd = JSON.stringify({ tl: ['pincel', 'giz', 'borracha'].indexOf(i.tl) >= 0 ? i.tl : 'pincel', s: num(i.s, 1, 80, 5), p: pts }); if (dd.length > 45000) throw new ApiError('VALIDATION', 'Um traço ficou grande demais; faça traços menores.'); row.Dados = dd; }
+      out.push(row);
+    });
+    t.rows.filter(function (r) { return r.Pagina === pg; }).sort(function (a, b) { return b._row - a._row; }).forEach(function (r) { t.sh.deleteRow(r._row); });
+    out.forEach(function (r) { appendRow_(t, r); });
+    audit_(u.email, 'MURAL_FAM:' + pg, out.length + ' itens', 'OK'); return { ok: true, itens: out.map(muralOut_) };
+  });
+}
+
 /* ===== Escalas de ministérios ===== */
 function escPad_(n) { return (n < 10 ? '0' : '') + n; }
 function escFmt_(d) { return d.getFullYear() + '-' + escPad_(d.getMonth() + 1) + '-' + escPad_(d.getDate()); }
@@ -2405,7 +2437,7 @@ const ROUTES = {
   listSongs: { auth: 'any', fn: listSongs_ }, saveSong: { auth: 'any', write: 1, fn: saveSong_ }, deleteSong: { auth: 'any', write: 1, fn: deleteSong_ }, saveSongDefault: { auth: 'any', write: 1, fn: saveSongDefault_ }, searchLyrics: { auth: 'any', fn: searchLyrics_ }, importLyrics: { auth: 'any', fn: importLyrics_ },
   boot: { auth: 'any', fn: boot_ },
   sodGet: { auth: 'any', write: 1, fn: sodGet_ }, sodAbrir: { auth: 'any', write: 1, fn: sodAbrir_ }, sodEquipar: { auth: 'any', write: 1, fn: sodEquipar_ }, sodDescartar: { auth: 'any', write: 1, fn: sodDescartar_ }, sodAparencia: { auth: 'any', write: 1, fn: sodAparencia_ }, sodOrar: { auth: 'any', write: 1, fn: sodOrar_ }, sodComprar: { auth: 'any', write: 1, fn: sodComprar_ },
-  listMarks: { auth: 'any', fn: listMarks_ }, saveMark: { auth: 'any', write: 1, fn: saveMark_ }, saveNote: { auth: 'any', write: 1, fn: saveNote_ }, listCultoNotes: { auth: 'any', fn: listCultoNotes_ },
+  listMarks: { auth: 'any', fn: listMarks_ }, saveMark: { auth: 'any', write: 1, fn: saveMark_ }, saveNote: { auth: 'any', write: 1, fn: saveNote_ }, listCultoNotes: { auth: 'any', fn: listCultoNotes_ }, getMural: { auth: 'any', fn: getMural_ },
   listInsigniaDefs: { auth: 'any', fn: listInsigniaDefs_ }, saveInsigniaDef: { auth: 'any', write: 1, fn: saveInsigniaDef_ }, grantBadge: { auth: 'any', write: 1, fn: grantBadge_ }, logServico: { auth: 'any', write: 1, fn: logServico_ }, listServicos: { auth: 'any', fn: listServicos_ }, searchPeople: { auth: 'any', fn: findPeople_ }, sendChat: { auth: 'any', write: 1, fn: sendChat_ }, getChat: { auth: 'any', fn: getChat_ }, chatRead: { auth: 'any', write: 1, fn: chatRead_ }, listChats: { auth: 'any', fn: listChats_ }, getCertLayout: { auth: 'any', fn: getCertLayout_ }, saveCertLayout: { auth: 'any', write: 1, fn: saveCertLayout_ }, previewCert: { auth: 'any', fn: previewCert_ }, revokeCert: { auth: 'any', write: 1, fn: revokeCert_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
   searchCells: { auth: 'any', fn: searchCells_ }, addPrayer: { auth: 'any', write: 1, fn: addPrayer_ }, listPrayers: { auth: 'any', fn: listPrayers_ },
   cellMembers: { auth: 'any', fn: cellMembers_ }, saveCell: { auth: 'any', write: 1, fn: saveCell_ }, saveAttendance: { auth: 'any', write: 1, fn: saveAttendance_ }, history: { auth: 'any', fn: history_ },
@@ -2419,7 +2451,7 @@ const ROUTES = {
   listBookComments: { auth: 'any', fn: listBookComments_ }, addBookComment: { auth: 'any', write: 1, fn: addBookComment_ }, deleteBookComment: { auth: 'any', write: 1, fn: deleteBookComment_ },
   listTestimonies: { auth: 'any', fn: listTestimonies_ }, addTestimony: { auth: 'any', write: 1, fn: addTestimony_ }, deleteTestimony: { auth: 'any', write: 1, fn: deleteTestimony_ }, toggleLike: { auth: 'any', write: 1, fn: toggleLike_ },
   saveMinistry: { auth: 'min', write: 1, fn: saveMinistry_ }, deleteMinistry: { auth: 'min', write: 1, fn: deleteMinistry_ }, listInterests: { auth: 'min', fn: listInterests_ },
-  saveConfig: { auth: 'config', write: 1, fn: saveConfig_ }, saveHomeLayout: { auth: 'config', write: 1, fn: saveHomeLayout_ }, getAccessRules: { auth: 'config', fn: accessRules_ }, saveAccessRules: { auth: 'config', write: 1, fn: saveAccessRules_ }, saveVideo: { auth: 'config', write: 1, fn: saveVideo_ }, deleteVideo: { auth: 'config', write: 1, fn: deleteVideo_ }, updateVideo: { auth: 'config', write: 1, fn: updateVideo_ },
+  saveConfig: { auth: 'config', write: 1, fn: saveConfig_ }, saveHomeLayout: { auth: 'config', write: 1, fn: saveHomeLayout_ }, saveMural: { auth: 'config', write: 1, fn: saveMural_ }, getAccessRules: { auth: 'config', fn: accessRules_ }, saveAccessRules: { auth: 'config', write: 1, fn: saveAccessRules_ }, saveVideo: { auth: 'config', write: 1, fn: saveVideo_ }, deleteVideo: { auth: 'config', write: 1, fn: deleteVideo_ }, updateVideo: { auth: 'config', write: 1, fn: updateVideo_ },
   listUsers: { auth: 'config', fn: listUsers_ }, createUser: { auth: 'config', write: 1, fn: createUser_ }, setUser: { auth: 'config', write: 1, fn: setUser_ }, savePerms: { auth: 'config', write: 1, fn: savePerms_ },
   saveLesson: { auth: 'config', write: 1, fn: saveLesson_ }, getPerms: { auth: 'config', fn: function () { return permMatrix_(); } },
   createCell: { auth: 'celulas', write: 1, fn: createCell_ },

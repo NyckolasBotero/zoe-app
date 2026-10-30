@@ -262,3 +262,12 @@ Os arquivos ficam em `assets/sod/` (`char.png`, `tools.png`, `room.png`, `manife
 
 ## Escalas com vaga em aberto
 - Em **Lançar escala**, sem escolher ninguém, informe **Vagas abertas por data** (1 a 20; funciona com repetição em lote). As vagas aparecem para todos em Escalas (Agenda e Participar › Vagas abertas) e no card *Minhas escalas* do Início; **Quero servir** (`claimScale`) preenche a vaga, já confirmada, e avisa os supervisores. Ninguém ocupa duas vagas da mesma escala. Indicador `abertas` na Visão geral.
+
+## Família Zoe: visão geral, mural dos pastores e Onde estamos
+- Abas, nesta ordem: **Uma Família Para Pertencer** (visão geral organizada, com “Ver detalhes” para cada aba), Notícias (só notícias gerais), Quem somos, Nossos Pastores, Programação, Onde estamos e **Fale com a Igreja** por último.
+- **Nossos Pastores** é um mural livre (tabuleiro 1200×800 que escala para qualquer tela). Só quem tem a permissão `config` vê “Editar mural”: sobe fotos, move/redimensiona/gira, adiciona adesivos e textos, desenha (pincel, giz, borracha) e clica em **Salvar para todos**. Todos os outros veem o mural salvo, somente leitura.
+- **Onde estamos**: mapa do Google embutido na metade esquerda (endereço vem de Administração) e, na direita, a foto da frente da igreja (o admin sobe/troca).
+- Backend: aba `MuralFam` na planilha (criada pelo `setup()`), rotas `getMural` (todos) e `saveMural` (configuração). Fotos até 45 mil caracteres, 30 fotos, 300 itens de desenho por página.
+
+## Acabamento Celeste (último nível de insígnia)
+Ordem dos acabamentos: Bordado, Bronze, Prateado, Dourado e **Celeste** (platina perolada, com reflexos em branco, lilás e rosa). Ao criar insígnias com vários níveis, o último nível sugerido já vem em Celeste.

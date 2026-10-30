@@ -798,6 +798,29 @@ test('Escalas: vaga em aberto sem escolher pessoa; irmão se oferece e vira esca
   assert.equal(e.call('listScales', {}, adm).data.ind.abertas, 0);
 });
 
+test('Mural livre da Família Zoe: só quem configura edita, todos veem; foto mantida; limites', () => {
+  const { e, adm, tok, mk } = boot(); mk('ana@zoe.com', 'membro'); const A = tok('ana@zoe.com', 'Temp12345'), foto = 'data:image/jpeg;base64,/9j/4AAQ';
+  assert.equal(e.call('getMural', { pagina: 'xx' }, A).error.code, 'VALIDATION'); assert.deepEqual(e.call('getMural', { pagina: 'pastores' }, A).data.itens, []);
+  assert.equal(e.call('saveMural', { pagina: 'pastores', itens: [] }, A).error.code, 'FORBIDDEN');
+  const itens = [{ id: 'f1', t: 'foto', x: 100, y: 50, w: 220, r: 3, z: 1, l: 'Pastor Fábio', img: foto }, { id: 'a1', t: 'adesivo', x: 10, y: 10, w: 60, k: 'heart', c: '#E23B3B' }, { t: 'texto', x: 300, y: 300, l: 'Bem-vindos', c: '#FFD54A', s: 40 }, { id: 't1', t: 'traco', tl: 'pincel', c: '#FFFFFF', s: 6, p: [1, 2, 30, 40, 70, 90] }, { t: 'traco', p: [1] }, { t: 'lixo' }];
+  const r = e.call('saveMural', { pagina: 'pastores', itens }, adm); assert.ok(r.ok, JSON.stringify(r)); assert.equal(r.data.itens.length, 4);
+  let L = e.call('getMural', { pagina: 'pastores' }, A).data.itens; assert.equal(L.find(i => i.id === 'f1').img, foto); assert.equal(L.find(i => i.id === 'f1').l, 'Pastor Fábio'); assert.deepEqual(L.find(i => i.id === 't1').p, [1, 2, 30, 40, 70, 90]); assert.equal(L.find(i => i.t === 'adesivo').k, 'heart'); assert.equal(L.find(i => i.t === 'texto').s, 40);
+  // salvar de novo mantendo a foto sem reenviar; mudar a posição; tirar itens
+  assert.ok(e.call('saveMural', { pagina: 'pastores', itens: [{ id: 'f1', t: 'foto', x: 500, y: 60, w: 300, img: '__keep' }] }, adm).ok);
+  L = e.call('getMural', { pagina: 'pastores' }, A).data.itens; assert.equal(L.length, 1); assert.equal(L[0].img, foto); assert.equal(L[0].x, 500);
+  // páginas independentes e validações
+  assert.ok(e.call('saveMural', { pagina: 'onde', itens: [{ id: 'fachada', t: 'foto', img: foto }] }, adm).ok); assert.equal(e.call('getMural', { pagina: 'onde' }, A).data.itens.length, 1); assert.equal(e.call('getMural', { pagina: 'pastores' }, A).data.itens.length, 1);
+  assert.equal(e.call('saveMural', { pagina: 'onde', itens: [{ t: 'foto', img: 'http://x/y.jpg' }] }, adm).error.code, 'VALIDATION');
+  assert.equal(e.call('saveMural', { pagina: 'onde', itens: [{ t: 'foto', img: 'data:image/jpeg;base64,' + 'A'.repeat(46000) }] }, adm).error.code, 'VALIDATION');
+  assert.equal(e.call('getMural', { pagina: 'onde' }, A).data.itens.length, 1);
+});
+
+test('insígnia com acabamento Celeste (último nível) é aceita; acabamento desconhecido não', () => {
+  const { e, adm } = boot();
+  const ok = e.call('saveInsigniaDef', { titulo: 'Fiel Celeste', visual: { estilo: 'celeste', forma: 'hex', icone: 'arado', cor1: '#2f6b3a', cor2: '#efe3b0' }, criterio: { tipo: 'manual' }, xp: 100 }, adm); assert.ok(ok.ok, JSON.stringify(ok));
+  assert.equal(e.call('saveInsigniaDef', { titulo: 'X', visual: { estilo: 'diamante', forma: 'hex', icone: 'arado' }, criterio: { tipo: 'manual' }, xp: 1 }, adm).error.code, 'VALIDATION');
+});
+
 test('um acesso por pessoa; limpar notificações; notificações definidas pelo adm', () => {
   const { e, adm, tok, mk } = boot(); const id = e.call('saveMember', { membro: { Nome: 'Sem Acesso', Email: 'sem@zoe.com' } }, adm);
   e.run(`appendRow_(table_('Membros'), { MembroID: 'MX1', Nome: 'Maria Cadastro', Simples: 'Maria', Email: 'maria@zoe.com', Status: 'Ativo', EhMembro: '1' })`);

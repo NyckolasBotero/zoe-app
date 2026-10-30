@@ -9,8 +9,8 @@ with sync_playwright() as p:
     pg.evaluate("""async(png)=>{await api('adminSave',{tipo:'pastores',valores:{Nome:'Pr. João',Cargo:'Pastor titular',Foto:png,Ordem:'1'}});await api('adminSave',{tipo:'pastores',valores:{Nome:'Pra. Maria',Cargo:'Pastora titular',Ordem:'2'}});
       await api('adminSave',{tipo:'familia',valores:{Tipo:'video',Url:'https://youtu.be/M7lc1UVf-VE',Legenda:'Nosso culto',Ordem:'1'}});
       await api('adminSave',{tipo:'familia',valores:{Tipo:'foto',Foto:png,Legenda:'Batismo',Ordem:'2'}});await api('adminSave',{tipo:'familia',valores:{Tipo:'foto',Foto:png,Legenda:'Célula',Ordem:'3'}});await hydrate();go('familia','pastores')}""",PNG)
-    pg.wait_for_selector('.pmural .polar.past'); assert pg.locator('.pmural .polar.past').count()==2; assert pg.locator('.polar.past .tape').count()==2
-    t=pg.inner_text('.pmural'); assert 'Pr. João' in t and 'Pastora titular' in t; assert pg.locator('.polar.past img.im').count()==1
+    pg.wait_for_selector('.mfit.polar'); pg.wait_for_timeout(300)
+    assert pg.locator('.mfit.polar').count()==1 and 'Pr. João' in pg.inner_text('.mfb'), 'sem mural salvo, o mural mostra os pastores cadastrados (os que têm foto)'
     pg.screenshot(path=OUT+'/m_pastores.png')
     pg.evaluate("go('familia','quem')"); pg.wait_for_selector('.famv iframe'); src=pg.get_attribute('.famv iframe','src'); print(src); assert 'autoplay=1' in src and 'mute=1' in src and 'loop=1' in src
     pg.wait_for_selector('#famcar .fs.on'); assert pg.locator('#famcar .fs').count()==2
