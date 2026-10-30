@@ -884,8 +884,8 @@ test('Sod: caixa diária, ferramentas, aparência, atraso e libertação em 7 di
   const ferr = ab.data.novo.k === 'ferr' ? ab.data.novo : null; if (ferr) assert.equal(e.call('sodEquipar', { id: ferr.i }, t).data.equip.ferr, ferr.i);
   assert.equal(e.call('sodDescartar', { id: 'INICIAL' }, t).error.code, 'VALIDATION');
   // aparência: estilo não desbloqueado é recusado; cor inválida ignorada; cabelo livre
-  let a = e.call('sodAparencia', { aparencia: { cabelo: 'moicano', corCabelo: '#112233', bone: 'coroa', corBlusa: 'vermelho' } }, t).data.aparencia;
-  assert.equal(a.cabelo, 'moicano'); assert.equal(a.corCabelo, '#112233'); assert.equal(a.bone, 'nenhum'); assert.equal(a.corBlusa, '#2b6cb0');
+  let a = e.call('sodAparencia', { aparencia: { cabelo: 'moicano', corCabelo: 'blonde', bone: 'coroa', corBlusa: '#ff0000', corpo: 'f', olhos: 'green' } }, t).data.aparencia;
+  assert.equal(a.cabelo, 'moicano'); assert.equal(a.corCabelo, 'blonde'); assert.equal(a.bone, 'nenhum'); assert.equal(a.corBlusa, 'blue'); assert.equal(a.corpo, 'f'); assert.equal(a.olhos, 'green');
   // mineração por tempo: 10 min fazem a pedra cair; o castigo por dias sem entrar a reduz
   const setSod = (o) => e.run(`(function(){const t=table_('Sod'),r=t.rows.filter(function(x){return x.MembroID==='${mid}'})[0];writeRow_(t,r._row,${JSON.stringify(o)});})()`);
   setSod({ MinAte: String(Date.now() - 10000) }); v = e.call('sodGet', {}, t).data; assert.ok(v.pedra < 700 && v.pedra > 0, 'minerou ' + v.pedra);

@@ -2160,13 +2160,16 @@ const SOD_FERR = {
   martelete: { nome: 'Martelete', v: 2.2, d: 2, min: 'raro' }, broca: { nome: 'Furadeira de impacto', v: 2.6, d: 2, min: 'epico' }, britadeira: { nome: 'Britadeira', v: 3.0, d: 2.5, min: 'lendario' }
 };
 const SOD_ROUPAS = {
-  'blusa:listras': ['Blusa listrada', 'comum'], 'blusa:xadrez': ['Camisa xadrez', 'comum'], 'blusa:regata': ['Regata', 'comum'], 'blusa:moletom': ['Moletom', 'raro'], 'blusa:jaqueta': ['Jaqueta', 'raro'], 'blusa:colete': ['Colete de mineiro', 'raro'], 'blusa:tunica': ['Túnica de linho', 'epico'], 'blusa:dourada': ['Blusa dourada', 'lendario'],
-  'calca:bermuda': ['Bermuda', 'comum'], 'calca:jogger': ['Calça jogger', 'comum'], 'calca:cargo': ['Calça cargo', 'raro'], 'calca:macacao': ['Macacão', 'raro'],
-  'tenis:cano_alto': ['Tênis cano alto', 'comum'], 'tenis:esportivo': ['Tênis esportivo', 'comum'], 'tenis:bota': ['Botina de obra', 'raro'], 'tenis:dourado': ['Tênis dourado', 'lendario'],
-  'bone:bone': ['Boné', 'comum'], 'bone:aba_reta': ['Boné aba reta', 'comum'], 'bone:touca': ['Touca', 'comum'], 'bone:capacete': ['Capacete com lanterna', 'raro'], 'bone:coroa': ['Coroa de luz', 'lendario']
+  'blusa:gola_v': ['Camiseta gola V', 'comum'], 'blusa:polo': ['Camisa polo', 'comum'], 'blusa:regata': ['Regata', 'comum'], 'blusa:manga_longa': ['Manga longa', 'comum'], 'blusa:cardigan': ['Cardigã', 'raro'], 'blusa:social': ['Camisa social', 'raro'], 'blusa:jardineira': ['Jardineira', 'raro'], 'blusa:couro': ['Colete de couro', 'epico'], 'blusa:cota': ['Cota de malha', 'epico'], 'blusa:couraca': ['Couraça da justiça', 'lendario'],
+  'calca:bermuda': ['Bermuda', 'comum'], 'calca:dobrada': ['Calça dobrada', 'comum'], 'calca:legging': ['Legging', 'comum'], 'calca:saia': ['Saia', 'comum'], 'calca:social': ['Calça social', 'raro'], 'calca:listrada': ['Calça listrada', 'raro'],
+  'tenis:bota': ['Bota', 'comum'], 'tenis:sandalia': ['Sandália', 'comum'], 'tenis:chinelo': ['Chinelo', 'comum'], 'tenis:bota_dobrada': ['Bota dobrada', 'raro'], 'tenis:botina': ['Botina', 'raro'], 'tenis:armadura': ['Calçado da paz', 'lendario'],
+  'bone:bandana': ['Bandana', 'comum'], 'bone:faixa': ['Faixa', 'comum'], 'bone:boina': ['Boina de couro', 'comum'], 'bone:capuz': ['Capuz', 'raro'], 'bone:chapeu': ['Chapéu-coco', 'raro'], 'bone:cartola': ['Cartola', 'epico'], 'bone:tiara': ['Tiara', 'epico'], 'bone:capacete': ['Capacete da salvação', 'epico'], 'bone:coroa': ['Coroa', 'lendario']
 };
-const SOD_APAR = { pele: '#f1c27d', cabelo: 'curto', corCabelo: '#4a2c17', blusa: 'lisa', corBlusa: '#2b6cb0', calca: 'comprida', corCalca: '#334155', tenis: 'basico', corTenis: '#f8fafc', bone: 'nenhum', corBone: '#c0392b' };
-const SOD_CAB = ['curto', 'longo', 'moicano', 'careca', 'coque', 'cacheado', 'topete'];
+// Aparência do personagem (arte LPC): cores são nomes de paletas (pele, cabelo, tecido)
+const SOD_APAR = { corpo: 'm', pele: 'light', olhos: 'blue', cabelo: 'curto', corCabelo: 'chestnut', blusa: 'camiseta', corBlusa: 'blue', calca: 'calca', corCalca: 'navy', tenis: 'sapato', corTenis: 'brown', bone: 'nenhum', corBone: 'red' };
+const SOD_CAB = ['curto', 'repartido', 'franja', 'rabo', 'coque', 'cacheado', 'afro', 'longo', 'chanel', 'moicano', 'raspado', 'espetado', 'tranca', 'pixie', 'dreads', 'ondulado', 'careca'];
+const SOD_LIVRE = { blusa: ['camiseta'], calca: ['calca'], tenis: ['sapato'], bone: ['nenhum'] };
+function sodAparOk_(a) { const o = Object.assign({}, SOD_APAR); Object.keys(SOD_APAR).forEach(function (k) { const v = String(a && a[k] !== undefined ? a[k] : ''); if (/^[a-z_]{1,20}$/.test(v)) o[k] = v; }); if (o.corpo !== 'm' && o.corpo !== 'f') o.corpo = 'm'; return o; }
 function sodTab_() {
   try { return table_('Sod'); } catch (e) { if (e.code !== 'SETUP') throw e; ensureSheet_(ss_(), 'Sod', SHEETS.Sod); return table_('Sod'); }
 }
@@ -2202,7 +2205,7 @@ function sodComunhao_(mid, ate) { // presença em célula/evento nos 7 dias que 
 function sodNivelPedra_(p) { return p <= 0 ? 0 : p < 400 ? 1 : p < 1000 ? 2 : p < 1800 ? 3 : p < 2500 ? 4 : 5; }
 function sodEst_(r) {
   return { Pedra: Number(r.Pedra || 0), Livre: r.Livre === '1', LivreDesde: r.LivreDesde || '', UltimoDia: r.UltimoDia || '', Seq: Number(r.Seq || 0), Atraso: Number(r.Atraso || 0), Caixas: Number(r.Caixas || 0), CaixaBonus: r.CaixaBonus || '', Orou: r.Orou || '', MinAte: Number(r.MinAte || 0), Golpes: Number(r.Golpes || 0), Soltos: Number(r.Soltos || 0), Abertas: Number(r.Abertas || 0),
-    itens: jparse_(r.Itens, []), equip: jparse_(r.Equip, {}), apar: Object.assign({}, SOD_APAR, jparse_(r.Aparencia, {})), sala: jparse_(r.Sala, {}) };
+    itens: jparse_(r.Itens, []), equip: jparse_(r.Equip, {}), apar: sodAparOk_(jparse_(r.Aparencia, {})), sala: jparse_(r.Sala, {}) };
 }
 function sodSalva_(t, r, e) {
   writeRow_(t, r._row, { Pedra: String(Math.round(e.Pedra)), Livre: e.Livre ? '1' : '0', LivreDesde: e.LivreDesde, UltimoDia: e.UltimoDia, Seq: String(e.Seq), Atraso: String(e.Atraso), Caixas: String(e.Caixas), CaixaBonus: e.CaixaBonus, Orou: e.Orou, MinAte: String(e.MinAte), Golpes: String(Math.round(e.Golpes)), Soltos: String(e.Soltos), Abertas: String(e.Abertas), Itens: JSON.stringify(e.itens), Equip: JSON.stringify(e.equip), Aparencia: JSON.stringify(e.apar), Sala: JSON.stringify(e.sala) });
@@ -2281,12 +2284,13 @@ function sodDescartar_(d, u) {
 }
 function sodAparencia_(d, u) {
   return withLock_(function () {
-    const s = sodSync_(u.membroId), e = s.e, src = d.aparencia || {}, cor = function (x, pad) { return /^#[0-9a-fA-F]{6}$/.test(String(x)) ? String(x) : pad; };
-    const tem = function (slot, est, livre) { return livre.indexOf(est) >= 0 || e.itens.some(function (x) { return x.k === 'rou' && x.c === slot + ':' + est; }); };
-    const a = Object.assign({}, e.apar);
-    ['pele', 'corCabelo', 'corBlusa', 'corCalca', 'corTenis', 'corBone'].forEach(function (k) { if (src[k] !== undefined) a[k] = cor(src[k], a[k]); });
+    const s = sodSync_(u.membroId), e = s.e, src = d.aparencia || {}, a = Object.assign({}, e.apar), nome = function (x) { const v = String(x === undefined ? '' : x); return /^[a-z_]{1,20}$/.test(v) ? v : ''; };
+    const tem = function (slot, est) { return SOD_LIVRE[slot].indexOf(est) >= 0 || e.itens.some(function (x) { return x.k === 'rou' && x.c === slot + ':' + est; }); };
+    ['pele', 'corCabelo', 'corBlusa', 'corCalca', 'corTenis', 'corBone'].forEach(function (k) { const v = nome(src[k]); if (v) a[k] = v; });
+    if (src.corpo === 'm' || src.corpo === 'f') a.corpo = src.corpo;
+    if (['blue', 'brown', 'green', 'gray'].indexOf(src.olhos) >= 0) a.olhos = src.olhos;
     if (SOD_CAB.indexOf(src.cabelo) >= 0) a.cabelo = src.cabelo;
-    [['blusa', ['lisa']], ['calca', ['comprida']], ['tenis', ['basico']], ['bone', ['nenhum']]].forEach(function (p) { const v = clip_(src[p[0]], 20); if (v && /^[a-z_]+$/.test(v) && tem(p[0], v, p[1])) a[p[0]] = v; });
+    ['blusa', 'calca', 'tenis', 'bone'].forEach(function (k) { const v = nome(src[k]); if (v && tem(k, v)) a[k] = v; });
     e.apar = a; sodSalva_(s.t, s.r, e); return sodView_(u.membroId, s);
   });
 }

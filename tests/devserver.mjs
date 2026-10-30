@@ -2,7 +2,7 @@
 import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url'; import { makeEnv } from './mock_env.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'); const e = makeEnv();
 e.run(`criarAdmin('admin@zoe.com','SenhaForte123','Pastor Admin')`);
-const PORT = Number(process.env.PORT || 8799); const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json', '.css': 'text/css' };
+const PORT = Number(process.env.PORT || 8799); const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json', '.css': 'text/css', '.png': 'image/png', '.txt': 'text/plain; charset=utf-8' };
 http.createServer((req, res) => {
   const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*' };
   if (req.method === 'OPTIONS') { res.writeHead(204, cors); return res.end(); }

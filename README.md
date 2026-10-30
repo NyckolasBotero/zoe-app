@@ -229,3 +229,15 @@ O **Sod** ("Intimidade e conselho do Senhor") é um orbe de luz branca: o Espír
 - **Caixas**: 1 por dia de acesso e +1 ao cumprir as missões. Dão ferramentas (pá, picareta, marreta, martelete, furadeira, britadeira) com atributos sorteados e raridade (comum, raro, épico, lendário) ou roupas.
 - **Personagem**: cabelo, cores e estilos de blusa, calça, tênis e boné (estilos novos vêm das caixas).
 - No modo demonstração (sem servidor) há botões para simular a passagem dos dias.
+
+### Arte do Sod (assets livres LPC)
+
+A arte do Sod vem de projetos livres do **Liberated Pixel Cup**, todos no mesmo estilo (pixel art 32 px, vista de cima em 3/4):
+
+- **Personagem** (corpo, cabeça, olhos, 16 cabelos, roupas, calçados, chapéus; picareta, pá e martelo): [Universal LPC Spritesheet Character Generator](https://github.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Character-Generator) — CC-BY-SA / GPL / OGA-BY (cada arquivo tem seus autores).
+- **Sala, móveis e rochas**: [LPC Revised](https://github.com/ElizaWy/LPC) — CC-BY 3.0 / OGA-BY 3.0.
+- **Furadeira e britadeira**: desenhadas para o app imitando o estilo LPC (paleta de metal recolorível).
+
+As licenças exigem **créditos visíveis**: o app mostra o link "Créditos" na aba do Sod, que abre `assets/sod/CREDITS.txt` com todos os autores.
+
+Os arquivos ficam em `assets/sod/` (`char.png`, `tools.png`, `room.png`, `manifest.json`). As cores (pele, cabelo, roupas, metal das ferramentas) são trocadas no navegador pelas paletas do LPC. Para regerar (por exemplo, para incluir novas roupas), clone os dois repositórios em `/tmp/lpc` e `/tmp/elz` e rode `python3 tools/sod_assets.py`.
