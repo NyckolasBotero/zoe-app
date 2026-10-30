@@ -314,3 +314,12 @@ Em **Projeção › Layout padrão** (abas *Músicas* e *Versículos*) e no layo
 
 ### Zoe arrastável
 Segure e arraste a Zoe para qualquer posição da tela (mouse ou toque); a posição fica guardada no aparelho e o balão/chat se ajustam para não sair da tela.
+
+## Notificações no aparelho, instalação do app e Sod
+- **Instalar e ativar:** ao entrar, o app mostra um aviso para instalar (iPhone: Compartilhar › Adicionar à Tela de Início; Android/computador: botão Instalar) e depois para ativar as notificações. "Agora não" dispensa só até o próximo login.
+- **Envio:** Web Push pelo servidor `relay/` (veja relay/README.md). Para funcionar, o relay precisa estar cadastrado em Studio Zoe › Lives › Plataformas e conexão. Rode `setup()` para criar a aba `PushSubs` e o gatilho diário.
+- **Chat:** mensagem para quem está offline vira pop-up com o nome de quem enviou.
+- **Missões do Sod:** lembrete diário às 18h (função `lembreteMissoes`, gatilho criado pelo `setup()`).
+- **Cutscene do Sod:** 8 cenas com a história (luz, pedras, personagem, missões, ausência, libertação, domingo); abre na primeira visita ao Sod e pode ser revista em *Ver a história*.
+- **Liga/desliga do Sod:** Administração › Definições de Parâmetros › *Sod (gamificação)* (chave `SodAtivo`).
+- **Início:** a edição de blocos (arrastar, tamanho em colunas × linhas) funciona também no celular; blocos com fotos (Próximos eventos, Próximo evento) têm controle de altura da foto e de ajuste (preencher ou inteira).

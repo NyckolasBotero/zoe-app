@@ -7,6 +7,8 @@ services:
       RELAY_TOKEN: ${RELAY_TOKEN}
       PUBLIC_URL: https://${RELAY_DOMAIN}
       ALLOWED_ORIGIN: ${SITE_ORIGIN:-*}
+      DATA_DIR: /data
+    volumes: [relay_data:/data]
     expose: ["8787"]
   caddy:
     image: caddy:2
@@ -16,3 +18,4 @@ services:
     volumes: [caddy_data:/data]
 volumes:
   caddy_data:
+  relay_data:

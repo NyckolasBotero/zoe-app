@@ -3,7 +3,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg ca-certi
 WORKDIR /app
 COPY package.json ./
 RUN npm install --omit=dev
-COPY server.mjs ./
+COPY server.mjs push.mjs ./
 ENV PORT=8787
 EXPOSE 8787
 CMD ["node", "server.mjs"]

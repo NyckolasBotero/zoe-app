@@ -8,12 +8,14 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { WebSocketServer } from 'ws';
+import { carregaVapid, envia } from './push.mjs';
 
 const PORT = Number(process.env.PORT) || 8787, TOKEN = process.env.RELAY_TOKEN || '', FFMPEG = process.env.FFMPEG || 'ffmpeg';
 const ORIGIN = process.env.ALLOWED_ORIGIN || '*', PUBLIC = (process.env.PUBLIC_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
 const HLS_DIR = process.env.HLS_DIR || path.join(os.tmpdir(), 'zoe-hls');
 if (!TOKEN) { console.error('Defina RELAY_TOKEN (um segredo longo) antes de iniciar.'); process.exit(1); }
 fs.mkdirSync(HLS_DIR, { recursive: true });
+const VAPID = carregaVapid(process.env.VAPID_FILE || path.join(process.env.DATA_DIR || '.', 'vapid.json'));
 
 const safeEq = (a, b) => { const x = Buffer.from(String(a)), y = Buffer.from(String(b)); return x.length === y.length && crypto.timingSafeEqual(x, y); };
 const cors = (res) => { res.setHeader('Access-Control-Allow-Origin', ORIGIN); res.setHeader('Access-Control-Allow-Headers', '*'); };
@@ -22,6 +24,14 @@ const mime = { '.m3u8': 'application/vnd.apple.mpegurl', '.ts': 'video/mp2t', '.
 const server = http.createServer((req, res) => {
   cors(res); if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
   const u = new URL(req.url, 'http://x');
+  if (u.pathname === '/vapid') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ key: VAPID.pub })); }
+  if (u.pathname === '/push' && req.method === 'POST') {
+    const au = String(req.headers.authorization || '').replace(/^Bearer\s+/i, ''); if (!safeEq(au, TOKEN)) { res.writeHead(401); return res.end(); }
+    let b = ''; req.on('data', (c) => { b += c; if (b.length > 2e6) req.destroy(); });
+    req.on('end', async () => { try { const l = (JSON.parse(b).envios || []).slice(0, 300); const out = await Promise.all(l.map((e) => envia(e.sub, e.payload, VAPID)));
+      res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ res: out })); } catch { res.writeHead(400); res.end(); } });
+    return;
+  }
   if (u.pathname === '/saude') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ok: true, ao_vivo: !!atual })); }
   const m = /^\/hls\/([a-f0-9]{16})\/([\w.-]+)$/.exec(u.pathname);
   if (m) { const f = path.join(HLS_DIR, m[1], m[2]); if (!f.startsWith(HLS_DIR) || !fs.existsSync(f)) { res.writeHead(404); return res.end(); }

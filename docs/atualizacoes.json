@@ -13,7 +13,12 @@
    "Administração › Membros: depois de inativa, a pessoa pode ser excluída permanentemente (confirmando o nome).",
    "Projeção: fundo editável para músicas e versículos — degradê, cor sólida, imagem (biblioteca ou nova), vídeo em loop, escurecer, e animações (luzes, aurora, ondas, céu estrelado).",
    "Layout padrão agora tem abas Músicas e Versículos; o versículo herda o das músicas e muda só o que você alterar. O Estúdio ao vivo espelha esses fundos.",
-   "Zoe agora pode ser arrastada para qualquer posição da tela (celular e computador); a posição fica guardada no aparelho."
+   "Zoe agora pode ser arrastada para qualquer posição da tela (celular e computador); a posição fica guardada no aparelho.",
+   "Notificações no aparelho (pop-up): o app pede para instalar (iPhone: Compartilhar › Adicionar à Tela de Início) e para ativar as notificações sempre que a pessoa entra e ainda não fez. Chegam avisos da igreja, mensagens do chat e missões do Sod.",
+   "Cutscene do Sod: a história da luz, das pedras e do personagem em 8 cenas; abre na primeira visita e pode ser revista em \"Ver a história\".",
+   "Lembrete diário às 18h das missões do Sod que faltam cumprir.",
+   "Administração › Definições: botão para ativar/desativar o Sod para todos (o progresso fica guardado).",
+   "Início: o administrador agora edita blocos também no celular e define a altura das fotos dos carrosséis (arrastando) e se a foto preenche ou aparece inteira."
   ],
   "data": "30/10/2026",
   "v": "1.28"

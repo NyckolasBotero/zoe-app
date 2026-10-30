@@ -51,5 +51,21 @@
    "docs/atualizacoes.json: notas de atualização; docs/documentacao.json: esta documentação. O build.py embute os dois no app e atribui a versão às notas novas (sem campo v).",
    "README.md traz o detalhe técnico de cada recurso."
   ]
+ },
+ {
+  "t": "Notificações no aparelho e instalação do app",
+  "itens": [
+   "Ao entrar, quem ainda não instalou o app recebe o convite para instalar (iPhone: só funciona instalado na Tela de Início); depois, o pedido para ativar as notificações.",
+   "O envio usa Web Push pelo servidor relay (relay/push.mjs, chave VAPID em vapid.json). O Apps Script chama /push quando cria uma notificação e quando alguém recebe mensagem de chat offline.",
+   "Rotas: getPushKey, savePushSub, delPushSub. Aba PushSubs guarda os aparelhos; inscrições expiradas (404/410) são descartadas.",
+   "Lembrete das missões do Sod: gatilho diário às 18h criado pelo setup() (lembreteMissoes)."
+  ]
+ },
+ {
+  "t": "Sod: cutscene e liga/desliga",
+  "itens": [
+   "Cutscene com a história do Sod (SC em src/app.html), mostrada na primeira visita e reabrível.",
+   "Config SodAtivo (Administração › Definições): desligado, o Sod some do perfil, do Início e da Zoe e o servidor recusa as ações."
+  ]
  }
 ]

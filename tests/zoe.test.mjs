@@ -1106,3 +1106,39 @@ test('Sod: loja com talentos e várias peças ao mesmo tempo', () => {
   // mineração rende talentos
   setSod({ Talentos: '0', Pedra: '700', MinAte: String(Date.now() - 20000), Atraso: '0' }); v = e.call('sodGet', {}, t).data; assert.ok(v.talentos >= 0 && v.pedra < 700);
 });
+test('Sod liga/desliga, lembrete diário das missões, Web Push (inscrição, chat) e tamanho das fotos do Início', () => {
+  const { e, adm, tok, mk } = boot(); mk('ana@zoe.com', 'membro'); mk('beto@zoe.com', 'membro'); const A = tok('ana@zoe.com', 'Temp12345'), B = tok('beto@zoe.com', 'Temp12345');
+  const idDe = (t) => e.call('me', {}, t).data.usuario.membroId || e.call('me', {}, t).data.membro.MembroID;
+  const notifs = (t) => e.call('listNotifications', {}, t).data.itens;
+  // Sod: ligado por padrão, só a administração desliga
+  assert.equal(e.run('publicConfig_().sodAtivo'), true); assert.equal(e.call('sodGet', {}, A).data.pedra, 700);
+  assert.equal(e.call('saveConfig', { SodAtivo: false }, A).error.code, 'FORBIDDEN');
+  // lembrete diário: ana tem Sod e não cumpriu as missões do dia
+  e.run('lembreteMissoes()'); let n = notifs(A).filter((x) => x.tipo === 'sod_missao'); assert.equal(n.length, 1); assert.match(n[0].texto, /ler a Bíblia/); assert.equal(notifs(B).filter((x) => x.tipo === 'sod_missao').length, 0, 'beto nunca abriu o Sod');
+  assert.ok(e.call('saveConfig', { SodAtivo: false }, adm).ok); assert.equal(e.run('publicConfig_().sodAtivo'), false);
+  assert.equal(e.call('sodGet', {}, A).data.off, true); assert.equal(e.call('sodAbrir', {}, A).error.code, 'FORBIDDEN');
+  e.run('lembreteMissoes()'); assert.equal(notifs(A).filter((x) => x.tipo === 'sod_missao').length, 1, 'desligado: não lembra');
+  assert.ok(e.call('saveConfig', { SodAtivo: true }, adm).ok); assert.equal(e.call('sodGet', {}, A).data.pedra, 700, 'o progresso continua guardado');
+  // Web Push: sem relay não há chave; com relay, a chave vem do servidor e fica guardada
+  assert.equal(e.call('getPushKey', {}, A).data.key, '');
+  const KEY = 'B' + 'x'.repeat(86); const calls = [];
+  e.run(`UrlFetchApp = { fetch: (u, o) => { CALLS.push({ u, o }); if (/vapid$/.test(u)) return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ key: '${KEY}' }) }; const b = JSON.parse(o.payload); return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ res: b.envios.map((x, i) => ({ endpoint: x.sub.endpoint, status: /morto/.test(x.sub.endpoint) ? 410 : 201 })) }) }; } }; var CALLS = [];`);
+  assert.ok(e.call('saveLiveCfg', { relay: { url: 'wss://relay.zoe.com/live', token: 'seg' } }, adm).ok);
+  assert.equal(e.call('getPushKey', {}, A).data.key, KEY); assert.equal(e.call('getPushKey', {}, B).data.key, KEY);
+  const sub = (ep) => ({ endpoint: ep, keys: { p256dh: 'p'.repeat(87), auth: 'a'.repeat(22) } });
+  assert.equal(e.call('savePushSub', { endpoint: 'http://x.com/a', keys: sub('x').keys }, A).error.code, 'VALIDATION'); assert.equal(e.call('savePushSub', { endpoint: 'https://push.example.com/abc123456', keys: { p256dh: '!', auth: 'a' } }, A).error.code, 'VALIDATION');
+  assert.ok(e.call('savePushSub', sub('https://push.example.com/ana-1'), A).ok); assert.ok(e.call('savePushSub', sub('https://push.example.com/ana-1'), A).ok, 'idempotente'); assert.ok(e.call('savePushSub', sub('https://push.example.com/morto-ana'), A).ok);
+  assert.equal(e.run('table_("PushSubs").rows.length'), 2);
+  // chat: Ana está offline (sem presença) → pop-up com o nome de quem mandou; quem está online não recebe pop-up
+  const ana = idDe(A); e.run('CALLS.length = 0');
+  assert.ok(e.call('sendChat', { para: ana, texto: 'Oi, Ana! Tudo bem?' }, adm).ok);
+  const p = e.run('CALLS.filter(c => /push$/.test(c.u))'); assert.equal(p.length, 1); const env = JSON.parse(p[0].o.payload).envios; assert.equal(env.length, 2); assert.match(env[0].payload.title, /Pastor|admin/i); assert.equal(env[0].payload.body, 'Oi, Ana! Tudo bem?'); assert.equal(p[0].o.headers.Authorization, 'Bearer seg');
+  assert.equal(e.run('table_("PushSubs").rows.filter(r=>r.Endpoint).length'), 1, 'endpoint expirado (410) é descartado');
+  e.call('getChat', { com: idDe(adm) }, A); e.run('CALLS.length = 0'); assert.ok(e.call('sendChat', { para: ana, texto: 'Segunda' }, adm).ok); assert.equal(e.run('CALLS.filter(c => /push$/.test(c.u))').length, 0, 'online: sem pop-up');
+  // notificações guardadas também viram pop-up
+  e.run('CALLS.length = 0'); e.run(`notify_('${ana}', 'aniv', 'Aniversário', 'Hoje é dia de festa'); pushFlush_()`); assert.equal(e.run('CALLS.filter(c => /push$/.test(c.u))').length, 1);
+  assert.ok(e.call('delPushSub', { endpoint: 'https://push.example.com/ana-1' }, A).ok); assert.equal(e.run('table_("PushSubs").rows.filter(r=>r.Endpoint).length'), 0);
+  // Início: altura e ajuste das fotos
+  const lay = e.call('saveHomeLayout', { layout: [{ id: 'eventos', w: 8, h: 14, fh: 9999, fit: 'contain' }, { id: 'proxevento', w: 4, h: 13, fh: 'x', fit: 'xx' }, { id: 'hero', w: 5, h: 5, fh: 120 }] }, adm).data.layout;
+  assert.equal(lay[0].fh, 700); assert.equal(lay[0].fit, 'contain'); assert.equal(lay[1].fh, undefined); assert.equal(lay[1].fit, undefined); assert.equal(lay[2].fh, 120);
+});

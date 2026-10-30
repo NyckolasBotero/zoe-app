@@ -52,6 +52,6 @@ with sync_playwright() as p:
     # --- restaurar o padrão
     adm.click('button:has-text("Personalizar início")'); adm.click('button:has-text("Restaurar padrão")'); adm.wait_for_selector('.hltb',state='detached'); assert 'domingo' in ordem(adm) and span(adm,'proxevento')=='span 3'
     # --- celular: uma coluna
-    m=entra(b,'admin@zoe.com','SenhaForte123',vw=390); m.evaluate("go('feed')"); m.wait_for_selector('#hgrid .hb'); assert not m.query_selector('button:has-text("Personalizar início")'); m.screenshot(path=OUT+'/inicio_mobile.png',full_page=True)
+    m=entra(b,'admin@zoe.com','SenhaForte123',vw=390); m.evaluate("go('feed')"); m.wait_for_selector('#hgrid .hb'); assert m.query_selector('button:has-text("Personalizar início")'); m.screenshot(path=OUT+'/inicio_mobile.png',full_page=True)
     print('ERRS',errs); assert not errs
 print('OK')

@@ -1,0 +1,19 @@
+/* Zoe: notificações no aparelho (Web Push). Sem cache de páginas: o app continua sempre atualizado. */
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+self.addEventListener('push', (e) => {
+  let d = {}; try { d = e.data ? e.data.json() : {}; } catch (x) { d = { title: 'Zoe', body: e.data ? e.data.text() : '' }; }
+  e.waitUntil((async () => {
+    const cs = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    if (cs.some((c) => c.visibilityState === 'visible' && c.focused)) return; // quem está com o app aberto já vê dentro dele
+    await self.registration.showNotification(d.title || 'Ministério Zoe', { body: d.body || '', tag: d.tag || 'zoe', icon: 'assets/img/icon-192.png', badge: 'assets/img/icon-192.png', data: { url: d.url || './' }, renotify: true });
+  })());
+});
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close(); const url = (e.notification.data && e.notification.data.url) || './';
+  e.waitUntil((async () => {
+    const cs = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const c of cs) { if ('focus' in c) { await c.focus(); return; } }
+    if (self.clients.openWindow) await self.clients.openWindow(url);
+  })());
+});

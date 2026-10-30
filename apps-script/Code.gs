@@ -91,12 +91,13 @@ const SHEETS = {
   MuralFam: ['ItemID', 'Pagina', 'Tipo', 'X', 'Y', 'W', 'R', 'Z', 'Texto', 'Cor', 'Foto', 'Dados', 'CriadoEm'],
   FamiliaMidia: ['MidiaID', 'Tipo', 'Url', 'Foto', 'Legenda', 'Ordem', 'Ativo'],
   Videos: ['VideoID', 'Titulo', 'Url', 'Ordem', 'Status', 'Tipo', 'AoVivo', 'Hls', 'Links'],
+  PushSubs: ['SubID', 'MembroID', 'Endpoint', 'P256dh', 'Auth', 'Agente', 'CriadoEm'],
   LiveComent: ['ComID', 'LiveID', 'MembroID', 'Nome', 'Texto', 'Ts'],
   Permissoes: ['Papel'].concat(PERMS),
   Config: ['Chave', 'Valor'],
   Auditoria: ['Data', 'Usuario', 'Acao', 'Alvo', 'Resultado']
 };
-const DEFAULT_CONFIG = { NomeIgreja: 'Ministério Cristão Zoe', WhatsApp: '', LocalNome: 'Templo Zoe', LocalEndereco: '', LinkMapa: 'https://maps.app.goo.gl/RZWqr2FkSz8aux2t7', ColunasExtras: '["Quem convidou"]', CanalYoutube: 'https://youtube.com/@zoe.digital.1', FrequenciasParaMembro: '4', LojaWhatsApp: '', FrequentadorPct: '70', FrequentadorJanela: '8', CelulasParaSupervisor: '0', SeedFiel: '0' };
+const DEFAULT_CONFIG = { NomeIgreja: 'Ministério Cristão Zoe', WhatsApp: '', LocalNome: 'Templo Zoe', LocalEndereco: '', LinkMapa: 'https://maps.app.goo.gl/RZWqr2FkSz8aux2t7', ColunasExtras: '["Quem convidou"]', CanalYoutube: 'https://youtube.com/@zoe.digital.1', FrequenciasParaMembro: '4', LojaWhatsApp: '', FrequentadorPct: '70', FrequentadorJanela: '8', CelulasParaSupervisor: '0', SeedFiel: '0', SodAtivo: '1' };
 const DEFAULT_MIN = ['Gourmet', 'Infantil', 'Mídia', 'Música', 'Som', 'Limpeza', 'Recepção'];
 
 class ApiError extends Error { constructor(code, msg) { super(msg); this.code = code; } }
@@ -120,6 +121,7 @@ function setup() {
     appendRow_(table_('InsigniaDefs'), { DefID: 'IBFIEL', Nome: 'Usuário Fiel', Descricao: 'Entre no aplicativo todos os dias, sem faltar.', Estilo: 'bordado', Forma: 'esc', Cor1: '#a5602c', Cor2: '#f8e1c9', Icone: 'flame', Texto: '', XP: '50', Criterio: JSON.stringify({ tipo: 'sequencia', n: 1 }), Niveis: JSON.stringify(nv), Ativo: '1', CriadoPor: 'sistema' });
     writeRow_(table_('Config'), cf._row, { Valor: '1' });
   }
+  instalaGatilhos_();
   pastaLivros_(); // pede a autorização do Google Drive (PDFs da biblioteca)
   Logger.log('Setup concluído. Planilha: https://docs.google.com/spreadsheets/d/' + id + '  (mantenha o compartilhamento RESTRITO)');
 }
@@ -307,12 +309,12 @@ function greet_(d, u) {
 }
 /* ============================== CONFIG PÚBLICA ============================== */
 function cfgMap_() { const o = {}; table_('Config').rows.forEach(function (r) { o[r.Chave] = r.Valor; }); return o; }
-function publicConfig_() { const c = cfgMap_(); return { nomeIgreja: c.NomeIgreja, whatsapp: c.WhatsApp, localNome: c.LocalNome, localEndereco: c.LocalEndereco, linkMapa: c.LinkMapa || '', colunasExtras: jparse_(c.ColunasExtras, []), canalYoutube: c.CanalYoutube || '', lojaWhatsapp: c.LojaWhatsApp || '', frequentadorPct: Number(c.FrequentadorPct) || 70, frequentadorJanela: Number(c.FrequentadorJanela) || 8, celulasParaSupervisor: Math.max(0, Number(c.CelulasParaSupervisor) || 0), frequenciasParaMembro: freqMembro_(), notifTipos: notifTipos_(c), homeLayout: homeLayoutOk_(jparse_(c.HomeLayout, null)) }; }
+function publicConfig_() { const c = cfgMap_(); return { nomeIgreja: c.NomeIgreja, whatsapp: c.WhatsApp, localNome: c.LocalNome, localEndereco: c.LocalEndereco, linkMapa: c.LinkMapa || '', colunasExtras: jparse_(c.ColunasExtras, []), canalYoutube: c.CanalYoutube || '', lojaWhatsapp: c.LojaWhatsApp || '', frequentadorPct: Number(c.FrequentadorPct) || 70, frequentadorJanela: Number(c.FrequentadorJanela) || 8, celulasParaSupervisor: Math.max(0, Number(c.CelulasParaSupervisor) || 0), frequenciasParaMembro: freqMembro_(), sodAtivo: c.SodAtivo !== '0', notifTipos: notifTipos_(c), homeLayout: homeLayoutOk_(jparse_(c.HomeLayout, null)) }; }
 const HOME_BLOCOS = ['hero', 'escalas', 'eventos', 'corrida', 'mural', 'proxevento', 'celula', 'aniv', 'domingo', 'cultos', 'testemunhos', 'noticias'];
 /* Layout do Início definido pelo administrador: lista de blocos {id,on,w (2-12 colunas),h (3-80 linhas)} */
 function homeLayoutOk_(l) {
   if (!Array.isArray(l)) return null; const seen = {}, out = [];
-  l.slice(0, 40).forEach(function (b) { if (!b || HOME_BLOCOS.indexOf(b.id) < 0 || seen[b.id]) return; seen[b.id] = 1; const w = Math.round(Number(b.w)), h = Math.round(Number(b.h)); out.push({ id: b.id, on: b.on !== false, w: Math.max(2, Math.min(12, isFinite(w) ? w : 6)), h: Math.max(3, Math.min(80, isFinite(h) ? h : 12)) }); });
+  l.slice(0, 40).forEach(function (b) { if (!b || HOME_BLOCOS.indexOf(b.id) < 0 || seen[b.id]) return; seen[b.id] = 1; const w = Math.round(Number(b.w)), h = Math.round(Number(b.h)); const fh = Math.round(Number(b.fh)), it = { id: b.id, on: b.on !== false, w: Math.max(2, Math.min(12, isFinite(w) ? w : 6)), h: Math.max(3, Math.min(80, isFinite(h) ? h : 12)) }; if (isFinite(fh) && fh > 0) it.fh = Math.max(80, Math.min(700, fh)); if (b.fit === 'contain' || b.fit === 'cover') it.fit = b.fit; out.push(it); });
   return out.length ? out : null;
 }
 function saveHomeLayout_(d, u) {
@@ -332,6 +334,7 @@ function saveConfig_(d, u) {
       if (d[q[0]] === undefined) return; const n = Number(d[q[0]]); if (!isFinite(n) || n < q[1] || n > q[2] || Math.round(n) !== n) throw new ApiError('VALIDATION', q[3]);
       const r0 = t.rows.filter(function (x) { return x.Chave === q[0]; })[0]; if (r0) writeRow_(t, r0._row, { Valor: String(n) }); else appendRow_(t, { Chave: q[0], Valor: String(n) });
     });
+    if (d.SodAtivo !== undefined) { const v = d.SodAtivo === false || d.SodAtivo === '0' || d.SodAtivo === 0 ? '0' : '1', r1 = t.rows.filter(function (x) { return x.Chave === 'SodAtivo'; })[0]; if (r1) writeRow_(t, r1._row, { Valor: v }); else appendRow_(t, { Chave: 'SodAtivo', Valor: v }); audit_(u.email, 'SOD_ATIVO', v, 'OK'); }
     if (d.FrequenciasParaMembro !== undefined) {
       const n = Number(d.FrequenciasParaMembro); if (!isFinite(n) || n < 1 || n > 50 || Math.round(n) !== n) throw new ApiError('VALIDATION', 'Informe um número inteiro de 1 a 50.');
       const r0 = t.rows.filter(function (x) { return x.Chave === 'FrequenciasParaMembro'; })[0]; if (r0) writeRow_(t, r0._row, { Valor: String(n) }); else appendRow_(t, { Chave: 'FrequenciasParaMembro', Valor: String(n) });
@@ -601,7 +604,8 @@ function resumoPessoa_(mid, celulaId) {
     eventos: table_('Inscricoes').rows.filter(function (r) { return r.MembroID === mid && ev[r.EventoID]; }).slice(0, 5).map(function (r) { return ev[r.EventoID]; }) };
 }
 /* ===== notificações (antes "alertas"): resultado das decisões vai para quem pediu e para o líder ===== */
-function notify_(mid, tipo, titulo, texto, ref) { if (!mid) return; appendRow_(table_('Notificacoes'), { NotifID: id_('NT'), MembroID: mid, Tipo: tipo, Titulo: clip_(titulo, 160), Texto: clip_(texto, 400), Ref: clip_(ref, 40), Data: now_(), Lida: '0' }); }
+const PUSHQ_ = [];
+function notify_(mid, tipo, titulo, texto, ref) { if (!mid) return; PUSHQ_.push({ m: mid, t: titulo, b: texto, k: tipo }); appendRow_(table_('Notificacoes'), { NotifID: id_('NT'), MembroID: mid, Tipo: tipo, Titulo: clip_(titulo, 160), Texto: clip_(texto, 400), Ref: clip_(ref, 40), Data: now_(), Lida: '0' }); }
 function listNotifications_(d, u) {
   try { escAvisos_(u); } catch (e) { }
   const l = table_('Notificacoes').rows.filter(function (n) { return n.MembroID === u.membroId; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).slice(0, 60);
@@ -1622,7 +1626,9 @@ function sendChat_(d, u) {
     if (para === u.membroId) throw new ApiError('VALIDATION', 'Você não pode conversar consigo mesmo.'); if (!usuarioAtivo_(para)) throw new ApiError('NOT_FOUND', 'Essa pessoa não está disponível para conversar.');
     const t = table_('ChatMsgs'), agora = Date.now(); let n = 0; for (let i = t.rows.length - 1; i >= 0 && i > t.rows.length - 200; i--) { const r = t.rows[i]; if (r.De === u.membroId && agora - Number(r.Ts) < 60000) n++; }
     if (n >= CHAT_POR_MIN) throw new ApiError('RATE', 'Muitas mensagens seguidas. Espere um minuto.');
-    CacheService.getScriptCache().remove('t:' + u.membroId + ':' + para); const id = id_('MS'); appendRow_(t, { MsgID: id, ConvID: convId_(u.membroId, para), De: u.membroId, Para: para, Texto: texto, Ts: String(agora), Lida: '0' }); return { id: id, ts: agora };
+    CacheService.getScriptCache().remove('t:' + u.membroId + ':' + para); const id = id_('MS'); appendRow_(t, { MsgID: id, ConvID: convId_(u.membroId, para), De: u.membroId, Para: para, Texto: texto, Ts: String(agora), Lida: '0' });
+    if (!presDe_(para, {}).online) { const eu = table_('Membros').rows.filter(function (x) { return x.MembroID === u.membroId; })[0]; PUSHQ_.push({ m: para, t: (eu && (eu.Simples || eu.Apelido || eu.Nome)) || 'Nova mensagem', b: texto.length > 90 ? texto.slice(0, 90) + '…' : texto, k: 'chat' }); }
+    return { id: id, ts: agora };
   });
 }
 function msgOut_(r, eu) { return { id: r.MsgID, minha: r.De === eu, texto: r.Texto, ts: Number(r.Ts), lida: r.Lida === '1' }; }
@@ -2492,6 +2498,7 @@ function sodSalva_(t, r, e) {
 }
 // Sincroniza o Sod: vira o dia (atrasos, pedras, domingo), entrega a caixa do dia, minera o que passou e confere a liberdade
 function sodSync_(mid, salvar) {
+  if (!sodAtivo_()) throw new ApiError('FORBIDDEN', 'O Sod está desativado pela administração.');
   const t = sodTab_(), hoje = today_(), agora = Date.now(); let r = t.rows.filter(function (x) { return x.MembroID === mid; })[0];
   if (!r) {
     const ini = { i: 'INICIAL', k: 'ferr', c: 'picareta', r: 'comum', v: 0.8, d: 2, q: 0 };
@@ -2539,7 +2546,8 @@ function sodView_(mid, s) {
   return { hoje: hoje, domingo: dom === 0, pedra: Math.round(e.Pedra), pedraMax: SOD_MAX, nivelPedra: sodNivelPedra_(e.Pedra), atraso: e.Atraso, nerf: nerf, sentado: e.Atraso >= 3 && !e.Livre, seq: e.Seq + (s.mis.completo ? 1 : 0), seqMeta: SOD_SEMANA, livre: e.Livre, livreDesde: e.LivreDesde, soltos: e.Soltos,
     caixas: e.Caixas, abertas: e.Abertas, golpes: Math.round(e.Golpes), taxa: sodRound_(sodTaxa_(it) * nerf, 2), ferramenta: it, itens: e.itens, equip: e.equip, aparencia: e.apar, sala: e.sala, missoes: missoes, aviso: s.aviso, bag: SOD_BAG, talentos: Math.floor(e.Talentos), loja: { precos: SOD_PRECO, caixa: SOD_CAIXA_PRECO, roupas: SOD_ROUPAS } };
 }
-function sodGet_(d, u) { return withLock_(function () { const s = sodSync_(u.membroId); return sodView_(u.membroId, s); }); }
+function sodAtivo_() { return cfgMap_().SodAtivo !== '0'; }
+function sodGet_(d, u) { if (!sodAtivo_()) return { off: true }; return withLock_(function () { const s = sodSync_(u.membroId); return sodView_(u.membroId, s); }); }
 function sodAbrir_(d, u) {
   return withLock_(function () {
     const s = sodSync_(u.membroId), e = s.e; if (e.Caixas < 1) throw new ApiError('VALIDATION', 'Você não tem caixas para abrir hoje.');
@@ -2630,6 +2638,7 @@ const ROUTES = {
   listScales: { auth: 'any', fn: listScales_ }, claimScale: { auth: 'any', write: 1, fn: claimScale_ }, saveScale: { auth: 'any', write: 1, fn: saveScale_ }, rescheduleScale: { auth: 'any', write: 1, fn: rescheduleScale_ }, deleteScale: { auth: 'any', write: 1, fn: deleteScale_ }, respondScale: { auth: 'any', write: 1, fn: respondScale_ }, requestSwap: { auth: 'any', write: 1, fn: requestSwap_ }, answerSwap: { auth: 'any', write: 1, fn: answerSwap_ }, markScale: { auth: 'any', write: 1, fn: markScale_ }, requestJoin: { auth: 'any', write: 1, fn: requestJoin_ }, decideJoin: { auth: 'any', write: 1, fn: decideJoin_ },
   listSongs: { auth: 'any', fn: listSongs_ }, saveSong: { auth: 'any', write: 1, fn: saveSong_ }, deleteSong: { auth: 'any', write: 1, fn: deleteSong_ }, saveSongDefault: { auth: 'any', write: 1, fn: saveSongDefault_ }, searchLyrics: { auth: 'any', fn: searchLyrics_ }, importLyrics: { auth: 'any', fn: importLyrics_ },
   boot: { auth: 'any', fn: boot_ },
+  getPushKey: { auth: 'any', fn: getPushKey_ }, savePushSub: { auth: 'any', write: 1, fn: savePushSub_ }, delPushSub: { auth: 'any', write: 1, fn: delPushSub_ },
   sodGet: { auth: 'any', write: 1, fn: sodGet_ }, sodAbrir: { auth: 'any', write: 1, fn: sodAbrir_ }, sodEquipar: { auth: 'any', write: 1, fn: sodEquipar_ }, sodDescartar: { auth: 'any', write: 1, fn: sodDescartar_ }, sodAparencia: { auth: 'any', write: 1, fn: sodAparencia_ }, sodOrar: { auth: 'any', write: 1, fn: sodOrar_ }, sodComprar: { auth: 'any', write: 1, fn: sodComprar_ },
   listMarks: { auth: 'any', fn: listMarks_ }, saveMark: { auth: 'any', write: 1, fn: saveMark_ }, saveNote: { auth: 'any', write: 1, fn: saveNote_ }, listCultoNotes: { auth: 'any', fn: listCultoNotes_ }, getMural: { auth: 'any', fn: getMural_ },
   listInsigniaDefs: { auth: 'any', fn: listInsigniaDefs_ }, saveInsigniaDef: { auth: 'any', write: 1, fn: saveInsigniaDef_ }, grantBadge: { auth: 'any', write: 1, fn: grantBadge_ }, logServico: { auth: 'any', write: 1, fn: logServico_ }, listServicos: { auth: 'any', fn: listServicos_ }, searchPeople: { auth: 'any', fn: findPeople_ }, sendChat: { auth: 'any', write: 1, fn: sendChat_ }, getChat: { auth: 'any', fn: getChat_ }, chatRead: { auth: 'any', write: 1, fn: chatRead_ }, chatTyping: { auth: 'any', fn: chatTyping_ }, listChats: { auth: 'any', fn: listChats_ }, getCertLayout: { auth: 'any', fn: getCertLayout_ }, saveCertLayout: { auth: 'any', write: 1, fn: saveCertLayout_ }, previewCert: { auth: 'any', fn: previewCert_ }, revokeCert: { auth: 'any', write: 1, fn: revokeCert_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
@@ -2666,5 +2675,49 @@ function doPost(e) {
     else { console.error(err && err.stack || err); out = { ok: false, error: { code: 'ERROR', message: 'Erro inesperado. Tente novamente.' } }; }
   }
   TMEMO_ = null;
+  try { pushFlush_(); } catch (err2) { console.error(err2 && err2.stack || err2); }
   return json_(out);
+}
+
+
+/* ===== Notificações no aparelho (Web Push via servidor relay) e lembrete diário das missões do Sod ===== */
+function pushRelayHttp_() { const u = liveCfgLer_().relay; if (!u.url || !u.token) return null; return { base: u.url.replace(/^ws/, 'http').replace(/\/+$/, ''), token: u.token }; }
+function getPushKey_() {
+  const r = pushRelayHttp_(); if (!r) return { key: '' };
+  const c = cfgMap_(); if (c.PushPub) return { key: c.PushPub };
+  try { const x = UrlFetchApp.fetch(r.base + '/vapid', { muteHttpExceptions: true }); if (x.getResponseCode() !== 200) return { key: '' }; const k = String(JSON.parse(x.getContentText()).key || ''); if (!/^[A-Za-z0-9_-]{60,120}$/.test(k)) return { key: '' };
+    withLock_(function () { const t = table_('Config'), r0 = t.rows.filter(function (q) { return q.Chave === 'PushPub'; })[0]; if (r0) writeRow_(t, r0._row, { Valor: k }); else appendRow_(t, { Chave: 'PushPub', Valor: k }); }); return { key: k }; } catch (e) { return { key: '' }; }
+}
+function savePushSub_(d, u) {
+  const ep = String(d.endpoint || ''), k = d.keys || {}, p = String(k.p256dh || ''), a = String(k.auth || '');
+  if (!/^https:\/\/[^\s"'<>]{10,600}$/.test(ep) || !/^[A-Za-z0-9_-]{20,200}$/.test(p) || !/^[A-Za-z0-9_-]{10,60}$/.test(a)) throw new ApiError('VALIDATION', 'Inscrição inválida.');
+  return withLock_(function () {
+    const t = table_('PushSubs'), r = t.rows.filter(function (x) { return x.Endpoint === ep; })[0], v = { MembroID: u.membroId, Endpoint: ep, P256dh: p, Auth: a, Agente: clip_(d.agente, 80) };
+    if (r) writeRow_(t, r._row, v); else { const mine = t.rows.filter(function (x) { return x.MembroID === u.membroId; }); if (mine.length >= 8) writeRow_(t, mine[0]._row, Object.assign({ SubID: mine[0].SubID, CriadoEm: now_() }, v)); else appendRow_(t, Object.assign({ SubID: id_('PS'), CriadoEm: now_() }, v)); }
+    return { ok: true };
+  });
+}
+function delPushSub_(d, u) { return withLock_(function () { const t = table_('PushSubs'), r = t.rows.filter(function (x) { return x.Endpoint === String(d.endpoint || '') && x.MembroID === u.membroId; })[0]; if (r) writeRow_(t, r._row, { MembroID: '', Endpoint: '' }); return { ok: true }; }); }
+function pushFlush_() {
+  if (!PUSHQ_.length) return; const q = PUSHQ_.splice(0, PUSHQ_.length), rl = pushRelayHttp_(); if (!rl) return;
+  let subs; try { subs = table_('PushSubs').rows; } catch (e) { return; } if (!subs.length) return;
+  const por = {}; subs.forEach(function (s) { if (s.MembroID && s.Endpoint) (por[s.MembroID] = por[s.MembroID] || []).push(s); });
+  const envios = []; q.forEach(function (n) { (por[n.m] || []).forEach(function (s) { envios.push({ sub: { endpoint: s.Endpoint, keys: { p256dh: s.P256dh, auth: s.Auth } }, payload: { title: clip_(n.t, 80), body: clip_(n.b, 160), tag: n.k, url: './' } }); }); });
+  if (!envios.length) return;
+  const r = UrlFetchApp.fetch(rl.base + '/push', { method: 'post', contentType: 'application/json', headers: { Authorization: 'Bearer ' + rl.token }, payload: JSON.stringify({ envios: envios.slice(0, 300) }), muteHttpExceptions: true });
+  if (r.getResponseCode() !== 200) return;
+  const res = jparse_(r.getContentText(), {}).res || [], mortos = {}; res.forEach(function (x) { if (x && (x.status === 404 || x.status === 410)) mortos[x.endpoint] = 1; });
+  if (Object.keys(mortos).length) withLock_(function () { const t = table_('PushSubs'); t.rows.forEach(function (s) { if (mortos[s.Endpoint]) writeRow_(t, s._row, { MembroID: '', Endpoint: '' }); }); });
+}
+// Roda todos os dias (gatilho criado no setup): avisa quem tem missões do Sod pendentes
+function lembreteMissoes() {
+  if (!sodAtivo_()) return; const hoje = today_(); let n = 0;
+  sodTab_().rows.forEach(function (r) { if (!r.MembroID) return; const m = sodMiss_(r.MembroID, hoje, r.Orou); if (m.completo) return;
+    const falta = []; if (!m.biblia) falta.push('ler a Bíblia'); if (!m.oracao) falta.push('orar'); notify_(r.MembroID, 'sod_missao', 'Missões do Sod de hoje 🪨', 'Faltam: ' + (falta.join(' e ') || 'completar o dia') + '. Cada dia firme quebra mais pedras.', hoje); n++; });
+  pushFlush_(); Logger.log('Lembretes de missão: ' + n);
+}
+function instalaGatilhos_() {
+  if (typeof ScriptApp === 'undefined') return;
+  const tem = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'lembreteMissoes'; });
+  if (!tem) ScriptApp.newTrigger('lembreteMissoes').timeBased().everyDays(1).atHour(18).create();
 }
