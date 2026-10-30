@@ -509,6 +509,7 @@ html.theming *,html.theming *::before,html.theming *::after{transition:backgroun
 @media(max-width:700px){.chatp{inset:0;width:auto;border-radius:0;top:0;bottom:0}}
 .esc-l.meu{border-left:4px solid var(--verde,#1f7a4d)}
 .mm-st{aspect-ratio:16/9;width:100%;border-radius:12px;overflow:hidden;background:#000}.mm-th{border:2px solid var(--line,#ddd)}
+.tl-sl{white-space:pre-wrap;font-size:clamp(22px,6vw,34px);font-weight:800;text-align:center;background:#111;color:#fff;border-radius:16px;padding:22px 14px;min-height:150px;display:grid;place-items:center;line-height:1.3}.tl-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}.tl-b{min-height:92px;font-size:22px}.tl-p{min-height:56px}.tl-chips{display:flex;flex-wrap:wrap;gap:6px}.tl-chips .chip{min-width:40px;text-align:center;cursor:pointer}
 .mm-ed{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}.mm-pj{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:14px;align-items:start}
 .mm-sticky{position:sticky;top:8px}.mm-ths{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mm-lst{display:flex;flex-direction:column;gap:6px;max-height:70vh;overflow:auto}
 .mm-it{display:flex;gap:10px;align-items:center;width:100%;cursor:pointer;text-align:left}.mm-it.on,.mm-s.on{outline:2px solid var(--verde,#1f7a4d)}
@@ -2687,6 +2688,8 @@ async function mmApi(a,d){if(ONLINE)return api(a,d);
  if(a==='saveSongDefault'){S.mmPad=d.layout||{};save();return{ok:true}}
  if(a==='searchLyrics'||a==='importLyrics'){try{if(a==='searchLyrics'){const j=await(await fetch('https://api.lyrics.ovh/suggest/'+encodeURIComponent(d.q))).json();return{itens:(j.data||[]).slice(0,12).map(x=>({titulo:x.title_short||x.title,artista:x.artist.name}))}}
    const j=await(await fetch('https://api.lyrics.ovh/v1/'+encodeURIComponent(d.artista)+'/'+encodeURIComponent(d.titulo))).json();if(!j.lyrics)throw 0;return{titulo:d.titulo,artista:d.artista,letra:String(j.lyrics).replace(/\r/g,'').replace(/^Paroles de la chanson[^\n]*\n+/i,'').replace(/\n{3,}/g,'\n\n').trim()}}catch(e){throw new Error('A busca de letras só funciona no app publicado. Cole a letra manualmente.')}}
+ if(a==='getTelao')return Object.assign({v:0,songId:'',i:0,pausado:false,ativa:false,by:''},S.mmTel||{});
+ if(a==='setTelao'){const t=S.mmTel=Object.assign({v:0,songId:'',i:0,pausado:false,ativa:false,by:''},S.mmTel||{});if(d.songId!==undefined){if(d.songId!==t.songId)t.i=0;t.songId=d.songId}if(d.i!==undefined)t.i=d.i;if(d.pausado!==undefined)t.pausado=!!d.pausado;if(d.ativa!==undefined)t.ativa=!!d.ativa;t.by=d.by||'';t.v++;save();return Object.assign({},t)}
  return null}
 async function mmCarrega(){try{const r=await mmApi('listSongs',{});MM.songs=r.itens;MM.padrao=r.padrao||{}}catch(e){MM.songs=[];toast(e.message)}if(R.r==='multimidia')render()}
 function mmSub(k){mmPjLimpaRs();MM.sub=k;if(k!=='editor')MM.ed=null;render()}
@@ -2749,13 +2752,41 @@ function mmUsaPadrao(on){MM.ed.layout=on?null:JSON.parse(JSON.stringify(MM.padra
 function mmPadraoHTML(){if(MM.songs===null){mmCarrega();return '<div class="skel" aria-busy="true"></div>'}
  return `<div class="mm-ed"><div class="card flat col"><h2 style="margin:0">Layout padrão</h2><p class="muted sm" style="margin:0">Vale para toda música sem layout próprio.</p><div class="mm-form">${mmLayoutForm()}</div><div><button class="btn" onclick="mmSalvaPadrao()">Salvar layout padrão</button></div></div><div class="card flat col mm-sticky"><h3 style="margin:0">Prévia</h3><div id="mmprev" class="mm-st"></div></div></div>`}
 function multimidiaHTML(){if(!multiOk())return '<div class="card flat"><h2>Área do Multimídia</h2><p class="muted">Esta área é do ministério Som. Peça ao supervisor para te incluir.</p></div>';
- const T=[['lista','Músicas'],['padrao','Layout padrão']];let b='';
- if(MM.sub==='editor'&&MM.ed)b=mmEditorHTML();else if(MM.sub==='projetor'&&MM.pj)b=mmProjetorHTML();else{if(MM.sub!=='padrao')MM.sub='lista';b=(MM.sub==='padrao'?mmPadraoHTML():mmListaHTML())}
+ const T=[['lista','Músicas'],['remoto','Controle remoto'],['padrao','Layout padrão']];let b='';
+ if(MM.sub==='editor'&&MM.ed)b=mmEditorHTML();else if(MM.sub==='projetor'&&MM.pj)b=mmProjetorHTML();else{if(MM.sub!=='padrao'&&MM.sub!=='remoto')MM.sub='lista';b=(MM.sub==='padrao'?mmPadraoHTML():MM.sub==='remoto'?mmRemotoHTML():mmListaHTML())}
  const tb=(MM.sub==='editor'||MM.sub==='projetor')?'':tabs(T,MM.sub,'multimidia').replace(/sub\('multimidia','(\w+)'\)/g,"mmSub('$1')");
  return `<div class="row"><h1 style="flex:1">Multimídia</h1></div>${tb}<div class="col" style="gap:12px">${b}</div>`}
 
+/* ---------- Controle remoto do telão: o celular passa os slides, o projetor do computador acompanha ---------- */
+const TLC=Math.random().toString(36).slice(2,8),TL={v:0,st:null,pt:0,seq:0,q:''};
+function telaoPub(){if(!MM.pj)return;clearTimeout(TL.pt);TL.pt=setTimeout(async()=>{const p=MM.pj;if(!p)return;try{const r=await mmApi('setTelao',{songId:p.song.id,i:p.i,pausado:!!p.pausado,ativa:mmAtiva(),by:TLC});TL.v=r.v}catch(e){}},120)}
+async function telaoTick(){
+ if(MM.pj){try{const r=await mmApi('getTelao',{}),p=MM.pj;if(!p||r.v<=TL.v)return;TL.v=r.v;if(r.by===TLC)return;let ch=false;
+   if(r.songId&&r.songId!==p.song.id){const s=(MM.songs||[]).find(x=>x.id===r.songId);if(s){p.song=s;p.slides=mmSplit(s.letra);ch=true}}
+   const i=Math.max(0,Math.min(p.slides.length-1,r.i));if(i!==p.i){p.i=i;ch=true}if(!!r.pausado!==!!p.pausado){p.pausado=!!r.pausado;ch=true}
+   if(ch){if(R.r==='multimidia'&&MM.sub==='projetor')renderKeep();else mmEnvia()}}catch(e){}return}
+ if(R.r==='multimidia'&&MM.sub==='remoto'&&!document.hidden){try{const r=await mmApi('getTelao',{});if(!TL.st||r.v!==TL.st.v||r.ativa!==TL.st.ativa){TL.st=r;tlDraw()}}catch(e){}}}
+setInterval(telaoTick,1500);
+function tlSong(){const st=TL.st;return st&&(MM.songs||[]).find(x=>x.id===st.songId)||null}
+function tlBox(){const st=TL.st;if(!st)return '<div class="skel" aria-busy="true"></div>';const s=tlSong(),sl=s?mmSplit(s.letra):[],i=Math.max(0,Math.min(st.i||0,sl.length-1));
+ return `<div class="card flat col tl">${st.ativa?'<span class="chip g" style="align-self:flex-start">Telão transmitindo agora</span>':'<span class="chip y" style="align-self:flex-start">O telão ainda não está transmitindo. No computador do projetor: Músicas › Projetar › Iniciar transmissão.</span>'}
+ ${s?`<div><b>${esc(s.titulo)}</b> <span class="muted sm">· slide ${i+1} de ${sl.length}${st.pausado?' · logo na tela (pausado)':''}</span></div><div class="tl-sl" aria-live="polite">${esc(sl[i]||'')}</div><div class="muted sm">Próximo: ${esc((sl[i+1]||'fim da música').split('\n')[0])}</div>
+ <div class="tl-btns"><button class="btn ghost tl-b" onclick="tlGo(-1)" ${i<=0?'disabled':''}>◀ Anterior</button><button class="btn tl-b" onclick="tlGo(1)" ${i>=sl.length-1?'disabled':''}>Próximo ▶</button></div>
+ <button class="btn ${st.pausado?'':'ghost'} tl-p" onclick="tlPausa()">${st.pausado?'▶ Voltar a mostrar a letra':'⏸ Mostrar a logo (pausar)'}</button>
+ <div class="tl-chips" aria-label="Ir para o slide">${sl.map((t,k)=>`<button class="chip ${k===i?'on':''}" onclick="tlPula(${k})" aria-label="Slide ${k+1}">${k+1}</button>`).join('')}</div>`:'<p class="muted">Escolha uma música abaixo para começar.</p>'}</div>`}
+function tlDraw(){const b=document.getElementById('tl_box');if(b)b.innerHTML=tlBox();tlLista()}
+function tlLista(){const el=document.getElementById('tl_lst');if(!el)return;const q=semAc(TL.q||''),cur=TL.st&&TL.st.songId,l=(MM.songs||[]).filter(s=>!q||semAc(s.titulo+' '+(s.artista||'')).includes(q));
+ el.innerHTML=l.length?l.map(s=>`<button class="opt mm-it ${s.id===cur?'on':''}" onclick="tlEscolhe('${s.id}')"><b style="flex:1;text-align:left">${esc(s.titulo)}</b><span class="muted sm">${esc(s.artista||'')}</span></button>`).join(''):'<p class="muted sm">Nenhuma música encontrada.</p>'}
+function mmRemotoHTML(){if(MM.songs===null){mmCarrega();return '<div class="skel" aria-busy="true"></div>'}
+ setTimeout(()=>{telaoTick();tlLista();try{if(navigator.wakeLock&&!TL.wl)navigator.wakeLock.request('screen').then(w=>{TL.wl=w;w.addEventListener('release',()=>TL.wl=null)}).catch(()=>{})}catch(e){}},0);
+ return `<p class="muted sm" style="margin:0">Use no celular para passar os slides. O projetor do computador acompanha em até 2 segundos.</p><div id="tl_box">${tlBox()}</div><div class="card flat col"><h3 style="margin:0">Músicas</h3><input placeholder="Buscar música" value="${esc(TL.q||'')}" oninput="TL.q=this.value;tlLista()" aria-label="Buscar música"><div class="mm-lst" id="tl_lst"></div></div>`}
+async function tlSet(p){const my=++TL.seq,st=TL.st=Object.assign({v:0,songId:'',i:0,pausado:false,ativa:false},TL.st||{},p);tlDraw();try{const r=await mmApi('setTelao',Object.assign({},p,{by:TLC}));if(my===TL.seq){TL.st=r;TL.v=Math.max(TL.v,r.v);tlDraw()}}catch(e){toast(e.message||'Não foi possível enviar ao telão','err')}}
+function tlGo(d){const s=tlSong();if(!s)return;const n=mmSplit(s.letra).length,i=Math.max(0,Math.min(n-1,(TL.st.i||0)+d));tlSet({i,pausado:false});try{navigator.vibrate&&navigator.vibrate(20)}catch(e){}}
+function tlPula(k){tlSet({i:k,pausado:false})}
+function tlPausa(){tlSet({pausado:!TL.st.pausado})}
+function tlEscolhe(id){tlSet({songId:id,i:0,pausado:false})}
 /* projetor */
-function mmProjeta(id){const s=MM.songs.find(x=>x.id===id);if(!s)return;const sl=mmSplit(s.letra);MM.pj={song:s,slides:sl,i:0,pausado:false,ativa:false,modo:''};MM.sub='projetor';render()}
+function mmProjeta(id){const s=MM.songs.find(x=>x.id===id);if(!s)return;const sl=mmSplit(s.letra);MM.pj={song:s,slides:sl,i:0,pausado:false,ativa:false,modo:''};MM.sub='projetor';render();telaoPub()}
 const mmSl=(i)=>{const p=MM.pj,t=p.slides[i];return t===undefined?null:{texto:t,titulo:p.song.titulo,artista:p.song.artista,idx:i}};
 function mmPjHTML_thumb(id,lab){return `<div><div class="muted sm" style="margin-bottom:4px">${lab}</div><div id="${id}" class="mm-st mm-th"></div></div>`}
 function mmProjetorHTML(){const p=MM.pj,at=mmAtiva();
@@ -2769,14 +2800,14 @@ const mmAtiva=()=>!!(MM.pj&&MM.pj.ativa&&MM.win&&!MM.win.closed);
 function mmPjDraw(){const p=MM.pj;if(!p)return;const L=mmEf(p.song.layout),R=MM.rs;if(R.cur)R.cur.set({L,logo:LOGO_D,slide:mmSl(p.i),pausado:false});if(R.prv)R.prv.set({L,logo:LOGO_D,slide:mmSl(p.i-1)});if(R.nxt)R.nxt.set({L,logo:LOGO_D,slide:mmSl(p.i+1)});mmEnvia()}
 function mmEnvia(first){const p=MM.pj;if(!p||!mmAtiva())return;try{MM.win.postMessage({mm:1,L:mmEf(p.song.layout),slide:mmSl(p.i),pausado:p.pausado,logo:first?LOGO_D:undefined},'*')}catch(e){}}
 function mmVai(d){const p=MM.pj;if(!p)return;mmPula(Math.max(0,Math.min(p.slides.length-1,p.i+d)))}
-function mmPula(i){const p=MM.pj;if(!p||i===p.i)return;p.i=i;p.pausado=false;renderKeep();}
+function mmPula(i){const p=MM.pj;if(!p||i===p.i)return;p.i=i;p.pausado=false;renderKeep();telaoPub()}
 function mmSaiProj(){mmPjLimpaRs();MM.sub='lista';MM.pj=null;render()}
-function mmPausa(){const p=MM.pj;p.pausado=!p.pausado;renderKeep()}
-function mmEncerra(){const p=MM.pj;p.pausado=true;mmEnvia();p.ativa=false;toast('Transmissão encerrada. A segunda tela mostra a logo; feche a janela quando quiser.');renderKeep()}
+function mmPausa(){const p=MM.pj;p.pausado=!p.pausado;renderKeep();telaoPub()}
+function mmEncerra(){const p=MM.pj;p.pausado=true;mmEnvia();p.ativa=false;toast('Transmissão encerrada. A segunda tela mostra a logo; feche a janela quando quiser.');renderKeep();telaoPub()}
 async function mmIniciar(){const p=MM.pj;let tela=null,multi=false;
  try{if(window.getScreenDetails){const sd=await Promise.race([window.getScreenDetails(),new Promise((_,no)=>setTimeout(no,1500))]);tela=sd.screens.find(s=>!s.isPrimary)||null;multi=!!tela}else multi=!!(screen&&screen.isExtended)}catch(e){}
  const W=960,H=540,f=tela?`left=${tela.availLeft},top=${tela.availTop},width=${tela.availWidth},height=${tela.availHeight}`:`left=${Math.max(0,Math.round((screen.availWidth-W)/2))},top=${Math.max(0,Math.round((screen.availHeight-H)/2))},width=${W},height=${H}`;
- if(MM.win&&!MM.win.closed){p.ativa=true;p.modo=MM.modo||'janela';p.pausado=false;mmEnvia(true);renderKeep();return}
+ if(MM.win&&!MM.win.closed){p.ativa=true;p.modo=MM.modo||'janela';p.pausado=false;mmEnvia(true);renderKeep();telaoPub();return}
  const w=window.open('','zoe_projecao',f+',popup=yes');if(!w)return toast('O navegador bloqueou a janela. Permita pop-ups para este site e tente de novo.');
  fontsExtra();const fonts=FONTS_X;
  w.document.open();w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Zoe · Projeção</title>${fonts?`${'<'}link rel="stylesheet" href="${fonts}">`:''}${'<'}style>html,body{margin:0;height:100%;background:#000;overflow:hidden}#st{position:absolute;inset:0}#dica{position:fixed;left:50%;bottom:4%;transform:translateX(-50%);background:rgba(0,0,0,.7);color:#fff;font:600 15px Arial;padding:10px 16px;border-radius:12px;opacity:0;transition:opacity .4s;pointer-events:none}${'<'}/style></head><body><div id="st" style="position:absolute;left:0;top:0;right:0;bottom:0"></div><div id="dica">Clique ou aperte F para tela cheia</div><script>const MMR=(${mmRenderer.toString()})();const R=MMR(document.getElementById('st'),{anim:true});let logo='',fsOk=${tela?'true':'false'};
@@ -2789,7 +2820,7 @@ try{window.opener.postMessage({mmOk:1},'*')}catch(e){}<\/script></body></html>`)
  MM.win=w;MM.modo=multi?'segunda tela':'janela na tela principal';p.ativa=true;p.modo=MM.modo;p.pausado=false;
  if(tela){try{w.document.documentElement.requestFullscreen({screen:tela}).catch(()=>{})}catch(e){}}
  MM.ok=false;const t0=Date.now(),iv=setInterval(()=>{if(MM.ok||Date.now()-t0>4000||w.closed){clearInterval(iv);return}mmEnvia(true)},300);
- renderKeep()}
+ renderKeep();telaoPub()}
 addEventListener('message',e=>{if(e.data&&e.data.mmOk){MM.ok=true;mmEnvia(true)}});
 setInterval(()=>{if(MM.pj&&MM.pj.ativa&&MM.win&&MM.win.closed){MM.pj.ativa=false;if(R.r==='multimidia')renderKeep()}},1000);
 addEventListener('keydown',e=>{if(R.r!=='multimidia'||MM.sub!=='projetor'||!MM.pj)return;if(/INPUT|TEXTAREA|SELECT/.test((document.activeElement||{}).tagName))return;if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'){e.preventDefault();mmVai(1)}else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();mmVai(-1)}else if(e.key==='b'||e.key==='B'){if(mmAtiva())mmPausa()}});

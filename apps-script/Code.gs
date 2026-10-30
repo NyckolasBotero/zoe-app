@@ -2185,6 +2185,23 @@ function multiOk_(u) {
   return table_('Interesses').rows.some(function (i) { return i.MembroID === u.membroId && stN_(i.Status) === 'autorizado' && som.indexOf(i.MinisterioID) >= 0; });
 }
 function multiExige_(u) { if (!multiOk_(u)) throw new ApiError('FORBIDDEN', 'A Área do Multimídia é do ministério Som.'); }
+// Controle remoto do telão: o estado (música, slide, pausa) fica no servidor; o celular escreve e o computador do projetor acompanha
+function telaoLer_() { const o = jparse_(cfgMap_().Telao, {}); return { v: Number(o.v) || 0, songId: String(o.songId || ''), i: Math.max(0, Number(o.i) || 0), pausado: !!o.pausado, ativa: !!o.ativa, by: String(o.by || ''), em: o.em || '' }; }
+function getTelao_(d, u) { multiExige_(u); return telaoLer_(); }
+function setTelao_(d, u) {
+  multiExige_(u);
+  return withLock_(function () {
+    const st = telaoLer_();
+    if (d.songId !== undefined) { const id = clip_(d.songId, 30); if (id && !table_('Musicas').rows.some(function (r) { return r.MusicaID === id && r.Ativo !== '0' && r.MusicaID !== 'PADRAO'; })) throw new ApiError('NOT_FOUND', 'Música não encontrada.'); if (id !== st.songId) st.i = 0; st.songId = id; }
+    if (d.i !== undefined) { const n = Math.floor(Number(d.i)); if (!(n >= 0 && n <= 400)) throw new ApiError('VALIDATION', 'Slide inválido.'); st.i = n; }
+    if (d.pausado !== undefined) st.pausado = !!d.pausado;
+    if (d.ativa !== undefined) st.ativa = !!d.ativa;
+    st.by = clip_(d.by, 12); st.v += 1; st.em = now_();
+    const t = table_('Config'), r = t.rows.filter(function (x) { return x.Chave === 'Telao'; })[0], val = JSON.stringify(st);
+    if (r) writeRow_(t, r._row, { Valor: val }); else appendRow_(t, { Chave: 'Telao', Valor: val });
+    return st;
+  });
+}
 function ytOk_(v) { v = clip_(v, 200); if (v && !/^https:\/\/(www\.|m\.)?(youtube\.com|youtu\.be)\//.test(v)) throw new ApiError('VALIDATION', 'O link do YouTube precisa começar com https://youtube.com ou https://youtu.be.'); return v; }
 function songOut_(r, nm) { return { id: r.MusicaID, titulo: r.Titulo, artista: r.Artista, youtube: r.Youtube, letra: r.Letra, layout: jparse_(r.Layout, null), criadoPor: nm[r.CriadoPor] || '', atualizadoPor: nm[r.AtualizadoPor] || '', atualizadoEm: r.AtualizadoEm }; }
 function listSongs_(d, u) {
@@ -2452,7 +2469,7 @@ const ROUTES = {
   listBookComments: { auth: 'any', fn: listBookComments_ }, addBookComment: { auth: 'any', write: 1, fn: addBookComment_ }, deleteBookComment: { auth: 'any', write: 1, fn: deleteBookComment_ },
   listTestimonies: { auth: 'any', fn: listTestimonies_ }, addTestimony: { auth: 'any', write: 1, fn: addTestimony_ }, deleteTestimony: { auth: 'any', write: 1, fn: deleteTestimony_ }, toggleLike: { auth: 'any', write: 1, fn: toggleLike_ },
   saveMinistry: { auth: 'min', write: 1, fn: saveMinistry_ }, deleteMinistry: { auth: 'min', write: 1, fn: deleteMinistry_ }, listInterests: { auth: 'min', fn: listInterests_ },
-  saveConfig: { auth: 'config', write: 1, fn: saveConfig_ }, saveHomeLayout: { auth: 'config', write: 1, fn: saveHomeLayout_ }, saveMural: { auth: 'config', write: 1, fn: saveMural_ }, getAccessRules: { auth: 'config', fn: accessRules_ }, saveAccessRules: { auth: 'config', write: 1, fn: saveAccessRules_ }, saveVideo: { auth: 'config', write: 1, fn: saveVideo_ }, deleteVideo: { auth: 'config', write: 1, fn: deleteVideo_ }, updateVideo: { auth: 'config', write: 1, fn: updateVideo_ },
+  saveConfig: { auth: 'config', write: 1, fn: saveConfig_ }, saveHomeLayout: { auth: 'config', write: 1, fn: saveHomeLayout_ }, saveMural: { auth: 'config', write: 1, fn: saveMural_ }, getTelao: { auth: 'any', fn: getTelao_ }, setTelao: { auth: 'any', write: 1, fn: setTelao_ }, getAccessRules: { auth: 'config', fn: accessRules_ }, saveAccessRules: { auth: 'config', write: 1, fn: saveAccessRules_ }, saveVideo: { auth: 'config', write: 1, fn: saveVideo_ }, deleteVideo: { auth: 'config', write: 1, fn: deleteVideo_ }, updateVideo: { auth: 'config', write: 1, fn: updateVideo_ },
   listUsers: { auth: 'config', fn: listUsers_ }, createUser: { auth: 'config', write: 1, fn: createUser_ }, setUser: { auth: 'config', write: 1, fn: setUser_ }, savePerms: { auth: 'config', write: 1, fn: savePerms_ },
   saveLesson: { auth: 'config', write: 1, fn: saveLesson_ }, getPerms: { auth: 'config', fn: function () { return permMatrix_(); } },
   createCell: { auth: 'celulas', write: 1, fn: createCell_ },

@@ -830,6 +830,18 @@ test('som da conquista por insígnia e por nível; som inválido vira padrão', 
   assert.equal(e.call('listInsigniaDefs', {}, adm).data.defs.find(x => x.titulo === 'Simples').visual.som, '');
 });
 
+test('Telão remoto: só o ministério Som controla; o estado é compartilhado e validado', () => {
+  const { e, adm, tok, mk } = boot(); mk('ana@zoe.com', 'membro'); const A = tok('ana@zoe.com', 'Temp12345');
+  assert.equal(e.call('getTelao', {}, A).error.code, 'FORBIDDEN'); assert.equal(e.call('setTelao', { i: 1 }, A).error.code, 'FORBIDDEN');
+  const m = e.call('saveSong', { titulo: 'Grande é o Senhor', letra: 'a\n\nb\n\nc' }, adm).data.id;
+  assert.equal(e.call('getTelao', {}, adm).data.v, 0);
+  let s = e.call('setTelao', { songId: m, i: 2, pausado: false, ativa: true, by: 'cel1' }, adm).data; assert.equal(s.songId, m); assert.equal(s.i, 2); assert.equal(s.ativa, true); assert.equal(s.v, 1);
+  s = e.call('setTelao', { pausado: true, by: 'pc' }, adm).data; assert.equal(s.i, 2); assert.equal(s.pausado, true); assert.equal(s.by, 'pc'); assert.equal(s.v, 2);
+  assert.equal(e.call('getTelao', {}, adm).data.v, 2);
+  assert.equal(e.call('setTelao', { i: -1 }, adm).error.code, 'VALIDATION'); assert.equal(e.call('setTelao', { songId: 'xx' }, adm).error.code, 'NOT_FOUND');
+  assert.equal(e.call('setTelao', { songId: '' }, adm).data.songId, '');
+});
+
 test('um acesso por pessoa; limpar notificações; notificações definidas pelo adm', () => {
   const { e, adm, tok, mk } = boot(); const id = e.call('saveMember', { membro: { Nome: 'Sem Acesso', Email: 'sem@zoe.com' } }, adm);
   e.run(`appendRow_(table_('Membros'), { MembroID: 'MX1', Nome: 'Maria Cadastro', Simples: 'Maria', Email: 'maria@zoe.com', Status: 'Ativo', EhMembro: '1' })`);
