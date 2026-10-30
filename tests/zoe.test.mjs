@@ -874,3 +874,36 @@ test('insígnias com níveis: sequência de acessos, parâmetros por nível e vi
   const m = e.call('saveInsigniaDef', { titulo: 'Manual', criterio: { tipo: 'manual' }, niveis: [{ n: 1, nome: 'A' }, { n: 2, nome: 'B' }] }, adm).data.id; assert.equal(e.call('grantBadge', { defId: m, membros: [a], nivel: 2 }, adm).data.n, 1);
   assert.ok(e.call('profileView', {}, ta).data.insignias.some(i => i.titulo === 'Manual · B'));
 });
+test('Sod: caixa diária, ferramentas, aparência, atraso e libertação em 7 dias, prisão no domingo', () => {
+  const { e, tok, mk } = boot(); const mid = mk('sod@zoe.com', 'membro'), t = tok('sod@zoe.com', 'Temp12345');
+  const hoje = e.run('today_()'), add = (n) => e.run(`sodAdd_('${hoje}', ${n})`);
+  let v = e.call('sodGet', {}, t).data; assert.equal(v.pedra, 700); assert.equal(v.caixas, 1); assert.equal(v.livre, false); assert.equal(v.ferramenta.c, 'picareta');
+  assert.equal(e.call('sodGet', {}, t).data.caixas, 1, 'não dá outra caixa no mesmo dia');
+  const ab = e.call('sodAbrir', {}, t); assert.ok(ab.ok && ab.data.novo && ab.data.caixas === 0 && ab.data.itens.length === 2);
+  assert.equal(e.call('sodAbrir', {}, t).error.code, 'VALIDATION');
+  const ferr = ab.data.novo.k === 'ferr' ? ab.data.novo : null; if (ferr) assert.equal(e.call('sodEquipar', { id: ferr.i }, t).data.equip.ferr, ferr.i);
+  assert.equal(e.call('sodDescartar', { id: 'INICIAL' }, t).error.code, 'VALIDATION');
+  // aparência: estilo não desbloqueado é recusado; cor inválida ignorada; cabelo livre
+  let a = e.call('sodAparencia', { aparencia: { cabelo: 'moicano', corCabelo: '#112233', bone: 'coroa', corBlusa: 'vermelho' } }, t).data.aparencia;
+  assert.equal(a.cabelo, 'moicano'); assert.equal(a.corCabelo, '#112233'); assert.equal(a.bone, 'nenhum'); assert.equal(a.corBlusa, '#2b6cb0');
+  // mineração por tempo: 10 min fazem a pedra cair; o castigo por dias sem entrar a reduz
+  const setSod = (o) => e.run(`(function(){const t=table_('Sod'),r=t.rows.filter(function(x){return x.MembroID==='${mid}'})[0];writeRow_(t,r._row,${JSON.stringify(o)});})()`);
+  setSod({ MinAte: String(Date.now() - 10000) }); v = e.call('sodGet', {}, t).data; assert.ok(v.pedra < 700 && v.pedra > 0, 'minerou ' + v.pedra);
+  // 2 dias sem entrar: atraso 1 e pedras novas (dia perdido +400; ontem incompleto +250)
+  setSod({ UltimoDia: add(-2), Pedra: '500', MinAte: String(Date.now()), Livre: '0' });
+  v = e.call('sodGet', {}, t).data; assert.equal(v.atraso, 1); assert.ok(v.pedra >= 500 + 400 + 250 - 5); assert.equal(v.nerf, 0.6);
+  // 4 dias sem entrar: o personagem senta (atraso 3) e não minera
+  setSod({ UltimoDia: add(-5), Pedra: '500', Atraso: '0', MinAte: String(Date.now() - 900000) });
+  v = e.call('sodGet', {}, t).data; assert.equal(v.atraso, 3); assert.equal(v.sentado, true); assert.ok(v.pedra >= 500 + 4 * 400);
+  // libertação: pedra zerada + 6 dias completos + hoje completo (Bíblia e oração) → solto
+  setSod({ Pedra: '0', Atraso: '0', Livre: '0', Seq: '6', UltimoDia: hoje, Orou: hoje });
+  e.run(`appendRow_(table_('BibMarcas'),{MembroID:'${mid}',Ref:'JHN:3:16',Cor:'y',Tipo:'marca',Comentario:'',Publico:'0',Data:'${hoje}'})`);
+  v = e.call('sodGet', {}, t).data; assert.equal(v.livre, true); assert.equal(v.soltos, 1);
+  const nt = (tp) => e.sheets.Notificacoes.rows.some(n => n[1] === mid && n[2] === tp); assert.ok(nt('sod_livre'));
+  // domingo: um Sod solto volta a ser preso (simula a última visita no sábado anterior)
+  const sab = (() => { for (let i = 1; i < 8; i++) if (e.run(`sodDow_(sodAdd_('${hoje}', ${-i}))`) === 6) return -i; })(), domOff = sab + 1;
+  if (domOff <= 0) { setSod({ Livre: '1', LivreDesde: add(sab), UltimoDia: add(sab), Seq: '3', Pedra: '0', Atraso: '0' });
+    v = e.call('sodGet', {}, t).data; assert.equal(v.livre, false); assert.ok(v.pedra >= 1200); assert.ok(nt('sod_preso')); }
+  // boot traz o Sod
+  assert.ok(e.call('boot', {}, t).data.sod.itens.length >= 1);
+});

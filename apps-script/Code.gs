@@ -57,6 +57,7 @@ const SHEETS = {
   Escalas: ['EscalaID', 'MinisterioID', 'MembroID', 'Data', 'Hora', 'Funcao', 'Status', 'Motivo', 'TrocaMembroID', 'TrocaEscalaID', 'TrocaMsg', 'OrigemMembroID', 'SerieID', 'CriadoPor', 'ConfirmadoEm', 'Reesc', 'Presente', 'Avisos'],
   EscalaPedidos: ['PedidoID', 'MinisterioID', 'MembroID', 'Data', 'Msg', 'Status', 'DecididoPor', 'DataDecisao', 'CriadoEm'],
   Musicas: ['MusicaID', 'Titulo', 'Artista', 'Youtube', 'Letra', 'Layout', 'CriadoPor', 'CriadoEm', 'AtualizadoPor', 'AtualizadoEm', 'Ativo'],
+  Sod: ['MembroID', 'Pedra', 'Livre', 'LivreDesde', 'UltimoDia', 'Seq', 'Atraso', 'Caixas', 'CaixaBonus', 'Orou', 'MinAte', 'Golpes', 'Soltos', 'Abertas', 'Itens', 'Equip', 'Aparencia', 'Sala'],
   Notificacoes: ['NotifID', 'MembroID', 'Tipo', 'Titulo', 'Texto', 'Ref', 'Data', 'Lida'],
   Uso: ['Mes', 'MembroID', 'Tela', 'Segundos', 'Visitas'],
   Livros: ['LivroID', 'Titulo', 'Autor', 'Descricao', 'Capa', 'ArquivoID', 'Tamanho', 'Status', 'CriadoEm'],
@@ -2148,6 +2149,149 @@ function importLyrics_(d, u) {
 }
 
 
+/* ============================== SOD ADONAI (a vida com Deus, estilo Tamagotchi) ==============================
+   O Sod é um orbe de luz branca (o Espírito Santo no centro). Pedras o cobrem quando a pessoa se afasta; o personagem
+   em pixel art minera com as ferramentas ganhas nas caixas diárias. Tudo é calculado AQUI (o app só desenha). */
+const SOD_MAX = 3000, SOD_INI = 700, SOD_SEMANA = 7, SOD_NERF = [1, 0.6, 0.3, 0], SOD_OFFLINE = 1200, SOD_BAG = 40;
+const SOD_RARS = { comum: 60, raro: 28, epico: 10, lendario: 2 }, SOD_MULT = { comum: 1, raro: 1.4, epico: 2, lendario: 3 };
+const SOD_QUAL = { comum: [0, 5], raro: [5, 12], epico: [12, 22], lendario: [22, 35] };
+const SOD_FERR = {
+  pa: { nome: 'Pá', v: 1.0, d: 2, min: 'comum' }, picareta: { nome: 'Picareta', v: 0.9, d: 3, min: 'comum' }, marreta: { nome: 'Marreta', v: 0.6, d: 8, min: 'comum' },
+  martelete: { nome: 'Martelete', v: 2.2, d: 2, min: 'raro' }, broca: { nome: 'Furadeira de impacto', v: 2.6, d: 2, min: 'epico' }, britadeira: { nome: 'Britadeira', v: 3.0, d: 2.5, min: 'lendario' }
+};
+const SOD_ROUPAS = {
+  'blusa:listras': ['Blusa listrada', 'comum'], 'blusa:xadrez': ['Camisa xadrez', 'comum'], 'blusa:regata': ['Regata', 'comum'], 'blusa:moletom': ['Moletom', 'raro'], 'blusa:jaqueta': ['Jaqueta', 'raro'], 'blusa:colete': ['Colete de mineiro', 'raro'], 'blusa:tunica': ['Túnica de linho', 'epico'], 'blusa:dourada': ['Blusa dourada', 'lendario'],
+  'calca:bermuda': ['Bermuda', 'comum'], 'calca:jogger': ['Calça jogger', 'comum'], 'calca:cargo': ['Calça cargo', 'raro'], 'calca:macacao': ['Macacão', 'raro'],
+  'tenis:cano_alto': ['Tênis cano alto', 'comum'], 'tenis:esportivo': ['Tênis esportivo', 'comum'], 'tenis:bota': ['Botina de obra', 'raro'], 'tenis:dourado': ['Tênis dourado', 'lendario'],
+  'bone:bone': ['Boné', 'comum'], 'bone:aba_reta': ['Boné aba reta', 'comum'], 'bone:touca': ['Touca', 'comum'], 'bone:capacete': ['Capacete com lanterna', 'raro'], 'bone:coroa': ['Coroa de luz', 'lendario']
+};
+const SOD_APAR = { pele: '#f1c27d', cabelo: 'curto', corCabelo: '#4a2c17', blusa: 'lisa', corBlusa: '#2b6cb0', calca: 'comprida', corCalca: '#334155', tenis: 'basico', corTenis: '#f8fafc', bone: 'nenhum', corBone: '#c0392b' };
+const SOD_CAB = ['curto', 'longo', 'moicano', 'careca', 'coque', 'cacheado', 'topete'];
+function sodTab_() {
+  try { return table_('Sod'); } catch (e) { if (e.code !== 'SETUP') throw e; ensureSheet_(ss_(), 'Sod', SHEETS.Sod); return table_('Sod'); }
+}
+function sodAdd_(iso, n) { const p = iso.split('-'), d = new Date(Date.UTC(Number(p[0]), Number(p[1]) - 1, Number(p[2]) + n)); return d.toISOString().slice(0, 10); }
+function sodDow_(iso) { const p = iso.split('-'); return new Date(Date.UTC(Number(p[0]), Number(p[1]) - 1, Number(p[2]))).getUTCDay(); }
+function sodDifDias_(a, b) { const f = function (s) { const p = s.split('-'); return Date.UTC(Number(p[0]), Number(p[1]) - 1, Number(p[2])); }; return Math.round((f(b) - f(a)) / 86400000); }
+function sodSorteio_(pesos) { const ks = Object.keys(pesos), tot = ks.reduce(function (a, k) { return a + pesos[k]; }, 0); let x = Math.random() * tot; for (let i = 0; i < ks.length; i++) { x -= pesos[ks[i]]; if (x < 0) return ks[i]; } return ks[0]; }
+function sodRound_(x, n) { const k = Math.pow(10, n); return Math.round(x * k) / k; }
+// Uma ferramenta nova: tipo sorteado entre os que a raridade permite, atributos variam ±15%
+function sodFerramenta_(rar, tipo) {
+  const ordem = ['comum', 'raro', 'epico', 'lendario'], ok = Object.keys(SOD_FERR).filter(function (k) { return ordem.indexOf(SOD_FERR[k].min) <= ordem.indexOf(rar); });
+  const k = tipo || ok[Math.floor(Math.random() * ok.length)], f = SOD_FERR[k], m = SOD_MULT[rar], j = function () { return 0.85 + Math.random() * 0.3; }, q = SOD_QUAL[rar];
+  return { i: id_('IT'), k: 'ferr', c: k, r: rar, v: sodRound_(f.v * Math.sqrt(m) * j(), 2), d: sodRound_(f.d * m * j(), 1), q: Math.round(q[0] + Math.random() * (q[1] - q[0])) };
+}
+function sodRoupa_(rar, tem) {
+  const l = Object.keys(SOD_ROUPAS).filter(function (k) { return SOD_ROUPAS[k][1] === rar && tem.indexOf(k) < 0; }); if (!l.length) return null;
+  return { i: id_('IT'), k: 'rou', c: l[Math.floor(Math.random() * l.length)], r: rar };
+}
+function sodTaxa_(it) { return it ? it.v * it.d * (1 + it.q / 100) : 0; }
+// Missões do dia verificadas nos dados que já existem (nada de “confie em mim” além da oração, que a pessoa marca)
+function sodMiss_(mid, dia, orou) {
+  const dd = function (x) { return String(x || '').slice(0, 10) === dia; };
+  const biblia = table_('BibMarcas').rows.some(function (r) { return r.MembroID === mid && dd(r.Data); }) || table_('CorridaLeitura').rows.some(function (r) { return r.MembroID === mid && dd(r.Data); });
+  const anotar = table_('BibMarcas').rows.some(function (r) { return r.MembroID === mid && dd(r.Data) && String(r.Comentario || '').trim(); }) || table_('Posts').rows.some(function (r) { return r.AutorID === mid && r.Tipo === 'nota' && dd(r.Data); });
+  const oracao = orou === dia || table_('Oracoes').rows.some(function (r) { return r.MembroID === mid && dd(r.Data); });
+  const entrou = table_('XpLog').rows.some(function (r) { return r.MembroID === mid && r.Ref === 'dia:' + dia; }) || dia === today_();
+  return { entrar: entrou, biblia: biblia, oracao: oracao, anotar: anotar, completo: entrou && biblia && oracao };
+}
+function sodComunhao_(mid, ate) { // presença em célula/evento nos 7 dias que terminam em “ate” (inclusive)
+  const de = sodAdd_(ate, -6), ok = function (x) { const s = String(x || '').slice(0, 10); return s >= de && s <= ate; };
+  return table_('Presencas').rows.some(function (r) { return r.MembroID === mid && ok(r.Data); }) || table_('EventoPresenca').rows.some(function (r) { return r.MembroID === mid && ok(r.Data); });
+}
+function sodNivelPedra_(p) { return p <= 0 ? 0 : p < 400 ? 1 : p < 1000 ? 2 : p < 1800 ? 3 : p < 2500 ? 4 : 5; }
+function sodEst_(r) {
+  return { Pedra: Number(r.Pedra || 0), Livre: r.Livre === '1', LivreDesde: r.LivreDesde || '', UltimoDia: r.UltimoDia || '', Seq: Number(r.Seq || 0), Atraso: Number(r.Atraso || 0), Caixas: Number(r.Caixas || 0), CaixaBonus: r.CaixaBonus || '', Orou: r.Orou || '', MinAte: Number(r.MinAte || 0), Golpes: Number(r.Golpes || 0), Soltos: Number(r.Soltos || 0), Abertas: Number(r.Abertas || 0),
+    itens: jparse_(r.Itens, []), equip: jparse_(r.Equip, {}), apar: Object.assign({}, SOD_APAR, jparse_(r.Aparencia, {})), sala: jparse_(r.Sala, {}) };
+}
+function sodSalva_(t, r, e) {
+  writeRow_(t, r._row, { Pedra: String(Math.round(e.Pedra)), Livre: e.Livre ? '1' : '0', LivreDesde: e.LivreDesde, UltimoDia: e.UltimoDia, Seq: String(e.Seq), Atraso: String(e.Atraso), Caixas: String(e.Caixas), CaixaBonus: e.CaixaBonus, Orou: e.Orou, MinAte: String(e.MinAte), Golpes: String(Math.round(e.Golpes)), Soltos: String(e.Soltos), Abertas: String(e.Abertas), Itens: JSON.stringify(e.itens), Equip: JSON.stringify(e.equip), Aparencia: JSON.stringify(e.apar), Sala: JSON.stringify(e.sala) });
+}
+// Sincroniza o Sod: vira o dia (atrasos, pedras, domingo), entrega a caixa do dia, minera o que passou e confere a liberdade
+function sodSync_(mid, salvar) {
+  const t = sodTab_(), hoje = today_(), agora = Date.now(); let r = t.rows.filter(function (x) { return x.MembroID === mid; })[0];
+  if (!r) {
+    const ini = { i: 'INICIAL', k: 'ferr', c: 'picareta', r: 'comum', v: 0.8, d: 2, q: 0 };
+    appendRow_(t, { MembroID: mid, Pedra: String(SOD_INI), Livre: '0', Seq: '0', Atraso: '0', Caixas: '0', Itens: JSON.stringify([ini]), Equip: JSON.stringify({ ferr: 'INICIAL' }), Aparencia: JSON.stringify(SOD_APAR), MinAte: String(agora), UltimoDia: '' });
+    r = table_('Sod').rows.filter(function (x) { return x.MembroID === mid; })[0];
+  }
+  const e = sodEst_(r), aviso = []; let preso = false;
+  if (e.UltimoDia !== hoje) {
+    if (e.UltimoDia) {
+      const m0 = sodMiss_(mid, e.UltimoDia, e.Orou);
+      if (m0.completo) { e.Seq++; e.Atraso = Math.max(0, e.Atraso - 1); } else { e.Seq = 0; e.Pedra += 250; }
+      let d = e.UltimoDia, n = Math.min(60, sodDifDias_(e.UltimoDia, hoje));
+      for (let i = 1; i <= n; i++) {
+        d = sodAdd_(e.UltimoDia, i);
+        if (d < hoje) { e.Atraso = Math.min(3, e.Atraso + 1); e.Pedra += 400; e.Seq = 0; }
+        if (sodDow_(d) === 0) { // domingo: fecha a semana e prende o Sod de novo se estava solto
+          if (!sodComunhao_(mid, sodAdd_(d, -1))) { e.Pedra += 500; aviso.push('semana'); }
+          if (e.Livre) { e.Livre = false; e.LivreDesde = ''; e.Seq = 0; e.Pedra = Math.max(e.Pedra, 1200); preso = true; }
+        }
+      }
+    }
+    e.Pedra = Math.min(SOD_MAX, e.Pedra); e.UltimoDia = hoje; e.Caixas++; e.MinAte = agora;
+    if (preso) notify_(mid, 'sod_preso', 'O Sod foi preso de novo 🪨', 'Domingo ele voltou para dentro das pedras. Entre todos os dias e cumpra as missões por 7 dias para libertá-lo outra vez!', 'sod:' + hoje);
+  }
+  if (!e.Livre) { // mineração: tempo desde a última visita (até 20 min), com o castigo por dias sem entrar
+    const seg = Math.max(0, Math.min(SOD_OFFLINE, (agora - e.MinAte) / 1000)), it = e.itens.filter(function (x) { return x.i === e.equip.ferr; })[0] || e.itens.filter(function (x) { return x.k === 'ferr'; })[0];
+    const hp = seg * sodTaxa_(it) * SOD_NERF[Math.min(3, e.Atraso)]; if (hp > 0 && e.Pedra > 0) { e.Pedra = Math.max(0, e.Pedra - hp); e.Golpes += seg * (it ? it.v : 0) * SOD_NERF[Math.min(3, e.Atraso)]; }
+  }
+  e.MinAte = agora;
+  const mis = sodMiss_(mid, hoje, e.Orou);
+  if (mis.completo && e.CaixaBonus !== hoje) { e.CaixaBonus = hoje; e.Caixas++; aviso.push('bonus'); }
+  if (!e.Livre && e.Pedra <= 0 && e.Seq + (mis.completo ? 1 : 0) >= SOD_SEMANA) {
+    e.Livre = true; e.LivreDesde = hoje; e.Soltos++; awardXp_(mid, 'sod:livre:' + hoje, 50, 'Sod libertado'); notify_(mid, 'sod_livre', 'O Sod está livre! ✨', 'Sete dias firmes com Deus: a luz saiu das pedras e agora brinca com o seu personagem. Domingo ele pode ser preso de novo, continue entrando!', 'sod:' + hoje); aviso.push('livre');
+  }
+  if (salvar !== false) sodSalva_(t, r, e);
+  return { t: t, r: r, e: e, mis: mis, aviso: aviso };
+}
+function sodView_(mid, s) {
+  const e = s.e, hoje = today_(), it = e.itens.filter(function (x) { return x.i === e.equip.ferr; })[0] || null, nerf = SOD_NERF[Math.min(3, e.Atraso)];
+  const com = sodComunhao_(mid, hoje), dom = sodDow_(hoje);
+  const missoes = [
+    { k: 'entrar', t: 'Entrar no app hoje', ok: true, g: 'dia' }, { k: 'biblia', t: 'Ler a Bíblia (marcar versículo ou capítulo)', ok: s.mis.biblia, g: 'dia' },
+    { k: 'oracao', t: 'Orar hoje (toque em “Já orei”)', ok: s.mis.oracao, g: 'dia' }, { k: 'anotar', t: 'Escrever uma anotação ou devocional', ok: s.mis.anotar, g: 'bonus' },
+    { k: 'comunhao', t: 'Ir à célula ou ao culto nesta semana', ok: com, g: 'semana' }];
+  return { hoje: hoje, domingo: dom === 0, pedra: Math.round(e.Pedra), pedraMax: SOD_MAX, nivelPedra: sodNivelPedra_(e.Pedra), atraso: e.Atraso, nerf: nerf, sentado: e.Atraso >= 3 && !e.Livre, seq: e.Seq + (s.mis.completo ? 1 : 0), seqMeta: SOD_SEMANA, livre: e.Livre, livreDesde: e.LivreDesde, soltos: e.Soltos,
+    caixas: e.Caixas, abertas: e.Abertas, golpes: Math.round(e.Golpes), taxa: sodRound_(sodTaxa_(it) * nerf, 2), ferramenta: it, itens: e.itens, equip: e.equip, aparencia: e.apar, sala: e.sala, missoes: missoes, aviso: s.aviso, bag: SOD_BAG };
+}
+function sodGet_(d, u) { return withLock_(function () { const s = sodSync_(u.membroId); return sodView_(u.membroId, s); }); }
+function sodAbrir_(d, u) {
+  return withLock_(function () {
+    const s = sodSync_(u.membroId), e = s.e; if (e.Caixas < 1) throw new ApiError('VALIDATION', 'Você não tem caixas para abrir hoje.');
+    if (e.itens.length >= SOD_BAG) throw new ApiError('VALIDATION', 'Mochila cheia (' + SOD_BAG + '). Descarte itens antes de abrir.');
+    const rar = sodSorteio_(SOD_RARS), tem = e.itens.filter(function (x) { return x.k === 'rou'; }).map(function (x) { return x.c; });
+    let it = Math.random() < 0.6 ? sodFerramenta_(rar) : sodRoupa_(rar, tem); if (!it) it = sodFerramenta_(rar);
+    e.itens.push(it); e.Caixas--; e.Abertas++; sodSalva_(s.t, s.r, e); const v = sodView_(u.membroId, s); v.novo = it; return v;
+  });
+}
+function sodEquipar_(d, u) {
+  return withLock_(function () {
+    const s = sodSync_(u.membroId), e = s.e, id = clip_(d.id, 30), it = e.itens.filter(function (x) { return x.i === id && x.k === 'ferr'; })[0]; if (!it) throw new ApiError('NOT_FOUND', 'Ferramenta não encontrada.');
+    e.equip.ferr = id; sodSalva_(s.t, s.r, e); return sodView_(u.membroId, s);
+  });
+}
+function sodDescartar_(d, u) {
+  return withLock_(function () {
+    const s = sodSync_(u.membroId), e = s.e, id = clip_(d.id, 30); if (id === 'INICIAL') throw new ApiError('VALIDATION', 'A picareta inicial não pode ser descartada.');
+    const n = e.itens.length; e.itens = e.itens.filter(function (x) { return x.i !== id; }); if (e.itens.length === n) throw new ApiError('NOT_FOUND', 'Item não encontrado.');
+    if (e.equip.ferr === id) e.equip.ferr = 'INICIAL'; sodSalva_(s.t, s.r, e); return sodView_(u.membroId, s);
+  });
+}
+function sodAparencia_(d, u) {
+  return withLock_(function () {
+    const s = sodSync_(u.membroId), e = s.e, src = d.aparencia || {}, cor = function (x, pad) { return /^#[0-9a-fA-F]{6}$/.test(String(x)) ? String(x) : pad; };
+    const tem = function (slot, est, livre) { return livre.indexOf(est) >= 0 || e.itens.some(function (x) { return x.k === 'rou' && x.c === slot + ':' + est; }); };
+    const a = Object.assign({}, e.apar);
+    ['pele', 'corCabelo', 'corBlusa', 'corCalca', 'corTenis', 'corBone'].forEach(function (k) { if (src[k] !== undefined) a[k] = cor(src[k], a[k]); });
+    if (SOD_CAB.indexOf(src.cabelo) >= 0) a.cabelo = src.cabelo;
+    [['blusa', ['lisa']], ['calca', ['comprida']], ['tenis', ['basico']], ['bone', ['nenhum']]].forEach(function (p) { const v = clip_(src[p[0]], 20); if (v && /^[a-z_]+$/.test(v) && tem(p[0], v, p[1])) a[p[0]] = v; });
+    e.apar = a; sodSalva_(s.t, s.r, e); return sodView_(u.membroId, s);
+  });
+}
+function sodOrar_(d, u) { return withLock_(function () { const s = sodSync_(u.membroId, false), e = s.e; e.Orou = today_(); const m = sodMiss_(u.membroId, today_(), e.Orou); s.mis = m; if (m.completo && e.CaixaBonus !== today_()) { e.CaixaBonus = today_(); e.Caixas++; s.aviso.push('bonus'); } sodSalva_(s.t, s.r, e); return sodView_(u.membroId, s); }); }
+
 /* Carga inicial em UMA requisição (antes eram ~20 idas e voltas ao Apps Script) */
 function boot_(d, u) {
   const out = {}; let cid = clip_(d.celulaId, 30);
@@ -2164,6 +2308,7 @@ function boot_(d, u) {
     if (pv('ind')) run('indicators', 'indicators', cd);
   }
   const pm = me.permissoes || {};
+  run('sod', 'sodGet', {});
   if (pm.transf || cg.supervisor) run('listTransfers', 'listTransfers', {});
   if (pm.config) run('getPerms', 'getPerms', {});
   if (pm.transf || pm.min || cg.supervisor) run('listApprovals', 'listApprovals', {});
@@ -2186,6 +2331,7 @@ const ROUTES = {
   listScales: { auth: 'any', fn: listScales_ }, saveScale: { auth: 'any', write: 1, fn: saveScale_ }, rescheduleScale: { auth: 'any', write: 1, fn: rescheduleScale_ }, deleteScale: { auth: 'any', write: 1, fn: deleteScale_ }, respondScale: { auth: 'any', write: 1, fn: respondScale_ }, requestSwap: { auth: 'any', write: 1, fn: requestSwap_ }, answerSwap: { auth: 'any', write: 1, fn: answerSwap_ }, markScale: { auth: 'any', write: 1, fn: markScale_ }, requestJoin: { auth: 'any', write: 1, fn: requestJoin_ }, decideJoin: { auth: 'any', write: 1, fn: decideJoin_ },
   listSongs: { auth: 'any', fn: listSongs_ }, saveSong: { auth: 'any', write: 1, fn: saveSong_ }, deleteSong: { auth: 'any', write: 1, fn: deleteSong_ }, saveSongDefault: { auth: 'any', write: 1, fn: saveSongDefault_ }, searchLyrics: { auth: 'any', fn: searchLyrics_ }, importLyrics: { auth: 'any', fn: importLyrics_ },
   boot: { auth: 'any', fn: boot_ },
+  sodGet: { auth: 'any', write: 1, fn: sodGet_ }, sodAbrir: { auth: 'any', write: 1, fn: sodAbrir_ }, sodEquipar: { auth: 'any', write: 1, fn: sodEquipar_ }, sodDescartar: { auth: 'any', write: 1, fn: sodDescartar_ }, sodAparencia: { auth: 'any', write: 1, fn: sodAparencia_ }, sodOrar: { auth: 'any', write: 1, fn: sodOrar_ },
   listMarks: { auth: 'any', fn: listMarks_ }, saveMark: { auth: 'any', write: 1, fn: saveMark_ }, saveNote: { auth: 'any', write: 1, fn: saveNote_ },
   listInsigniaDefs: { auth: 'any', fn: listInsigniaDefs_ }, saveInsigniaDef: { auth: 'any', write: 1, fn: saveInsigniaDef_ }, grantBadge: { auth: 'any', write: 1, fn: grantBadge_ }, logServico: { auth: 'any', write: 1, fn: logServico_ }, listServicos: { auth: 'any', fn: listServicos_ }, searchPeople: { auth: 'any', fn: findPeople_ }, sendChat: { auth: 'any', write: 1, fn: sendChat_ }, getChat: { auth: 'any', fn: getChat_ }, chatRead: { auth: 'any', write: 1, fn: chatRead_ }, listChats: { auth: 'any', fn: listChats_ }, getCertLayout: { auth: 'any', fn: getCertLayout_ }, saveCertLayout: { auth: 'any', write: 1, fn: saveCertLayout_ }, previewCert: { auth: 'any', fn: previewCert_ }, revokeCert: { auth: 'any', write: 1, fn: revokeCert_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
   searchCells: { auth: 'any', fn: searchCells_ }, addPrayer: { auth: 'any', write: 1, fn: addPrayer_ }, listPrayers: { auth: 'any', fn: listPrayers_ },

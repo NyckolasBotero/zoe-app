@@ -466,6 +466,14 @@ html.theming *,html.theming *::before,html.theming *::after{transition:backgroun
 .mm-r input{width:100%}.mm-ck{display:flex;gap:8px;align-items:center}.mm-c input[type=color],.mm-cc input[type=color]{width:56px;height:36px;padding:0;border:1px solid var(--line,#ccc);border-radius:8px;background:none}.mm-cc{display:inline-flex;align-items:center;gap:4px}
 @media(max-width:900px){.mm-ed,.mm-pj{grid-template-columns:1fr}.mm-sticky{position:static}}
 .mm-ics{max-height:170px;overflow:auto;border:1px solid var(--line,#ddd);border-radius:12px;padding:6px}
+.sdcv{display:block;width:100%;image-rendering:pixelated;image-rendering:crisp-edges;border-radius:14px;background:#0b1020;aspect-ratio:128/72}.sdcv.pv{aspect-ratio:40/44;border-radius:12px}
+.sdhome{cursor:pointer;padding:12px}.sdth{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}.sdfoot{display:flex;align-items:center;justify-content:space-between;margin-top:8px;gap:8px}
+.sdbar{height:10px;border-radius:99px;background:var(--line,#e5e7eb);overflow:hidden;margin:10px 0 4px}.sdbar i{display:block;height:100%;background:linear-gradient(90deg,#9aa1b1,#6b7280);transition:width .4s}
+.sdps{display:inline-flex;gap:4px}.sdp{width:12px;height:12px;border-radius:50%;border:2px solid var(--line,#cbd5e1);background:transparent}.sdp.on{background:#f5c518;border-color:#f5c518}
+.sdm{display:grid;gap:6px}.sdmi{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line,#e5e7eb);border-radius:12px}.sdmi.ok{background:rgba(30,158,90,.1);border-color:rgba(30,158,90,.4)}.sdmi small{opacity:.6}
+.sdck{width:22px;height:22px;border-radius:50%;border:2px solid var(--line,#cbd5e1);display:inline-grid;place-items:center;flex:none;color:#1e9e5a}.sdmi.ok .sdck{border-color:#1e9e5a}
+.sdit{display:grid;gap:8px}.sdi{display:flex;gap:10px;align-items:center;padding:8px 10px;border:2px solid var(--line,#e5e7eb);border-radius:12px}.sdi.eq{border-color:var(--rc)}.sdtc{width:48px;height:48px;image-rendering:pixelated;background:#1e293b;border-radius:10px;flex:none}.sdtc.big{width:96px;height:96px}
+.sdnovo{display:inline-grid;place-items:center;margin:10px auto;padding:14px;border-radius:18px;border:3px solid var(--rc);box-shadow:0 0 24px var(--rc)}.sdcors{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin:10px 0}.sdcor{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px}.sdcor input{width:40px;height:30px;border:0;padding:0;background:none}.sdsel{margin:10px 0}
 .rdot{display:inline-block;flex:none;width:11px;height:11px;border-radius:50%;background:#ff2d2d;margin-left:auto;box-shadow:0 0 0 0 rgba(255,45,45,.75);animation:rblink 1s ease-in-out infinite}body.collapsed .nv .rdot{position:absolute;top:6px;right:6px;margin:0}.nv{position:relative}
 @keyframes rblink{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(255,45,45,.75)}50%{opacity:.35;box-shadow:0 0 10px 5px rgba(255,45,45,.35)}}@media(prefers-reduced-motion:reduce){.rdot{animation:none}}
 </style>
@@ -743,6 +751,8 @@ function zMomList(dt){const hj=dt||TODAY,L=[],y=+hj.slice(0,4),mmdd=hj.slice(5),
  if(mmdd==='09-07')L.push({key:'indep:'+y,t:'Dia da Independência 🇧🇷',x:`Hoje é **7 de Setembro**! Oremos pela nossa nação. 🙏\n${zv('indep')}`});
  ((S.notifs&&S.notifs.itens)||[]).filter(n=>n.tipo==='insignia'&&!n.lida).slice(0,2).forEach(n=>L.push({key:'ins:'+n.id,t:'Nova insígnia! 🏅',x:`Parabéns, ${S.apelido||''}! ${n.titulo}. Ela já está na sua faixa de insígnias.`,btns:[['Ver minhas insígnias',"MEUOPEN=true;MEU=null;go('meu')"]]}));
 ((SOC&&SOC.igreja)||[]).filter(x=>x.tipo==='decisao'&&zRecente(x.data,3)).slice(0,2).forEach(x=>L.push({key:'jesus:'+x.id,t:'Alguém aceitou Jesus! 🕊️',x:`Que notícia linda! **${(x.meta&&x.meta.nome)||'Alguém'}** aceitou Jesus! O céu está em festa. 🎉 Vá ao feed, curta e deixe uma palavra de carinho!`,btns:[['Ir ao feed',"go('feed')"]]}));
+ ((S.notifs&&S.notifs.itens)||[]).filter(n=>(n.tipo==='sod_preso'||n.tipo==='sod_livre')&&!n.lida).slice(0,1).forEach(n=>L.push({key:'sod:'+n.id,t:n.tipo==='sod_livre'?'O Sod está livre! ✨':'O Sod foi preso de novo 🪨',x:`${n.titulo}.\n${n.texto}`,btns:[['Ver o Sod',"go('meu','sod')"]]}));
+ if(SD.d&&SD.d.caixas>0&&!SD.d.demo)L.push({key:'sodcx:'+hj,t:'Caixa do Sod 🎁',x:`Você tem **${SD.d.caixas}** caixa(s) do Sod para abrir! Pode vir ferramenta nova para quebrar as pedras.`,btns:[['Abrir agora',"go('meu','sod')"]]});
  ((S.notifs&&S.notifs.itens)||[]).filter(n=>n.tipo==='escala_lembrete'&&!n.lida&&n.ref).slice(0,2).forEach(n=>L.push({key:'esc:'+n.id,t:'Lembrete de escala 📅',x:`${n.titulo}.\n${n.texto}`,btns:[['Vou estar lá! ✓',`escLembreteOk('${n.ref}')`],['Ver minhas escalas',"ESC.d=null;ESC.sub='minhas';go('escalas')"]]}));
  ((S.notifs&&S.notifs.itens)||[]).filter(n=>n.tipo==='visitante'&&!n.lida).slice(0,2).forEach(n=>L.push({key:'vis:'+n.id,t:'Novo visitante! 🙌',x:`${n.titulo}.\n${n.texto}`,btns:[['Abrir Consolidação',"go('consolidacao')"]]}));
  const p=S.perfil||{};
@@ -945,6 +955,7 @@ async function atualizar(){if(VIT.on)return;VIT.on=true;vitrine();const b=$('#br
  finally{VIT.on=false;if(b)b.classList.remove('spin')}}
 async function hydrate(){
  vitLog('Verificando a sessão e o seu perfil');let me,BOOT=null;try{BOOT=await api('boot',S.celId?{celulaId:S.celId}:{})}catch(e){if(e.code==='SESSION')throw e;BOOT=null}
+ if(BOOT&&BOOT.sod&&!BOOT.sod.__erro)sdSet(BOOT.sod);
  const B=(a,d)=>{const v=BOOT&&BOOT[a];return(v!==undefined&&!(v&&v.__erro))?Promise.resolve(v):api(a,d)};
  if(BOOT&&BOOT.me&&!BOOT.me.__erro){me=BOOT.me;if(S.celId&&(!me.celula||me.celula.id!==S.celId))S.celId=''}else{try{me=await api('me',S.celId?{celulaId:S.celId}:{})}catch(e){if(e.code==='SESSION')throw e;S.celId='';me=await api('me')}}const m=me.membro,c=me.config;S.cargos=me.cargos||{};S.nivelCel=me.nivelCelula||'';S.minhas=me.minhasCelulas||[];
  S.multi=!!me.multimidia;S.role=me.usuario.papel;S.perm={};S.perm[S.role]=me.permissoes;S.membroId=m.MembroID;S.permCel=me.permCelula||null;S.abas=me.abas||{};S.tipo=me.usuario.tipo||S.role;S.alerts=Object.assign({aniv:true,celula:true,eventos:true,oracao:true,cursos:true,transf:true,escala:true},c.notifTipos||{});S.freqPct=c.frequentadorPct||70;S.freqJan=c.frequentadorJanela||8;S.celSup=c.celulasParaSupervisor||0;
@@ -1149,7 +1160,7 @@ function toggleTheme(){const dark=document.documentElement.getAttribute('data-th
 function go(r,s){entra();if(r==='corrida'){r='membro';s='maratona'}if(r==='perfil'){if(s)R.sub.perfil=s;r='meu';s='editar'}R.r=r;if(s){const k=r;R.sub[k]=s}menu(false);history.replaceState(null,'','#'+r);shell();render();scrollTo(0,0);if(r==='admin'&&ONLINE){loadAdmin();loadLivros()}if(r==='biblioteca'){LB.open=null;loadLivros()}if(r==='cursos'){CS.open='';carregaCursos().then(()=>R.r==='cursos'&&render())}if(r==='aulas'){PR.open='';carregaSig();carregaCursos().then(()=>R.r==='aulas'&&render())}if(r==='feed'&&ONLINE)refreshTest();if(r==='aprovacoes')refreshAprov();trkVisit(r)}
 function sub(k,v){R.sub[k]=v;entra();render()}
 function aplicaRO(){document.querySelectorAll('#view .ro').forEach(w=>{w.querySelectorAll('input,textarea,select,button').forEach(el=>{const oc=el.getAttribute('onclick')||'';if(/^(R\.|sub\()/.test(oc))return;el.disabled=true});if(R.r==='celula'&&/^(mural|org)$/.test(R.sub.celula))w.style.pointerEvents='none'})}
-function render(){if(R.r==='corrida'){R.r='membro';R.sub.membro='maratona'}if(R.r==='perfil'){R.r='meu';R.sub.meu='editar'}const v=VIEWS[R.r]||VIEWS.feed;$('#view').innerHTML=v();aplicaRO();sgIni();$('#view').dataset.r=R.r;if(R.r==='celula'&&R.sub.celula==='mural')muralInit();if(R.r==='celula'&&R.sub.celula==='org')orgInit();if(R.r==='celula'&&R.sub.celula==='perfilc')cmInit();if(R.r==='multimidia')mmInit();if(R.r==='buscar')mapaInit();if(R.r==='consolidacao'&&VT.sub==='novo')vmInit();if(R.r==='tutoriais')vcInit();carInit();coreografia();admMenu();if(R.r==='membro'&&R.sub.membro==='biblia'&&BIB.idx&&BIB.idx!=='erro')bibShow()}
+function render(){if(R.r==='corrida'){R.r='membro';R.sub.membro='maratona'}if(R.r==='perfil'){R.r='meu';R.sub.meu='editar'}const v=VIEWS[R.r]||VIEWS.feed;$('#view').innerHTML=v();aplicaRO();sgIni();$('#view').dataset.r=R.r;if(R.r==='celula'&&R.sub.celula==='mural')muralInit();if(R.r==='celula'&&R.sub.celula==='org')orgInit();if(R.r==='celula'&&R.sub.celula==='perfilc')cmInit();if(R.r==='multimidia')mmInit();if(R.r==='buscar')mapaInit();if(R.r==='consolidacao'&&VT.sub==='novo')vmInit();if(R.r==='tutoriais')vcInit();carInit();coreografia();admMenu();if(document.querySelector('canvas[data-sd]'))sdAnim();if(R.r==='membro'&&R.sub.membro==='biblia'&&BIB.idx&&BIB.idx!=='erro')bibShow()}
 let MODT=0;function modal(html){MODT++;$('#layer').innerHTML=`<div class="modal" onclick="if(event.target===this)closeL()"><div class="box" role="dialog" aria-modal="true">${html}</div></div>`}
 function closeL(){const m=$('#layer .modal');if(!m||m.classList.contains('closing')||!S.anim){$('#layer').innerHTML='';return}const t=MODT;m.classList.add('closing');setTimeout(()=>{if(MODT===t)$('#layer').innerHTML=''},170)}
 
@@ -1198,6 +1209,7 @@ function bellAuto(){const p=$('#layer .pop');if(!p)return;clearTimeout(BELL.t);B
 const VIEWS={
 feed(){const ev=EVENTOS.find(x=>x.d>=TODAY)||EVENTOS[0]||{t:'Nenhum evento marcado',d:TODAY,h:'',loc:''};const niv=anivList().hoje;
  return `<section class="hero"><p style="font-size:13px;letter-spacing:.08em;text-transform:uppercase">${DIAS[HOJE.getDay()]}, ${HOJE.getDate()} de ${MES[HOJE.getMonth()].toLowerCase()}</p><h1 style="margin:6px 0 8px">Paz, ${esc(S.apelido)}!</h1><p>Mais que um lugar para frequentar, uma família para pertencer.</p></section>
+ ${sdHome()}
  ${carHTML()}
  ${corridaMini()}
  ${socLista('igreja','Mural da igreja','Quando alguém aceitar Jesus, a notícia aparece aqui para toda a família Zoe comemorar e comentar. 🙌')}
@@ -2061,8 +2073,9 @@ function meuDemo(){const p=S.pfd||{},dest=p.dest||[],ins=[{codigo:'perfil',titul
 async function meuCarrega(){MEU=ONLINE?await api('profileView',{}):meuDemo()}
 function meuRecarrega(){MEU=null;MEUC=null;render()}
 function meuHTML(){
- const sub=R.sub.meu||'ver',tabs=`<div class="row pf-tabs"><button class="chip ${sub==='ver'?'on':''}" onclick="sub('meu','ver')">Meu perfil</button><button class="chip ${sub==='custom'?'on':''}" onclick="meuAbrePers()">Personalizar</button><button class="chip ${sub==='editar'?'on':''}" onclick="sub('meu','editar')">Editar perfil</button></div>`;
+ const sub=R.sub.meu||'ver',tabs=`<div class="row pf-tabs"><button class="chip ${sub==='ver'?'on':''}" onclick="sub('meu','ver')">Meu perfil</button><button class="chip ${sub==='custom'?'on':''}" onclick="meuAbrePers()">Personalizar</button><button class="chip ${sub==='sod'?'on':''}" onclick="sub('meu','sod')">Sod</button><button class="chip ${sub==='editar'?'on':''}" onclick="sub('meu','editar')">Editar perfil</button></div>`;
  if(sub==='editar')return tabs+VIEWS.perfil();
+ if(sub==='sod')return tabs+sodHTML();
  if(!MEU){if(!MEUP){MEUP=meuCarrega().catch(e=>{MEU={erro:e.message||'Não foi possível carregar.'}}).finally(()=>{MEUP=null;if(R.r==='meu')render()})}return tabs+`<div class="card"><p class="muted">Carregando seu perfil…</p></div>`}
  if(MEU.erro)return tabs+`<div class="card"><p>${esc(MEU.erro)}</p><button class="btn" onclick="meuRecarrega()">Tentar de novo</button></div>`;
  if(sub==='custom')return tabs+meuCustom();
@@ -2521,6 +2534,163 @@ try{window.opener.postMessage({mmOk:1},'*')}catch(e){}<\/script></body></html>`)
 addEventListener('message',e=>{if(e.data&&e.data.mmOk){MM.ok=true;mmEnvia(true)}});
 setInterval(()=>{if(MM.pj&&MM.pj.ativa&&MM.win&&MM.win.closed){MM.pj.ativa=false;if(R.r==='multimidia')renderKeep()}},1000);
 addEventListener('keydown',e=>{if(R.r!=='multimidia'||MM.sub!=='projetor'||!MM.pj)return;if(/INPUT|TEXTAREA|SELECT/.test((document.activeElement||{}).tagName))return;if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'){e.preventDefault();mmVai(1)}else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();mmVai(-1)}else if(e.key==='b'||e.key==='B'){if(mmAtiva())mmPausa()}});
+
+/* ===== Sod Adonai: o orbe de luz, o personagem em pixel art, caixas, mineração e missões ===== */
+const SD={d:null,sub:'cena',loc:0,locT:0,parts:[],iv:0,fr:0,novo:null,busy:0,sync:0};
+const SD_FERR={pa:['Pá',1.0,2,'comum'],picareta:['Picareta',.9,3,'comum'],marreta:['Marreta',.6,8,'comum'],martelete:['Martelete',2.2,2,'raro'],broca:['Furadeira de impacto',2.6,2,'epico'],britadeira:['Britadeira',3.0,2.5,'lendario']};
+const SD_ROU={'blusa:listras':['Blusa listrada','comum'],'blusa:xadrez':['Camisa xadrez','comum'],'blusa:regata':['Regata','comum'],'blusa:moletom':['Moletom','raro'],'blusa:jaqueta':['Jaqueta','raro'],'blusa:colete':['Colete de mineiro','raro'],'blusa:tunica':['Túnica de linho','epico'],'blusa:dourada':['Blusa dourada','lendario'],'calca:bermuda':['Bermuda','comum'],'calca:jogger':['Calça jogger','comum'],'calca:cargo':['Calça cargo','raro'],'calca:macacao':['Macacão','raro'],'tenis:cano_alto':['Tênis cano alto','comum'],'tenis:esportivo':['Tênis esportivo','comum'],'tenis:bota':['Botina de obra','raro'],'tenis:dourado':['Tênis dourado','lendario'],'bone:bone':['Boné','comum'],'bone:aba_reta':['Boné aba reta','comum'],'bone:touca':['Touca','comum'],'bone:capacete':['Capacete com lanterna','raro'],'bone:coroa':['Coroa de luz','lendario']};
+const SD_RAR={comum:['Comum','#9ca3af'],raro:['Raro','#3b82f6'],epico:['Épico','#a855f7'],lendario:['Lendário','#f59e0b']};
+const SD_LIVRES={blusa:[['lisa','Lisa']],calca:[['comprida','Comprida']],tenis:[['basico','Básico']],bone:[['nenhum','Sem boné']]};
+const SD_CAB=[['curto','Curto'],['longo','Longo'],['moicano','Moicano'],['careca','Careca'],['coque','Coque'],['cacheado','Cacheado'],['topete','Topete']];
+const SD_AP0={pele:'#f1c27d',cabelo:'curto',corCabelo:'#4a2c17',blusa:'lisa',corBlusa:'#2b6cb0',calca:'comprida',corCalca:'#334155',tenis:'basico',corTenis:'#f8fafc',bone:'nenhum',corBone:'#c0392b'};
+const SD_MAX=3000,SD_NERF=[1,.6,.3,0];
+/* ---------- desenho em pixel art ---------- */
+function sdHex(h,a){const n=parseInt(String(h).slice(1),16),f=x=>Math.max(0,Math.min(255,Math.round(x+(a>0?(255-x)*a:x*a))));return'#'+[n>>16&255,n>>8&255,n&255].map(x=>f(x).toString(16).padStart(2,'0')).join('')}
+function sdDisc(c,cx,cy,r,col){c.fillStyle=col;for(let dy=-r;dy<=r;dy++){const dx=Math.floor(Math.sqrt(r*r-dy*dy+.25));c.fillRect(cx-dx,cy+dy,2*dx+1,1)}}
+function sdPedra(c,x,y,w,h,s){const b=s?'#6b7280':'#7b8190';c.fillStyle=b;c.fillRect(x+1,y,w-2,h);c.fillRect(x,y+1,w,h-2);c.fillStyle='#9aa1b1';c.fillRect(x+1,y,w-2,1);c.fillRect(x,y+1,1,1);c.fillStyle='#4f5563';c.fillRect(x+1,y+h-1,w-2,1);c.fillRect(x+w-1,y+2,1,h-3);if(w>4){c.fillStyle='#5b6170';c.fillRect(x+2,y+2,1,2)}}
+let SD_ST=null;
+function sdStones(){if(SD_ST)return SD_ST;let s=7;const rnd=()=>(s=(s*1103515245+12345)&0x7fffffff)/0x7fffffff,L=[];for(let i=0;i<46;i++){const a=rnd()*6.283,r=Math.sqrt(rnd())*15,w=4+Math.floor(rnd()*4),h=4+Math.floor(rnd()*3);L.push({x:Math.round(Math.cos(a)*r-w/2),y:Math.round(Math.sin(a)*r-h/2),w,h,s:rnd()>.5})}L.sort((a,b)=>(b.y+b.h)-(a.y+a.h)||a.x-b.x);return SD_ST=L}
+function sdTool(c,t,hx,hy,f,mov){const cor=SD_RAR[t.r][1],cabo='#8b5a2b',maq=['martelete','broca','britadeira'].includes(t.c);
+ if(maq){const j=mov?(Math.random()<.5?0:1):0;c.fillStyle='#4b5563';c.fillRect(hx,hy-3+j,7,4);c.fillStyle=cor;c.fillRect(hx+1,hy-3+j,5,1);c.fillStyle='#e5e7eb';c.fillRect(hx+7,hy-2+j,4,1);c.fillStyle='#374151';c.fillRect(hx-1,hy-4+j,2,2);return{x:hx+11,y:hy-2+j}}
+ const dx=f===0?1:1,dy=f===0?-1:f===1?-.3:0,L=7,ex=Math.round(hx+dx*L),ey=Math.round(hy+dy*L);c.fillStyle=cabo;for(let i=0;i<=L;i++)c.fillRect(Math.round(hx+dx*i),Math.round(hy+dy*i),1,1);
+ c.fillStyle=cor;const v=f!==0;
+ if(t.c==='picareta'){if(v){c.fillRect(ex,ey-3,1,7);c.fillRect(ex+1,ey-3,1,1);c.fillRect(ex+1,ey+3,1,1)}else{c.fillRect(ex-3,ey,7,1);c.fillRect(ex-3,ey+1,1,1);c.fillRect(ex+3,ey+1,1,1)}}
+ else if(t.c==='pa'){c.fillRect(ex,ey-2,3,5);c.fillStyle=sdHex(cor,.4);c.fillRect(ex,ey-2,3,1)}
+ else{if(v)c.fillRect(ex-1,ey-3,4,7);else c.fillRect(ex-3,ey-1,7,4);c.fillStyle=sdHex(cor,-.35);c.fillRect(ex-1,ey+2,4,1)}
+ return{x:ex+2,y:ey}}
+function sdChar(c,X,Y,ap,pose,fr,tool,t){let off=0;const R=(x,y,w,h,col)=>{c.fillStyle=col;c.fillRect(X+x,Y+off+y,w,h)},pele=ap.pele,sk=sdHex(pele,-.18);
+ const sent=pose==='sentado',oy=sent?5:0;
+ /* pernas / calça / tênis */
+ const cal=ap.calca,cc=ap.corCalca;
+ if(sent){R(2,15+oy,6,3,cc);R(7,16+oy,5,3,sdHex(cc,-.2));if(cal==='bermuda'){R(8,17+oy,4,2,pele)}R(11,17+oy,2,3,ap.corTenis);R(11,19+oy,2,1,'#222')}
+ else{const fim=cal==='bermuda'?3:5;R(2,15,3,fim,cc);R(5,15,3,fim,sdHex(cc,-.2));if(cal==='bermuda'){R(2,18,3,2,pele);R(5,18,3,2,sk)}if(cal==='cargo'){R(3,17,1,2,sdHex(cc,.3));R(6,17,1,2,sdHex(cc,.1))}if(cal==='jogger'){R(2,19,3,1,sdHex(cc,.35));R(5,19,3,1,sdHex(cc,.15))}
+  const tn=ap.tenis,ct=tn==='dourado'?'#f5c518':tn==='bota'?'#7a4b21':ap.corTenis,alto=tn==='cano_alto'||tn==='bota';R(1,20,4,2,ct);R(5,20,5,2,sdHex(ct,-.15));if(alto){R(2,19,3,1,ct);R(5,19,3,1,sdHex(ct,-.15))}R(1,21,9,1,tn==='esportivo'?'#ef4444':'#d1d5db');if(tn==='esportivo')R(2,20,2,1,'#ef4444')}
+ /* tronco */
+ off=oy;const bl=ap.blusa,cb=bl==='dourada'?'#f5c518':ap.corBlusa,ty=9;
+ if(bl==='regata'){R(3,ty,4,6,cb);R(2,ty,1,5,pele);R(7,ty,1,5,pele)}
+ else if(bl==='moletom'){R(1,ty,8,6,cb);R(3,ty,4,1,sdHex(cb,-.3));R(4,ty+3,2,2,sdHex(cb,-.15))}
+ else if(bl==='tunica'){R(2,ty,6,sent?6:10,cb);R(2,ty+2,6,1,sdHex(cb,.3));R(4,ty,2,1,sdHex(cb,.5))}
+ else{R(2,ty,6,6,cb);if(bl==='listras'){for(let i=1;i<6;i+=2)R(2,ty+i,6,1,sdHex(cb,.55))}if(bl==='xadrez'){for(let i=0;i<6;i++)for(let j=0;j<6;j++)if((i+j)%2)R(2+j,ty+i,1,1,sdHex(cb,-.28))}if(bl==='jaqueta'){R(2,ty,6,6,cb);R(4,ty,1,6,'#e5e7eb');R(3,ty,1,1,sdHex(cb,-.3));R(6,ty,1,1,sdHex(cb,-.3))}if(bl==='colete'){R(2,ty,6,6,'#9ca3af');R(2,ty,6,6,'#f97316');R(3,ty+2,4,1,'#fde68a');R(3,ty+4,4,1,'#fde68a')}if(bl==='dourada'){R(2,ty,6,1,'#fde68a');R(3,ty+2,1,3,'#fde68a')}}
+ if(cal==='macacao'){R(3,ty,1,4,cc);R(6,ty,1,4,cc);R(3,ty+4,4,2,cc)}
+ /* braços */
+ const mg=(bl==='regata')?pele:bl==='dourada'?'#f5c518':bl==='colete'?'#9ca3af':cb;
+ R(1,ty+1,1,4,sdHex(mg,-.15));
+ let hx=8,hy=ty+1,ret={f:0};
+ if(pose==='minerar'){const f=[0,1,2,2,1,0][fr%6];hx=[8,10,10][f];hy=[ty-3,ty+1,ty+3][f];R(7,ty+1,1,3,mg);for(let i=0;i<3;i++)R(7+Math.round((hx-7)*i/2),ty+1+Math.round((hy-ty-1)*i/2),2,2,mg);R(hx,hy,2,2,pele);ret={f};if(tool)sdTool(c,tool,X+hx+1,Y+off+hy+1,f,1)}
+ else if(pose==='feliz'){const up=(fr%4)<2;R(7,ty+(up?-3:1),1,up?4:3,mg);R(8,ty+(up?-4:3),2,2,pele)}
+ else if(sent){R(7,ty+2,1,3,mg);R(8,ty+4,2,2,pele)}
+ else{R(7,ty+1,1,4,mg);R(7,ty+5,2,1,pele)}
+ /* cabeça */
+ R(2,3,6,6,pele);R(3,8,4,1,sk);const olho=sent?'#334155':'#1e293b';if(sent){R(4,6,2,1,olho);R(6,6,2,1,olho)}else{R(4,5,1,1,olho);R(6,5,1,1,olho);R(5,7,2,1,'#b45309')}
+ const hc=ap.corCabelo,ch=ap.cabelo,bn=ap.bone,cbn=bn==='capacete'?'#f5c518':bn==='coroa'?'#f5c518':ap.corBone;
+ if(bn==='nenhum'||bn==='bone'||bn==='aba_reta'||bn==='touca'){
+  if(ch==='curto'){R(2,2,6,2,hc);R(2,4,1,2,hc)}else if(ch==='longo'){R(2,2,6,2,hc);R(1,3,2,9,hc)}else if(ch==='moicano'){R(4,0,2,3,hc);R(3,2,4,1,hc)}else if(ch==='careca'){R(3,3,1,1,sdHex(pele,.4))}else if(ch==='coque'){R(2,2,6,2,hc);R(3,0,3,2,hc)}else if(ch==='cacheado'){R(1,1,8,3,hc);R(1,4,1,3,hc);R(8,4,1,2,hc)}else if(ch==='topete'){R(2,2,6,2,hc);R(6,1,3,2,hc)}}
+ if(bn==='bone'){R(2,2,6,2,cbn);R(7,3,3,1,sdHex(cbn,-.3))}else if(bn==='aba_reta'){R(2,1,6,3,cbn);R(7,3,3,1,sdHex(cbn,-.35))}else if(bn==='touca'){R(2,1,6,3,cbn);R(3,0,4,1,sdHex(cbn,.3));R(4,-1,2,1,'#fff')}
+ else if(bn==='capacete'){R(1,1,8,3,'#f5c518');R(1,3,8,1,'#d4a017');R(8,2,2,2,'#ffffff');c.fillStyle='rgba(255,255,200,.18)';c.fillRect(X+10,Y+0,10,5)}
+ else if(bn==='coroa'){R(2,1,6,2,'#f5c518');R(2,0,1,1,'#f5c518');R(4,0,1,1,'#f5c518');R(6,0,1,1,'#f5c518');R(4,1,1,1,'#fff7c2')}
+ return ret}
+/* ---------- a cena (caverna → céu quando o Sod está livre) ---------- */
+function sdCena(cv,d,t,opt){opt=opt||{};const c=cv.getContext('2d');c.imageSmoothingEnabled=false;const W=cv.width,H=cv.height,livre=!!d.livre,ap=Object.assign({},SD_AP0,d.aparencia||{});
+ const pedra=SD.loc!=null&&opt.live?SD.loc:d.pedra,fr=Math.max(0,Math.min(1,pedra/SD_MAX)),tool=d.ferramenta||{c:'picareta',r:'comum',v:.8};
+ /* fundo */
+ if(livre){const g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,'#8ed0ff');g.addColorStop(1,'#e6f6ff');c.fillStyle=g;c.fillRect(0,0,W,H);c.fillStyle='#fff';[[14,10,16],[78,6,20],[110,16,14]].forEach(([x,y,w],i)=>{const o=Math.floor((t/900+i*30)%(W+40))-20;c.fillRect((x+o)%(W+30)-10,y,w,3);c.fillRect((x+o)%(W+30)-6,y-2,w-8,2)});c.fillStyle='#5aa84a';c.fillRect(0,58,W,H-58);c.fillStyle='#78c35f';for(let x=0;x<W;x+=6)c.fillRect(x,58,3,1);c.fillStyle='#4a8f3b';for(let x=3;x<W;x+=9)c.fillRect(x,63+(x%5),2,1)}
+ else{c.fillStyle='#0b1020';c.fillRect(0,0,W,H);c.fillStyle='#141b33';for(let y=0;y<58;y+=6)for(let x=((y/6)%2)*7;x<W;x+=14)c.fillRect(x,y,12,5);c.fillStyle='#1a2340';for(let x=0;x<W;x+=11)c.fillRect(x,(x*7)%50,2,1);c.fillStyle='#1c2333';c.fillRect(0,58,W,H-58);c.fillStyle='#2a3350';for(let x=0;x<W;x+=7)c.fillRect(x,58,4,1)}
+ /* o Sod (orbe) */
+ const ox=livre?(opt.sala?96:84):98,oy0=livre?32+Math.round(Math.sin(t/380)*3):40,pul=Math.round(Math.sin(t/330)*1);
+ if(livre){sdDisc(c,ox,oy0,12,'rgba(255,250,200,.25)');sdDisc(c,ox,oy0,9,'rgba(255,252,220,.5)');sdDisc(c,ox,oy0,7+pul,'#ffffff');sdDisc(c,ox,oy0,3,'#fff3a0');c.fillStyle='#1e293b';c.fillRect(ox-3,oy0-1,2,2);c.fillRect(ox+2,oy0-1,2,2);c.fillRect(ox-1,oy0+3,3,1);c.fillRect(ox-2,oy0+2,1,1);c.fillRect(ox+2,oy0+2,1,1)}
+ else{const ap2=.22+(1-fr)*.3;sdDisc(c,ox,oy0,22,`rgba(255,248,200,${ap2*.35})`);sdDisc(c,ox,oy0,18,`rgba(255,248,200,${ap2*.6})`);sdDisc(c,ox,oy0,15+pul,'#fffdf0');sdDisc(c,ox,oy0,12,'#ffffff');sdDisc(c,ox,oy0,5+pul,'#fff3a0');sdDisc(c,ox,oy0,2,'#ffffff');
+  if(fr<.75){c.fillStyle='#334155';c.fillRect(ox-5,oy0-1,2,2);c.fillRect(ox+4,oy0-1,2,2);c.fillRect(ox-1,oy0+4,3,1)}
+  const L=sdStones(),n=Math.ceil(fr*L.length);for(let i=0;i<n;i++){const s=L[i];sdPedra(c,ox+s.x,oy0+s.y,s.w,s.h,s.s)}
+  const base=Math.ceil(fr*9);for(let i=0;i<base;i++){const bx=ox-22+i*5+(i%2)*2,by=52-(i%3)*3;sdPedra(c,bx,by,6,6-(i%2),i%2===0)}}
+ /* personagem */
+ const sent=!livre&&d.atraso>=3,cx=livre?58:62,cy=sent?34:36;let ev=null;
+ if(sent){sdChar(c,cx,cy,ap,'sentado',0,tool,t);if(opt.z!==false){c.fillStyle='#cbd5e1';const z=Math.floor(t/500)%3;[[cx+10,cy-2],[cx+13,cy-6],[cx+16,cy-10]].slice(0,z+1).forEach(([x,y],i)=>{c.fillRect(x,y,3-i%2,1);c.fillRect(x+1,y+1,1,1);c.fillRect(x,y+2,3-i%2,1)})}}
+ else if(livre){sdChar(c,cx,cy,ap,'feliz',Math.floor(t/350),null,t)}
+ else{const mult=SD_NERF[Math.min(3,d.atraso||0)],hps=Math.max(.2,(tool.v||.8)*mult),dur=Math.max(70,Math.min(800,1000/hps/6)),fr6=Math.floor(t/dur);ev=sdChar(c,cx,cy,ap,'minerar',fr6,tool,t);
+  if(ev&&ev.f===2&&SD.fr!==fr6){SD.fr=fr6;for(let i=0;i<3;i++)SD.parts.push({x:ox-18+Math.random()*6,y:oy0+(Math.random()*12-4),vx:-1.2+Math.random()*-1,vy:-1.5-Math.random()*1.5,l:12})}}
+ /* partículas */
+ SD.parts=SD.parts.filter(p=>p.l>0);SD.parts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=.28;p.l--;c.fillStyle=p.l>6?'#9aa1b1':'#6b7280';c.fillRect(Math.round(p.x),Math.round(p.y),2,2)});
+ if(livre){c.fillStyle='#fff7c2';for(let i=0;i<5;i++){const a=t/700+i*1.26,r=18+(i%2)*6;const x=Math.round(ox+Math.cos(a)*r),y=Math.round(oy0+Math.sin(a)*r*.7);c.fillRect(x,y,1,1);c.fillRect(x-1,y,3,1);c.fillRect(x,y-1,1,3)}}
+}
+/* ---------- dados, API e modo demonstração ---------- */
+function sdRolar(rar,tem){const ord=['comum','raro','epico','lendario'],mult={comum:1,raro:1.4,epico:2,lendario:3},qual={comum:[0,5],raro:[5,12],epico:[12,22],lendario:[22,35]};
+ if(Math.random()<.6){const ok=Object.keys(SD_FERR).filter(k=>ord.indexOf(SD_FERR[k][3])<=ord.indexOf(rar)),k=ok[Math.floor(Math.random()*ok.length)],f=SD_FERR[k],m=mult[rar],j=()=>.85+Math.random()*.3,q=qual[rar];return{i:'IT'+Date.now().toString(36)+Math.floor(Math.random()*999),k:'ferr',c:k,r:rar,v:Math.round(f[1]*Math.sqrt(m)*j()*100)/100,d:Math.round(f[2]*m*j()*10)/10,q:Math.round(q[0]+Math.random()*(q[1]-q[0]))}}
+ const l=Object.keys(SD_ROU).filter(k=>SD_ROU[k][1]===rar&&!tem.includes(k));if(!l.length)return sdRolar(rar,Object.keys(SD_ROU));return{i:'IT'+Date.now().toString(36)+Math.floor(Math.random()*999),k:'rou',c:l[Math.floor(Math.random()*l.length)],r:rar}}
+function sdSorteia(){let x=Math.random()*100;return x<60?'comum':x<88?'raro':x<98?'epico':'lendario'}
+function sdDemoS(){let s=S.sod;if(!s){s=S.sod={dia:TODAY,pedra:700,livre:false,seq:0,atraso:0,caixas:1,bonus:'',orou:'',bib:'',anot:'',com:false,min:Date.now(),golpes:0,soltos:0,abertas:0,itens:[{i:'INICIAL',k:'ferr',c:'picareta',r:'comum',v:.8,d:2,q:0}],equip:{ferr:'INICIAL'},apar:Object.assign({},SD_AP0),livreDesde:'',aviso:[]};save()}return s}
+function sdDemoV(s){const it=s.itens.find(x=>x.i===s.equip.ferr)||s.itens.find(x=>x.k==='ferr'),nerf=SD_NERF[Math.min(3,s.atraso)],comp=s.bib===s.dia&&s.orou===s.dia;
+ return{hoje:s.dia,domingo:new Date(s.dia+'T12:00:00').getDay()===0,pedra:Math.round(s.pedra),pedraMax:SD_MAX,nivelPedra:0,atraso:s.atraso,nerf,sentado:s.atraso>=3&&!s.livre,seq:s.seq+(comp?1:0),seqMeta:7,livre:s.livre,livreDesde:s.livreDesde,soltos:s.soltos,caixas:s.caixas,abertas:s.abertas,golpes:Math.round(s.golpes),taxa:Math.round(it.v*it.d*(1+it.q/100)*nerf*100)/100,ferramenta:it,itens:s.itens,equip:s.equip,aparencia:s.apar,sala:{},aviso:s.aviso||[],bag:40,demo:1,
+  missoes:[{k:'entrar',t:'Entrar no app hoje',ok:true,g:'dia'},{k:'biblia',t:'Ler a Bíblia (marcar versículo ou capítulo)',ok:s.bib===s.dia,g:'dia'},{k:'oracao',t:'Orar hoje (toque em “Já orei”)',ok:s.orou===s.dia,g:'dia'},{k:'anotar',t:'Escrever uma anotação ou devocional',ok:s.anot===s.dia,g:'bonus'},{k:'comunhao',t:'Ir à célula ou ao culto nesta semana',ok:!!s.com,g:'semana'}]}}
+function sdDemoMina(s){if(s.livre){s.min=Date.now();return}const seg=Math.max(0,Math.min(1200,(Date.now()-s.min)/1000)),it=s.itens.find(x=>x.i===s.equip.ferr)||s.itens[0],hp=seg*it.v*it.d*(1+it.q/100)*SD_NERF[Math.min(3,s.atraso)];s.pedra=Math.max(0,s.pedra-hp);s.golpes+=seg*it.v;s.min=Date.now()}
+function sdDemoLivre(s){const comp=s.bib===s.dia&&s.orou===s.dia;if(!s.livre&&s.pedra<=0&&s.seq+(comp?1:0)>=7){s.livre=true;s.livreDesde=s.dia;s.soltos++;s.aviso=['livre']}if(comp&&s.bonus!==s.dia){s.bonus=s.dia;s.caixas++}}
+async function sdApi(a,d){
+ if(ONLINE)return api(a,d||{});
+ const s=sdDemoS();sdDemoMina(s);d=d||{};
+ if(a==='sodAbrir'){if(s.caixas<1)throw new Error('Você não tem caixas para abrir hoje.');if(s.itens.length>=40)throw new Error('Mochila cheia. Descarte itens antes de abrir.');const it=sdRolar(sdSorteia(),s.itens.filter(x=>x.k==='rou').map(x=>x.c));s.itens.push(it);s.caixas--;s.abertas++;save();const v=sdDemoV(s);v.novo=it;return v}
+ if(a==='sodEquipar'){if(!s.itens.some(x=>x.i===d.id&&x.k==='ferr'))throw new Error('Ferramenta não encontrada.');s.equip.ferr=d.id}
+ if(a==='sodDescartar'){if(d.id==='INICIAL')throw new Error('A picareta inicial não pode ser descartada.');s.itens=s.itens.filter(x=>x.i!==d.id);if(s.equip.ferr===d.id)s.equip.ferr='INICIAL'}
+ if(a==='sodAparencia'){const src=d.aparencia||{};Object.keys(src).forEach(k=>{if(k in s.apar)s.apar[k]=src[k]})}
+ if(a==='sodOrar'){s.orou=s.dia}
+ if(a==='demoMissao'){s[d.k]=d.k==='com'?!s.com:(s[d.k]===s.dia?'':s.dia)}
+ if(a==='demoDia'){ /* simula a virada do dia: entrou? cumpriu tudo? */
+  const comp=s.bib===s.dia&&s.orou===s.dia;
+  if(d.entrou){if(comp){s.seq++;s.atraso=Math.max(0,s.atraso-1)}else{s.seq=0;s.pedra+=250}}else{s.atraso=Math.min(3,s.atraso+1);s.pedra+=400;s.seq=0}
+  const nx=new Date(s.dia+'T12:00:00');nx.setDate(nx.getDate()+1);s.dia=nx.toISOString().slice(0,10);s.pedra=Math.min(SD_MAX,s.pedra);s.aviso=[];
+  if(nx.getDay()===0){if(s.livre){s.livre=false;s.seq=0;s.pedra=Math.max(s.pedra,1200);s.aviso=['preso']}if(!s.com)s.pedra=Math.min(SD_MAX,s.pedra+500);s.com=false}
+  if(d.entrou)s.caixas++}
+ if(a==='demoZera'){S.sod=null;save();return sdDemoV(sdDemoS())}
+ if(a==='demoPedra'){s.pedra=0}
+ sdDemoLivre(s);save();return sdDemoV(s)}
+function sdSet(d){if(!d)return;SD.d=d;SD.loc=d.pedra;SD.locT=Date.now();}
+async function sdCarrega(force){if(SD.busy&&!force)return;SD.busy=1;try{const r=await sdApi('sodGet');sdSet(r)}catch(e){if(!SD.d)SD.erro=e.message}finally{SD.busy=0}if(R.r==='feed'||(R.r==='meu'&&R.sub.meu==='sod')){sdRepinta();sdAnim()}}
+function sdRepinta(){if(R.r==='meu'&&R.sub.meu==='sod'){renderKeepSuave()}else if(R.r==='feed'){const e=$('#sd_home');if(e)e.outerHTML=sdHome()}}
+/* ---------- telas ---------- */
+function sdPct(){const d=SD.d;return d?Math.round(Math.max(0,Math.min(100,(SD.loc!=null?SD.loc:d.pedra)/SD_MAX*100))):0}
+function sdSeqPontos(d){let h='';for(let i=0;i<d.seqMeta;i++)h+=`<i class="sdp ${i<d.seq?'on':''}"></i>`;return h}
+function sdFala(d){if(d.livre)return`O Sod está <b>livre</b> e brincando com você desde ${dBR(d.livreDesde)}. ${d.domingo?'Hoje é domingo: ele pode ser preso de novo, então cumpra suas missões e esteja com Deus!':'Mantenha as missões todos os dias. No domingo ele pode ser preso de novo.'}`;
+ if(d.sentado)return`Você ficou <b>3 dias ou mais</b> sem entrar. Seu personagem sentou ao lado da pedra e o Sod está sendo coberto. Entre todos os dias e cumpra as missões para levantá-lo!`;
+ if(d.atraso>0)return`Você faltou ${d.atraso} dia(s): seu personagem bate mais devagar (<b>${Math.round(d.nerf*100)}%</b> do ritmo normal). Cumpra as missões do dia para recuperar o ritmo.`;
+ return`O Sod está preso nas pedras. Cumpra as missões por <b>7 dias seguidos</b> e quebre todas as pedras para libertá-lo.`}
+function sdMissoesHTML(d){return`<div class="sdm">${d.missoes.map(m=>`<div class="sdmi ${m.ok?'ok':''}" ${d.demo&&m.k!=='entrar'?`onclick="sdDemoMis('${m.k}')"`:''}><span class="sdck">${m.ok?ic('check',14):''}</span><span class="sp">${esc(m.t)}</span><small>${m.g==='dia'?'diária':m.g==='semana'?'semanal':'bônus'}</small>${m.k==='oracao'&&!m.ok&&!d.demo?`<button class="btn sm" onclick="sdOrei()">Já orei</button>`:''}</div>`).join('')}</div>`}
+function sdCanvas(id,w,h,cls){return`<canvas id="${id}" class="sdcv ${cls||''}" width="${w}" height="${h}" data-sd="${id}"></canvas>`}
+function sdHome(){const d=SD.d;if(!d){if(!SD.busy)setTimeout(sdCarrega,0);return`<div id="sd_home" class="card sdhome"><p class="muted">Carregando o seu Sod…</p></div>`}
+ return`<div id="sd_home" class="card sdhome" onclick="go('meu','sod')" role="button" tabindex="0" aria-label="Abrir o Sod"><div class="sdth"><b>Sod Adonai</b><span class="chip ${d.livre?'on':''}">${d.livre?'Livre ✨':'Preso · '+sdPct()+'%'}</span></div>${sdCanvas('sd_mini',128,72)}<div class="sdfoot"><div class="muted sm">${d.livre?'Brincando com você':'Faltam '+Math.max(0,d.seqMeta-d.seq)+' dia(s) de missões'}</div>${d.caixas>0?`<span class="chip on">🎁 ${d.caixas} caixa(s)</span>`:''}</div></div>`}
+function sodHTML(){
+ if(!SD.d){if(!SD.busy)sdCarrega();return`<div class="card"><p class="muted">${SD.erro?esc(SD.erro):'Carregando o seu Sod…'}</p></div>`}
+ const d=SD.d,sb=SD.sub||'cena',T=[['cena','O Sod'],['perso','Personagem'],['mochila','Mochila']];
+ const tabsH=`<div class="row pf-tabs">${T.map(x=>`<button class="chip ${sb===x[0]?'on':''}" onclick="SD.sub='${x[0]}';render()">${x[1]}</button>`).join('')}</div>`;
+ let b='';
+ if(sb==='perso')b=sdPersoHTML(d);else if(sb==='mochila')b=sdMochilaHTML(d);else b=`<div class="card sdc"><h2 style="margin:0 0 2px">Sod Adonai</h2><p class="muted sm" style="margin:0 0 10px">Intimidade e conselho do Senhor. A luz do Espírito Santo no centro da sua vida.</p>${sdCanvas('sd_cv',128,72)}
+  <div class="sdbar" title="Pedras restantes"><i id="sd_bar" style="width:${sdPct()}%"></i></div><div class="row sm muted"><span>${d.livre?'Livre':'Pedras: <b id="sd_pct">'+sdPct()+'</b>%'}</span><span class="sp"></span><span>Ritmo: ${d.sentado?'parado':d.taxa+' /s'}</span></div>
+  <p style="margin:10px 0">${sdFala(d)}</p><div class="row" style="gap:6px;align-items:center"><span class="sm muted">Dias seguidos</span><span class="sdps">${sdSeqPontos(d)}</span><b>${d.seq}/${d.seqMeta}</b></div>
+  <div class="row" style="margin-top:12px;gap:8px">${d.caixas>0?`<button class="btn" onclick="sdAbrir()">🎁 Abrir caixa (${d.caixas})</button>`:`<span class="muted sm">Sem caixas agora: uma nova chega todo dia que você entra, e outra quando cumpre as missões.</span>`}</div></div>
+  <div class="card"><h3 style="margin:0 0 8px">Missões de hoje</h3>${sdMissoesHTML(d)}<p class="muted sm" style="margin:8px 0 0">Cumpra <b>Entrar</b>, <b>Bíblia</b> e <b>Orar</b> todos os dias. Faltar à célula ou ao culto na semana deixa mais pedras no domingo.</p></div>
+  ${d.demo?`<div class="card flat"><b>Modo demonstração</b><p class="muted sm">Simule a passagem dos dias para ver o Sod preso, atrasado, sentado ou livre.</p><div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn sm" onclick="sdDemo('demoDia',{entrou:1})">Passar 1 dia (entrei)</button><button class="btn sm ghost" onclick="sdDemo('demoDia',{entrou:0})">Passar 1 dia sem entrar</button><button class="btn sm ghost" onclick="sdDemo('demoPedra')">Quebrar todas as pedras</button><button class="btn sm ghost" onclick="sdDemo('demoZera')">Recomeçar</button></div></div>`:''}`;
+ return tabsH+b}
+function sdMochilaHTML(d){const fe=d.itens.filter(x=>x.k==='ferr'),ro=d.itens.filter(x=>x.k==='rou');
+ return`<div class="card"><h3 style="margin:0 0 8px">Ferramentas <small class="muted">${d.itens.length}/${d.bag}</small></h3><div class="sdit">${fe.map(it=>{const f=SD_FERR[it.c],eq=d.equip.ferr===it.i,rr=SD_RAR[it.r];return`<div class="sdi ${eq?'eq':''}" style="--rc:${rr[1]}"><canvas class="sdtc" width="24" height="24" data-tool='${JSON.stringify({c:it.c,r:it.r})}'></canvas><div class="sp"><b>${esc(f[0])}</b> <small style="color:${rr[1]}">${rr[0]}</small><div class="sm muted">Vel. ${it.v}/s · Dano ${it.d} · Qualidade ${it.q}%</div></div><div class="col" style="gap:4px">${eq?'<span class="chip on">Equipada</span>':`<button class="btn sm" onclick="sdEquipa('${it.i}')">Equipar</button>`}${it.i!=='INICIAL'&&!eq?`<button class="btn sm ghost" onclick="sdDescarta('${it.i}')">Descartar</button>`:''}</div></div>`}).join('')}</div><p class="muted sm" style="margin:8px 0 0">Velocidade = golpes por segundo · Dano = força de cada golpe · Qualidade = chance de quebra limpa (golpe dobrado).</p></div>
+ <div class="card"><h3 style="margin:0 0 8px">Roupas desbloqueadas</h3>${ro.length?`<div class="row" style="flex-wrap:wrap;gap:6px">${ro.map(it=>`<span class="chip" style="border-color:${SD_RAR[it.r][1]}">${esc((SD_ROU[it.c]||[it.c])[0])}</span>`).join('')}</div><p class="muted sm" style="margin:8px 0 0">Use em “Personagem”.</p>`:'<p class="muted sm">Abra caixas para ganhar roupas novas. Elas aparecem aqui.</p>'}</div>`}
+function sdPersoHTML(d){const a=Object.assign({},SD_AP0,d.aparencia),own=sl=>[...SD_LIVRES[sl],...d.itens.filter(x=>x.k==='rou'&&x.c.startsWith(sl+':')).map(x=>[x.c.split(':')[1],(SD_ROU[x.c]||['?'])[0]])];
+ const cor=(k,l)=>`<label class="sdcor"><span>${l}</span><input type="color" value="${a[k]}" oninput="sdAp('${k}',this.value,1)" onchange="sdAp('${k}',this.value)"></label>`;
+ const est=(sl,l)=>`<div class="sdsel"><b class="sm">${l}</b><div class="row" style="flex-wrap:wrap;gap:6px">${own(sl).map(o=>`<button class="chip ${a[sl]===o[0]?'on':''}" onclick="sdAp('${sl}','${o[0]}')">${esc(o[1])}</button>`).join('')}</div></div>`;
+ return`<div class="card"><h3 style="margin:0 0 8px">Seu personagem</h3><div style="max-width:220px;margin:0 auto">${sdCanvas('sd_pv',40,44,'pv')}</div>
+ <div class="sdsel"><b class="sm">Cabelo</b><div class="row" style="flex-wrap:wrap;gap:6px">${SD_CAB.map(o=>`<button class="chip ${a.cabelo===o[0]?'on':''}" onclick="sdAp('cabelo','${o[0]}')">${o[1]}</button>`).join('')}</div></div>
+ <div class="sdcors">${cor('pele','Pele')}${cor('corCabelo','Cor do cabelo')}${cor('corBlusa','Cor da blusa')}${cor('corCalca','Cor da calça')}${cor('corTenis','Cor do tênis')}${cor('corBone','Cor do boné')}</div>
+ ${est('blusa','Blusa')}${est('calca','Calça')}${est('tenis','Tênis')}${est('bone','Boné e chapéus')}<p class="muted sm" style="margin:10px 0 0">Mais estilos de roupa saem das caixas diárias.</p></div>`}
+/* ---------- ações ---------- */
+let SDAPT=0;
+function sdAp(k,v,vivo){const d=SD.d;if(!d)return;d.aparencia=Object.assign({},SD_AP0,d.aparencia);d.aparencia[k]=v;if(vivo){sdPinta();return}clearTimeout(SDAPT);if(!vivo){render()}SDAPT=setTimeout(async()=>{try{sdSet(await sdApi('sodAparencia',{aparencia:d.aparencia}))}catch(e){toast(e.message,'err')}},350)}
+async function sdOrei(){try{sdSet(await sdApi('sodOrar'));toast('Que Deus te abençoe! Missão cumprida 🙏');render()}catch(e){toast(e.message,'err')}}
+async function sdEquipa(id){try{sdSet(await sdApi('sodEquipar',{id}));toast('Ferramenta equipada');render()}catch(e){toast(e.message,'err')}}
+async function sdDescarta(id){if(!confirm('Descartar esta ferramenta?'))return;try{sdSet(await sdApi('sodDescartar',{id}));render()}catch(e){toast(e.message,'err')}}
+async function sdDemo(a,d){try{sdSet(await sdApi(a,d));render()}catch(e){toast(e.message,'err')}}
+async function sdDemoMis(k){const m={biblia:'bib',oracao:'orou',anotar:'anot',comunhao:'com'}[k];if(m)sdDemo('demoMissao',{k:m})}
+async function sdAbrir(){try{const r=await sdApi('sodAbrir');sdSet(r);const it=r.novo;let nome,desc,rr=SD_RAR[it.r];if(it.k==='ferr'){nome=SD_FERR[it.c][0];desc=`Velocidade ${it.v}/s · Dano ${it.d} · Qualidade ${it.q}%`}else{nome=(SD_ROU[it.c]||[it.c])[0];desc='Nova roupa para o seu personagem'}
+ modal(`<div style="text-align:center"><p class="muted sm" style="margin:0">Você abriu uma caixa e encontrou:</p><div class="sdnovo" style="--rc:${rr[1]}">${it.k==='ferr'?`<canvas class="sdtc big" width="24" height="24" data-tool='${JSON.stringify({c:it.c,r:it.r})}'></canvas>`:'<div style="font-size:42px">👕</div>'}</div><h2 style="margin:6px 0 2px">${esc(nome)}</h2><b style="color:${rr[1]}">${rr[0]}</b><p class="muted sm">${desc}</p><button class="btn" onclick="closeL();render()">Guardar na mochila</button>${it.k==='ferr'?` <button class="btn ghost" onclick="closeL();sdEquipa('${it.i}')">Equipar agora</button>`:''}</div>`);sdAnim()}catch(e){toast(e.message,'err')}}
+/* ---------- animação ---------- */
+function sdPinta(){const d=SD.d;if(!d)return;const t=performance.now();document.querySelectorAll('canvas[data-sd]').forEach(cv=>{if(cv.id==='sd_pv'){const c=cv.getContext('2d');c.imageSmoothingEnabled=false;c.clearRect(0,0,cv.width,cv.height);c.fillStyle='#1e293b';c.fillRect(0,0,cv.width,cv.height);c.fillStyle='#334155';c.fillRect(0,cv.height-8,cv.width,8);sdChar(c,15,12,Object.assign({},SD_AP0,d.aparencia),'parado',0,null,t)}else sdCena(cv,d,t,{live:1})});
+ document.querySelectorAll('canvas.sdtc').forEach(cv=>{if(cv.dataset.p)return;cv.dataset.p=1;try{const it=JSON.parse(cv.dataset.tool),c=cv.getContext('2d');c.imageSmoothingEnabled=false;c.clearRect(0,0,24,24);const sx=c.save();c.translate(2,18);sdTool(c,it,0,0,1,0);c.restore()}catch(e){}})}
+function sdAnim(){sdPinta();if(SD.iv)return;SD.iv=setInterval(()=>{if(!document.querySelector('canvas[data-sd]')){clearInterval(SD.iv);SD.iv=0;return}const d=SD.d;if(d&&!d.livre&&!d.sentado&&SD.loc>0){const dt=(Date.now()-SD.locT)/1000;SD.locT=Date.now();SD.loc=Math.max(0,SD.loc-dt*d.taxa)}else SD.locT=Date.now();const b=$('#sd_bar');if(b){b.style.width=sdPct()+'%';const p=$('#sd_pct');if(p)p.textContent=sdPct()}sdPinta();if(Date.now()-SD.sync>60000&&!document.hidden){SD.sync=Date.now();sdCarrega(1)}},110)}
 
 /* ===== Criar insígnias (supervisores) e escalas de serviço ===== */
 const canCurar=()=>S.role==='admin'||S.role==='pastor'||can('config')||can('eventos')||can('celulas')||!!cg().supervisor;

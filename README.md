@@ -216,3 +216,16 @@ Administração › **Maratona Bíblica (programar)**: início (1º de janeiro),
 - **Usuário Fiel** (criada no `setup()`, editável): entrar 5, 10, 20, 50 e 100 dias consecutivos.
 - Novas regras: dias consecutivos, devocionais, capítulos lidos, notas no feed, anotações na Bíblia, pedidos de oração e escalas servidas. Mais de 60 ícones (pomba, caneta, pergaminho, trofeu etc.).
 - Luz vermelha piscando em **Aprovações** na barra lateral quando há pendências.
+
+## Sod Adonai (gamificação estilo Tamagotchi)
+
+O **Sod** ("Intimidade e conselho do Senhor") é um orbe de luz branca: o Espírito Santo no centro da vida da pessoa. Fica no **Início** (janela) e em **Meu perfil › Sod** (abas *O Sod*, *Personagem*, *Mochila*). Tudo é calculado no servidor (`sodGet` e rotas `sod*` no `Code.gs`, aba `Sod` da planilha); o app só desenha em pixel art (canvas).
+
+- **Pedras**: o Sod começa com 700 de 3000 pontos de pedra. O personagem minera sozinho com a ferramenta equipada (velocidade × dano × qualidade).
+- **Castigo por ausência**: 1 dia sem entrar → ritmo 60%; 2 dias → 30%; 3 dias ou mais → o personagem senta e as pedras envolvem o Sod. Cada dia completo recupera 1 nível.
+- **Missões diárias** (Entrar, Bíblia, Orar) + bônus (anotação) + semanal (célula ou culto). Faltar à comunhão na semana soma pedras no domingo.
+- **Libertação**: pedras zeradas + 7 dias seguidos de missões. O Sod sai do orbe e fica com o personagem (+50 XP).
+- **Domingo**: um Sod solto é preso de novo; chega uma notificação e a Zoe lembra de libertá-lo outra vez.
+- **Caixas**: 1 por dia de acesso e +1 ao cumprir as missões. Dão ferramentas (pá, picareta, marreta, martelete, furadeira, britadeira) com atributos sorteados e raridade (comum, raro, épico, lendário) ou roupas.
+- **Personagem**: cabelo, cores e estilos de blusa, calça, tênis e boné (estilos novos vêm das caixas).
+- No modo demonstração (sem servidor) há botões para simular a passagem dos dias.
