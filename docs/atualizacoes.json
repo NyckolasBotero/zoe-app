@@ -1,0 +1,45 @@
+[
+ {
+  "titulo": "Documentação e notas de atualização na Administração",
+  "melhorias": [
+   "Nova seção Administração › Documentação com a documentação do site e as notas de atualização por versão.",
+   "A versão atual aparece destacada; cada mudança futura entra automaticamente com a sua versão."
+  ],
+  "v": "1.9",
+  "data": "30/10/2026"
+ },
+ {
+  "v": "1.5",
+  "data": "30/10/2026",
+  "titulo": "Agendas de transmissão, tela de pausa e imagens",
+  "melhorias": [
+   "Multimídia › Agendas: monte a sequência de músicas, imagens e eventos por data (domingo, culto de jovens no sábado etc.), com histórico e edição de agendas passadas.",
+   "Tela de pausa personalizável: fundo, cores, direção, efeito, velocidade, imagem e posição da logo.",
+   "Divulgar imagens e eventos no telão; ficam salvos na agenda do dia e na biblioteca para reutilizar.",
+   "Controle remoto agora segue a agenda escolhida."
+  ]
+ },
+ {
+  "v": "Até 1.4",
+  "data": "30/10/2026",
+  "titulo": "Controle remoto, versão do site e conquistas",
+  "melhorias": [
+   "Controle remoto do telão pelo celular (Multimídia › Controle remoto).",
+   "Número da versão abaixo de Administração no menu e no painel, com aviso de versão nova.",
+   "Conquista de insígnia: pop-up 3D com brilho e som por nível.",
+   "Família Zoe: landing page “Uma Família Para Pertencer”, mural livre dos pastores, Onde estamos (mapa e foto) e Fale com a Igreja.",
+   "Nível Celeste de insígnia (estilo pérola)."
+  ]
+ },
+ {
+  "v": "Anterior",
+  "data": "29/10/2026",
+  "titulo": "Base do aplicativo",
+  "melhorias": [
+   "Início personalizável, anotações dos cultos, escalas dos ministérios (com vaga aberta) e acesso único por pessoa.",
+   "Sod Adonai (gamificação), insígnias com níveis e sequência, perfil personalizável.",
+   "Área Multimídia (projetor de letras), Bíblia com marcações, Maratona Bíblica, Pessoas e Chat.",
+   "Feed social, Consolidação com mapa e WhatsApp, certificados, Loja Zoe, carregamento mais rápido."
+  ]
+ }
+]

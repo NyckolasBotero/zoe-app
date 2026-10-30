@@ -7,13 +7,21 @@ def _git(*a):
     try: return subprocess.check_output(['git', *a], text=True, stderr=subprocess.DEVNULL).strip()
     except Exception: return ''
 _agora = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=-3)))
-# número da versão (1.N): sobe 1 a cada geração com o código-fonte diferente da anterior; refazer o build sem mexer no código mantém o número
-_h = hashlib.sha1(s.replace('__ZVER__', '').encode('utf-8')).hexdigest()[:10]
+# documentação e notas de atualização (docs/*.json) são embutidas no app; notas novas (sem "v") recebem a versão gerada
+def _j(p):
+    try: return json.load(open(p, encoding='utf-8'))
+    except Exception: return []
+_notas = _j('docs/atualizacoes.json'); _docs = _j('docs/documentacao.json')
+_novas = [n for n in _notas if not n.get('v')]
+# número da versão (1.N): sobe 1 a cada geração com o código-fonte (ou a documentação) diferente da anterior
+_h = hashlib.sha1((s.replace('__ZVER__', '').replace('__ZDOCS__', '') + json.dumps([{k: v for k, v in n.items() if k not in ('v', 'data')} for n in _notas], sort_keys=True) + json.dumps(_docs, sort_keys=True)).encode('utf-8')).hexdigest()[:10]
 try: _ant = json.load(open('version.json', encoding='utf-8'))
 except Exception: _ant = {}
 if _ant.get('h') == _h: _zv = _ant
 else: _zv = {'id': _agora.strftime('%Y%m%d-%H%M%S'), 'data': _agora.strftime('%d/%m/%Y %H:%M'), 'h': _h, 'v': '1.' + str(int(str(_ant.get('v', '1.0')).split('.')[-1]) + 1)}
-s = s.replace('__ZVER__', json.dumps(_zv), 1)
+for n in _novas: n['v'] = _zv['v']; n.setdefault('data', _agora.strftime('%d/%m/%Y'))
+if _novas: json.dump(_notas, open('docs/atualizacoes.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+s = s.replace('__ZVER__', json.dumps(_zv), 1).replace('__ZDOCS__', json.dumps({'docs': _docs, 'notas': _notas}, ensure_ascii=False).replace('</', '<\\/'), 1)
 open('version.json', 'w', encoding='utf-8').write(json.dumps(_zv))
 title = re.search(r'<title>.*?</title>', s).group(0)
 body = s.replace(title, '', 1).replace('<meta name="claude:viewport-fit-sides" content="cover">', '', 1)

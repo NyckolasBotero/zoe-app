@@ -1,0 +1,50 @@
+[
+ {
+  "t": "Visão geral",
+  "itens": [
+   "App web (celular e computador) hospedado no GitHub Pages; arquivo único gerado por build.py a partir de src/app.html.",
+   "Dados em Google Sheets via Google Apps Script (apps-script/Code.gs). Sem o endereço do Apps Script o app roda em modo demonstração (dados no aparelho).",
+   "Para atualizar o backend: colar o Code.gs no Apps Script, rodar setup() e publicar nova versão. A planilha deve continuar com compartilhamento restrito."
+  ]
+ },
+ {
+  "t": "Acessos e permissões",
+  "itens": [
+   "Níveis de acesso (membro, líder, supervisor, pastor, admin etc.) definem o que cada um vê; permissões finas por área (eventos, células, ministérios, configurações, cursos).",
+   "Cargos de célula (líder, supervisor, líder em treinamento) valem em qualquer nível.",
+   "Multimídia e telão: ministério Som ou curadores."
+  ]
+ },
+ {
+  "t": "Áreas principais",
+  "itens": [
+   "Início personalizável, Bíblia e Anotações, Biblioteca virtual, Células (frequência, mural, organograma, mapa).",
+   "Família Zoe (landing, notícias, pastores, programação, onde estamos, fale com a igreja), Ministérios e escalas, Eventos e check-in, Cursos e certificados.",
+   "Meu perfil (nível, insígnias, Sod), Loja Zoe, Consolidação, Feed social, Pessoas e Chat."
+  ]
+ },
+ {
+  "t": "Multimídia e telão",
+  "itens": [
+   "Músicas com letras divididas em slides, layout por música e padrão.",
+   "Agendas por data (histórico editável), tela de pausa personalizável, imagens e eventos transmitidos.",
+   "Controle remoto pelo celular; o projetor roda no navegador do computador e acompanha em até 2 s."
+  ]
+ },
+ {
+  "t": "Administração",
+  "itens": [
+   "Grupos: Publicações, Acessos, Indicadores, Células, Definições de Parâmetros, Loja Zoe e Documentação.",
+   "Versão do site exibida no menu e no painel; aviso quando há versão nova.",
+   "Cada alteração do site entra em Notas de atualização com a versão e as melhorias."
+  ]
+ },
+ {
+  "t": "Para desenvolvedores",
+  "itens": [
+   "Testes: node --test tests/zoe.test.mjs (backend) e testes e2e em tests/*.py (Playwright).",
+   "docs/atualizacoes.json: notas de atualização; docs/documentacao.json: esta documentação. O build.py embute os dois no app e atribui a versão às notas novas (sem campo v).",
+   "README.md traz o detalhe técnico de cada recurso."
+  ]
+ }
+]

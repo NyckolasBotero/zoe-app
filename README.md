@@ -288,3 +288,6 @@ Em **Multimídia › Controle remoto** (mesma regra de acesso do ministério Som
 - **Controle remoto** agora segue a agenda escolhida (itens de música, imagem e evento) e atravessa os itens com Anterior/Próximo.
 - **Tela de pausa**: personalize o que aparece quando a transmissão é pausada/interrompida — tipo e cores do fundo, direção, efeito (respirar, aurora, luz, pulso), velocidade, imagem de fundo e posição/tamanho da logo. Config `TelaoPausa`; rotas `saveTelaoPausa`, `listAgendas`, `saveAgenda`, `deleteAgenda`, `addAgendaItem`, `listMidias`, `getMidia`, `saveMidia`, `deleteMidia`. Testes: `tests/e2e_agendas.py`, `tests/e2e_divulga.py`.
 - Depois de atualizar o `Code.gs`: rodar `setup()` (cria as abas novas) e publicar nova versão.
+
+## Documentação e notas de atualização (Administração › Documentação)
+Mostra a documentação do site e as **notas de atualização por versão** (versão atual destacada). Fonte: `docs/atualizacoes.json` e `docs/documentacao.json`, embutidas pelo `build.py`. **A cada mudança**, acrescente no início de `atualizacoes.json` um item `{titulo, melhorias:[...]}` sem o campo `v`; o build atribui a versão (e a data) e grava no arquivo. Teste: `tests/e2e_docs.py`.
