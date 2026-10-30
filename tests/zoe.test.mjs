@@ -749,8 +749,14 @@ test('consolidação: visitante, célula mais próxima, alerta ao líder', () =>
   const r = e.call('saveVisitor', { nome: 'Pedro Lima', apelido: 'Pedrão', telefone: '11988887777', lat: -23.51, lng: -46.61 }, adm); assert.ok(r.ok, JSON.stringify(r)); assert.equal(r.data.celula.nome, 'Célula Norte');
   const L = (e.run(`(function(){const t=table_('Usuarios');return 1})()`), tok('lid@zoe.com', 'Temp12345'));
   const n = e.sheets.Notificacoes.rows.slice(1).filter(x => x[1] === lid && x[2] === 'visitante'); assert.equal(n.length, 1);
-  const lv = e.call('listVisitors', {}, adm).data; assert.equal(lv.itens.length, 1); assert.ok(lv.itens[0].msg.includes('Pedrão'));
-  assert.ok(e.call('contactVisitor', { id: r.data.id, msg: 'Oi!' }, adm).ok); assert.equal(e.call('listVisitors', {}, adm).data.itens[0].contatado, true);
+  // prévia da célula mais próxima ao marcar o pino, e aviso também ao supervisor do líder
+  assert.equal(e.call('nearCell', { lat: -23.51, lng: -46.61 }, A).error.code, 'FORBIDDEN'); assert.equal(e.call('nearCell', { lat: 'x', lng: 1 }, adm).error.code, 'VALIDATION');
+  const nc = e.call('nearCell', { lat: -23.89, lng: -46.6 }, adm).data.celula; assert.equal(nc.nome, 'Célula Sul'); assert.ok(nc.km < 5);
+  const sup = mk('sup@zoe.com', 'membro'); assert.ok(e.call('createCell', { nome: 'Célula Leste', liderId: lid, supervisorId: sup, coordenadas: '-23.50, -46.20' }, adm).ok);
+  const r2 = e.call('saveVisitor', { nome: 'Rita Leste', telefone: '11977776666', lat: -23.5, lng: -46.21 }, adm).data; assert.equal(r2.celula.nome, 'Célula Leste'); assert.equal(r2.avisados, 2);
+  assert.equal(e.sheets.Notificacoes.rows.slice(1).filter(x => x[1] === sup && x[2] === 'visitante').length, 1); assert.equal(e.sheets.Notificacoes.rows.slice(1).filter(x => x[1] === lid && x[2] === 'visitante').length, 2);
+  const lv = e.call('listVisitors', {}, adm).data; assert.equal(lv.itens.length, 2); assert.ok(lv.itens.some(x => x.msg.includes('Pedrão')));
+  assert.ok(e.call('contactVisitor', { id: r.data.id, msg: 'Oi!' }, adm).ok); assert.equal(e.call('listVisitors', {}, adm).data.itens.find(x => x.id === r.data.id).contatado, true);
 });
 test('Bíblia: marcações, comentários públicos e anotação do culto na célula', () => {
   const { e, adm, tok, mk } = boot(); const a = mk('ana@zoe.com', 'membro'), A = tok('ana@zoe.com', 'Temp12345'), B = (mk('bia@zoe.com', 'membro'), tok('bia@zoe.com', 'Temp12345'));

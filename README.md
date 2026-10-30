@@ -294,3 +294,6 @@ Mostra a documentação do site e as **notas de atualização por versão** (ver
 
 ## Chat: online e digitando
 Presença no cache do Apps Script (`p:<membro>` e `t:<de>:<para>`), sem gravar na planilha: online = visto nos últimos 90 s (o chat consulta a cada 20 s fechado, 2,5 s em conversa aberta); “digitando” vale 6 s e é limpo ao enviar. O botão **Online/Oculto** (guardado no aparelho, `zoe-inv`) é recíproco. Rotas novas: `chatTyping`; `listChats`, `getChat` e `searchPeople` devolvem `online`/`visto`. Teste: `tests/e2e_presenca.py`.
+
+## Consolidação: prévia da célula e aviso ao supervisor
+Em **Consolidação › Novo visitante**, ao marcar o pino (ou usar a localização) a rota `nearCell` devolve a célula mais próxima e o app mostra nome, distância, dia, bairro, líder e supervisor antes de salvar. `saveVisitor` notifica o **líder** e o **supervisor** da célula (sem duplicar e sem avisar quem lançou) e devolve `avisados`. Teste: `tests/e2e_consolidacao.py`.
