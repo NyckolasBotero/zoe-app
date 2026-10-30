@@ -35,5 +35,12 @@ with sync_playwright() as p:
     adm.evaluate("escRec()"); adm.wait_for_selector('text=Pedidos de re-escalação'); adm.wait_for_function("document.body.innerText.includes('Viagem de trabalho')",timeout=8000)
     adm.click('.tabs >> text=Pedidos'); adm.wait_for_selector('button:has-text("Aprovar")'); adm.click('button:has-text("Aprovar")'); adm.wait_for_selector('.toast:has-text("aprovado")',timeout=8000)
     adm.click('.tabs >> text=Visão geral'); adm.screenshot(path=OUT+'/escalas_geral2.png')
+    # vaga em aberto: o supervisor lança sem escolher ninguém e a Ana se oferece pelo Início
+    adm.click('.tabs >> text=Lançar escala'); adm.select_option('#el_m',index=2); adm.fill('#el_d',adm.evaluate("escAddDias(TODAY,3)")); adm.fill('#el_h','10:00'); adm.fill('#el_v','2')
+    assert 'vaga' in adm.inner_text('#view').lower()
+    adm.click('button:has-text("Salvar escala")'); adm.wait_for_selector('.toast:has-text("vaga(s) aberta(s)")',timeout=10000)
+    ana.evaluate("escRec();go('feed')"); ana.wait_for_selector('#esc_home .escl:has-text("Vagas abertas")',timeout=10000)
+    ana.click('#esc_home button:has-text("Quero servir")'); ana.wait_for_selector('.toast:has-text("Obrigado por se oferecer")',timeout=8000)
+    ana.evaluate("ESC.sub='agenda';go('escalas')"); ana.wait_for_selector('.esc-l.meu .chip:has-text("Confirmada")',timeout=8000)
     print('ERRS',errs); assert not errs
 print('OK')

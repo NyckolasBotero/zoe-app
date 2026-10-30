@@ -16,7 +16,7 @@ with sync_playwright() as p:
     # --- carrossel sem eventos: versículos
     adm.evaluate("go('feed')"); adm.wait_for_selector('#car .cvi')
     assert adm.query_selector('#car .vs'), 'sem eventos deve mostrar versículos'
-    t0=adm.evaluate("document.querySelector('#cartr').scrollLeft"); adm.wait_for_function("(t)=>Math.abs(document.querySelector('#cartr').scrollLeft-t)>20",arg=t0,timeout=8000)
+    adm.mouse.move(2,2); t0=adm.evaluate("document.querySelector('#cartr').scrollLeft"); adm.wait_for_function("(t)=>Math.abs(document.querySelector('#cartr').scrollLeft-t)>20",arg=t0,timeout=15000)
     # --- cards ocupam a largura da tela
     w=adm.evaluate("document.querySelector('#view').getBoundingClientRect().width"); c=adm.evaluate("document.querySelector('.content').getBoundingClientRect().width"); assert c>1100, c
     # --- evento -> carrossel

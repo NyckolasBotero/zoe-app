@@ -750,6 +750,54 @@ test('Bíblia: marcações, comentários públicos e anotação do culto na cél
   const fc = e.call('listFeed', { escopo: 'celula' }, B).data.itens; assert.equal(fc.length, 1); assert.equal(fc[0].meta.itens.length, 1);
 });
 
+test('Início: layout definido pelo admin vale para todos; anotações compartilhadas dos 3 últimos cultos', () => {
+  const { e, adm, tok, mk } = boot(); mk('ana@zoe.com', 'membro'); const A = tok('ana@zoe.com', 'Temp12345');
+  // layout: só quem tem permissão de configuração salva; valores são limitados e blocos desconhecidos ignorados
+  assert.equal(e.call('saveHomeLayout', { layout: [{ id: 'hero', w: 5, h: 5 }] }, A).error.code, 'FORBIDDEN');
+  assert.equal(e.call('saveHomeLayout', { layout: [{ id: 'xx', w: 5, h: 5 }] }, adm).error.code, 'VALIDATION');
+  const r = e.call('saveHomeLayout', { layout: [{ id: 'eventos', w: 99, h: 1 }, { id: 'hero', on: false, w: 5, h: 6 }, { id: 'hero', w: 3, h: 3 }, { id: 'nada', w: 3, h: 3 }] }, adm); assert.ok(r.ok, JSON.stringify(r));
+  assert.deepEqual(r.data.layout, [{ id: 'eventos', on: true, w: 12, h: 3 }, { id: 'hero', on: false, w: 5, h: 6 }]);
+  assert.deepEqual(e.call('me', {}, A).data.config.homeLayout, r.data.layout);
+  assert.ok(e.call('saveHomeLayout', { reset: true }, adm).ok); assert.equal(e.call('me', {}, A).data.config.homeLayout, null);
+  // anotações: só as marcadas para a igreja, só os 3 últimos cultos (datas)
+  const hoje = e.run('today_()'), dia = n => { const d = new Date(hoje + 'T12:00:00'); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); };
+  const nota = (tok_, n, tx, ig) => e.call('saveNote', { data: dia(n), tema: 'T' + n, texto: tx, igreja: ig }, tok_);
+  assert.ok(nota(A, 28, 'muito antigo', true).ok); assert.ok(nota(A, 21, 'terceiro', true).ok); assert.ok(nota(A, 14, 'segundo', true).ok); assert.ok(nota(adm, 14, 'do admin', true).ok); assert.ok(nota(A, 7, 'primeiro', true).ok); assert.ok(nota(A, 7, 'privada', false).ok);
+  const L = e.call('listCultoNotes', {}, adm).data; assert.deepEqual(L.cultos, [dia(7), dia(14), dia(21)]);
+  assert.deepEqual(L.itens.map(i => i.texto).sort(), ['do admin', 'primeiro', 'segundo', 'terceiro']);
+  assert.ok(L.itens.every(i => i.autor && i.data));
+  // quando passa o próximo culto, o mais antigo sai
+  assert.ok(nota(A, 0, 'hoje', true).ok); const L2 = e.call('listCultoNotes', {}, A).data; assert.deepEqual(L2.cultos, [dia(0), dia(7), dia(14)]); assert.ok(!L2.itens.some(i => i.texto === 'terceiro'));
+});
+
+test('Membros cadastrados: criar acesso direto na pessoa, sem duplicar; membro pode existir sem acesso', () => {
+  const { e, adm, tok } = boot();
+  const r = e.call('adminSave', { tipo: 'membros', valores: { Nome: 'João Frequentador', Telefone: '6199999', Email: '' } }, adm); assert.ok(r.ok, JSON.stringify(r));
+  let L = e.call('adminList', { tipo: 'membros' }, adm).data.itens.find(i => i.rotulo === 'João Frequentador'); assert.ok(L); assert.equal(L.acesso, null);
+  const mid = L.id, antes = e.sheets.Membros.rows.length;
+  // criar o acesso por nome sem apontar a pessoa: bloqueia para não duplicar
+  assert.equal(e.call('createUser', { nome: 'João Frequentador', email: 'joao@zoe.com', senha: 'Temp12345', papel: 'membro' }, adm).error.code, 'VALIDATION');
+  // criar o acesso na própria pessoa
+  const c = e.call('createUser', { membroId: mid, email: 'joao@zoe.com', senha: 'Temp12345', papel: 'membro' }, adm); assert.ok(c.ok, JSON.stringify(c)); assert.equal(c.data.membroId, mid);
+  assert.equal(e.sheets.Membros.rows.length, antes);
+  L = e.call('adminList', { tipo: 'membros' }, adm).data.itens.find(i => i.id === mid); assert.equal(L.acesso.email, 'joao@zoe.com'); assert.equal(L.acesso.papel, 'membro'); assert.equal(L.email, 'joao@zoe.com');
+  assert.ok(tok('joao@zoe.com', 'Temp12345')); assert.equal(e.call('createUser', { membroId: mid, email: 'outro@zoe.com', senha: 'Temp12345', papel: 'membro' }, adm).error.code, 'VALIDATION');
+});
+test('Escalas: vaga em aberto sem escolher pessoa; irmão se oferece e vira escala confirmada', () => {
+  const { e, adm, tok, mk } = boot(); mk('ana@zoe.com', 'membro'); mk('bia@zoe.com', 'membro'); const A = tok('ana@zoe.com', 'Temp12345'), B = tok('bia@zoe.com', 'Temp12345');
+  const mi = e.call('addMinistry', { nome: 'Recepção' }, adm); const mid = e.call('listMinistries', {}, adm).data.find(m => m.nome === 'Recepção').id;
+  const dt = e.run('today_()').replace(/\d\d$/, '28'), futuro = (() => { const d = new Date(); d.setDate(d.getDate() + 5); return d.toISOString().slice(0, 10); })();
+  assert.equal(e.call('saveScale', { ministerioId: mid, data: futuro }, adm).error.code, 'VALIDATION');
+  const r = e.call('saveScale', { ministerioId: mid, data: futuro, hora: '18:00', vagas: 2 }, adm); assert.ok(r.ok, JSON.stringify(r)); assert.equal(r.data.abertas, 2);
+  const L = e.call('listScales', {}, A).data; const ab = L.itens.filter(i => i.status === 'aberta'); assert.equal(ab.length, 2); assert.equal(ab[0].nome, ''); assert.equal(ab[0].meu, false);
+  assert.equal(e.call('listScales', {}, adm).data.ind.abertas, 2);
+  assert.ok(e.call('claimScale', { id: ab[0].id }, A).ok); assert.equal(e.call('claimScale', { id: ab[0].id }, B).error.code, 'VALIDATION');
+  assert.equal(e.call('claimScale', { id: ab[1].id }, A).error.code, 'VALIDATION'); // não pode ocupar duas vagas da mesma escala
+  assert.ok(e.call('claimScale', { id: ab[1].id }, B).ok);
+  const L2 = e.call('listScales', {}, A).data.itens; assert.equal(L2.filter(i => i.status === 'aberta').length, 0); const minha = L2.find(i => i.meu); assert.equal(minha.status, 'confirmada');
+  assert.equal(e.call('listScales', {}, adm).data.ind.abertas, 0);
+});
+
 test('um acesso por pessoa; limpar notificações; notificações definidas pelo adm', () => {
   const { e, adm, tok, mk } = boot(); const id = e.call('saveMember', { membro: { Nome: 'Sem Acesso', Email: 'sem@zoe.com' } }, adm);
   e.run(`appendRow_(table_('Membros'), { MembroID: 'MX1', Nome: 'Maria Cadastro', Simples: 'Maria', Email: 'maria@zoe.com', Status: 'Ativo', EhMembro: '1' })`);

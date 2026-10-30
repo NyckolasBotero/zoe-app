@@ -303,7 +303,22 @@ function greet_(d, u) {
 }
 /* ============================== CONFIG PÚBLICA ============================== */
 function cfgMap_() { const o = {}; table_('Config').rows.forEach(function (r) { o[r.Chave] = r.Valor; }); return o; }
-function publicConfig_() { const c = cfgMap_(); return { nomeIgreja: c.NomeIgreja, whatsapp: c.WhatsApp, localNome: c.LocalNome, localEndereco: c.LocalEndereco, linkMapa: c.LinkMapa || '', colunasExtras: jparse_(c.ColunasExtras, []), canalYoutube: c.CanalYoutube || '', lojaWhatsapp: c.LojaWhatsApp || '', frequentadorPct: Number(c.FrequentadorPct) || 70, frequentadorJanela: Number(c.FrequentadorJanela) || 8, celulasParaSupervisor: Math.max(0, Number(c.CelulasParaSupervisor) || 0), frequenciasParaMembro: freqMembro_(), notifTipos: notifTipos_(c) }; }
+function publicConfig_() { const c = cfgMap_(); return { nomeIgreja: c.NomeIgreja, whatsapp: c.WhatsApp, localNome: c.LocalNome, localEndereco: c.LocalEndereco, linkMapa: c.LinkMapa || '', colunasExtras: jparse_(c.ColunasExtras, []), canalYoutube: c.CanalYoutube || '', lojaWhatsapp: c.LojaWhatsApp || '', frequentadorPct: Number(c.FrequentadorPct) || 70, frequentadorJanela: Number(c.FrequentadorJanela) || 8, celulasParaSupervisor: Math.max(0, Number(c.CelulasParaSupervisor) || 0), frequenciasParaMembro: freqMembro_(), notifTipos: notifTipos_(c), homeLayout: homeLayoutOk_(jparse_(c.HomeLayout, null)) }; }
+const HOME_BLOCOS = ['hero', 'escalas', 'eventos', 'corrida', 'mural', 'proxevento', 'celula', 'aniv', 'domingo', 'cultos', 'testemunhos', 'noticias'];
+/* Layout do Início definido pelo administrador: lista de blocos {id,on,w (2-12 colunas),h (3-80 linhas)} */
+function homeLayoutOk_(l) {
+  if (!Array.isArray(l)) return null; const seen = {}, out = [];
+  l.slice(0, 40).forEach(function (b) { if (!b || HOME_BLOCOS.indexOf(b.id) < 0 || seen[b.id]) return; seen[b.id] = 1; const w = Math.round(Number(b.w)), h = Math.round(Number(b.h)); out.push({ id: b.id, on: b.on !== false, w: Math.max(2, Math.min(12, isFinite(w) ? w : 6)), h: Math.max(3, Math.min(80, isFinite(h) ? h : 12)) }); });
+  return out.length ? out : null;
+}
+function saveHomeLayout_(d, u) {
+  return withLock_(function () {
+    const lay = d.reset ? null : homeLayoutOk_(d.layout); if (!d.reset && !lay) throw new ApiError('VALIDATION', 'Layout inválido.');
+    const t = table_('Config'), r = t.rows.filter(function (x) { return x.Chave === 'HomeLayout'; })[0], v = lay ? JSON.stringify(lay) : '';
+    if (r) writeRow_(t, r._row, { Valor: v }); else appendRow_(t, { Chave: 'HomeLayout', Valor: v });
+    audit_(u.email, 'HOME_LAYOUT', lay ? lay.length + ' blocos' : 'padrão', 'OK'); return { ok: true, layout: lay };
+  });
+}
 const NOTIF_CATS = ['aniv', 'celula', 'eventos', 'oracao', 'cursos', 'transf', 'escala'];
 function notifTipos_(c) { const o = jparse_((c || cfgMap_()).NotifTipos, {}), r = {}; NOTIF_CATS.forEach(function (k) { r[k] = o[k] !== false; }); return r; }
 function saveConfig_(d, u) {
@@ -1629,7 +1644,9 @@ function createUser_(d, u) {
     // um acesso = uma pessoa: o vínculo é o MembroID. Se já existe cadastro com este e-mail (e sem acesso), o acesso é ligado a ele em vez de criar outra pessoa.
     let mid = d.membroId ? getMember_(d.membroId).m.MembroID : '', novo = false;
     if (!mid) { const ja = table_('Membros').rows.filter(function (m) { return String(m.Email).toLowerCase() === email && m.Status !== 'Inativo'; })[0]; if (ja) mid = ja.MembroID; }
+    if (!mid && nome && !d.forcarNovo) { const nn = nome.toLowerCase().trim(), igual = table_('Membros').rows.filter(function (m) { return m.Status !== 'Inativo' && String(m.Nome || '').toLowerCase().trim() === nn && !t.rows.some(function (r) { return r.MembroID === m.MembroID; }); })[0]; if (igual) throw new ApiError('VALIDATION', 'Já existe o cadastro de "' + igual.Nome + '" sem acesso. Em Membros cadastrados use "Criar acesso" nessa pessoa (assim não duplica).'); }
     if (mid && t.rows.some(function (r) { return r.MembroID === mid; })) throw new ApiError('VALIDATION', 'Esta pessoa já tem um acesso. Cada pessoa tem um só acesso.');
+    if (mid) { const g = getMember_(mid); if (!g.m.Email) writeRow_(g.t, g.m._row, { Email: email }); }
     if (!mid) { mid = id_('M'); novo = true; }
     if (novo) appendRow_(table_('Membros'), { MembroID: mid, Nome: nome || email, Simples: nome || email, Apelido: (nome || email).split(' ')[0], Email: email, CelulaID: clip_(d.celulaId, 30), EhMembro: '1', Status: 'Ativo', CriadoEm: now_() });
     const salt = Utilities.getUuid(); appendRow_(t, { Email: email, SenhaHash: hash_(salt, pw), Salt: salt, Papel: papel, Status: 'Ativo', GuiaVisto: '0', MembroID: mid, TrocarSenha: '1', CriadoEm: now_() }); audit_(u.email, 'USUARIO_CRIADO', email + ':' + papel, 'OK'); return { ok: true, membroId: mid };
@@ -1701,7 +1718,7 @@ const ENT = {
   ministerios: { titulo: 'Ministérios', aba: 'Ministerios', id: 'MinisterioID', pre: 'MIN', perm: 'min', rotulo: 'Nome', status: { col: 'Ativo', ativo: '1', off: '0' }, campos: [
     { k: 'Nome', l: 'Nome', t: 'text', max: 60, req: 1 }, { k: 'Descricao', l: 'Descrição curta', t: 'area', max: 300 }, { k: 'Foto', l: 'Foto do ministério', t: 'foto' }, { k: 'Ordem', l: 'Ordem', t: 'num' }, { k: 'Ativo', l: 'Situação', t: 'sel', op: [['1', 'Ativo'], ['0', 'Inativo']] }] },
   membros: { titulo: 'Membros', aba: 'Membros', id: 'MembroID', pre: 'M', perm: 'config', rotulo: 'Nome', sub: 'Telefone', status: { col: 'Status', ativo: 'Ativo', off: 'Inativo' }, defaults: { EhMembro: '1' }, campos: [
-    { k: 'Nome', l: 'Nome completo', t: 'text', max: 120, req: 1 }, { k: 'Simples', l: 'Nome simplificado', t: 'text', max: 60 }, { k: 'Apelido', l: 'Apelido', t: 'text', max: 40 }, { k: 'Sexo', l: 'Sexo', t: 'sel', op: ['Feminino', 'Masculino'] },
+    { k: 'Nome', l: 'Nome completo', t: 'text', max: 120, req: 1 }, { k: 'Simples', l: 'Nome simplificado', t: 'text', max: 60 }, { k: 'Apelido', l: 'Apelido', t: 'text', max: 40 }, { k: 'Email', l: 'E-mail (será o login se você liberar o acesso)', t: 'text', max: 120 }, { k: 'Sexo', l: 'Sexo', t: 'sel', op: ['Feminino', 'Masculino'] },
     { k: 'Nascimento', l: 'Nascimento', t: 'date' }, { k: 'Telefone', l: 'Celular', t: 'text', max: 25 }, { k: 'Profissao', l: 'Profissão', t: 'text', max: 60 }, { k: 'CEP', l: 'CEP', t: 'text', max: 9 }, { k: 'Endereco', l: 'Endereço', t: 'text', max: 200 },
     { k: 'Bairro', l: 'Bairro', t: 'text', max: 80 }, { k: 'Cidade', l: 'Cidade', t: 'text', max: 80 }, { k: 'UF', l: 'UF', t: 'text', max: 2 }, { k: 'EstadoCivil', l: 'Estado civil', t: 'text', max: 30 },
     { k: 'DataBatismo', l: 'Data do batismo', t: 'date' }, { k: 'CelulaID', l: 'Célula', t: 'celula' }, { k: 'Foto', l: 'Foto', t: 'foto' },
@@ -1742,10 +1759,11 @@ function adminList_(d, u) {
   const e = ent_(d, u), t = table_(e.aba), mem = {};
   const membros = (e.campos.some(function (f) { return f.t === 'membro'; }) ? table_('Membros').rows.filter(function (m) { return m.Status !== 'Inativo'; }).map(function (m) { mem[m.MembroID] = m.Simples || m.Nome; return { id: m.MembroID, nome: m.Simples || m.Nome || m.Email }; }).sort(function (a, b) { return a.nome < b.nome ? -1 : 1; }) : []);
   const celulas = e.campos.some(function (f) { return f.t === 'celula'; }) ? table_('Celulas').rows.filter(function (x) { return x.Status !== 'Inativa'; }).map(function (x) { return { id: x.CelulaID, nome: x.Nome }; }) : [];
+  const acessoPorMembro = {}; if (e.aba === 'Membros') table_('Usuarios').rows.forEach(function (x) { if (x.MembroID) acessoPorMembro[x.MembroID] = x; });
   const itens = t.rows.map(function (r) {
     const v = {}; e.campos.forEach(function (f) { v[f.k] = f.t === 'lines' ? jparse_(r[f.k], []).join('\n') : f.t === 'foto' ? (r[f.k] ? '__keep' : '') : r[f.k]; });
     const off = e.status ? r[e.status.col] === e.status.off : false;
-    return { id: r[e.id], rotulo: r[e.rotulo] || '(sem nome)', sub: e.sub ? r[e.sub] : '', off: off, valores: v };
+    const it = { id: r[e.id], rotulo: r[e.rotulo] || '(sem nome)', sub: e.sub ? r[e.sub] : '', off: off, valores: v }; if (e.aba === 'Membros') { const ac = acessoPorMembro[r[e.id]]; it.acesso = ac ? { email: ac.Email, papel: ac.Papel, status: ac.Status || 'Ativo' } : null; it.email = r.Email || ''; } return it;
   });
   if (e.sub === 'Data') itens.sort(function (a, b) { return a.sub < b.sub ? 1 : -1; });
   return { titulo: e.titulo, campos: e.campos, membros: membros, celulas: celulas, itens: itens, podeApagar: !!e.apagar };
@@ -1759,6 +1777,11 @@ function adminSave_(d, u) {
     if (d.id && !row) throw new ApiError('NOT_FOUND', 'Item não encontrado.');
     if (e.aba === 'Celulas' && patch.SupervisorID && (!row || patch.SupervisorID !== row.SupervisorID)) checarSupervisor_(patch.SupervisorID, d, u, (row || {}).MaeID);
     let id = d.id;
+    if (e.aba === 'Membros' && patch.Email !== undefined) {
+      patch.Email = String(patch.Email).toLowerCase().trim(); if (patch.Email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(patch.Email)) throw new ApiError('VALIDATION', 'E-mail inválido.');
+      if (row && table_('Usuarios').rows.some(function (x) { return x.MembroID === row.MembroID; })) delete patch.Email; // quem já tem acesso mantém o e-mail do login
+      else if (patch.Email && t.rows.some(function (m) { return m.Email === patch.Email && m.MembroID !== (row && row.MembroID) && m.Status !== 'Inativo'; })) throw new ApiError('VALIDATION', 'Já existe uma pessoa com este e-mail.');
+    }
     if (row) writeRow_(t, row._row, patch);
     else {
       id = id_(e.pre); const novo = Object.assign({}, e.defaults || {}, patch); novo[e.id] = id;
@@ -1904,12 +1927,23 @@ function saveNote_(d, u) {
     const tema = clip_(d.tema, 80); if (!itens.length && !clip_(d.texto, 1000)) throw new ApiError('VALIDATION', 'Adicione ao menos um versículo ou escreva a anotação.');
     const p = data.split('-'), titulo = p[2] + '/' + p[1] + '/' + p[0] + ' ' + diaDe_(data) + (tema ? ' - Tema ' + tema : ''), cel = minhaCelula_(u);
     const t = table_('Posts'), ex = d.id ? t.rows.filter(function (x) { return x.PostID === d.id && x.AutorID === u.membroId && x.Tipo === 'nota'; })[0] : null;
-    const row = { Titulo: titulo, Texto: clip_(d.texto, 1000), Meta: JSON.stringify({ data: data, dia: diaDe_(data), tema: tema, itens: itens }) };
+    const igreja = d.igreja === true, row = { Titulo: titulo, Texto: clip_(d.texto, 1000), Meta: JSON.stringify({ data: data, dia: diaDe_(data), tema: tema, itens: itens, igreja: igreja }) };
     if (ex) { writeRow_(t, ex._row, row); return { id: ex.PostID, titulo: titulo }; }
-    const id = novoPost_({ tipo: 'nota', escopo: cel ? 'celula' : 'pessoal', celulaId: cel, autorId: u.membroId, titulo: titulo, texto: row.Texto, meta: { data: data, dia: diaDe_(data), tema: tema, itens: itens } }); return { id: id, titulo: titulo, escopo: cel ? 'celula' : 'pessoal' };
+    const id = novoPost_({ tipo: 'nota', escopo: cel ? 'celula' : 'pessoal', celulaId: cel, autorId: u.membroId, titulo: titulo, texto: row.Texto, meta: { data: data, dia: diaDe_(data), tema: tema, itens: itens, igreja: igreja } }); return { id: id, titulo: titulo, escopo: cel ? 'celula' : 'pessoal' };
   });
 }
 
+
+/* Anotações do culto que o autor escolheu mostrar para toda a igreja: só dos 3 últimos cultos (datas) com anotação compartilhada */
+function listCultoNotes_(d, u) {
+  const nm = nomes_(), hoje = today_(), lim = new Date(); lim.setDate(lim.getDate() - 70); const minData = lim.getFullYear() + '-' + escPad_(lim.getMonth() + 1) + '-' + escPad_(lim.getDate());
+  const todas = table_('Posts').rows.filter(function (p) { if (p.Tipo !== 'nota' || p.Status === 'removido') return false; const m = jparse_(p.Meta, {}); return m.igreja === true && m.data && m.data <= hoje && m.data >= minData; });
+  const datas = []; todas.forEach(function (p) { const dt = jparse_(p.Meta, {}).data; if (datas.indexOf(dt) < 0) datas.push(dt); }); datas.sort().reverse(); const ult = datas.slice(0, 3);
+  const itens = todas.filter(function (p) { return ult.indexOf(jparse_(p.Meta, {}).data) >= 0; }).sort(function (a, b) { const da = jparse_(a.Meta, {}).data, db = jparse_(b.Meta, {}).data; return da === db ? (a.Data < b.Data ? 1 : -1) : (da < db ? 1 : -1); }).slice(0, 40).map(function (p) {
+    const m = jparse_(p.Meta, {}); return { id: p.PostID, autor: nm[p.AutorID] || '—', data: m.data, dia: m.dia || '', tema: m.tema || '', texto: clip_(p.Texto, 400), versiculos: (m.itens || []).slice(0, 3).map(function (i) { return { ref: i.ref, livro: i.livro, texto: clip_(i.texto, 160), coment: clip_(i.coment, 200) }; }) };
+  });
+  return { cultos: ult, itens: itens };
+}
 
 /* ===== Escalas de ministérios ===== */
 function escPad_(n) { return (n < 10 ? '0' : '') + n; }
@@ -1943,8 +1977,8 @@ function escAvisos_(u) {
   });
 }
 function escOut_(r, nm, mi, u, gestor) {
-  const dono = r.MembroID === u.membroId, vis = gestor || dono;
-  return { id: r.EscalaID, ministerioId: r.MinisterioID, ministerio: mi[r.MinisterioID] || '', membroId: r.MembroID, nome: nm[r.MembroID] || '', data: r.Data, hora: r.Hora || '', funcao: r.Funcao || '', status: r.Status || 'pendente', motivo: vis ? (r.Motivo || '') : '', meu: dono,
+  const dono = !!r.MembroID && r.MembroID === u.membroId, vis = gestor || dono;
+  return { id: r.EscalaID, ministerioId: r.MinisterioID, ministerio: mi[r.MinisterioID] || '', membroId: r.MembroID, nome: r.MembroID ? (nm[r.MembroID] || '') : '', data: r.Data, hora: r.Hora || '', funcao: r.Funcao || '', status: r.MembroID ? (r.Status || 'pendente') : 'aberta', motivo: vis ? (r.Motivo || '') : '', meu: dono,
     troca: r.Status === 'troca' ? { membroId: r.TrocaMembroID, nome: nm[r.TrocaMembroID] || '', escalaId: r.TrocaEscalaID || '', msg: vis ? (r.TrocaMsg || '') : '' } : null,
     origem: r.OrigemMembroID ? (nm[r.OrigemMembroID] || '') : '', serie: r.SerieID || '', reesc: Number(r.Reesc || 0), presente: r.Presente === '' || r.Presente === undefined ? null : r.Presente === '1' };
 }
@@ -1958,10 +1992,10 @@ function listScales_(d, u) {
   out.pedidos = pd.map(function (p) { return { id: p.PedidoID, ministerioId: p.MinisterioID, ministerio: mi[p.MinisterioID] || '', membroId: p.MembroID, nome: nm[p.MembroID] || '', data: p.Data, msg: p.Msg, status: p.Status, criadoEm: p.CriadoEm }; });
   if (gestor) {
     const all = table_('Escalas').rows.filter(function (r) { return r.Status !== 'cancelada'; }), fut = all.filter(function (r) { return r.Data >= hoje; }), pass = all.filter(function (r) { return r.Data < hoje; });
-    const por = {}; fut.forEach(function (r) { const k = r.MinisterioID; por[k] = por[k] || { ministerio: mi[k] || '?', pessoas: {}, escalas: 0 }; por[k].pessoas[r.MembroID] = 1; por[k].escalas++; });
+    const por = {}; fut.forEach(function (r) { const k = r.MinisterioID; por[k] = por[k] || { ministerio: mi[k] || '?', pessoas: {}, escalas: 0 }; if (r.MembroID) { por[k].pessoas[r.MembroID] = 1; por[k].escalas++; } });
     out.ind = {
       porMinisterio: Object.keys(por).map(function (k) { return { ministerio: por[k].ministerio, pessoas: Object.keys(por[k].pessoas).length, escalas: por[k].escalas }; }).sort(function (a, b) { return b.escalas - a.escalas; }),
-      proximas: fut.length, confirmadas: fut.filter(function (r) { return r.Status === 'confirmada'; }).length, pendentes: fut.filter(function (r) { return r.Status === 'pendente'; }).length,
+      proximas: fut.filter(function (r) { return r.MembroID; }).length, abertas: fut.filter(function (r) { return !r.MembroID; }).length, confirmadas: fut.filter(function (r) { return r.Status === 'confirmada'; }).length, pendentes: fut.filter(function (r) { return r.Status === 'pendente' && r.MembroID; }).length,
       reescalar: fut.filter(function (r) { return r.Status === 'reescalar'; }).length, trocas: fut.filter(function (r) { return r.Status === 'troca'; }).length,
       reescTotal: all.reduce(function (a, r) { return a + Number(r.Reesc || 0); }, 0),
       confirmouFoi: pass.filter(function (r) { return r.Presente === '1' && r.ConfirmadoEm; }).length, foram: pass.filter(function (r) { return r.Presente === '1'; }).length, faltaram: pass.filter(function (r) { return r.Presente === '0'; }).length, passadas: pass.length
@@ -1974,7 +2008,8 @@ function saveScale_(d, u) {
   return withLock_(function () {
     const min = table_('Ministerios').rows.filter(function (m) { return m.MinisterioID === d.ministerioId && m.Ativo !== '0'; })[0]; if (!min) throw new ApiError('VALIDATION', 'Escolha o ministério.');
     const ids = (Array.isArray(d.membros) ? d.membros : [d.membroId]).map(function (x) { return clip_(x, 30); }).filter(Boolean);
-    if (!ids.length) throw new ApiError('VALIDATION', 'Escolha ao menos uma pessoa.');
+    const vagas = ids.length ? 0 : Math.max(0, Math.min(20, Math.floor(Number(d.vagas) || 0)));
+    if (!ids.length && !vagas) throw new ApiError('VALIDATION', 'Escolha pessoas ou informe quantas vagas ficam abertas.');
     const mem = {}; table_('Membros').rows.forEach(function (m) { mem[m.MembroID] = m; }); ids.forEach(function (x) { if (!mem[x]) throw new ApiError('VALIDATION', 'Pessoa não encontrada.'); });
     const data = clip_(d.data, 10); if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) throw new ApiError('VALIDATION', 'Informe a data.');
     const hora = clip_(d.hora, 5); if (hora && !/^\d{2}:\d{2}$/.test(hora)) throw new ApiError('VALIDATION', 'Hora inválida.');
@@ -1984,6 +2019,10 @@ function saveScale_(d, u) {
       datas = escDatas_(data, dias, meses); if (!datas.length) throw new ApiError('VALIDATION', 'Nenhuma data nesse período.'); serie = id_('SE');
     }
     const t = table_('Escalas'); let n = 0;
+    if (vagas) {
+      datas.forEach(function (dt) { for (let k = 0; k < vagas; k++) { appendRow_(t, { EscalaID: id_('ES'), MinisterioID: min.MinisterioID, MembroID: '', Data: dt, Hora: hora, Funcao: clip_(d.funcao, 40), Status: 'aberta', SerieID: serie, CriadoPor: u.membroId, Reesc: 0, Avisos: '' }); n++; } });
+      audit_(u.email, 'saveScale', min.Nome + ' vagas abertas x' + n); return { criadas: n, abertas: n };
+    }
     ids.forEach(function (mid) {
       let primeira = '';
       datas.forEach(function (dt) {
@@ -1995,12 +2034,23 @@ function saveScale_(d, u) {
     audit_(u.email, 'saveScale', min.Nome + ' x' + n); return { criadas: n };
   });
 }
+function claimScale_(d, u) {
+  return withLock_(function () {
+    const x = escRow_(clip_(d.id, 30)); if (x.r.MembroID || x.r.Status !== 'aberta') throw new ApiError('VALIDATION', 'Esta vaga já foi preenchida.');
+    if (x.r.Data < today_()) throw new ApiError('VALIDATION', 'Esta data já passou.');
+    if (table_('Escalas').rows.some(function (r) { return r.MembroID === u.membroId && r.MinisterioID === x.r.MinisterioID && r.Data === x.r.Data && r.Hora === x.r.Hora && r.Status !== 'cancelada'; })) throw new ApiError('VALIDATION', 'Você já está nesta escala.');
+    writeRow_(x.t, x.r._row, { MembroID: u.membroId, Status: 'confirmada', ConfirmadoEm: now_(), Avisos: '' });
+    const mi = table_('Ministerios').rows.filter(function (m) { return m.MinisterioID === x.r.MinisterioID; })[0];
+    escGestoresDe_(u.membroId, [x.r.CriadoPor]).forEach(function (m) { notify_(m, 'escala', (nomes_()[u.membroId] || '') + ' se ofereceu para servir', (mi ? mi.Nome : '') + ' · ' + escBr_(x.r.Data) + (x.r.Hora ? ' às ' + x.r.Hora : ''), 'escala'); });
+    audit_(u.email, 'claimScale', x.r.EscalaID, 'OK'); return { ok: true };
+  });
+}
 function rescheduleScale_(d, u) {
   if (!escGestor_(u)) throw new ApiError('FORBIDDEN', 'Só supervisores remarcam escalas.');
   return withLock_(function () {
     const x = escRow_(clip_(d.id, 30)), data = clip_(d.data, 10) || x.r.Data, hora = d.hora === undefined ? x.r.Hora : clip_(d.hora, 5);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) throw new ApiError('VALIDATION', 'Data inválida.');
-    const p = { Data: data, Hora: hora, Status: 'pendente', Motivo: '', TrocaMembroID: '', TrocaEscalaID: '', TrocaMsg: '', ConfirmadoEm: '', Avisos: '', Presente: '' };
+    const p = { Data: data, Hora: hora, Status: x.r.MembroID || d.membroId ? 'pendente' : 'aberta', Motivo: '', TrocaMembroID: '', TrocaEscalaID: '', TrocaMsg: '', ConfirmadoEm: '', Avisos: '', Presente: '' };
     if (d.membroId) { if (!table_('Membros').rows.some(function (m) { return m.MembroID === d.membroId; })) throw new ApiError('VALIDATION', 'Pessoa não encontrada.'); p.MembroID = d.membroId; p.OrigemMembroID = x.r.MembroID; }
     writeRow_(x.t, x.r._row, p);
     notify_(p.MembroID || x.r.MembroID, 'escala', 'Sua escala foi remarcada', 'Nova data: ' + escBr_(data) + (hora ? ' às ' + hora : '') + '. Abra Escalas para confirmar.', 'escala'); return { ok: true };
@@ -2320,7 +2370,7 @@ function boot_(d, u) {
   const out = {}; let cid = clip_(d.celulaId, 30);
   const run = function (k, action, data) { try { const r = ROUTES[action]; if (r.auth && r.auth !== 'any' && !can_(u, r.auth)) throw new ApiError('FORBIDDEN', ''); out[k] = r.fn(data || {}, u); } catch (e) { if (k === 'me' && e instanceof ApiError && cid) { cid = ''; return run(k, action, {}); } out[k] = { __erro: e instanceof ApiError ? e.code : 'ERROR' }; } };
   run('me', 'me', cid ? { celulaId: cid } : {}); const me = out.me && !out.me.__erro ? out.me : null; if (!me) throw new ApiError('ERROR', 'Falha ao carregar.');
-  ['listEvents', 'listMinistries', 'listNews', 'listVideos', 'listCourses', 'listLessons', 'listDynamics', 'birthdays', 'searchCells', 'listTestimonies', 'listProducts', 'listFamilia', 'listNotifications'].forEach(function (a) { run(a, a, {}); });
+  ['listEvents', 'listMinistries', 'listNews', 'listVideos', 'listCourses', 'listLessons', 'listDynamics', 'birthdays', 'searchCells', 'listTestimonies', 'listCultoNotes', 'listProducts', 'listFamilia', 'listNotifications'].forEach(function (a) { run(a, a, {}); });
   const cg = me.cargos || {}, pc = me.permCelula || {}, pv = function (g) { return !!(pc[g] && pc[g].v); }, cd = cid ? { celulaId: cid } : {};
   if (can_(u, 'celulas') || cg.supervisor || pv('org')) run('orgTree', 'orgTree', {});
   if (me.celula && me.permCelula) {
@@ -2351,11 +2401,11 @@ const ROUTES = {
   getSignature: { auth: 'any', fn: getSignature_ }, saveSignature: { auth: 'any', write: 1, fn: saveSignature_ }, rateAula: { auth: 'any', write: 1, fn: rateAula_ }, aulaFeedback: { auth: 'any', fn: aulaFeedback_ },
   listLessons: { auth: 'any', fn: listLessons_ }, listDynamics: { auth: 'any', fn: listDyn_ }, addDynamic: { auth: 'any', write: 1, fn: addDyn_ }, listVideos: { auth: 'any', fn: listVideos_ }, listProducts: { auth: 'any', fn: listProducts_ }, listFamilia: { auth: 'any', fn: listFamilia_ }, profileView: { auth: 'any', fn: profileView_ }, listFeed: { auth: 'any', fn: listFeed_ }, likePost: { auth: 'any', write: 1, fn: likePost_ }, commentPost: { auth: 'any', write: 1, fn: commentPost_ }, listComments: { auth: 'any', fn: listComments_ }, deletePost: { auth: 'any', write: 1, fn: deletePost_ }, deleteComment: { auth: 'any', write: 1, fn: deleteComment_ },
   registerDecision: { auth: 'any', write: 1, fn: registerDecision_ }, saveVisitor: { auth: 'any', write: 1, fn: saveVisitor_ }, listVisitors: { auth: 'any', fn: listVisitors_ }, contactVisitor: { auth: 'any', write: 1, fn: contactVisitor_ },
-  listScales: { auth: 'any', fn: listScales_ }, saveScale: { auth: 'any', write: 1, fn: saveScale_ }, rescheduleScale: { auth: 'any', write: 1, fn: rescheduleScale_ }, deleteScale: { auth: 'any', write: 1, fn: deleteScale_ }, respondScale: { auth: 'any', write: 1, fn: respondScale_ }, requestSwap: { auth: 'any', write: 1, fn: requestSwap_ }, answerSwap: { auth: 'any', write: 1, fn: answerSwap_ }, markScale: { auth: 'any', write: 1, fn: markScale_ }, requestJoin: { auth: 'any', write: 1, fn: requestJoin_ }, decideJoin: { auth: 'any', write: 1, fn: decideJoin_ },
+  listScales: { auth: 'any', fn: listScales_ }, claimScale: { auth: 'any', write: 1, fn: claimScale_ }, saveScale: { auth: 'any', write: 1, fn: saveScale_ }, rescheduleScale: { auth: 'any', write: 1, fn: rescheduleScale_ }, deleteScale: { auth: 'any', write: 1, fn: deleteScale_ }, respondScale: { auth: 'any', write: 1, fn: respondScale_ }, requestSwap: { auth: 'any', write: 1, fn: requestSwap_ }, answerSwap: { auth: 'any', write: 1, fn: answerSwap_ }, markScale: { auth: 'any', write: 1, fn: markScale_ }, requestJoin: { auth: 'any', write: 1, fn: requestJoin_ }, decideJoin: { auth: 'any', write: 1, fn: decideJoin_ },
   listSongs: { auth: 'any', fn: listSongs_ }, saveSong: { auth: 'any', write: 1, fn: saveSong_ }, deleteSong: { auth: 'any', write: 1, fn: deleteSong_ }, saveSongDefault: { auth: 'any', write: 1, fn: saveSongDefault_ }, searchLyrics: { auth: 'any', fn: searchLyrics_ }, importLyrics: { auth: 'any', fn: importLyrics_ },
   boot: { auth: 'any', fn: boot_ },
   sodGet: { auth: 'any', write: 1, fn: sodGet_ }, sodAbrir: { auth: 'any', write: 1, fn: sodAbrir_ }, sodEquipar: { auth: 'any', write: 1, fn: sodEquipar_ }, sodDescartar: { auth: 'any', write: 1, fn: sodDescartar_ }, sodAparencia: { auth: 'any', write: 1, fn: sodAparencia_ }, sodOrar: { auth: 'any', write: 1, fn: sodOrar_ }, sodComprar: { auth: 'any', write: 1, fn: sodComprar_ },
-  listMarks: { auth: 'any', fn: listMarks_ }, saveMark: { auth: 'any', write: 1, fn: saveMark_ }, saveNote: { auth: 'any', write: 1, fn: saveNote_ },
+  listMarks: { auth: 'any', fn: listMarks_ }, saveMark: { auth: 'any', write: 1, fn: saveMark_ }, saveNote: { auth: 'any', write: 1, fn: saveNote_ }, listCultoNotes: { auth: 'any', fn: listCultoNotes_ },
   listInsigniaDefs: { auth: 'any', fn: listInsigniaDefs_ }, saveInsigniaDef: { auth: 'any', write: 1, fn: saveInsigniaDef_ }, grantBadge: { auth: 'any', write: 1, fn: grantBadge_ }, logServico: { auth: 'any', write: 1, fn: logServico_ }, listServicos: { auth: 'any', fn: listServicos_ }, searchPeople: { auth: 'any', fn: findPeople_ }, sendChat: { auth: 'any', write: 1, fn: sendChat_ }, getChat: { auth: 'any', fn: getChat_ }, chatRead: { auth: 'any', write: 1, fn: chatRead_ }, listChats: { auth: 'any', fn: listChats_ }, getCertLayout: { auth: 'any', fn: getCertLayout_ }, saveCertLayout: { auth: 'any', write: 1, fn: saveCertLayout_ }, previewCert: { auth: 'any', fn: previewCert_ }, revokeCert: { auth: 'any', write: 1, fn: revokeCert_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
   searchCells: { auth: 'any', fn: searchCells_ }, addPrayer: { auth: 'any', write: 1, fn: addPrayer_ }, listPrayers: { auth: 'any', fn: listPrayers_ },
   cellMembers: { auth: 'any', fn: cellMembers_ }, saveCell: { auth: 'any', write: 1, fn: saveCell_ }, saveAttendance: { auth: 'any', write: 1, fn: saveAttendance_ }, history: { auth: 'any', fn: history_ },
@@ -2369,7 +2419,7 @@ const ROUTES = {
   listBookComments: { auth: 'any', fn: listBookComments_ }, addBookComment: { auth: 'any', write: 1, fn: addBookComment_ }, deleteBookComment: { auth: 'any', write: 1, fn: deleteBookComment_ },
   listTestimonies: { auth: 'any', fn: listTestimonies_ }, addTestimony: { auth: 'any', write: 1, fn: addTestimony_ }, deleteTestimony: { auth: 'any', write: 1, fn: deleteTestimony_ }, toggleLike: { auth: 'any', write: 1, fn: toggleLike_ },
   saveMinistry: { auth: 'min', write: 1, fn: saveMinistry_ }, deleteMinistry: { auth: 'min', write: 1, fn: deleteMinistry_ }, listInterests: { auth: 'min', fn: listInterests_ },
-  saveConfig: { auth: 'config', write: 1, fn: saveConfig_ }, getAccessRules: { auth: 'config', fn: accessRules_ }, saveAccessRules: { auth: 'config', write: 1, fn: saveAccessRules_ }, saveVideo: { auth: 'config', write: 1, fn: saveVideo_ }, deleteVideo: { auth: 'config', write: 1, fn: deleteVideo_ }, updateVideo: { auth: 'config', write: 1, fn: updateVideo_ },
+  saveConfig: { auth: 'config', write: 1, fn: saveConfig_ }, saveHomeLayout: { auth: 'config', write: 1, fn: saveHomeLayout_ }, getAccessRules: { auth: 'config', fn: accessRules_ }, saveAccessRules: { auth: 'config', write: 1, fn: saveAccessRules_ }, saveVideo: { auth: 'config', write: 1, fn: saveVideo_ }, deleteVideo: { auth: 'config', write: 1, fn: deleteVideo_ }, updateVideo: { auth: 'config', write: 1, fn: updateVideo_ },
   listUsers: { auth: 'config', fn: listUsers_ }, createUser: { auth: 'config', write: 1, fn: createUser_ }, setUser: { auth: 'config', write: 1, fn: setUser_ }, savePerms: { auth: 'config', write: 1, fn: savePerms_ },
   saveLesson: { auth: 'config', write: 1, fn: saveLesson_ }, getPerms: { auth: 'config', fn: function () { return permMatrix_(); } },
   createCell: { auth: 'celulas', write: 1, fn: createCell_ },

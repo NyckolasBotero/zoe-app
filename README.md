@@ -249,3 +249,16 @@ Os arquivos ficam em `assets/sod/` (`char.png`, `tools.png`, `room.png`, `manife
 - **Loja** (Meu perfil › Sod › Loja): roupas por raridade (comum 40, raro 100, épico 250, lendário 600) e caixa extra (80). Rota `sodComprar`.
 - Com **0% de pedra**, o personagem para de minerar e fica feliz ao lado do Sod.
 - Em **Meu perfil**, o Sod aparece numa janela ao lado das insígnias, e as abas (Meu perfil, Personalizar, Sod, Editar perfil) viraram uma barra de navegação com ícones.
+
+## Início personalizável e anotações dos cultos
+- O **Início** é uma grade de 12 colunas com blocos: saudação, minhas escalas, próximos eventos (carrossel infinito), maratona, mural, próximo evento, sua célula, aniversariantes, programação de domingo, anotações dos cultos, testemunhos e notícias.
+- Quem tem a permissão **config** (administração) vê **Personalizar início**: arrasta a barra verde para mover, puxa a borda direita/inferior/canto para redimensionar (colunas × linhas) e oculta com ✕. **Salvar para todos** grava o layout na aba `Config` (chave `HomeLayout`, rota `saveHomeLayout`) e ele vira o padrão de todos os usuários (chega em `me.config.homeLayout`). **Restaurar padrão** apaga o layout salvo. No celular a grade vira uma coluna (a edição fica só no computador). Teste: `tests/e2e_inicio.py`.
+- **Anotações dos cultos** no Início: rolagem vertical infinita das anotações marcadas por quem escreveu como *Mostrar esta anotação no Início, para toda a igreja* (`Meta.igreja`), só dos **3 últimos cultos** (datas distintas com anotação compartilhada). Quando passa o próximo culto, o mais antigo sai. Rota `listCultoNotes`. Anotações sem essa opção continuam só na célula ou pessoais.
+
+## Membros cadastrados e acesso ao app (uma pessoa = um cadastro)
+- Em **Administração › Acessos › Membros cadastrados** cada pessoa mostra **Com acesso · nível** ou **Sem acesso ao app** (frequentadores que não usam o app). O formulário da pessoa tem o campo **E-mail** e a opção **Liberar acesso ao app agora** (nível + senha temporária, com botão *Gerar*); desmarcada, cadastra só a pessoa.
+- Quem está **sem acesso** tem o botão **Criar acesso**: o login é ligado ao mesmo cadastro (`createUser` com `membroId`), sem duplicar. Quem já tem acesso mostra **Acesso** (nível, desativar, trocar senha).
+- **Novo usuário** (criar login do zero) continua existindo, mas o servidor barra duplicidade: se já há cadastro sem acesso com o mesmo nome (ou o mesmo e-mail, que é ligado automaticamente), pede para usar **Criar acesso**. O e-mail de quem já tem acesso não muda pela lista de membros.
+
+## Escalas com vaga em aberto
+- Em **Lançar escala**, sem escolher ninguém, informe **Vagas abertas por data** (1 a 20; funciona com repetição em lote). As vagas aparecem para todos em Escalas (Agenda e Participar › Vagas abertas) e no card *Minhas escalas* do Início; **Quero servir** (`claimScale`) preenche a vaga, já confirmada, e avisa os supervisores. Ninguém ocupa duas vagas da mesma escala. Indicador `abertas` na Visão geral.
