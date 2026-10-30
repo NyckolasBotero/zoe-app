@@ -12,7 +12,7 @@
   "itens": [
    "Níveis de acesso (membro, líder, supervisor, pastor, admin etc.) definem o que cada um vê; permissões finas por área (eventos, células, ministérios, configurações, cursos).",
    "Cargos de célula (líder, supervisor, líder em treinamento) valem em qualquer nível.",
-   "Multimídia e telão: ministério Som ou curadores."
+   "Studio Zoe (Lives e Projeção): ministério Som ou curadores."
   ]
  },
  {
@@ -24,11 +24,15 @@
   ]
  },
  {
-  "t": "Multimídia e telão",
+  "t": "Studio Zoe: Lives e Projeção",
   "itens": [
    "Músicas com letras divididas em slides, layout por música e padrão.",
    "Agendas por data (histórico editável), tela de pausa personalizável, imagens e eventos transmitidos.",
-   "Controle remoto pelo celular; o projetor roda no navegador do computador e acompanha em até 2 s."
+   "Projeção de versículos (qualquer versão) e músicas; fundos estáticos (cor, degradê, imagem) e dinâmicos (vídeo em loop, luzes, aurora, ondas, céu estrelado) editáveis no layout de cada música, no padrão das músicas e no padrão dos versículos.",
+   "Controle remoto pelo celular; o projetor roda no navegador do computador e acompanha em até 2 s.",
+   "Lives: Estúdio com cenas, fontes, prévia/programa, transições, mixer de áudio, qualidade, gravação e transmissão simultânea para YouTube, Facebook etc.",
+   "O vídeo sai do navegador para o servidor de retransmissão (pasta relay/, ffmpeg), que entrega por RTMP e gera o HLS para o site. Cadastro em Plataformas e conexão.",
+   "Ao entrar no ar a live aparece em Lives e Vídeos; versículos e letras do telão podem ir para a live (espelho do telão)."
   ]
  },
  {
@@ -36,7 +40,8 @@
   "itens": [
    "Grupos: Publicações, Acessos, Indicadores, Células, Definições de Parâmetros, Loja Zoe e Documentação.",
    "Versão do site exibida no menu e no painel; aviso quando há versão nova.",
-   "Cada alteração do site entra em Notas de atualização com a versão e as melhorias."
+   "Cada alteração do site entra em Notas de atualização com a versão e as melhorias.",
+   "Membros inativos podem ser excluídos permanentemente (Administração › Acessos › Membros), digitando o nome para confirmar."
   ]
  },
  {

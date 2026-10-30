@@ -1,0 +1,9 @@
+{
+  "name": "zoe-relay",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Retransmissor da Zoe: recebe o vídeo do Estúdio (navegador) e entrega ao YouTube, Facebook etc. via ffmpeg, além de gerar HLS para o site.",
+  "scripts": { "start": "node server.mjs", "test": "node test.mjs" },
+  "dependencies": { "ws": "^8.18.0" }
+}

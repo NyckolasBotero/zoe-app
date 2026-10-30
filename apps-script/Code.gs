@@ -90,7 +90,8 @@ const SHEETS = {
   MidiasTelao: ['MidiaID', 'Titulo', 'Foto', 'Mini', 'Ativo', 'CriadoPor', 'CriadoEm'],
   MuralFam: ['ItemID', 'Pagina', 'Tipo', 'X', 'Y', 'W', 'R', 'Z', 'Texto', 'Cor', 'Foto', 'Dados', 'CriadoEm'],
   FamiliaMidia: ['MidiaID', 'Tipo', 'Url', 'Foto', 'Legenda', 'Ordem', 'Ativo'],
-  Videos: ['VideoID', 'Titulo', 'Url', 'Ordem', 'Status', 'Tipo', 'AoVivo'],
+  Videos: ['VideoID', 'Titulo', 'Url', 'Ordem', 'Status', 'Tipo', 'AoVivo', 'Hls', 'Links'],
+  LiveComent: ['ComID', 'LiveID', 'MembroID', 'Nome', 'Texto', 'Ts'],
   Permissoes: ['Papel'].concat(PERMS),
   Config: ['Chave', 'Valor'],
   Auditoria: ['Data', 'Usuario', 'Acao', 'Alvo', 'Resultado']
@@ -940,7 +941,7 @@ function listLessons_() { return table_('Licoes').rows.filter(function (l) { ret
 function listDyn_() { return table_('Dinamicas').rows.map(function (x) { return { id: x.DinamicaID, titulo: x.Titulo, descricao: x.Descricao, minutos: Number(x.Minutos || 10), meu: false, membroId: x.MembroID }; }); }
 function addDyn_(d, u) { const t = clip_(d.titulo, 100); if (!t) throw new ApiError('VALIDATION', 'Dê um nome à dinâmica.'); appendRow_(table_('Dinamicas'), { DinamicaID: id_('D'), Titulo: t, Descricao: clip_(d.descricao, 800), Minutos: String(Math.max(1, Math.min(240, Number(d.minutos) || 10))), MembroID: u.membroId, Data: now_() }); return { ok: true }; }
 function saveLesson_(d, u) { const t = clip_(d.titulo, 120), url = clip_(d.url, 300); if (!t) throw new ApiError('VALIDATION', 'Informe o título da lição.'); if (url && !/^https:\/\//.test(url)) throw new ApiError('VALIDATION', 'O link precisa começar com https://.'); appendRow_(table_('Licoes'), { LicaoID: id_('L'), Titulo: t, Resumo: clip_(d.resumo, 400), Categoria: clip_(d.categoria, 40), Url: url, Status: 'Ativa' }); audit_(u.email, 'LICAO', t, 'OK'); return { ok: true }; }
-function listVideos_() { return table_('Videos').rows.filter(function (v) { return v.Status !== 'Removido'; }).sort(function (a, b) { return Number(a.Ordem) - Number(b.Ordem); }).map(function (v) { return { id: v.VideoID, titulo: v.Titulo, url: v.Url, tipo: v.Tipo === 'live' ? 'live' : 'video', aoVivo: v.AoVivo === '1' }; }); }
+function listVideos_() { return table_('Videos').rows.filter(function (v) { return v.Status !== 'Removido'; }).sort(function (a, b) { return Number(a.Ordem) - Number(b.Ordem); }).map(function (v) { return { id: v.VideoID, titulo: v.Titulo, url: v.Url, tipo: v.Tipo === 'live' ? 'live' : 'video', aoVivo: v.AoVivo === '1', hls: v.AoVivo === '1' ? (v.Hls || '') : '', links: jparse_(v.Links, []) }; }); }
 function saveVideo_(d, u) { const t = clip_(d.titulo, 120), url = clip_(d.url, 300); if (!t || !/^https:\/\//.test(url)) throw new ApiError('VALIDATION', 'Informe título e link https.'); const v = table_('Videos'); appendRow_(v, { VideoID: id_('V'), Titulo: t, Url: url, Ordem: String(v.rows.length + 1), Status: 'Ativo', Tipo: d.tipo === 'live' ? 'live' : 'video', AoVivo: d.tipo === 'live' && d.aoVivo ? '1' : '0' }); audit_(u.email, 'VIDEO', t, 'OK'); return { ok: true }; }
 function updateVideo_(d, u) { return withLock_(function () { const t = table_('Videos'), r = t.rows.filter(function (x) { return x.VideoID === d.id && x.Status !== 'Removido'; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Vídeo não encontrado.'); const p = {}; if (d.titulo !== undefined) { p.Titulo = clip_(d.titulo, 120); if (!p.Titulo) throw new ApiError('VALIDATION', 'Informe o título.'); } if (d.tipo !== undefined) p.Tipo = d.tipo === 'live' ? 'live' : 'video'; if (d.aoVivo !== undefined) p.AoVivo = d.aoVivo ? '1' : '0'; if ((p.Tipo || r.Tipo) !== 'live') p.AoVivo = '0'; writeRow_(t, r._row, p); audit_(u.email, 'VIDEO_EDIT', r.Titulo, 'OK'); return { ok: true }; }); }
 /* ============================== LOJA ZOE ============================== */
@@ -1811,6 +1812,87 @@ function adminRemove_(d, u) {
     audit_(u.email, (d.reativar ? 'ADMIN_REATIVAR:' : 'ADMIN_REMOVER:') + d.tipo, d.id, 'OK'); return { ok: true };
   });
 }
+/* exclusão permanente de pessoa: só depois de marcada como inativa (e com o acesso ao app já desativado) */
+function purgePessoa_(d, u) {
+  if (!can_(u, 'config') && u.papel !== 'admin') throw new ApiError('FORBIDDEN', 'Sem permissão para excluir pessoas.');
+  return withLock_(function () {
+    const id = clip_(d.membroId, 30), tm = table_('Membros'), m = tm.rows.filter(function (r) { return r.MembroID === id; })[0]; if (!m) throw new ApiError('NOT_FOUND', 'Pessoa não encontrada.');
+    if (id === u.membroId) throw new ApiError('VALIDATION', 'Você não pode excluir a si mesmo.');
+    if (m.Status !== 'Inativo') throw new ApiError('VALIDATION', 'Defina a pessoa como inativa antes de excluir de vez.');
+    const tu = table_('Usuarios'), us = tu.rows.filter(function (r) { return r.MembroID === id; });
+    if (us.some(function (r) { return r.Status !== 'Inativo'; })) throw new ApiError('VALIDATION', 'Desative o acesso ao app dessa pessoa antes de excluir.');
+    const conf = String(d.confirmar || '').trim().toLowerCase(); if (conf !== String(m.Nome || '').trim().toLowerCase()) throw new ApiError('VALIDATION', 'Digite o nome completo da pessoa para confirmar.');
+    const nome = m.Nome, tc = table_('Celulas');
+    tc.rows.forEach(function (c) { const p = {}; if (c.LiderID === id) p.LiderID = ''; if (c.SupervisorID === id) p.SupervisorID = ''; if (c.TreinamentoID === id) p.TreinamentoID = ''; if (Object.keys(p).length) writeRow_(tc, c._row, p); });
+    const apaga = function (aba, col) { const t = table_(aba); t.rows.filter(function (r) { return r[col] === id; }).map(function (r) { return r._row; }).sort(function (a, b) { return b - a; }).forEach(function (rw) { t.sh.deleteRow(rw); }); };
+    us.map(function (r) { return r._row; }).sort(function (a, b) { return b - a; }).forEach(function (rw) { tu.sh.deleteRow(rw); });
+    apaga('Notificacoes', 'MembroID');
+    tm.sh.deleteRow(m._row);
+    audit_(u.email, 'PESSOA_EXCLUIDA', id + ' ' + nome, 'OK'); return { ok: true };
+  });
+}
+
+/* ============================== TRANSMISSÕES AO VIVO (Estúdio) ==============================
+   O Estúdio roda no navegador (cenas, câmeras, transições, letras e versículos do telão) e envia o vídeo a um servidor de
+   retransmissão (relay/, com ffmpeg) que entrega ao YouTube, Facebook etc. e gera o endereço HLS para assistir no próprio site.
+   Aqui ficam: cadastro das plataformas e do relay (LiveCfg), o estado da live (LiveState), o aviso em "Lives e Vídeos",
+   espectadores do site e comentários. As chaves de transmissão só são lidas por quem usa o Multimídia. */
+const LIVE_PLAT_TIPOS = ['youtube', 'facebook', 'twitch', 'instagram', 'tiktok', 'rtmp'];
+function liveCfgLer_() { const o = jparse_(cfgMap_().LiveCfg, {}); return { relay: { url: String((o.relay || {}).url || ''), token: String((o.relay || {}).token || '') }, plats: Array.isArray(o.plats) ? o.plats : [], q: { res: Number((o.q || {}).res) || 720, fps: Number((o.q || {}).fps) || 30, kbps: Number((o.q || {}).kbps) || 2500 } }; }
+function getLiveCfg_(d, u) { multiExige_(u); return liveCfgLer_(); }
+function saveLiveCfg_(d, u) {
+  return withLock_(function () {
+    const ant = liveCfgLer_(), old = {}; ant.plats.forEach(function (p) { old[p.id] = p; });
+    const rl = d.relay || {}, url = clip_(rl.url, 200); if (url && !/^wss?:\/\//.test(url)) throw new ApiError('VALIDATION', 'O endereço do servidor de retransmissão deve começar com wss:// (ou ws:// em teste).');
+    const plats = (Array.isArray(d.plats) ? d.plats : []).slice(0, 12).map(function (p) {
+      const id = /^[A-Za-z0-9_-]{3,24}$/.test(String(p.id || '')) ? p.id : id_('PL'), tipo = LIVE_PLAT_TIPOS.indexOf(p.tipo) >= 0 ? p.tipo : 'rtmp', o = old[id] || {};
+      const rtmp = clip_(p.rtmp, 300); if (rtmp && !/^rtmps?:\/\//.test(rtmp)) throw new ApiError('VALIDATION', 'O endereço RTMP de "' + clip_(p.nome, 40) + '" deve começar com rtmp:// ou rtmps://.');
+      const assistir = clip_(p.assistir, 300); if (assistir && !/^https:\/\//.test(assistir)) throw new ApiError('VALIDATION', 'O link para assistir de "' + clip_(p.nome, 40) + '" deve começar com https://.');
+      const seg = function (k, n) { return p[k] === '__keep' ? (o[k] || '') : clip_(p[k], n); };
+      return { id: id, nome: clip_(p.nome, 40) || tipo, tipo: tipo, rtmp: rtmp, chave: seg('chave', 200), assistir: assistir, ativo: p.ativo !== false, apiKey: seg('apiKey', 200), videoId: clip_(p.videoId, 60), chatId: clip_(p.chatId, 120) };
+    });
+    const tok = rl.token === '__keep' ? ant.relay.token : clip_(rl.token, 200), q = d.q || {};
+    const val = JSON.stringify({ relay: { url: url, token: tok }, plats: plats, q: { res: [480, 720, 1080].indexOf(Number(q.res)) >= 0 ? Number(q.res) : 720, fps: [24, 30, 60].indexOf(Number(q.fps)) >= 0 ? Number(q.fps) : 30, kbps: Math.max(500, Math.min(12000, Math.floor(Number(q.kbps) || 2500))) } });
+    const t = table_('Config'), r = t.rows.filter(function (x) { return x.Chave === 'LiveCfg'; })[0]; if (r) writeRow_(t, r._row, { Valor: val }); else appendRow_(t, { Chave: 'LiveCfg', Valor: val });
+    audit_(u.email, 'LIVE_CFG', plats.length + ' plataformas', 'OK'); return liveCfgLer_();
+  });
+}
+function liveEstado_() { const o = jparse_(cfgMap_().LiveState, {}); return { ativa: !!o.ativa, inicio: Number(o.inicio) || 0, titulo: String(o.titulo || ''), videoId: String(o.videoId || ''), hls: String(o.hls || ''), links: Array.isArray(o.links) ? o.links : [], by: String(o.by || '') }; }
+function liveGravaEstado_(o) { const t = table_('Config'), r = t.rows.filter(function (x) { return x.Chave === 'LiveState'; })[0], val = JSON.stringify(o); if (r) writeRow_(t, r._row, { Valor: val }); else appendRow_(t, { Chave: 'LiveState', Valor: val }); }
+function liveStart_(d, u) {
+  multiExige_(u);
+  return withLock_(function () {
+    const titulo = clip_(d.titulo, 120) || 'Transmissão ao vivo', hls = clip_(d.hls, 300); if (hls && !/^(https:\/\/|http:\/\/(localhost|127\.0\.0\.1)[:\/])/.test(hls)) throw new ApiError('VALIDATION', 'O endereço HLS deve começar com https://.');
+    const links = (Array.isArray(d.links) ? d.links : []).slice(0, 12).filter(function (l) { return l && /^https:\/\//.test(String(l.url || '')); }).map(function (l) { return { nome: clip_(l.nome, 40), url: clip_(l.url, 300) }; });
+    const est = liveEstado_(), tv = table_('Videos'); let r = est.videoId && tv.rows.filter(function (x) { return x.VideoID === est.videoId; })[0];
+    const url = (links[0] && links[0].url) || hls; if (!url) throw new ApiError('VALIDATION', 'Informe ao menos um link para assistir (plataforma ou HLS do site).');
+    const vals = { Titulo: titulo, Url: url, Status: 'Ativo', Tipo: 'live', AoVivo: '1', Hls: hls, Links: JSON.stringify(links) };
+    let vid; if (r) { writeRow_(tv, r._row, vals); vid = r.VideoID; } else { vid = id_('V'); vals.VideoID = vid; vals.Ordem = String(tv.rows.length + 1); appendRow_(tv, vals); }
+    liveGravaEstado_({ ativa: true, inicio: Date.now(), titulo: titulo, videoId: vid, hls: hls, links: links, by: u.membroId });
+    audit_(u.email, 'LIVE_INICIO', titulo, 'OK'); return liveEstado_();
+  });
+}
+function liveStop_(d, u) {
+  multiExige_(u);
+  return withLock_(function () {
+    const est = liveEstado_(), tv = table_('Videos'), r = est.videoId && tv.rows.filter(function (x) { return x.VideoID === est.videoId; })[0]; if (r) writeRow_(tv, r._row, { AoVivo: '0', Hls: '' });
+    liveGravaEstado_({ ativa: false, inicio: 0, titulo: est.titulo, videoId: est.videoId, hls: '', links: est.links, by: u.membroId }); CacheService.getScriptCache().remove('lvs');
+    audit_(u.email, 'LIVE_FIM', est.titulo, 'OK'); return liveEstado_();
+  });
+}
+function liveWatchers_(touch) {
+  const c = CacheService.getScriptCache(), now = Date.now(), o = jparse_(c.get('lvs'), {}), out = {}; Object.keys(o).forEach(function (k) { if (now - o[k] < 45000) out[k] = o[k]; });
+  if (touch) out[touch] = now; c.put('lvs', JSON.stringify(out), 120); return Object.keys(out).length;
+}
+function getLive_(d, u) { const e = liveEstado_(); e.espectadores = e.ativa ? liveWatchers_(d && d.assistindo ? u.membroId : '') : 0; e.agora = Date.now(); return e; }
+function liveSend_(d, u) {
+  return withLock_(function () {
+    const e = liveEstado_(); if (!e.ativa) throw new ApiError('VALIDATION', 'A transmissão não está no ar.'); const texto = clip_(d.texto, 300).trim(); if (!texto) throw new ApiError('VALIDATION', 'Escreva o comentário.');
+    const t = table_('LiveComent'), agora = Date.now(); for (let i = t.rows.length - 1; i >= 0 && i > t.rows.length - 60; i--) { const r = t.rows[i]; if (r.MembroID === u.membroId && agora - Number(r.Ts) < 3000) throw new ApiError('RATE', 'Calma, espere um instante para comentar de novo.'); }
+    appendRow_(t, { ComID: id_('LC'), LiveID: e.videoId, MembroID: u.membroId, Nome: nomes_()[u.membroId] || 'Membro', Texto: texto, Ts: String(agora) }); return { ok: true };
+  });
+}
+function liveComments_(d, u) { const e = liveEstado_(), depois = Number(d.depois) || 0; return { itens: table_('LiveComent').rows.filter(function (r) { return r.LiveID === e.videoId && Number(r.Ts) > depois; }).slice(-80).map(function (r) { return { id: r.ComID, nome: r.Nome, texto: r.Texto, ts: Number(r.Ts) }; }) }; }
 /* ============================== FEED SOCIAL, CONSOLIDAÇÃO, DECISÕES E BÍBLIA ============================== */
 function minhaCelula_(u) { const m = table_('Membros').rows.filter(function (x) { return x.MembroID === u.membroId; })[0]; return m ? m.CelulaID : ''; }
 function postVisivel_(p, u) {
@@ -2184,6 +2266,7 @@ const MM_ESPEC = {
   luzesOn: ['b'], luzesQtd: ['n', 0, 14], luzesBrilho: ['n', 5, 100], luzesVel: ['n', 0, 300],
   parts: ['e', ['nenhuma', 'bokeh', 'estrelas', 'neve', 'bolhas', 'coracoes', 'cruzes', 'notas', 'poeira']], partQtd: ['n', 0, 160], partTam: ['n', 40, 400], partVel: ['n', 0, 300], partDesf: ['n', 0, 30], partCor: ['c'],
   fonte: ['e', ['montserrat', 'poppins', 'playfair', 'bebas', 'oswald', 'lora', 'cinzel', 'figtree', 'caveat', 'georgia', 'arial']], tam: ['n', 2, 12], cor: ['c'], neg: ['b'], ita: ['b'], contorno: ['b'], contCor: ['c'], contLarg: ['n', 0, 12], sombra: ['b'], alinha: ['e', ['center', 'left', 'right']], caixa: ['b'], entre: ['n', 1, 2],
+  fundoTipo: ['e', ['degrade', 'cor', 'imagem', 'video']], fundoAnim: ['e', ['luzes', 'aurora', 'ondas', 'estrelas', 'nenhuma']], fundoVel: ['n', 0, 300], fundoEscuro: ['n', 0, 85], fundoImg: ['s'], fundoVideo: ['u'],
   logoOn: ['b'], logoTam: ['n', 4, 60], logoPos: ['e', ['tl', 'tc', 'tr', 'bl', 'bc', 'br', 'c']], logoOp: ['n', 10, 100], info: ['e', ['primeiro', 'sempre', 'nunca']]
 };
 function mmLayout_(l) {
@@ -2192,6 +2275,7 @@ function mmLayout_(l) {
     const e = MM_ESPEC[k], v = l[k]; if (v === undefined || v === null) return;
     if (e[0] === 'b') o[k] = !!v; else if (e[0] === 'n') { const n = Number(v); if (isFinite(n)) o[k] = Math.max(e[1], Math.min(e[2], n)); }
     else if (e[0] === 'e') { if (e[1].indexOf(String(v)) >= 0) o[k] = String(v); } else if (e[0] === 'c') { if (/^#[0-9a-fA-F]{6}$/.test(String(v))) o[k] = String(v); }
+    else if (e[0] === 's') { if (v === '' || /^i:[A-Za-z0-9_-]{1,30}$/.test(String(v))) o[k] = String(v); } else if (e[0] === 'u') { if (v === '' || /^https:\/\/[^\s"'<>]{4,290}$/.test(String(v))) o[k] = String(v); }
   });
   ['cores', 'luzesCores'].forEach(function (k) { if (Array.isArray(l[k])) { const a = l[k].filter(function (c) { return /^#[0-9a-fA-F]{6}$/.test(String(c)); }).slice(0, k === 'cores' ? 3 : 5); if (a.length >= (k === 'cores' ? 2 : 1)) o[k] = a; } });
   return o;
@@ -2207,6 +2291,7 @@ function multiExige_(u) { if (!multiOk_(u)) throw new ApiError('FORBIDDEN', 'A �
 function telaoLer_() { const o = jparse_(cfgMap_().Telao, {}), it = String(o.item || (o.songId ? 'm:' + o.songId : '')); return { v: Number(o.v) || 0, item: it, songId: it.indexOf('m:') === 0 ? it.slice(2) : '', agendaId: String(o.agendaId || ''), i: Math.max(0, Number(o.i) || 0), pausado: !!o.pausado, ativa: !!o.ativa, by: String(o.by || ''), em: o.em || '' }; }
 function getTelao_(d, u) { multiExige_(u); return telaoLer_(); }
 function itemOk_(it) {
+  if (/^v:(AL|ARC|ARA|NTLH|NVT)_\d{1,2}_\d{1,3}_\d{1,3}(-\d{1,3})?$/.test(String(it))) return true; // versículo: v:VERSÃO_livro_capítulo_verso[-verso]
   const m = /^([mie]):([A-Za-z0-9_-]{1,30})$/.exec(String(it)); if (!m) return false;
   if (m[1] === 'm') return table_('Musicas').rows.some(function (r) { return r.MusicaID === m[2] && r.Ativo !== '0' && r.MusicaID !== 'PADRAO'; });
   if (m[1] === 'i') return table_('MidiasTelao').rows.some(function (r) { return r.MidiaID === m[2] && r.Ativo !== '0'; });
@@ -2291,7 +2376,7 @@ function songOut_(r, nm) { return { id: r.MusicaID, titulo: r.Titulo, artista: r
 function listSongs_(d, u) {
   multiExige_(u); const nm = nomes_(), rows = table_('Musicas').rows.filter(function (r) { return r.Ativo !== '0'; });
   const pad = rows.filter(function (r) { return r.MusicaID === 'PADRAO'; })[0];
-  return { pausa: Object.assign({}, PAUSA_PAD, jparse_(cfgMap_().TelaoPausa, {})), itens: rows.filter(function (r) { return r.MusicaID !== 'PADRAO'; }).sort(function (a, b) { return norm_(a.Titulo) < norm_(b.Titulo) ? -1 : 1; }).map(function (r) { return songOut_(r, nm); }), padrao: pad ? jparse_(pad.Layout, {}) : {} };
+  return { pausa: Object.assign({}, PAUSA_PAD, jparse_(cfgMap_().TelaoPausa, {})), itens: rows.filter(function (r) { return r.MusicaID !== 'PADRAO'; }).sort(function (a, b) { return norm_(a.Titulo) < norm_(b.Titulo) ? -1 : 1; }).map(function (r) { return songOut_(r, nm); }), padrao: pad ? jparse_(pad.Layout, {}) : {}, layoutVers: jparse_(cfgMap_().LayoutVers, {}) };
 }
 function saveSong_(d, u) {
   multiExige_(u);
@@ -2313,6 +2398,13 @@ function saveSongDefault_(d, u) {
     const t = table_('Musicas'), lay = JSON.stringify(mmLayout_(d.layout)), r = t.rows.filter(function (x) { return x.MusicaID === 'PADRAO'; })[0];
     if (r) writeRow_(t, r._row, { Layout: lay, AtualizadoPor: u.membroId, AtualizadoEm: now_() }); else appendRow_(t, { MusicaID: 'PADRAO', Titulo: '(layout padrão)', Layout: lay, CriadoPor: u.membroId, CriadoEm: now_(), AtualizadoPor: u.membroId, AtualizadoEm: now_(), Ativo: '1' });
     return { ok: true };
+  });
+}
+function saveLayoutVers_(d, u) {
+  multiExige_(u);
+  return withLock_(function () {
+    const val = JSON.stringify(mmLayout_(d.layout)), t = table_('Config'), r = t.rows.filter(function (x) { return x.Chave === 'LayoutVers'; })[0]; if (r) writeRow_(t, r._row, { Valor: val }); else appendRow_(t, { Chave: 'LayoutVers', Valor: val });
+    audit_(u.email, 'LAYOUT_VERSICULO', 'salvo', 'OK'); return { ok: true };
   });
 }
 function lyricsGet_(url) { const r = UrlFetchApp.fetch(url, { muteHttpExceptions: true, followRedirects: true }); if (r.getResponseCode() !== 200) return null; try { return JSON.parse(r.getContentText()); } catch (e) { return null; } }
@@ -2534,7 +2626,7 @@ const ROUTES = {
   requestStart: { auth: 'any', write: 1, fn: requestStart_ }, getClassRoll: { auth: 'any', fn: getClassRoll_ }, saveClassRoll: { auth: 'any', write: 1, fn: saveClassRoll_ }, finishCourse: { auth: 'any', write: 1, fn: finishCourse_ }, listCertificates: { auth: 'any', fn: listCertificates_ }, decideCert: { auth: 'any', write: 1, fn: decideCert_ }, certificate: { auth: 'any', fn: certificate_ },
   getSignature: { auth: 'any', fn: getSignature_ }, saveSignature: { auth: 'any', write: 1, fn: saveSignature_ }, rateAula: { auth: 'any', write: 1, fn: rateAula_ }, aulaFeedback: { auth: 'any', fn: aulaFeedback_ },
   listLessons: { auth: 'any', fn: listLessons_ }, listDynamics: { auth: 'any', fn: listDyn_ }, addDynamic: { auth: 'any', write: 1, fn: addDyn_ }, listVideos: { auth: 'any', fn: listVideos_ }, listProducts: { auth: 'any', fn: listProducts_ }, listFamilia: { auth: 'any', fn: listFamilia_ }, profileView: { auth: 'any', fn: profileView_ }, listFeed: { auth: 'any', fn: listFeed_ }, likePost: { auth: 'any', write: 1, fn: likePost_ }, commentPost: { auth: 'any', write: 1, fn: commentPost_ }, listComments: { auth: 'any', fn: listComments_ }, deletePost: { auth: 'any', write: 1, fn: deletePost_ }, deleteComment: { auth: 'any', write: 1, fn: deleteComment_ },
-  registerDecision: { auth: 'any', write: 1, fn: registerDecision_ }, nearCell: { auth: 'any', fn: nearCell_ }, saveVisitor: { auth: 'any', write: 1, fn: saveVisitor_ }, listVisitors: { auth: 'any', fn: listVisitors_ }, contactVisitor: { auth: 'any', write: 1, fn: contactVisitor_ },
+  registerDecision: { auth: 'any', write: 1, fn: registerDecision_ }, purgePessoa: { auth: 'config', write: 1, fn: purgePessoa_ }, saveLayoutVers: { auth: 'any', write: 1, fn: saveLayoutVers_ }, getLiveCfg: { auth: 'any', fn: getLiveCfg_ }, saveLiveCfg: { auth: 'config', write: 1, fn: saveLiveCfg_ }, liveStart: { auth: 'any', write: 1, fn: liveStart_ }, liveStop: { auth: 'any', write: 1, fn: liveStop_ }, getLive: { auth: 'any', fn: getLive_ }, liveSend: { auth: 'any', write: 1, fn: liveSend_ }, liveComments: { auth: 'any', fn: liveComments_ }, nearCell: { auth: 'any', fn: nearCell_ }, saveVisitor: { auth: 'any', write: 1, fn: saveVisitor_ }, listVisitors: { auth: 'any', fn: listVisitors_ }, contactVisitor: { auth: 'any', write: 1, fn: contactVisitor_ },
   listScales: { auth: 'any', fn: listScales_ }, claimScale: { auth: 'any', write: 1, fn: claimScale_ }, saveScale: { auth: 'any', write: 1, fn: saveScale_ }, rescheduleScale: { auth: 'any', write: 1, fn: rescheduleScale_ }, deleteScale: { auth: 'any', write: 1, fn: deleteScale_ }, respondScale: { auth: 'any', write: 1, fn: respondScale_ }, requestSwap: { auth: 'any', write: 1, fn: requestSwap_ }, answerSwap: { auth: 'any', write: 1, fn: answerSwap_ }, markScale: { auth: 'any', write: 1, fn: markScale_ }, requestJoin: { auth: 'any', write: 1, fn: requestJoin_ }, decideJoin: { auth: 'any', write: 1, fn: decideJoin_ },
   listSongs: { auth: 'any', fn: listSongs_ }, saveSong: { auth: 'any', write: 1, fn: saveSong_ }, deleteSong: { auth: 'any', write: 1, fn: deleteSong_ }, saveSongDefault: { auth: 'any', write: 1, fn: saveSongDefault_ }, searchLyrics: { auth: 'any', fn: searchLyrics_ }, importLyrics: { auth: 'any', fn: importLyrics_ },
   boot: { auth: 'any', fn: boot_ },

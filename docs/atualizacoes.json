@@ -1,5 +1,23 @@
 [
  {
+  "titulo": "Studio Zoe: Lives, Projeção e fundos editáveis",
+  "melhorias": [
+   "O menu Multimídia virou Studio Zoe, com duas áreas: Lives e Projeção, com ícones minimalistas.",
+   "Estúdio de transmissão: cenas, fontes (câmera, captura de tela, telão, imagem, texto, cor), Prévia e Programa, transições (corte, fade, desfoque, deslizar, cortina, zoom, íris) com duração e desfoque ajustáveis.",
+   "O telão da igreja é espelhado no Estúdio (letras, versículos, imagens e tela de pausa), em tela cheia ou como legenda sobre a câmera.",
+   "Mixer de áudio com medidores, qualidade (resolução, quadros e taxa), gravação local e transmissão para várias plataformas ao mesmo tempo pelo servidor de retransmissão (pasta relay/).",
+   "Painel ao vivo: tempo no ar, bitrate, situação de cada plataforma, espectadores e comentários (site, YouTube e Facebook).",
+   "Ao iniciar, a live aparece sozinha em Lives e Vídeos, com player no próprio site (celular ou computador), botões para assistir direto em cada plataforma, contador de espectadores e comentários.",
+   "Plataformas e conexão: cadastro do servidor, das chaves de transmissão e das chaves de API de cada plataforma (administração).",
+   "Versículos no telão: a equipe do Datashow transmite versículos (Almeida offline, ARC, ARA, NTLH, NVT) e eles também vão para a live.",
+   "Administração › Membros: depois de inativa, a pessoa pode ser excluída permanentemente (confirmando o nome).",
+   "Projeção: fundo editável para músicas e versículos — degradê, cor sólida, imagem (biblioteca ou nova), vídeo em loop, escurecer, e animações (luzes, aurora, ondas, céu estrelado).",
+   "Layout padrão agora tem abas Músicas e Versículos; o versículo herda o das músicas e muda só o que você alterar. O Estúdio ao vivo espelha esses fundos."
+  ],
+  "v": "1.21",
+  "data": "30/10/2026"
+ },
+ {
   "titulo": "Consolidação: célula mais próxima na hora e aviso ao supervisor",
   "melhorias": [
    "Ao marcar o pino do novo visitante, a célula mais próxima já aparece (distância, dia, líder e supervisor), antes de salvar.",

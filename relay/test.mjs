@@ -1,0 +1,22 @@
+// Teste de integração do retransmissor: gera um vídeo de teste, envia como o navegador faria e confere RTMP + HLS.
+import { spawn } from 'node:child_process';
+import { WebSocket } from 'ws';
+const PORT = 18787, TOKEN = 'teste-segredo';
+const srv = spawn(process.execPath, ['server.mjs'], { env: { ...process.env, PORT: String(PORT), RELAY_TOKEN: TOKEN, PUBLIC_URL: `http://127.0.0.1:${PORT}` }, stdio: 'inherit' });
+const sink = spawn('ffmpeg', ['-hide_banner', '-loglevel', 'info', '-listen', '1', '-i', 'rtmp://127.0.0.1:19350/live/chave', '-t', '8', '-f', 'null', '-'], { stdio: ['ignore', 'ignore', 'pipe'] });
+let sinkLog = ''; sink.stderr.on('data', (d) => (sinkLog += d));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); const falha = (m) => { console.error('FALHOU:', m); srv.kill(); sink.kill(); process.exit(1); };
+await sleep(1500);
+const ruim = new WebSocket(`ws://127.0.0.1:${PORT}/live?token=errado`); const cod = await new Promise((r) => ruim.on('close', r)); if (cod !== 4401) falha('token errado deveria ser recusado: ' + cod);
+const ws = new WebSocket(`ws://127.0.0.1:${PORT}/live?token=${TOKEN}`); const msgs = []; ws.on('message', (d, b) => { if (!b) msgs.push(JSON.parse(d.toString())); });
+await new Promise((r) => ws.on('open', r)); await sleep(300);
+ws.send(JSON.stringify({ cmd: 'start', res: 480, fps: 24, kbps: 800, hls: true, outputs: [{ id: 'yt', nome: 'Teste', url: 'rtmp://127.0.0.1:19350/live', key: 'chave' }, { id: 'mau', nome: 'Inválida', url: 'http://x' }] }));
+await sleep(500); const ini = msgs.find((m) => m.type === 'iniciado'); if (!ini) falha('sem "iniciado": ' + JSON.stringify(msgs)); if (ini.saidas.length !== 1) falha('saída inválida deveria ser ignorada');
+const gen = spawn('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-re', '-f', 'lavfi', '-i', 'testsrc=size=640x360:rate=24', '-f', 'lavfi', '-i', 'sine=frequency=440', '-t', '7', '-c:v', 'libvpx', '-b:v', '600k', '-deadline', 'realtime', '-cpu-used', '8', '-c:a', 'libopus', '-f', 'webm', 'pipe:1'], { stdio: ['ignore', 'pipe', 'inherit'] });
+gen.stdout.on('data', (d) => ws.send(d)); await new Promise((r) => gen.on('exit', r)); await sleep(1500);
+const st = msgs.filter((m) => m.type === 'stats').pop(); if (!st) falha('sem stats'); const o = st.saidas[0];
+console.log('stats', JSON.stringify(st)); if (o.estado !== 'ok') falha('saída RTMP não ficou ok: ' + JSON.stringify(o)); if (!(st.kbpsEntrada > 0 || st.segundos > 0)) falha('sem entrada');
+const man = await fetch(ini.hls).then((r) => r.text()).catch(() => ''); if (!man.includes('#EXTM3U') || !man.includes('.ts')) falha('HLS sem manifesto: ' + man.slice(0, 80));
+ws.send(JSON.stringify({ cmd: 'stop' })); await sleep(2500);
+if (!/Stream #0/.test(sinkLog) || !/Video: h264/.test(sinkLog)) falha('o destino RTMP não recebeu H.264:\n' + sinkLog.slice(-400));
+console.log('OK: RTMP recebido (h264), HLS gerado, token verificado'); srv.kill(); sink.kill(); process.exit(0);

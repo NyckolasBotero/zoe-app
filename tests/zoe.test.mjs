@@ -730,6 +730,50 @@ test('chat: online, visto por último e digitando (só no cache, com modo invis�
   assert.equal(e.call('listChats', {}, A).data.conversas[0].online, false);
 });
 
+test('exclusão permanente de pessoa: só inativa, com acesso desativado e confirmando o nome', () => {
+  const { e, adm, tok, mk } = boot(); const a = mk('ana@zoe.com', 'membro'), A = tok('ana@zoe.com', 'Temp12345');
+  assert.ok(e.call('adminSave', { tipo: 'membros', id: a, valores: { Nome: 'Ana Souza' } }, adm).ok);
+  const c = e.call('createCell', { nome: 'Célula X', liderId: a }, adm).data.id;
+  assert.equal(e.call('purgePessoa', { membroId: a, confirmar: 'Ana Souza' }, A).error.code, 'FORBIDDEN');
+  assert.equal(e.call('purgePessoa', { membroId: a, confirmar: 'Ana Souza' }, adm).error.code, 'VALIDATION'); // ainda ativa
+  assert.ok(e.call('adminRemove', { tipo: 'membros', id: a }, adm).ok);
+  assert.equal(e.call('purgePessoa', { membroId: a, confirmar: 'Ana Souza' }, adm).error.code, 'VALIDATION'); // acesso ainda ativo
+  assert.ok(e.call('setUser', { email: 'ana@zoe.com', status: 'Inativo' }, adm).ok);
+  assert.equal(e.call('purgePessoa', { membroId: a, confirmar: 'errado' }, adm).error.code, 'VALIDATION');
+  assert.ok(e.call('purgePessoa', { membroId: a, confirmar: 'ana souza' }, adm).ok);
+  assert.equal(e.sheets.Membros.rows.slice(1).some(r => r[0] === a), false); assert.equal(e.sheets.Usuarios.rows.slice(1).some(r => r[1] === a || r.includes('ana@zoe.com')), false);
+  assert.equal(e.call('adminList', { tipo: 'celulas' }, adm).data.itens.find(i => i.id === c).id, c); // a célula continua, sem líder
+});
+
+test('telão: versículo como item transmitido', () => {
+  const { e, adm } = boot(); assert.ok(e.call('setTelao', { item: 'v:AL_43_3_16-17' }, adm).ok); assert.equal(e.call('getTelao', {}, adm).data.item, 'v:AL_43_3_16-17');
+  assert.ok(e.call('setTelao', { item: 'v:XX_43_3_16' }, adm).error); assert.equal(e.call('getTelao', {}, adm).data.item, 'v:AL_43_3_16-17');
+});
+test('transmissão ao vivo: cadastro de plataformas, início/fim, Lives e Vídeos, espectadores e comentários', () => {
+  const { e, adm, tok, mk } = boot(); mk('ana@zoe.com', 'membro'); const A = tok('ana@zoe.com', 'Temp12345');
+  assert.equal(e.call('getLiveCfg', {}, A).error.code, 'FORBIDDEN'); assert.equal(e.call('saveLiveCfg', {}, A).error.code, 'FORBIDDEN'); assert.equal(e.call('liveStart', { titulo: 'x', hls: 'https://a.b/x.m3u8' }, A).error.code, 'FORBIDDEN');
+  assert.equal(e.call('saveLiveCfg', { relay: { url: 'http://x' } }, adm).error.code, 'VALIDATION'); assert.equal(e.call('saveLiveCfg', { plats: [{ nome: 'YT', tipo: 'youtube', rtmp: 'http://x' }] }, adm).error.code, 'VALIDATION');
+  const c = e.call('saveLiveCfg', { relay: { url: 'wss://relay.zoe.com/live', token: 'seg' }, plats: [{ nome: 'YouTube', tipo: 'youtube', rtmp: 'rtmp://a.rtmp.youtube.com/live2', chave: 'abcd-1234', assistir: 'https://youtube.com/live/xyz' }], q: { res: 1080, fps: 30, kbps: 4500 } }, adm).data;
+  assert.equal(c.plats[0].chave, 'abcd-1234'); assert.equal(c.q.res, 1080); const pid = c.plats[0].id;
+  const c2 = e.call('saveLiveCfg', { relay: { url: 'wss://relay.zoe.com/live', token: '__keep' }, plats: [{ id: pid, nome: 'YouTube', tipo: 'youtube', rtmp: 'rtmp://a.rtmp.youtube.com/live2', chave: '__keep' }] }, adm).data; assert.equal(c2.plats[0].chave, 'abcd-1234'); assert.equal(c2.relay.token, 'seg');
+  assert.equal(e.call('getLive', {}, A).data.ativa, false); assert.equal(e.call('liveStart', { titulo: 'Culto' }, adm).error.code, 'VALIDATION'); assert.equal(e.call('liveStart', { titulo: 'Culto', hls: 'http://x' }, adm).error.code, 'VALIDATION');
+  const st = e.call('liveStart', { titulo: 'Culto de domingo', hls: 'https://relay.zoe.com/hls/zoe.m3u8', links: [{ nome: 'YouTube', url: 'https://youtube.com/live/xyz' }, { nome: 'Ruim', url: 'javascript:1' }] }, adm).data; assert.equal(st.ativa, true); assert.equal(st.links.length, 1);
+  const v = e.call('listVideos', {}, A).data.find(x => x.aoVivo); assert.equal(v.titulo, 'Culto de domingo'); assert.equal(v.hls, 'https://relay.zoe.com/hls/zoe.m3u8'); assert.equal(v.links[0].nome, 'YouTube');
+  assert.equal(e.call('getLive', { assistindo: true }, A).data.espectadores, 1); assert.equal(e.call('getLive', { assistindo: true }, adm).data.espectadores, 2);
+  assert.ok(e.call('liveSend', { texto: 'Amém!' }, A).ok); assert.equal(e.call('liveSend', { texto: 'de novo' }, A).error.code, 'RATE'); assert.equal(e.call('liveComments', { depois: 0 }, A).data.itens[0].texto, 'Amém!');
+  assert.equal(e.call('liveStart', { titulo: 'Culto 2', hls: 'https://relay.zoe.com/hls/zoe.m3u8' }, adm).data.videoId, st.videoId); // reaproveita o mesmo item em Lives e Vídeos
+  assert.equal(e.call('liveStop', {}, adm).data.ativa, false); assert.equal(e.call('listVideos', {}, A).data.some(x => x.aoVivo), false); assert.equal(e.call('liveSend', { texto: 'oi' }, A).error.code, 'VALIDATION');
+});
+
+test('projeção: fundos estático, imagem e vídeo; layout próprio dos versículos', () => {
+  const { e, adm, tok, mk } = boot(); mk('ana@zoe.com', 'membro'); const A = tok('ana@zoe.com', 'Temp12345');
+  assert.equal(e.call('saveLayoutVers', { layout: {} }, A).error.code, 'FORBIDDEN');
+  const lay = { fundoTipo: 'imagem', fundoImg: 'i:MI123', fundoEscuro: 40, fundoAnim: 'aurora', fundoVideo: 'https://cdn.exemplo.com/fundo.mp4', fundoVel: 80, cores: ['#112233', '#445566'] };
+  assert.ok(e.call('saveLayoutVers', { layout: lay }, adm).ok); const d = e.call('listSongs', {}, adm).data; assert.equal(d.layoutVers.fundoTipo, 'imagem'); assert.equal(d.layoutVers.fundoImg, 'i:MI123'); assert.equal(d.layoutVers.fundoVideo, 'https://cdn.exemplo.com/fundo.mp4'); assert.equal(d.layoutVers.fundoAnim, 'aurora');
+  assert.ok(e.call('saveLayoutVers', { layout: { fundoTipo: 'hack', fundoImg: '<script>', fundoVideo: 'http://x/y.mp4', fundoEscuro: 999 } }, adm).ok); const d2 = e.call('listSongs', {}, adm).data.layoutVers; assert.equal(d2.fundoTipo, undefined); assert.equal(d2.fundoImg, undefined); assert.equal(d2.fundoVideo, undefined); assert.equal(d2.fundoEscuro, 85);
+  const m = e.call('saveSong', { titulo: 'Fundo', letra: 'a\n\nb', layout: { fundoTipo: 'cor', cores: ['#000000', '#101010'] } }, adm); assert.ok(m.ok); assert.equal(e.call('listSongs', {}, adm).data.itens[0].layout.fundoTipo, 'cor');
+});
+
 test('feed social: decisão, curtir, comentar, visibilidade', () => {
   const { e, adm, tok, mk } = boot(); const a = mk('ana@zoe.com', 'membro'), A = tok('ana@zoe.com', 'Temp12345');
   assert.equal(e.call('registerDecision', { nome: 'Carlos Souza' }, A).error.code, 'FORBIDDEN');

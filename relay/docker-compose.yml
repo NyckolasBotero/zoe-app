@@ -1,0 +1,18 @@
+# Sobe o retransmissor + HTTPS automático (Caddy). Troque o domínio e defina RELAY_TOKEN no arquivo .env
+services:
+  relay:
+    build: .
+    restart: unless-stopped
+    environment:
+      RELAY_TOKEN: ${RELAY_TOKEN}
+      PUBLIC_URL: https://${RELAY_DOMAIN}
+      ALLOWED_ORIGIN: ${SITE_ORIGIN:-*}
+    expose: ["8787"]
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    command: caddy reverse-proxy --from ${RELAY_DOMAIN} --to relay:8787
+    volumes: [caddy_data:/data]
+volumes:
+  caddy_data:
