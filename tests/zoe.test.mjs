@@ -125,7 +125,7 @@ test('admin edita membros e ministério com foto (foto mantida quando não alter
   let L = e.call('adminList', { tipo: 'membros' }, adm).data; assert.ok(L.itens.length >= 2); assert.equal(L.celulas[0].id, c);
   const it = L.itens.find(i => i.valores.Nome === 'joao'); assert.ok(it);
   assert.ok(e.call('adminSave', { tipo: 'membros', id: it.id, valores: { Nome: 'João da Silva', Telefone: '61999990000', CelulaID: c, Nascimento: '1990-05-01' } }, adm).ok);
-  L = e.call('adminList', { tipo: 'membros' }, adm).data; const v = L.itens.find(i => i.id === it.id).valores; assert.equal(v.Nome, 'João da Silva'); assert.equal(v.CelulaID, c); assert.equal(v.Email, undefined);
+  L = e.call('adminList', { tipo: 'membros' }, adm).data; const v = L.itens.find(i => i.id === it.id).valores; assert.equal(v.Nome, 'João da Silva'); assert.equal(v.CelulaID, c); assert.equal(v.Email, 'joao@zoe.com');
   assert.equal(e.call('adminSave', { tipo: 'membros', id: it.id, valores: { Nome: 'x', Nascimento: '01/05/1990' } }, adm).error.code, 'VALIDATION');
   assert.equal(e.call('cellMembers', { celulaId: c }, adm).data.some(m => m.Nome === 'João da Silva' || m.nome === 'João da Silva'), true);
   e.call('adminRemove', { tipo: 'membros', id: it.id }, adm); assert.equal(e.call('adminList', { tipo: 'membros' }, adm).data.itens.find(i => i.id === it.id).off, true);
