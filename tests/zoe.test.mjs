@@ -835,11 +835,39 @@ test('Telão remoto: só o ministério Som controla; o estado é compartilhado e
   assert.equal(e.call('getTelao', {}, A).error.code, 'FORBIDDEN'); assert.equal(e.call('setTelao', { i: 1 }, A).error.code, 'FORBIDDEN');
   const m = e.call('saveSong', { titulo: 'Grande é o Senhor', letra: 'a\n\nb\n\nc' }, adm).data.id;
   assert.equal(e.call('getTelao', {}, adm).data.v, 0);
-  let s = e.call('setTelao', { songId: m, i: 2, pausado: false, ativa: true, by: 'cel1' }, adm).data; assert.equal(s.songId, m); assert.equal(s.i, 2); assert.equal(s.ativa, true); assert.equal(s.v, 1);
+  let s = e.call('setTelao', { item: 'm:' + m, i: 2, pausado: false, ativa: true, by: 'cel1' }, adm).data; assert.equal(s.item, 'm:' + m); assert.equal(s.songId, m); assert.equal(s.i, 2); assert.equal(s.ativa, true); assert.equal(s.v, 1);
   s = e.call('setTelao', { pausado: true, by: 'pc' }, adm).data; assert.equal(s.i, 2); assert.equal(s.pausado, true); assert.equal(s.by, 'pc'); assert.equal(s.v, 2);
   assert.equal(e.call('getTelao', {}, adm).data.v, 2);
-  assert.equal(e.call('setTelao', { i: -1 }, adm).error.code, 'VALIDATION'); assert.equal(e.call('setTelao', { songId: 'xx' }, adm).error.code, 'NOT_FOUND');
-  assert.equal(e.call('setTelao', { songId: '' }, adm).data.songId, '');
+  assert.equal(e.call('setTelao', { i: -1 }, adm).error.code, 'VALIDATION'); assert.equal(e.call('setTelao', { item: 'm:xx' }, adm).error.code, 'NOT_FOUND'); assert.equal(e.call('setTelao', { item: 'zzz' }, adm).error.code, 'NOT_FOUND');
+  assert.equal(e.call('setTelao', { item: '' }, adm).data.item, '');
+});
+test('Telão: agendas por data (histórico e edição), imagens da biblioteca, eventos e tela de pausa', () => {
+  const { e, adm, tok, mk } = boot(); mk('ana@zoe.com', 'membro'); const A = tok('ana@zoe.com', 'Temp12345'), foto = 'data:image/jpeg;base64,/9j/4AAQ';
+  const m1 = e.call('saveSong', { titulo: 'Santo', letra: 'a\n\nb' }, adm).data.id, m2 = e.call('saveSong', { titulo: 'Aleluia', letra: 'c' }, adm).data.id;
+  assert.equal(e.call('listAgendas', {}, A).error.code, 'FORBIDDEN');
+  assert.equal(e.call('saveAgenda', { nome: 'x', itens: [] }, adm).error.code, 'VALIDATION');
+  const a1 = e.call('saveAgenda', { data: '2026-11-01', nome: 'Culto de domingo', itens: [{ t: 'musica', id: m1 }, { t: 'musica', id: m2 }, { t: 'musica', id: m1 }, { t: 'musica', id: 'xx' }] }, adm); assert.ok(a1.ok, JSON.stringify(a1)); assert.equal(a1.data.n, 2);
+  e.call('saveAgenda', { data: '2026-10-25', nome: 'Culto de jovens', itens: [{ t: 'musica', id: m2 }] }, adm);
+  let L = e.call('listAgendas', {}, adm).data; assert.deepEqual(L.map(x => x.data), ['2026-11-01', '2026-10-25']); assert.deepEqual(L[0].itens.map(x => x.id), [m1, m2]);
+  // editar agenda passada
+  assert.ok(e.call('saveAgenda', { id: L[1].id, data: '2026-10-25', nome: 'Culto de jovens (sábado)', itens: [{ t: 'musica', id: m1 }, { t: 'musica', id: m2 }] }, adm).ok); L = e.call('listAgendas', {}, adm).data; assert.equal(L[1].itens.length, 2); assert.equal(L[1].nome, 'Culto de jovens (sábado)');
+  // imagens
+  assert.equal(e.call('saveMidia', { titulo: 'x', foto: 'http://x' }, adm).error.code, 'VALIDATION');
+  const mi = e.call('saveMidia', { titulo: 'Dia do Amigo', foto, mini: foto }, adm).data.id; assert.equal(e.call('listMidias', {}, adm).data[0].titulo, 'Dia do Amigo'); assert.equal(e.call('getMidia', { id: mi }, adm).data.foto, foto);
+  // adicionar na hora: cai na agenda do dia (cria se não houver) e não duplica
+  assert.ok(e.call('createEvent', { titulo: 'Aniversário Zoe', data: '2026-11-15', hora: '19:00' }, adm).ok); const evId = e.call('listEvents', {}, adm).data.find(x => x.titulo === 'Aniversário Zoe').id; assert.ok(evId);
+  const ag = e.call('addAgendaItem', { agendaId: L[0].id, t: 'imagem', id: mi }, adm).data; assert.equal(ag.itens.length, 3); assert.equal(e.call('addAgendaItem', { agendaId: L[0].id, t: 'imagem', id: mi }, adm).data.itens.length, 3);
+  assert.equal(e.call('addAgendaItem', { agendaId: L[0].id, t: 'evento', id: evId }, adm).data.itens.length, 4);
+  assert.equal(e.call('addAgendaItem', { t: 'imagem', id: 'nao' }, adm).error.code, 'NOT_FOUND');
+  const sa = e.call('addAgendaItem', { t: 'imagem', id: mi }, adm); assert.ok(sa.ok); assert.equal(sa.data.itens.length, 1);
+  // transmitir imagem e evento
+  assert.equal(e.call('setTelao', { item: 'i:' + mi, agendaId: ag.id }, adm).data.item, 'i:' + mi); assert.equal(e.call('setTelao', { item: 'e:' + evId }, adm).data.item, 'e:' + evId); assert.equal(e.call('setTelao', { item: 'i:nao' }, adm).error.code, 'NOT_FOUND');
+  assert.ok(e.call('deleteAgenda', { id: L[1].id }, adm).ok); assert.equal(e.call('listAgendas', {}, adm).data.some(x => x.id === L[1].id), false);
+  // tela de pausa
+  assert.equal(e.call('listSongs', {}, adm).data.pausa.fade, 'nenhum');
+  const p = e.call('saveTelaoPausa', { pausa: { tipo: 'linear', c1: '#112233', c2: '#445566', dir: 90, fade: 'aurora', logoPos: 'br', logoTam: 20, texto: 'Já voltamos', imagem: foto } }, adm); assert.ok(p.ok, JSON.stringify(p)); assert.equal(p.data.pausa.fade, 'aurora');
+  assert.equal(e.call('listSongs', {}, adm).data.pausa.texto, 'Já voltamos'); assert.equal(e.call('saveTelaoPausa', { pausa: { c1: 'vermelho' } }, adm).error.code, 'VALIDATION'); assert.equal(e.call('saveTelaoPausa', { pausa: { fade: 'xx' } }, adm).data.pausa.fade, 'aurora');
+  assert.equal(e.call('saveTelaoPausa', { reset: true }, adm).data.pausa.fade, 'nenhum'); assert.equal(e.call('listSongs', {}, adm).data.pausa.texto, '');
 });
 
 test('um acesso por pessoa; limpar notificações; notificações definidas pelo adm', () => {

@@ -86,6 +86,8 @@ const SHEETS = {
   Dinamicas: ['DinamicaID', 'Titulo', 'Descricao', 'Minutos', 'MembroID', 'Data'],
   Produtos: ['ProdutoID', 'Nome', 'Categoria', 'Preco', 'Descricao', 'Foto', 'Opcoes', 'Ativo', 'Ordem', 'Disponivel', 'PromoPreco', 'PromoAte'],
   Pastores: ['PastorID', 'Nome', 'Cargo', 'Foto', 'Ordem', 'Ativo'],
+  Agendas: ['AgendaID', 'Data', 'Nome', 'Itens', 'CriadoPor', 'CriadoEm', 'AtualizadoPor', 'AtualizadoEm'],
+  MidiasTelao: ['MidiaID', 'Titulo', 'Foto', 'Mini', 'Ativo', 'CriadoPor', 'CriadoEm'],
   MuralFam: ['ItemID', 'Pagina', 'Tipo', 'X', 'Y', 'W', 'R', 'Z', 'Texto', 'Cor', 'Foto', 'Dados', 'CriadoEm'],
   FamiliaMidia: ['MidiaID', 'Tipo', 'Url', 'Foto', 'Legenda', 'Ordem', 'Ativo'],
   Videos: ['VideoID', 'Titulo', 'Url', 'Ordem', 'Status', 'Tipo', 'AoVivo'],
@@ -2185,21 +2187,88 @@ function multiOk_(u) {
   return table_('Interesses').rows.some(function (i) { return i.MembroID === u.membroId && stN_(i.Status) === 'autorizado' && som.indexOf(i.MinisterioID) >= 0; });
 }
 function multiExige_(u) { if (!multiOk_(u)) throw new ApiError('FORBIDDEN', 'A Área do Multimídia é do ministério Som.'); }
-// Controle remoto do telão: o estado (música, slide, pausa) fica no servidor; o celular escreve e o computador do projetor acompanha
-function telaoLer_() { const o = jparse_(cfgMap_().Telao, {}); return { v: Number(o.v) || 0, songId: String(o.songId || ''), i: Math.max(0, Number(o.i) || 0), pausado: !!o.pausado, ativa: !!o.ativa, by: String(o.by || ''), em: o.em || '' }; }
+// Controle remoto do telão: o estado (item da agenda, slide, pausa) fica no servidor; o celular escreve e o computador do projetor acompanha
+// item = 'm:ID' (música) · 'i:ID' (imagem da biblioteca) · 'e:ID' (evento da igreja)
+function telaoLer_() { const o = jparse_(cfgMap_().Telao, {}), it = String(o.item || (o.songId ? 'm:' + o.songId : '')); return { v: Number(o.v) || 0, item: it, songId: it.indexOf('m:') === 0 ? it.slice(2) : '', agendaId: String(o.agendaId || ''), i: Math.max(0, Number(o.i) || 0), pausado: !!o.pausado, ativa: !!o.ativa, by: String(o.by || ''), em: o.em || '' }; }
 function getTelao_(d, u) { multiExige_(u); return telaoLer_(); }
+function itemOk_(it) {
+  const m = /^([mie]):([A-Za-z0-9_-]{1,30})$/.exec(String(it)); if (!m) return false;
+  if (m[1] === 'm') return table_('Musicas').rows.some(function (r) { return r.MusicaID === m[2] && r.Ativo !== '0' && r.MusicaID !== 'PADRAO'; });
+  if (m[1] === 'i') return table_('MidiasTelao').rows.some(function (r) { return r.MidiaID === m[2] && r.Ativo !== '0'; });
+  return table_('Eventos').rows.some(function (r) { return r.EventoID === m[2] && r.Status !== 'Cancelado'; });
+}
 function setTelao_(d, u) {
   multiExige_(u);
   return withLock_(function () {
-    const st = telaoLer_();
-    if (d.songId !== undefined) { const id = clip_(d.songId, 30); if (id && !table_('Musicas').rows.some(function (r) { return r.MusicaID === id && r.Ativo !== '0' && r.MusicaID !== 'PADRAO'; })) throw new ApiError('NOT_FOUND', 'Música não encontrada.'); if (id !== st.songId) st.i = 0; st.songId = id; }
+    const st = telaoLer_(); let item = d.item;
+    if (item === undefined && d.songId !== undefined) item = d.songId ? 'm:' + clip_(d.songId, 30) : '';
+    if (item !== undefined) { item = clip_(item, 40); if (item && !itemOk_(item)) throw new ApiError('NOT_FOUND', 'Item não encontrado.'); if (item !== st.item) st.i = 0; st.item = item; }
+    if (d.agendaId !== undefined) st.agendaId = clip_(d.agendaId, 30);
     if (d.i !== undefined) { const n = Math.floor(Number(d.i)); if (!(n >= 0 && n <= 400)) throw new ApiError('VALIDATION', 'Slide inválido.'); st.i = n; }
     if (d.pausado !== undefined) st.pausado = !!d.pausado;
     if (d.ativa !== undefined) st.ativa = !!d.ativa;
     st.by = clip_(d.by, 12); st.v += 1; st.em = now_();
-    const t = table_('Config'), r = t.rows.filter(function (x) { return x.Chave === 'Telao'; })[0], val = JSON.stringify(st);
+    const t = table_('Config'), r = t.rows.filter(function (x) { return x.Chave === 'Telao'; })[0], val = JSON.stringify({ v: st.v, item: st.item, agendaId: st.agendaId, i: st.i, pausado: st.pausado, ativa: st.ativa, by: st.by, em: st.em });
     if (r) writeRow_(t, r._row, { Valor: val }); else appendRow_(t, { Chave: 'Telao', Valor: val });
-    return st;
+    return telaoLer_();
+  });
+}
+// Tela de pausa (o que aparece quando a transmissão é interrompida)
+const PAUSA_PAD = { tipo: 'radial', c1: '#10203f', c2: '#04070d', dir: 135, fade: 'nenhum', vel: 100, logoOn: true, logoPos: 'c', logoTam: 34, logoOp: 100, texto: '', textoCor: '#ffffff', textoTam: 5, imagem: '' };
+function pausaLimpa_(v) {
+  v = v || {}; const o = Object.assign({}, PAUSA_PAD, jparse_(cfgMap_().TelaoPausa, {})), cor = function (x, pad) { x = String(x === undefined ? pad : x); if (!/^#[0-9a-fA-F]{6}$/.test(x)) throw new ApiError('VALIDATION', 'Cor inválida.'); return x.toLowerCase(); }, num = function (x, lo, hi, pad) { x = Number(x === undefined ? pad : x); return isFinite(x) ? Math.max(lo, Math.min(hi, Math.round(x))) : pad; }, en = function (x, L, pad) { x = String(x === undefined ? pad : x); return L.indexOf(x) >= 0 ? x : pad; };
+  const r = { tipo: en(v.tipo, ['radial', 'linear', 'solido'], o.tipo), c1: cor(v.c1, o.c1), c2: cor(v.c2, o.c2), dir: num(v.dir, 0, 360, o.dir), fade: en(v.fade, ['nenhum', 'respirar', 'aurora', 'luz', 'pulso'], o.fade), vel: num(v.vel, 20, 300, o.vel), logoOn: v.logoOn === undefined ? !!o.logoOn : !!v.logoOn, logoPos: en(v.logoPos, ['c', 'tl', 'tc', 'tr', 'bl', 'bc', 'br'], o.logoPos), logoTam: num(v.logoTam, 5, 80, o.logoTam), logoOp: num(v.logoOp, 10, 100, o.logoOp), texto: clip_(v.texto === undefined ? o.texto : v.texto, 60), textoCor: cor(v.textoCor, o.textoCor), textoTam: num(v.textoTam, 2, 12, o.textoTam), imagem: v.imagem === undefined ? String(o.imagem || '') : String(v.imagem || '') };
+  if (r.imagem && (!/^data:image\/(jpeg|png|webp);base64,/.test(r.imagem) || r.imagem.length > 44000)) throw new ApiError('VALIDATION', 'Imagem de fundo inválida ou muito grande.'); return r;
+}
+function saveTelaoPausa_(d, u) {
+  multiExige_(u);
+  return withLock_(function () {
+    const r = d.reset ? PAUSA_PAD : pausaLimpa_(d.pausa), t = table_('Config'), x = t.rows.filter(function (q) { return q.Chave === 'TelaoPausa'; })[0], val = d.reset ? '' : JSON.stringify(r);
+    if (x) writeRow_(t, x._row, { Valor: val }); else appendRow_(t, { Chave: 'TelaoPausa', Valor: val }); audit_(u.email, 'TELAO_PAUSA', d.reset ? 'padrão' : 'salva', 'OK'); return { pausa: r };
+  });
+}
+// Biblioteca de imagens para transmitir (cada imagem fica salva e pode entrar em qualquer agenda)
+function listMidias_(d, u) { multiExige_(u); return table_('MidiasTelao').rows.filter(function (r) { return r.Ativo !== '0'; }).sort(function (a, b) { return a._row < b._row ? 1 : -1; }).slice(0, 200).map(function (r) { return { id: r.MidiaID, titulo: r.Titulo, mini: r.Mini || '' }; }); }
+function getMidia_(d, u) { multiExige_(u); const r = table_('MidiasTelao').rows.filter(function (x) { return x.MidiaID === d.id && x.Ativo !== '0'; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Imagem não encontrada.'); return { id: r.MidiaID, titulo: r.Titulo, foto: r.Foto }; }
+function saveMidia_(d, u) {
+  multiExige_(u);
+  return withLock_(function () {
+    const f = String(d.foto || ''), mini = String(d.mini || ''), titulo = clip_(d.titulo, 60) || 'Imagem';
+    if (!/^data:image\/(jpeg|png|webp);base64,/.test(f) || f.length > 45000) throw new ApiError('VALIDATION', 'Imagem inválida ou muito grande.');
+    if (mini && (!/^data:image\/(jpeg|png|webp);base64,/.test(mini) || mini.length > 6000)) throw new ApiError('VALIDATION', 'Miniatura inválida.');
+    const t = table_('MidiasTelao'), id = id_('MI'); appendRow_(t, { MidiaID: id, Titulo: titulo, Foto: f, Mini: mini, Ativo: '1', CriadoPor: u.membroId, CriadoEm: now_() }); return { id: id };
+  });
+}
+function deleteMidia_(d, u) { multiExige_(u); return withLock_(function () { const t = table_('MidiasTelao'), r = t.rows.filter(function (x) { return x.MidiaID === d.id; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Imagem não encontrada.'); writeRow_(t, r._row, { Ativo: '0' }); return { ok: true }; }); }
+// Agendas de transmissão: sequência de músicas, imagens e eventos de um dia de culto
+function itensAgenda_(arr) {
+  if (!Array.isArray(arr)) return []; if (arr.length > 150) throw new ApiError('VALIDATION', 'Itens demais na agenda.'); const seen = {}, out = [];
+  arr.forEach(function (x) { const it = String(x && x.t === 'musica' ? 'm:' + x.id : x && x.t === 'imagem' ? 'i:' + x.id : x && x.t === 'evento' ? 'e:' + x.id : ''); if (!it || seen[it]) return; if (!itemOk_(it)) return; seen[it] = 1; out.push({ t: x.t, id: String(x.id) }); });
+  return out;
+}
+function agOut_(r) { return { id: r.AgendaID, data: r.Data, nome: r.Nome, itens: jparse_(r.Itens, []), atualizadoEm: r.AtualizadoEm || r.CriadoEm || '' }; }
+function listAgendas_(d, u) { multiExige_(u); return table_('Agendas').rows.sort(function (a, b) { return a.Data < b.Data ? 1 : a.Data > b.Data ? -1 : (a._row < b._row ? 1 : -1); }).slice(0, 400).map(agOut_); }
+function saveAgenda_(d, u) {
+  multiExige_(u);
+  return withLock_(function () {
+    const data = String(d.data || ''); if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) throw new ApiError('VALIDATION', 'Informe a data da agenda.');
+    const nome = clip_(d.nome, 60) || 'Culto', t = table_('Agendas'), ex = d.id ? t.rows.filter(function (r) { return r.AgendaID === d.id; })[0] : null; if (d.id && !ex) throw new ApiError('NOT_FOUND', 'Agenda não encontrada.');
+    const itens = itensAgenda_(d.itens), row = { Data: data, Nome: nome, Itens: JSON.stringify(itens), AtualizadoPor: u.membroId, AtualizadoEm: now_() }; let id;
+    if (ex) { writeRow_(t, ex._row, row); id = ex.AgendaID; } else { id = id_('AG'); appendRow_(t, Object.assign({ AgendaID: id, CriadoPor: u.membroId, CriadoEm: now_() }, row)); }
+    audit_(u.email, 'AGENDA', id + ' ' + data + ' ' + itens.length, 'OK'); return { id: id, n: itens.length };
+  });
+}
+function deleteAgenda_(d, u) { multiExige_(u); return withLock_(function () { const t = table_('Agendas'), r = t.rows.filter(function (x) { return x.AgendaID === d.id; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Agenda não encontrada.'); t.sh.deleteRow(r._row); audit_(u.email, 'AGENDA_DEL', r.AgendaID, 'OK'); return { ok: true }; }); }
+// transmitir uma imagem/evento na hora: entra na agenda do dia (cria se preciso) e fica salvo lá
+function addAgendaItem_(d, u) {
+  multiExige_(u);
+  return withLock_(function () {
+    const it = { t: d.t, id: String(d.id || '') }, ok = itensAgenda_([it]); if (!ok.length) throw new ApiError('NOT_FOUND', 'Item não encontrado.');
+    const t = table_('Agendas'), hoje = today_(); let r = d.agendaId ? t.rows.filter(function (x) { return x.AgendaID === d.agendaId; })[0] : null;
+    if (!r) r = t.rows.filter(function (x) { return x.Data === hoje; })[0];
+    if (!r) { const id = id_('AG'); appendRow_(t, { AgendaID: id, Data: hoje, Nome: 'Culto', Itens: JSON.stringify(ok), CriadoPor: u.membroId, CriadoEm: now_(), AtualizadoPor: u.membroId, AtualizadoEm: now_() }); return agOut_(table_('Agendas').rows.filter(function (x) { return x.AgendaID === id; })[0]); }
+    const its = jparse_(r.Itens, []); if (!its.some(function (x) { return x.t === it.t && x.id === it.id; })) { its.push(ok[0]); writeRow_(t, r._row, { Itens: JSON.stringify(its), AtualizadoPor: u.membroId, AtualizadoEm: now_() }); }
+    return agOut_(table_('Agendas').rows.filter(function (x) { return x.AgendaID === r.AgendaID; })[0]);
   });
 }
 function ytOk_(v) { v = clip_(v, 200); if (v && !/^https:\/\/(www\.|m\.)?(youtube\.com|youtu\.be)\//.test(v)) throw new ApiError('VALIDATION', 'O link do YouTube precisa começar com https://youtube.com ou https://youtu.be.'); return v; }
@@ -2207,7 +2276,7 @@ function songOut_(r, nm) { return { id: r.MusicaID, titulo: r.Titulo, artista: r
 function listSongs_(d, u) {
   multiExige_(u); const nm = nomes_(), rows = table_('Musicas').rows.filter(function (r) { return r.Ativo !== '0'; });
   const pad = rows.filter(function (r) { return r.MusicaID === 'PADRAO'; })[0];
-  return { itens: rows.filter(function (r) { return r.MusicaID !== 'PADRAO'; }).sort(function (a, b) { return norm_(a.Titulo) < norm_(b.Titulo) ? -1 : 1; }).map(function (r) { return songOut_(r, nm); }), padrao: pad ? jparse_(pad.Layout, {}) : {} };
+  return { pausa: Object.assign({}, PAUSA_PAD, jparse_(cfgMap_().TelaoPausa, {})), itens: rows.filter(function (r) { return r.MusicaID !== 'PADRAO'; }).sort(function (a, b) { return norm_(a.Titulo) < norm_(b.Titulo) ? -1 : 1; }).map(function (r) { return songOut_(r, nm); }), padrao: pad ? jparse_(pad.Layout, {}) : {} };
 }
 function saveSong_(d, u) {
   multiExige_(u);
@@ -2469,7 +2538,7 @@ const ROUTES = {
   listBookComments: { auth: 'any', fn: listBookComments_ }, addBookComment: { auth: 'any', write: 1, fn: addBookComment_ }, deleteBookComment: { auth: 'any', write: 1, fn: deleteBookComment_ },
   listTestimonies: { auth: 'any', fn: listTestimonies_ }, addTestimony: { auth: 'any', write: 1, fn: addTestimony_ }, deleteTestimony: { auth: 'any', write: 1, fn: deleteTestimony_ }, toggleLike: { auth: 'any', write: 1, fn: toggleLike_ },
   saveMinistry: { auth: 'min', write: 1, fn: saveMinistry_ }, deleteMinistry: { auth: 'min', write: 1, fn: deleteMinistry_ }, listInterests: { auth: 'min', fn: listInterests_ },
-  saveConfig: { auth: 'config', write: 1, fn: saveConfig_ }, saveHomeLayout: { auth: 'config', write: 1, fn: saveHomeLayout_ }, saveMural: { auth: 'config', write: 1, fn: saveMural_ }, getTelao: { auth: 'any', fn: getTelao_ }, setTelao: { auth: 'any', write: 1, fn: setTelao_ }, getAccessRules: { auth: 'config', fn: accessRules_ }, saveAccessRules: { auth: 'config', write: 1, fn: saveAccessRules_ }, saveVideo: { auth: 'config', write: 1, fn: saveVideo_ }, deleteVideo: { auth: 'config', write: 1, fn: deleteVideo_ }, updateVideo: { auth: 'config', write: 1, fn: updateVideo_ },
+  saveConfig: { auth: 'config', write: 1, fn: saveConfig_ }, saveHomeLayout: { auth: 'config', write: 1, fn: saveHomeLayout_ }, saveMural: { auth: 'config', write: 1, fn: saveMural_ }, getTelao: { auth: 'any', fn: getTelao_ }, setTelao: { auth: 'any', write: 1, fn: setTelao_ }, saveTelaoPausa: { auth: 'any', write: 1, fn: saveTelaoPausa_ }, listMidias: { auth: 'any', fn: listMidias_ }, getMidia: { auth: 'any', fn: getMidia_ }, saveMidia: { auth: 'any', write: 1, fn: saveMidia_ }, deleteMidia: { auth: 'any', write: 1, fn: deleteMidia_ }, listAgendas: { auth: 'any', fn: listAgendas_ }, saveAgenda: { auth: 'any', write: 1, fn: saveAgenda_ }, deleteAgenda: { auth: 'any', write: 1, fn: deleteAgenda_ }, addAgendaItem: { auth: 'any', write: 1, fn: addAgendaItem_ }, getAccessRules: { auth: 'config', fn: accessRules_ }, saveAccessRules: { auth: 'config', write: 1, fn: saveAccessRules_ }, saveVideo: { auth: 'config', write: 1, fn: saveVideo_ }, deleteVideo: { auth: 'config', write: 1, fn: deleteVideo_ }, updateVideo: { auth: 'config', write: 1, fn: updateVideo_ },
   listUsers: { auth: 'config', fn: listUsers_ }, createUser: { auth: 'config', write: 1, fn: createUser_ }, setUser: { auth: 'config', write: 1, fn: setUser_ }, savePerms: { auth: 'config', write: 1, fn: savePerms_ },
   saveLesson: { auth: 'config', write: 1, fn: saveLesson_ }, getPerms: { auth: 'config', fn: function () { return permMatrix_(); } },
   createCell: { auth: 'celulas', write: 1, fn: createCell_ },

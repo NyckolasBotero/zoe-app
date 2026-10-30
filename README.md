@@ -281,3 +281,10 @@ O `build.py` grava a data/hora da geração no app e em `version.json`. No rodap
 
 ## Controle remoto do telão (celular)
 Em **Multimídia › Controle remoto** (mesma regra de acesso do ministério Som) o celular passa os slides: letra do slide atual, **Anterior / Próximo** grandes, **Mostrar a logo (pausar)**, atalhos numerados para pular e lista de músicas para trocar. No computador do projetor, deixe aberto **Músicas › Projetar › Iniciar transmissão**; ele acompanha o celular em até ~2 s (e o celular também acompanha o que for feito no computador). O estado fica na chave `Telao` da aba Config; rotas `getTelao` e `setTelao`. O celular mantém a tela acesa enquanto a aba está aberta. Teste: `tests/e2e_telao_remoto.py`.
+
+## Agendas de transmissão, tela de pausa e imagens
+- **Multimídia › Agendas**: escolha a **data** (hoje por padrão; vale domingo, culto de jovens no sábado etc.), marque músicas, imagens e eventos da igreja, reordene e clique em **Criar agenda de transmissão**. Ficam guardadas por data (abas `Agendas`), com **Próximas e de hoje** e **Histórico**; qualquer uma pode ser editada ou transmitida de novo.
+- **Imagens**: suba uma imagem (biblioteca `MidiasTelao`, reaproveitável em outras agendas) ou use um **evento já cadastrado** (vira um cartão 16:9 automático). No **Controle remoto** há “Divulgar agora”: um toque transmite e salva na agenda de hoje.
+- **Controle remoto** agora segue a agenda escolhida (itens de música, imagem e evento) e atravessa os itens com Anterior/Próximo.
+- **Tela de pausa**: personalize o que aparece quando a transmissão é pausada/interrompida — tipo e cores do fundo, direção, efeito (respirar, aurora, luz, pulso), velocidade, imagem de fundo e posição/tamanho da logo. Config `TelaoPausa`; rotas `saveTelaoPausa`, `listAgendas`, `saveAgenda`, `deleteAgenda`, `addAgendaItem`, `listMidias`, `getMidia`, `saveMidia`, `deleteMidia`. Testes: `tests/e2e_agendas.py`, `tests/e2e_divulga.py`.
+- Depois de atualizar o `Code.gs`: rodar `setup()` (cria as abas novas) e publicar nova versão.
