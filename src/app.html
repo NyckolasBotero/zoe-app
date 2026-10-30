@@ -175,7 +175,7 @@ textarea{min-height:96px;resize:vertical}input[type=checkbox],input[type=radio]{
 .apres{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px 16px;padding:12px 14px;border-radius:14px;background:var(--field);font-size:13px}.apres>div>span{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:1px}
 /* ---- Zoe, espírito de luz ---- */
 #zoe{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:260;display:flex;flex-direction:column;align-items:flex-end;gap:10px;pointer-events:none}
-#zoe>*{pointer-events:auto}
+#zoe>*{pointer-events:auto}#zoe.zesq{align-items:flex-start}#zoe.zalto{flex-direction:column-reverse}#zoe .zav{touch-action:none;user-select:none;-webkit-user-select:none}#zoe.arrasta .zav{cursor:grabbing;animation:none;filter:drop-shadow(0 10px 22px rgba(255,185,56,.8))}
 @media(max-width:860px){#zoe{bottom:calc(76px + env(safe-area-inset-bottom))}}
 .zav{width:72px;height:72px;border:0;background:none;padding:0;cursor:pointer;filter:drop-shadow(0 6px 14px rgba(255,185,56,.55));animation:zfloat 3.4s ease-in-out infinite;-webkit-tap-highlight-color:transparent}
 .zav:hover,.zav:focus-visible{transform:scale(1.08)}.zsv{width:100%;height:100%;overflow:visible}
@@ -868,7 +868,19 @@ function zSvg(){return `<svg class="zsv" viewBox="0 0 88 88" aria-hidden="true">
  <g class="zeyes"><ellipse cx="36" cy="48" rx="3.4" ry="4.4" fill="#16432b"/><ellipse cx="52" cy="48" rx="3.4" ry="4.4" fill="#16432b"/><circle cx="37.2" cy="46.4" r="1.2" fill="#fff"/><circle cx="53.2" cy="46.4" r="1.2" fill="#fff"/></g>
  <ellipse cx="30" cy="56" rx="4" ry="2.4" fill="#ff9a7a" opacity=".55"/><ellipse cx="58" cy="56" rx="4" ry="2.4" fill="#ff9a7a" opacity=".55"/>
  <path class="zmouth" d="M38 58q6 6 12 0" fill="none" stroke="#16432b" stroke-width="2.4" stroke-linecap="round"/></svg>`}
-function zMount(){if($('#zoe'))return;const d=document.createElement('div');d.id='zoe';d.innerHTML=`<div class="zbub" id="zbub" hidden></div><div class="zchat" id="zchat" hidden></div><button class="zav" id="zav" onclick="zToggle()" aria-label="Zoe, espírito de luz. Posso te ajudar em algo?">${zSvg()}</button><div class="zhint" id="zhint" aria-hidden="true">Posso te ajudar em algo?</div>`;document.body.appendChild(d)}
+function zMount(){if($('#zoe'))return;const d=document.createElement('div');d.id='zoe';d.innerHTML=`<div class="zbub" id="zbub" hidden></div><div class="zchat" id="zchat" hidden></div><button class="zav" id="zav" onclick="zToggle()" aria-label="Zoe, espírito de luz. Posso te ajudar em algo?">${zSvg()}</button><div class="zhint" id="zhint" aria-hidden="true">Posso te ajudar em algo?</div>`;document.body.appendChild(d)zPosAplica()}
+/* arrastar a Zoe (toque e mouse); a posição fica guardada neste aparelho */
+function zPosLer(){try{const p=JSON.parse(localStorage.getItem('zoePos')||'null');return p&&typeof p.x==='number'&&typeof p.y==='number'?p:null}catch(e){return null}}
+function zPosAplica(p){const r=$('#zoe'),a=$('#zav');if(!r||!a)return;p=p||zPosLer();if(!p){['right','left','top','bottom'].forEach(k=>r.style[k]='');r.classList.remove('zesq','zalto');return}
+ const w=a.offsetWidth||72,h=a.offsetHeight||72,cx=Math.min(Math.max(p.x*innerWidth,w/2+6),innerWidth-w/2-6),cy=Math.min(Math.max(p.y*innerHeight,h/2+6),innerHeight-h/2-6),esq=cx<innerWidth/2,alto=cy<innerHeight/2;
+ r.style.left=esq?(cx-w/2)+'px':'auto';r.style.right=esq?'auto':(innerWidth-cx-w/2)+'px';r.style.top=alto?(cy-h/2)+'px':'auto';r.style.bottom=alto?'auto':(innerHeight-cy-h/2)+'px';r.classList.toggle('zesq',esq);r.classList.toggle('zalto',alto)}
+let ZDRAG=null;
+document.addEventListener('pointerdown',e=>{const a=e.target.closest&&e.target.closest('#zav');if(!a||(e.pointerType==='mouse'&&e.button!==0))return;ZDRAG={id:e.pointerId,x:e.clientX,y:e.clientY,mov:false}});
+document.addEventListener('pointermove',e=>{const d=ZDRAG;if(!d||e.pointerId!==d.id)return;if(!d.mov){if(Math.hypot(e.clientX-d.x,e.clientY-d.y)<8)return;d.mov=true;const a=$('#zav');try{a.setPointerCapture(e.pointerId)}catch(x){}$('#zoe').classList.add('arrasta')}
+ e.preventDefault();d.p={x:e.clientX/innerWidth,y:e.clientY/innerHeight};zPosAplica(d.p)},{passive:false});
+function zDragFim(e){const d=ZDRAG;if(!d||e.pointerId!==d.id)return;ZDRAG=null;const r=$('#zoe');if(r)r.classList.remove('arrasta');if(d.mov){ZE.dragT=Date.now();if(d.p){try{localStorage.setItem('zoePos',JSON.stringify(d.p))}catch(x){}}}}
+document.addEventListener('pointerup',zDragFim);document.addEventListener('pointercancel',zDragFim);
+addEventListener('resize',()=>zPosAplica());
 function zSeg(t){return t.split('**').map((x,i)=>({b:i%2===1,t:x}))}
 function zType(el,txt,done,vel){const id=++ZE.typing,segs=zSeg(txt),root=$('#zoe');el.textContent='';
  if(!S.anim){el.innerHTML=segs.map(s=>s.b?`<b>${esc(s.t)}</b>`:esc(s.t)).join('').replace(/\n/g,'<br>');if(root)root.classList.remove('talk');done&&done();return}
@@ -989,7 +1001,7 @@ function zResp(q){const it=zPensa(q);if(!it)return{txt:'Hmm, não tenho certeza 
  if(it.celula){const T=['freq','plan','papeis','oracao','ind','membros','perfilc','priv','pres','hist','mural','org'];const pc=S.permCel,ok=!ONLINE||!pc||can('celulas')||(pc[sub]&&pc[sub].v);if(!ok)return{txt:`Essa guia de **Células** não está liberada para o seu perfil. Fale com o seu líder. 🙏`}}
  const subt=sub?{freq:'Frequência',plan:'Planejamento',oracao:'Oração',mural:'Mural de fotos',org:'Organograma',feitos:'Cursos que você fez',pastores:'Nossos Pastores',onde:'Onde estamos'}[sub]:'';
  return{txt:`Você encontra isso em **${rot}**${subt?`, na guia **${subt}**`:''}. Vem que eu te mostro! ✨`,mostrar:{r,sub}}}
-function zToggle(){if(ZE.on)return;ZE.chat?zFechaChat():zAbreChat()}
+function zToggle(){if(Date.now()-(ZE.dragT||0)<400)return;if(ZE.on)return;ZE.chat?zFechaChat():zAbreChat()}
 function zAbreChat(){zMount();ZE.chat=true;const c=$('#zchat');c.hidden=false;zFecha();zIdle();
  if(!ZE.msgs.length)ZE.msgs.push({de:'zoe',txt:'Oi! Eu sou a **Zoe**. 💛 Escreva o que você procura, por exemplo: “onde posso encontrar minha célula”, “como posso ler a Bíblia” ou só “Bíblia”.',chips:ZCHIPS});
  c.innerHTML=`<div class="zh"><b>Zoe</b><span class="muted sm">espírito de luz</span><button class="heart" onclick="zFechaChat()" aria-label="Fechar">${ic('x',16)}</button></div><div class="zms" id="zms"></div><form class="zin" onsubmit="return zEnvia(event)"><input id="zq" autocomplete="off" maxlength="120" placeholder="Digite sua dúvida…" aria-label="Sua dúvida"><button class="btn sm" aria-label="Enviar">${ic('send',16)}</button></form><button class="zrev" onclick="zRever()">Rever o tutorial</button>`;
