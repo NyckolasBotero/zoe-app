@@ -1,7 +1,15 @@
 #!/usr/bin/env python3
 """Gera index.html (documento completo para hospedar) a partir de src/app.html (conteúdo do app)."""
-import re
+import re, json, subprocess, datetime
 s = open('src/app.html', encoding='utf-8').read()
+# identificação da versão: data/hora da geração (horário de Brasília) + último commit; também vai para version.json
+def _git(*a):
+    try: return subprocess.check_output(['git', *a], text=True, stderr=subprocess.DEVNULL).strip()
+    except Exception: return ''
+_agora = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=-3)))
+_zv = {'id': _agora.strftime('%Y%m%d-%H%M%S'), 'data': _agora.strftime('%d/%m/%Y %H:%M')}
+s = s.replace('__ZVER__', json.dumps(_zv), 1)
+open('version.json', 'w', encoding='utf-8').write(json.dumps(_zv))
 title = re.search(r'<title>.*?</title>', s).group(0)
 body = s.replace(title, '', 1).replace('<meta name="claude:viewport-fit-sides" content="cover">', '', 1)
 # links e <style> vão no <head>; o resto no <body>

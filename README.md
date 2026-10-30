@@ -274,3 +274,6 @@ Ordem dos acabamentos: Bordado, Bronze, Prateado, Dourado e **Celeste** (platina
 
 ## Conquista de insígnia (pop-up 3D e som)
 Quando chega uma notificação de insígnia nova, aparece um pop-up de tela cheia: a insígnia sobe girando em 3D com brilho, raios, anéis, confete e o XP ganho, com som sintetizado no próprio aparelho (sem arquivos de áudio). Cada insígnia, e cada nível dela, tem o **Som da conquista** definido no editor (Sino, Moeda, Harpa, Fanfarra, Celestial, Varinha mágica, Épico, Coral); em branco usa o padrão do acabamento (Celeste = Celestial). No editor há “Ouvir som” e “Testar pop-up”. Coluna `Som` em `InsigniaDefs` (criada pelo `setup()`).
+
+## Versão do site
+O `build.py` grava a data/hora da geração no app e em `version.json`. No rodapé do menu lateral aparece “Versão do site: dd/mm/aaaa hh:mm” (horário de Brasília) e o botão **Verificar atualização**; o app também confere sozinho a cada 5 minutos e, se houver versão mais nova publicada, mostra “Nova versão disponível” com o botão **Atualizar agora**. Sempre rode `python3 build.py` antes de dar commit, para que `index.html` e `version.json` sigam juntos.
