@@ -14,7 +14,7 @@ with sync_playwright() as p:
     pg.screenshot(path=OUT+'/m_pastores.png')
     pg.evaluate("go('familia','quem')"); pg.wait_for_selector('.famv iframe'); src=pg.get_attribute('.famv iframe','src'); print(src); assert 'autoplay=1' in src and 'mute=1' in src and 'loop=1' in src
     pg.wait_for_selector('#famcar .fs.on'); assert pg.locator('#famcar .fs').count()==2
-    a=pg.evaluate("[...document.querySelectorAll('#famcar .fs')].findIndex(x=>x.classList.contains('on'))"); pg.wait_for_timeout(5200)
+    a=pg.evaluate("[...document.querySelectorAll('#famcar .fs')].findIndex(x=>x.classList.contains('on'))"); pg.wait_for_function('a=>[...document.querySelectorAll("#famcar .fs")].findIndex(x=>x.classList.contains("on"))!==a',arg=a,timeout=6500)
     c=pg.evaluate("[...document.querySelectorAll('#famcar .fs')].findIndex(x=>x.classList.contains('on'))"); print(a,c); assert a!=c
     pg.screenshot(path=OUT+'/m_quem.png')
     print('ERROS',errs); assert not errs

@@ -20,10 +20,11 @@ with sync_playwright() as p:
     adm.evaluate("go('familia')"); adm.wait_for_selector('.tabs')
     tabs=adm.evaluate("[...document.querySelectorAll('.tabs button')].map(e=>e.textContent.trim())")
     assert tabs[0]=='Uma Família Para Pertencer' and tabs[-1]=='Fale com a Igreja' and tabs[1]=='Notícias', tabs
-    t=adm.inner_text('#view'); assert 'Notícias' in t and 'Onde estamos' in t and 'Programação' in t and 'Nossos Pastores' in t
+    t=adm.inner_text('#view'); assert all(x in t for x in ['Notícias','Quem somos','Nossos Pastores','Programação','Onde estamos','Fale com a Igreja']) and adm.query_selector('.lp .onde iframe') and adm.query_selector('.lp #fm'), 'landing page com tudo aberto'
+    assert 'Ver detalhes' not in t
     adm.screenshot(path=OUT+'/fam_visao.png',full_page=True)
     # atalho "Ver detalhes"
-    adm.click('.vsec:has-text("Programação") button:has-text("Ver detalhes")'); assert adm.evaluate("R.sub.familia")=='prog'
+    adm.click('.tabs button:has-text("Programação")'); assert adm.evaluate("R.sub.familia")=='prog'
     # --- pastores: admin edita
     adm.evaluate("sub('familia','pastores')"); adm.click('button:has-text("Editar mural")'); adm.wait_for_selector('.mfbar')
     adm.set_input_files('.mfbar input[type=file]','/tmp/past.jpg'); adm.wait_for_selector('.mfit.polar')
@@ -52,7 +53,7 @@ with sync_playwright() as p:
     ana.evaluate("sub('familia','onde')"); ana.wait_for_selector('.onde iframe'); ana.wait_for_selector('.onde .or img',timeout=8000); assert ana.query_selector('.onde input[type=file]') is None
     adm.screenshot(path=OUT+'/fam_onde.png',full_page=True)
     # visão geral mostra tudo
-    ana.evaluate("sub('familia','visao')"); ana.wait_for_selector('.vsec .mfb'); ana.wait_for_selector('.vsec .onde .or img',timeout=8000)
+    ana.evaluate("sub('familia','visao')"); ana.wait_for_selector('.lp .mfb'); ana.wait_for_selector('.lp .onde .or img',timeout=8000)
     # celular
     m=entra(b,'admin@zoe.com','SenhaForte123',vw=390); m.evaluate("go('familia','pastores')"); m.wait_for_selector('.mfb'); m.wait_for_timeout(500)
     assert m.evaluate("document.documentElement.scrollWidth<=innerWidth+2"), 'rolagem horizontal no celular'
