@@ -12,7 +12,8 @@
    "Versículos no telão: a equipe do Datashow transmite versículos (Almeida offline, ARC, ARA, NTLH, NVT) e eles também vão para a live.",
    "Administração › Membros: depois de inativa, a pessoa pode ser excluída permanentemente (confirmando o nome).",
    "Projeção: fundo editável para músicas e versículos — degradê, cor sólida, imagem (biblioteca ou nova), vídeo em loop, escurecer, e animações (luzes, aurora, ondas, céu estrelado).",
-   "Layout padrão agora tem abas Músicas e Versículos; o versículo herda o das músicas e muda só o que você alterar. O Estúdio ao vivo espelha esses fundos."
+   "Layout padrão agora tem abas Músicas e Versículos; o versículo herda o das músicas e muda só o que você alterar. O Estúdio ao vivo espelha esses fundos.",
+   "Zoe agora pode ser arrastada para qualquer posição da tela (celular e computador); a posição fica guardada no aparelho."
   ],
   "v": "1.21",
   "data": "30/10/2026"

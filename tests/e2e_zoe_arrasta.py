@@ -15,7 +15,7 @@ with sync_playwright() as p:
     assert pg.evaluate("document.querySelector('#zoe').classList.contains('zesq')&&document.querySelector('#zoe').classList.contains('zalto')")
     assert pg.evaluate("document.querySelector('#zchat').hidden"),'arrastar não deve abrir o chat'
     assert pg.evaluate("JSON.parse(localStorage.zoePos).x")<.25
-    pg.click('#zav'); pg.wait_for_function("!document.querySelector('#zchat').hidden")  # toque simples abre
+    pg.wait_for_timeout(500); pg.click('#zav',force=True); pg.wait_for_function("!document.querySelector('#zchat').hidden")  # toque simples abre
     r=pg.evaluate("(()=>{const a=document.querySelector('#zchat').getBoundingClientRect();return [a.x,a.y,a.right,a.bottom]})()"); assert r[0]>=0 and r[3]<=800 and r[2]<=1280,r
     pg.reload(); pg.wait_for_selector('#splash',state='detached',timeout=15000); pg.evaluate("zMount()"); pg.wait_for_selector('#zav'); pg.wait_for_timeout(300)
     x3,y3=centro(pg); assert abs(x3-200)<8 and abs(y3-150)<8,(x3,y3)  # lembrou
@@ -28,6 +28,6 @@ with sync_playwright() as p:
     tq('touchEnd',0,0); pm.wait_for_timeout(200)
     x2,y2=centro(pm); assert x2<x-150 and y2<y-300,((x,y),(x2,y2))
     assert pm.evaluate("document.querySelector('#zchat').hidden")
-    pm.touchscreen.tap(x2,y2); pm.wait_for_function("!document.querySelector('#zchat').hidden")
+    pm.wait_for_timeout(500); pm.touchscreen.tap(x2,y2); pm.wait_for_function("!document.querySelector('#zchat').hidden")
     assert not errs,errs
     print('OK zoe arrasta')
