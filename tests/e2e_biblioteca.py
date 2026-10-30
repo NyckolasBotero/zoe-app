@@ -9,6 +9,7 @@ def entra(b,email,senha,nova=None):
     if pg.query_selector('#fp_n'):
         pg.fill('#fp_a',senha); pg.fill('#fp_n',nova); pg.fill('#fp_r',nova); pg.click("text=Salvar nova senha"); pg.wait_for_selector('#lg_e')
         pg.fill('#lg_e',email); pg.fill('#lg_s',nova); pg.click('#lg_b'); pg.wait_for_selector('#view h1')
+    pg.wait_for_selector('#splash',state='detached',timeout=15000)
     return pg
 with sync_playwright() as p:
     b=p.chromium.launch(); adm=entra(b,'admin@zoe.com','SenhaForte123')

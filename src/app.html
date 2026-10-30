@@ -1780,7 +1780,7 @@ const apPend=()=>(S.aprov.itens||[]).filter(x=>x.status==='pendente'&&x.pode);
 const minStatus=nm=>{const i=(S.interesses||[]).filter(x=>x.ministerio===nm).pop();return i?`<span class="chip ${i.status==='negado'?'r':''}">${i.status==='autorizado'?'Você participa':i.status==='negado'?'Não aprovado':'Em análise'}</span>`:''};
 const fmtH=d=>fmtDT(d);
 function apRecalc(){S.aprov.pendentes=apPend().length}
-async function refreshAprov(){if(!canAprov())return;if(ONLINE){try{const novo=await api('listApprovals');S.aprov=novo}catch(e){return}}else apRecalc();shell();if(R.r==='aprovacoes'&&!document.querySelector('.ubar')){const y=scrollY;render();scrollTo(0,y)}checaPop()}
+async function refreshAprov(){if(!canAprov())return;if(ONLINE){try{const novo=await api('listApprovals');S.aprov=novo}catch(e){return}}else apRecalc();shell();if(R.r==='aprovacoes'){const y=scrollY;render();scrollTo(0,y)}checaPop()}
 function aprovacoesHTML(){if(!canAprov())return '<div class="card flat"><p class="muted">Você não tem pedidos para decidir.</p></div>';
  const s=R.sub.aprovacoes,all=S.aprov.itens||[],f=R.apf||'',base=f?all.filter(x=>x.tipo===f):all;
  const L=s==='pend'?base.filter(x=>x.status==='pendente'):s==='minhas'?base.filter(x=>x.minha&&x.status!=='pendente').sort((a,b)=>String(b.dataDecisao).localeCompare(String(a.dataDecisao))):base.slice().sort((a,b)=>String(b.dataDecisao||b.data).localeCompare(String(a.dataDecisao||a.data)));
