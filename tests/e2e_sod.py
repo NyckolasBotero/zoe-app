@@ -5,7 +5,7 @@ URL='http://localhost:8799/'; errs=[]; OUT=os.environ.get('SHOTS','/tmp')
 def pixels(pg,sel):
     return pg.evaluate("""s=>{const c=document.querySelector(s),d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;const set=new Set();for(let i=0;i<d.length;i+=4)set.add(d[i]+','+d[i+1]+','+d[i+2]);return set.size}""",sel)
 with sync_playwright() as p:
-    b=p.chromium.launch(); pg=b.new_page(viewport={'width':1100,'height':900}); pg.on('pageerror',lambda e:errs.append(str(e))); pg.on('dialog',lambda d:d.accept())
+    b=p.chromium.launch(); pg=b.new_page(viewport={'width':1100,'height':900}); pg.add_init_script("localStorage.setItem('zoe-sodcut','1')"); pg.on('pageerror',lambda e:errs.append(str(e))); pg.on('dialog',lambda d:d.accept())
     pg.on('console',lambda m:errs.append(m.text) if m.type=='error' and 'ERR_TUNNEL' not in m.text else None)
     pg.goto(URL); pg.wait_for_selector('#lg_e'); pg.fill('#lg_e','admin@zoe.com'); pg.fill('#lg_s','SenhaForte123'); pg.click('#lg_b'); pg.wait_for_selector('#view h1')
     pg.wait_for_selector('#splash',state='detached',timeout=15000); pg.evaluate("api('guideDone')")
