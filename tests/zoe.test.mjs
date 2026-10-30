@@ -671,7 +671,7 @@ test('Maratona Bíblica: limite diário, devocional validado pelo líder, faixas
   const cel = e.call('createCell', { nome: 'Semeadores', liderId: l, dia: 'Quinta', inicio: '20:00', fim: '21:30', categoria: 'Mulheres e Homens', faixa: 'Jovens', bairro: 'X', cidade: 'Y', uf: 'GO' }, adm).data.id;
   for (const m of [a, b]) assert.ok(e.call('adminSave', { tipo: 'membros', id: m, valores: { Nome: m === a ? 'Ana' : 'Bia', CelulaID: cel } }, adm).ok);
   assert.equal(e.call('getCorrida', {}, A).data.ativa, false);
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = e.run('today_()');
   const cr = e.call('adminSave', { tipo: 'corridas', valores: { Titulo: 'Corrida 2026', Ano: '2026', Inicio: hoje, CapDia: '3', TotalCap: '3', Status: 'Ativo' } }, adm); assert.ok(cr.ok, JSON.stringify(cr));
   const g = e.call('getCorrida', {}, A).data; assert.ok(g.ativa && g.capDia === 3 && g.total === 3); const cid = g.id;
   assert.equal(e.call('corridaLer', { corridaId: cid, capitulos: 4, resumo: 'x'.repeat(40) }, A).error.code, 'VALIDATION'); // acima do limite
@@ -849,4 +849,28 @@ test('boot: carga inicial em uma requisição, igual às chamadas separadas', ()
   assert.equal(e.call('boot', {}).error.code, 'SESSION');
   // memo só nas leituras: gravação seguida de leitura continua enxergando o dado novo
   e.call('saveSong', { titulo: 'x', letra: 'y' }, adm); const n = e.call('listSongs', {}, adm).data.itens.length; e.call('saveSong', { titulo: 'z', letra: 'w' }, adm); assert.equal(e.call('listSongs', {}, adm).data.itens.length, n + 1);
+});
+test('insígnias com níveis: sequência de acessos, parâmetros por nível e visual por nível', () => {
+  const { e, adm, tok, mk } = boot(); const a = mk('ana@zoe.com', 'membro'); const ta = tok('ana@zoe.com', 'Temp12345');
+  // "Usuário Fiel" criada no setup, com 5 níveis
+  let defs = e.call('listInsigniaDefs', {}, adm).data.defs; const fiel = defs.find(d => d.titulo === 'Usuário Fiel'); assert.ok(fiel && fiel.niveis.length === 5 && fiel.niveis[4].n === 100);
+  assert.ok(e.call('listInsigniaDefs', {}, adm).data.icones.includes('caneta'));
+  // 12 dias seguidos até hoje
+  const hoje = e.run('diaNum_(today_())'); for (let i = 11; i >= 0; i--) e.run(`awardXp_('${a}', 'dia:' + new Date((${hoje} - ${i}) * 86400000).toISOString().slice(0, 10), 5, 'Acesso diário')`);
+  assert.deepEqual(JSON.parse(JSON.stringify(e.run(`streakDe_('${a}')`))), { atual: 12, melhor: 12, total: 12 });
+  e.call('track', { itens: [{ tela: 'feed', seg: 5 }] }, ta); // avalia insígnias
+  let p = e.call('profileView', {}, ta).data; const f = p.insignias.filter(i => /Usuário Fiel/.test(i.titulo)); assert.equal(f.length, 1, JSON.stringify(f.map(x => x.titulo))); assert.equal(f[0].titulo, 'Usuário Fiel · Prata'); assert.equal(f[0].nivel, 2);
+  const bl = p.bloqueadas.find(b => /Usuário Fiel/.test(b.titulo)); assert.equal(bl.titulo, 'Usuário Fiel · Ouro'); assert.deepEqual(bl.progresso, { atual: 12, meta: 20 }); assert.equal(bl.visual.estilo, 'ouro');
+  // nova insígnia com 3 níveis (devocionais) e ícones novos
+  const r = e.call('saveInsigniaDef', { titulo: 'Escriba', visual: { icone: 'pomba', estilo: 'prata' }, criterio: { tipo: 'devocionais' }, xp: 40, niveis: [{ nome: 'Aprendiz', n: 1, visual: { icone: 'caneta' } }, { nome: 'Mestre', n: 100, xp: 300, visual: { icone: 'pergaminho', estilo: 'ouro', cor1: '#112233' } }, { nome: 'Meio', n: 10 }] }, adm); assert.ok(r.ok, JSON.stringify(r));
+  const d = e.call('listInsigniaDefs', {}, adm).data.defs.find(x => x.titulo === 'Escriba'); assert.deepEqual(d.niveis.map(x => x.n), [1, 10, 100]); assert.equal(d.niveis[2].visual.icone, 'pergaminho'); assert.equal(d.niveis[1].visual.icone, 'pomba'); assert.equal(d.niveis[0].xp, 40);
+  assert.equal(e.call('saveInsigniaDef', { titulo: 'Dup', criterio: { tipo: 'posts' }, niveis: [{ n: 5 }, { n: 5 }] }, adm).error.code, 'VALIDATION');
+  assert.equal(e.call('saveInsigniaDef', { titulo: 'Dup', criterio: { tipo: 'eventos_ultimos', palavra: 'x' }, niveis: [{ n: 5 }] }, adm).error.code, 'VALIDATION');
+  assert.equal(e.call('saveInsigniaDef', { titulo: 'Dup', criterio: { tipo: 'posts' }, niveis: [{ n: 5, visual: { icone: 'inexistente' } }] }, adm).error.code, 'VALIDATION');
+  // devocionais registrados: 1 => nível 1
+  e.run(`appendRow_(table_('CorridaLeitura'), { CorridaID: 'C', MembroID: '${a}', Data: today_(), Capitulos: '3', Resumo: 'Li e entendi muito bem a palavra', Status: 'Validado' })`);
+  e.call('track', { itens: [{ tela: 'feed', seg: 5 }] }, ta); p = e.call('profileView', {}, ta).data; const g = p.insignias.find(i => /Escriba/.test(i.titulo)); assert.equal(g.titulo, 'Escriba · Aprendiz'); assert.equal(g.visual.icone, 'caneta');
+  // concessão manual por nível
+  const m = e.call('saveInsigniaDef', { titulo: 'Manual', criterio: { tipo: 'manual' }, niveis: [{ n: 1, nome: 'A' }, { n: 2, nome: 'B' }] }, adm).data.id; assert.equal(e.call('grantBadge', { defId: m, membros: [a], nivel: 2 }, adm).data.n, 1);
+  assert.ok(e.call('profileView', {}, ta).data.insignias.some(i => i.titulo === 'Manual · B'));
 });

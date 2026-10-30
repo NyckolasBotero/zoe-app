@@ -210,3 +210,9 @@ Administração › **Maratona Bíblica (programar)**: início (1º de janeiro),
 ## Desempenho do carregamento
 - A carga inicial agora é **uma única requisição** (`boot`) em vez de ~20; o servidor lê cada aba da planilha uma vez por requisição de leitura (cache só em rotas de leitura, invalidado ao gravar) e reutiliza a planilha aberta.
 - Fontes extras (assinaturas cursivas e Multimídia) carregam depois do app, fora do caminho crítico.
+
+## Insígnias com níveis, sequência e ícones
+- **Níveis**: ao criar uma insígnia você escolhe quantos níveis ela tem (até 10); cada nível tem nome, meta (parâmetro), XP e visual próprios (acabamento, forma, ícone, cores, texto). A pessoa mostra o nível mais alto alcançado e vê o próximo com o progresso.
+- **Usuário Fiel** (criada no `setup()`, editável): entrar 5, 10, 20, 50 e 100 dias consecutivos.
+- Novas regras: dias consecutivos, devocionais, capítulos lidos, notas no feed, anotações na Bíblia, pedidos de oração e escalas servidas. Mais de 60 ícones (pomba, caneta, pergaminho, trofeu etc.).
+- Luz vermelha piscando em **Aprovações** na barra lateral quando há pendências.

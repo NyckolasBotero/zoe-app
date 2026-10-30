@@ -75,7 +75,7 @@ const SHEETS = {
   Insignias: ['MembroID', 'Codigo', 'Titulo', 'Ano', 'Data', 'Ref'],
   XpLog: ['MembroID', 'Ref', 'Pontos', 'Motivo', 'Data'],
   Perfis: ['MembroID', 'Bio', 'Capa', 'Fundo', 'Moldura', 'Versiculo', 'Oculto', 'Contorno', 'Quadro', 'Top'],
-  InsigniaDefs: ['DefID', 'Nome', 'Descricao', 'Estilo', 'Forma', 'Cor1', 'Cor2', 'Icone', 'Texto', 'XP', 'Criterio', 'Ativo', 'CriadoPor'],
+  InsigniaDefs: ['DefID', 'Nome', 'Descricao', 'Estilo', 'Forma', 'Cor1', 'Cor2', 'Icone', 'Texto', 'XP', 'Criterio', 'Ativo', 'CriadoPor', 'Niveis'],
   Servicos: ['Atividade', 'MembroID', 'Mes', 'RegistradoPor'],
   ChatMsgs: ['MsgID', 'ConvID', 'De', 'Para', 'Texto', 'Ts', 'Lida'],
   PerfilFotos: ['MembroID', 'FotoID', 'Foto', 'Legenda', 'Ordem'],
@@ -91,7 +91,7 @@ const SHEETS = {
   Config: ['Chave', 'Valor'],
   Auditoria: ['Data', 'Usuario', 'Acao', 'Alvo', 'Resultado']
 };
-const DEFAULT_CONFIG = { NomeIgreja: 'Ministério Cristão Zoe', WhatsApp: '', LocalNome: 'Templo Zoe', LocalEndereco: '', LinkMapa: 'https://maps.app.goo.gl/RZWqr2FkSz8aux2t7', ColunasExtras: '["Quem convidou"]', CanalYoutube: 'https://youtube.com/@zoe.digital.1', FrequenciasParaMembro: '4', LojaWhatsApp: '', FrequentadorPct: '70', FrequentadorJanela: '8', CelulasParaSupervisor: '0' };
+const DEFAULT_CONFIG = { NomeIgreja: 'Ministério Cristão Zoe', WhatsApp: '', LocalNome: 'Templo Zoe', LocalEndereco: '', LinkMapa: 'https://maps.app.goo.gl/RZWqr2FkSz8aux2t7', ColunasExtras: '["Quem convidou"]', CanalYoutube: 'https://youtube.com/@zoe.digital.1', FrequenciasParaMembro: '4', LojaWhatsApp: '', FrequentadorPct: '70', FrequentadorJanela: '8', CelulasParaSupervisor: '0', SeedFiel: '0' };
 const DEFAULT_MIN = ['Gourmet', 'Infantil', 'Mídia', 'Música', 'Som', 'Limpeza', 'Recepção'];
 
 class ApiError extends Error { constructor(code, msg) { super(msg); this.code = code; } }
@@ -109,6 +109,12 @@ function setup() {
   Object.keys(DEFAULT_CONFIG).forEach(function (k) { if (!hc[k]) appendRow_(c, { Chave: k, Valor: DEFAULT_CONFIG[k] }); });
   const m = table_('Ministerios');
   if (!m.rows.length) DEFAULT_MIN.forEach(function (n, i) { appendRow_(m, { MinisterioID: id_('MIN'), Nome: n, Ordem: i + 1, Ativo: '1' }); });
+  const cf = table_('Config').rows.filter(function (r) { return r.Chave === 'SeedFiel'; })[0];
+  if (cf && cf.Valor !== '1') { // insígnia "Usuário Fiel" (sequência de acessos), criada uma vez; depois é editável como qualquer outra
+    const nv = [[5, 'Bronze', 'bronze', '#a5602c', '#f8e1c9', 50], [10, 'Prata', 'prata', '#8b97a5', '#f3f6fa', 80], [20, 'Ouro', 'ouro', '#d6a21d', '#fff1b8', 120], [50, 'Diamante', 'ouro', '#1d5f91', '#e4f1fa', 250], [100, 'Lendário', 'bordado', '#8c2f2f', '#f7e6b8', 500]].map(function (x) { return { nome: x[1], n: x[0], xp: x[5], visual: { estilo: x[2], forma: 'esc', icone: 'flame', cor1: x[3], cor2: x[4], texto: String(x[0]) } }; });
+    appendRow_(table_('InsigniaDefs'), { DefID: 'IBFIEL', Nome: 'Usuário Fiel', Descricao: 'Entre no aplicativo todos os dias, sem faltar.', Estilo: 'bordado', Forma: 'esc', Cor1: '#a5602c', Cor2: '#f8e1c9', Icone: 'flame', Texto: '', XP: '50', Criterio: JSON.stringify({ tipo: 'sequencia', n: 1 }), Niveis: JSON.stringify(nv), Ativo: '1', CriadoPor: 'sistema' });
+    writeRow_(table_('Config'), cf._row, { Valor: '1' });
+  }
   pastaLivros_(); // pede a autorização do Google Drive (PDFs da biblioteca)
   Logger.log('Setup concluído. Planilha: https://docs.google.com/spreadsheets/d/' + id + '  (mantenha o compartilhamento RESTRITO)');
 }
@@ -1273,18 +1279,19 @@ function conquistasMembro_(m) {
   if (m.DataBatismo) awardBadge_(mid, 'batismo', 'Batizado', String(m.DataBatismo).slice(0, 4), 200);
 }
 /* ---- insígnias criadas pelos supervisores: o que precisa ser feito (critério) e o visual ---- */
-const ICONES_BD = ['estrela', 'user', 'flame', 'gota', 'livro', 'coroa', 'cruz', 'coracao', 'pomba', 'trigo', 'chave', 'escudo', 'sino', 'maos', 'arado', 'ancora', 'vela', 'raio'];
+const ICONES_BD = ['estrela', 'user', 'flame', 'gota', 'livro', 'coroa', 'cruz', 'coracao', 'pomba', 'trigo', 'chave', 'escudo', 'sino', 'maos', 'arado', 'ancora', 'vela', 'raio', 'caneta', 'pergaminho', 'biblia', 'microfone', 'violao', 'nota', 'camera', 'casa', 'mundo', 'presente', 'taca', 'peixe', 'arvore', 'folha', 'sol', 'lua', 'montanha', 'olho', 'relogio', 'medalha', 'trofeu', 'megafone', 'asa', 'tenda', 'barco', 'cordeiro', 'leao', 'calendario', 'balao', 'pegada', 'bandeira', 'diamante', 'semente', 'foguete', 'alvo', 'bussola', 'lanterna', 'harpa', 'trombeta', 'candelabro', 'tabuas', 'sorriso', 'joia', 'pao', 'fogueira', 'carta', 'convite', 'abraco', 'cafe'];
 const FORMAS_BD = ['circ', 'esc', 'hex', 'oct', 'losango'];
 const ESTILOS_BD = ['bordado', 'ouro', 'prata', 'bronze'];
 function podeCurar_(u) { return can_(u, 'config') || can_(u, 'eventos') || can_(u, 'celulas') || (u.supervisiona && u.supervisiona.length > 0) || u.papel === 'pastor' || u.papel === 'admin'; }
 function exigeCurar_(u) { if (!podeCurar_(u)) throw new ApiError('FORBIDDEN', 'Só supervisores e a administração criam insígnias.'); }
 function ehLider_(u) { return can_(u, 'celulas') || (u.lidera && u.lidera.length > 0) || (u.supervisiona && u.supervisiona.length > 0) || u.papel === 'pastor' || u.papel === 'admin'; }
-function criterioLimpo_(c) {
-  c = c || {}; const t = String(c.tipo || 'manual'), n = Math.floor(Number(c.n)), o = { tipo: t };
+const CRIT_CONT = ['eventos_total', 'reunioes', 'cursos', 'acessos', 'sequencia', 'devocionais', 'capitulos', 'posts', 'anotacoes', 'oracoes', 'escalas'];
+function criterioLimpo_(c, comNiveis) {
+  c = c || {}; const t = String(c.tipo || 'manual'), n = comNiveis ? 1 : Math.floor(Number(c.n)), o = { tipo: t };
   if (['manual'].indexOf(t) >= 0) return o;
   if (t === 'eventos_ultimos') { o.palavra = clip_(c.palavra, 40); o.n = n; if (!o.palavra || !(n >= 1 && n <= 50)) throw new ApiError('VALIDATION', 'Informe a palavra do evento (ex.: retiro) e quantos dos últimos.'); return o; }
-  if (t === 'servico') { o.atividade = clip_(c.atividade, 60); o.meses = Math.floor(Number(c.meses)); o.consecutivos = c.consecutivos ? 1 : 0; if (!o.atividade || !(o.meses >= 1 && o.meses <= 120)) throw new ApiError('VALIDATION', 'Informe a atividade/escala e quantos meses.'); return o; }
-  if (['eventos_total', 'reunioes', 'cursos', 'acessos'].indexOf(t) >= 0) { if (!(n >= 1 && n <= 5000)) throw new ApiError('VALIDATION', 'Informe a quantidade necessária.'); o.n = n; return o; }
+  if (t === 'servico') { o.atividade = clip_(c.atividade, 60); o.meses = comNiveis ? 1 : Math.floor(Number(c.meses)); o.consecutivos = c.consecutivos ? 1 : 0; if (!o.atividade || !(o.meses >= 1 && o.meses <= 120)) throw new ApiError('VALIDATION', 'Informe a atividade/escala e quantos meses.'); return o; }
+  if (CRIT_CONT.indexOf(t) >= 0) { if (!(n >= 1 && n <= 5000)) throw new ApiError('VALIDATION', 'Informe a quantidade necessária.'); o.n = n; return o; }
   throw new ApiError('VALIDATION', 'Tipo de critério inválido.');
 }
 function critTexto_(c) {
@@ -1292,10 +1299,18 @@ function critTexto_(c) {
     case 'eventos_ultimos': return 'Ir aos ' + c.n + ' últimos eventos de “' + c.palavra + '”';
     case 'servico': return 'Servir em “' + c.atividade + '” por ' + c.meses + ' ' + (c.consecutivos ? 'meses seguidos' : 'meses');
     case 'eventos_total': return 'Ir a ' + c.n + ' eventos da igreja'; case 'reunioes': return 'Estar em ' + c.n + ' reuniões de célula';
-    case 'cursos': return 'Concluir ' + c.n + ' curso(s)'; case 'acessos': return 'Acessar o app em ' + c.n + ' dias'; default: return 'Concedida pelos líderes';
+    case 'cursos': return 'Concluir ' + c.n + ' curso(s)'; case 'acessos': return 'Acessar o app em ' + c.n + ' dias'; case 'sequencia': return 'Entrar ' + c.n + ' dias consecutivos no aplicativo'; case 'devocionais': return 'Postar ' + c.n + ' devocionais'; case 'capitulos': return 'Ler ' + c.n + ' capítulos da Bíblia'; case 'posts': return 'Publicar ' + c.n + ' vezes no feed'; case 'anotacoes': return 'Fazer ' + c.n + ' anotações na Bíblia'; case 'oracoes': return 'Postar ' + c.n + ' pedidos de oração'; case 'escalas': return 'Servir em ' + c.n + ' escalas'; default: return 'Concedida pelos líderes';
   }
 }
 function seqMeses_(meses) { const s = {}; meses.forEach(function (m) { s[m] = 1; }); let melhor = 0; meses.slice().sort().forEach(function (m) { let n = 0, y = Number(m.slice(0, 4)), mo = Number(m.slice(5, 7)); while (s[y + '-' + ('0' + mo).slice(-2)]) { n++; mo--; if (mo < 1) { mo = 12; y--; } } if (n > melhor) melhor = n; }); return melhor; }
+function diaNum_(s) { const p = s.split('-'); return Math.round(Date.UTC(Number(p[0]), Number(p[1]) - 1, Number(p[2])) / 86400000); }
+function streakDe_(mid) {
+  const dias = {}; table_('XpLog').rows.forEach(function (r) { if (r.MembroID === mid && String(r.Ref).indexOf('dia:') === 0) dias[diaNum_(String(r.Ref).slice(4))] = 1; });
+  const ns = Object.keys(dias).map(Number).sort(function (a, b) { return a - b; }); let melhor = 0, run = 0, prev = null;
+  ns.forEach(function (n) { run = prev !== null && n === prev + 1 ? run + 1 : 1; if (run > melhor) melhor = run; prev = n; });
+  const hj = diaNum_(today_()); let atual = 0, x = dias[hj] ? hj : hj - 1; while (dias[x]) { atual++; x--; }
+  return { atual: atual, melhor: melhor, total: ns.length };
+}
 function critProg_(c, mid) {
   const meta = c.tipo === 'servico' ? c.meses : (c.tipo === 'manual' ? 1 : c.n);
   if (c.tipo === 'eventos_ultimos') {
@@ -1309,15 +1324,54 @@ function critProg_(c, mid) {
   if (c.tipo === 'eventos_total') { const s = {}; table_('EventoPresenca').rows.forEach(function (r) { if (r.MembroID === mid) s[r.EventoID] = 1; }); return { atual: Object.keys(s).length, meta: meta }; }
   if (c.tipo === 'reunioes') return { atual: table_('Presencas').rows.filter(function (r) { return r.MembroID === mid; }).length, meta: meta };
   if (c.tipo === 'cursos') return { atual: table_('Matriculas').rows.filter(function (r) { return r.MembroID === mid && r.Cert === 'emitido'; }).length, meta: meta };
+  if (c.tipo === 'sequencia') { const q = streakDe_(mid); return { atual: Math.max(q.atual, q.melhor), meta: meta, seqAtual: q.atual }; }
+  if (c.tipo === 'devocionais') return { atual: table_('CorridaLeitura').rows.filter(function (r) { return r.MembroID === mid && r.Status !== 'Recusado' && String(r.Resumo || '').trim(); }).length, meta: meta };
+  if (c.tipo === 'capitulos') { let n = 0; table_('CorridaLeitura').rows.forEach(function (r) { if (r.MembroID === mid && r.Status !== 'Recusado') n += Number(r.Capitulos) || 0; }); return { atual: n, meta: meta }; }
+  if (c.tipo === 'posts') return { atual: table_('Posts').rows.filter(function (r) { return r.AutorID === mid && r.Status !== 'Removido' && r.Tipo === 'nota'; }).length, meta: meta };
+  if (c.tipo === 'anotacoes') return { atual: table_('BibMarcas').rows.filter(function (r) { return r.MembroID === mid && String(r.Comentario || '').trim(); }).length, meta: meta };
+  if (c.tipo === 'oracoes') return { atual: table_('Oracoes').rows.filter(function (r) { return r.MembroID === mid; }).length, meta: meta };
+  if (c.tipo === 'escalas') return { atual: table_('Escalas').rows.filter(function (r) { return r.MembroID === mid && r.Presente === '1'; }).length, meta: meta };
   if (c.tipo === 'acessos') return { atual: table_('XpLog').rows.filter(function (r) { return r.MembroID === mid && String(r.Ref).indexOf('dia:') === 0; }).length, meta: meta };
   return { atual: 0, meta: meta };
 }
-function defOut_(r) { const c = jparse_(r.Criterio, { tipo: 'manual' }); return { id: r.DefID, codigo: 'cust:' + r.DefID, titulo: r.Nome, descricao: r.Descricao || '', criterio: c, regra: critTexto_(c), xp: Number(r.XP) || 100, ativo: r.Ativo !== '0', visual: { estilo: r.Estilo || 'bordado', forma: r.Forma || 'circ', cor1: r.Cor1 || '#2f6b3a', cor2: r.Cor2 || '#efe3b0', icone: r.Icone || 'estrela', texto: r.Texto || '' } }; }
+function visualLimpo_(v, base) {
+  v = v || {}; base = base || {}; const cor = function (x, pad) { x = String(x || pad); if (!/^#[0-9a-fA-F]{6}$/.test(x)) throw new ApiError('VALIDATION', 'Cor inválida.'); return x.toLowerCase(); };
+  const o = { estilo: v.estilo || base.estilo || 'bordado', forma: v.forma || base.forma || 'circ', icone: v.icone || base.icone || 'estrela', cor1: cor(v.cor1, base.cor1 || '#2f6b3a'), cor2: cor(v.cor2, base.cor2 || '#efe3b0'), texto: clip_(v.texto === undefined ? (base.texto || '') : v.texto, 4) };
+  if (ESTILOS_BD.indexOf(o.estilo) < 0 || FORMAS_BD.indexOf(o.forma) < 0 || ICONES_BD.indexOf(o.icone) < 0) throw new ApiError('VALIDATION', 'Visual inválido.'); return o;
+}
+// níveis (variações) da insígnia: cada um com nome, parâmetro (n), XP e visual próprios
+function niveisLimpo_(arr, base, xpBase) {
+  if (!Array.isArray(arr) || !arr.length) return [];
+  if (arr.length > 10) throw new ApiError('VALIDATION', 'No máximo 10 níveis.');
+  const out = arr.map(function (x, i) { const n = Math.floor(Number(x.n)); if (!(n >= 1 && n <= 5000)) throw new ApiError('VALIDATION', 'Nível ' + (i + 1) + ': informe o parâmetro (quantidade) de 1 a 5000.'); return { nome: clip_(x.nome, 30), n: n, xp: Math.max(10, Math.min(1000, Math.floor(Number(x.xp) || xpBase || 100))), visual: visualLimpo_(x.visual, base) }; });
+  out.sort(function (a, b) { return a.n - b.n; });
+  for (let i = 1; i < out.length; i++) if (out[i].n === out[i - 1].n) throw new ApiError('VALIDATION', 'Dois níveis não podem ter o mesmo parâmetro.');
+  return out;
+}
+function defNiveis_(r) {
+  const base = { estilo: r.Estilo || 'bordado', forma: r.Forma || 'circ', cor1: r.Cor1 || '#2f6b3a', cor2: r.Cor2 || '#efe3b0', icone: r.Icone || 'estrela', texto: r.Texto || '' }, c = jparse_(r.Criterio, { tipo: 'manual' }), ex = jparse_(r.Niveis, []);
+  if (ex.length) return ex.map(function (x, i) { return { k: i + 1, nome: x.nome || '', n: x.n, xp: x.xp, visual: Object.assign({}, base, x.visual || {}) }; });
+  return [{ k: 1, nome: '', n: c.tipo === 'servico' ? c.meses : c.n, xp: Number(r.XP) || 100, visual: base }];
+}
+const nivelCod_ = function (defId, k) { return 'cust:' + defId + (k > 1 ? '#' + k : ''); };
+const nivelTitulo_ = function (r, nv, total) { return total > 1 || nv.nome ? r.Nome + ' · ' + (nv.nome || ('Nível ' + nv.k)) : r.Nome; };
+function defOut_(r) {
+  const c = jparse_(r.Criterio, { tipo: 'manual' }), ex = jparse_(r.Niveis, []), nvs = defNiveis_(r), cc = Object.assign({}, c);
+  if (ex.length && c.tipo !== 'manual') { if (c.tipo === 'servico') cc.meses = nvs[0].n; else cc.n = nvs[0].n; }
+  const o = { id: r.DefID, codigo: 'cust:' + r.DefID, titulo: r.Nome, descricao: r.Descricao || '', criterio: c, regra: critTexto_(cc) + (ex.length > 1 ? ' (' + ex.length + ' níveis)' : ''), xp: Number(r.XP) || 100, ativo: r.Ativo !== '0', visual: { estilo: r.Estilo || 'bordado', forma: r.Forma || 'circ', cor1: r.Cor1 || '#2f6b3a', cor2: r.Cor2 || '#efe3b0', icone: r.Icone || 'estrela', texto: r.Texto || '' } };
+  if (ex.length) o.niveis = nvs.map(function (x) { return { k: x.k, nome: x.nome, n: x.n, xp: x.xp, visual: x.visual }; });
+  return o;
+}
 function defsAtivas_() { return table_('InsigniaDefs').rows.filter(function (r) { return r.Ativo !== '0'; }); }
 // confere as insígnias criadas pelos supervisores e entrega as que a pessoa já alcançou (chamada dentro dos pontos em que algo muda)
 function avaliaDefs_(mid) {
   if (!mid) return 0; let n = 0; const meus = {}; table_('Insignias').rows.forEach(function (r) { if (r.MembroID === mid) meus[r.Ref] = 1; });
-  defsAtivas_().forEach(function (r) { if (meus['cust:' + r.DefID]) return; const c = jparse_(r.Criterio, { tipo: 'manual' }); if (c.tipo === 'manual') return; const p = critProg_(c, mid); if (p.atual >= p.meta && awardBadge_(mid, 'cust:' + r.DefID, r.Nome, '', Number(r.XP) || 100)) n++; });
+  defsAtivas_().forEach(function (r) {
+    const c = jparse_(r.Criterio, { tipo: 'manual' }); if (c.tipo === 'manual') return;
+    const nvs = defNiveis_(r); if (nvs.every(function (nv) { return meus[nivelCod_(r.DefID, nv.k)]; })) return;
+    const atual = critProg_(c, mid).atual;
+    nvs.forEach(function (nv) { const cod = nivelCod_(r.DefID, nv.k); if (!meus[cod] && atual >= nv.n && awardBadge_(mid, cod, nivelTitulo_(r, nv, nvs.length), '', nv.xp)) n++; });
+  });
   return n;
 }
 function listInsigniaDefs_(d, u) {
@@ -1331,8 +1385,10 @@ function saveInsigniaDef_(d, u) {
     if (nome.length < 2) throw new ApiError('VALIDATION', 'Dê um nome à insígnia.');
     const v = d.visual || {}, estilo = v.estilo || 'bordado', forma = v.forma || 'circ', icone = v.icone || 'estrela';
     if (ESTILOS_BD.indexOf(estilo) < 0 || FORMAS_BD.indexOf(forma) < 0 || ICONES_BD.indexOf(icone) < 0) throw new ApiError('VALIDATION', 'Visual inválido.');
+    const crit0 = d.criterio || {}, vb = { estilo: estilo, forma: forma, icone: icone, cor1: cor(v.cor1, '#2f6b3a'), cor2: cor(v.cor2, '#efe3b0'), texto: clip_(v.texto, 4) };
+    const niv = niveisLimpo_(d.niveis, vb, Number(d.xp)); if (niv.length && String(crit0.tipo || 'manual') === 'eventos_ultimos') throw new ApiError('VALIDATION', 'Esta regra não tem níveis.');
     const xp = Math.max(10, Math.min(1000, Math.floor(Number(d.xp) || 100))), t = table_('InsigniaDefs'), ex = d.id ? t.rows.filter(function (r) { return r.DefID === d.id; })[0] : null; if (d.id && !ex) throw new ApiError('NOT_FOUND', 'Insígnia não encontrada.');
-    const row = { Nome: nome, Descricao: clip_(d.descricao, 200), Estilo: estilo, Forma: forma, Cor1: cor(v.cor1, '#2f6b3a'), Cor2: cor(v.cor2, '#efe3b0'), Icone: icone, Texto: clip_(v.texto, 4), XP: String(xp), Criterio: JSON.stringify(criterioLimpo_(d.criterio)), Ativo: d.ativo === false ? '0' : '1' };
+    const row = { Nome: nome, Descricao: clip_(d.descricao, 200), Estilo: estilo, Forma: forma, Cor1: cor(v.cor1, '#2f6b3a'), Cor2: cor(v.cor2, '#efe3b0'), Icone: icone, Texto: clip_(v.texto, 4), XP: String(xp), Criterio: JSON.stringify(criterioLimpo_(d.criterio, niv.length > 0)), Niveis: niv.length ? JSON.stringify(niv) : '', Ativo: d.ativo === false ? '0' : '1' };
     let id; if (ex) { writeRow_(t, ex._row, row); id = ex.DefID; } else { id = id_('IB'); appendRow_(t, Object.assign({ DefID: id, CriadoPor: u.membroId }, row)); }
     audit_(u.email, 'INSIGNIA_DEF', id + ' ' + nome, 'OK'); return { id: id };
   });
@@ -1342,7 +1398,8 @@ function grantBadge_(d, u) {
   return withLock_(function () {
     const r = table_('InsigniaDefs').rows.filter(function (x) { return x.DefID === d.defId; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Insígnia não encontrada.');
     const mem = {}; table_('Membros').rows.forEach(function (m) { mem[m.MembroID] = 1; }); let n = 0;
-    (Array.isArray(d.membros) ? d.membros : []).slice(0, 200).forEach(function (mid) { mid = clip_(mid, 30); if (mem[mid] && awardBadge_(mid, 'cust:' + r.DefID, r.Nome, '', Number(r.XP) || 100)) n++; }); audit_(u.email, 'INSIGNIA_CONCEDIDA', r.DefID + ' x' + n, 'OK'); return { n: n };
+    const nvs = defNiveis_(r), nv = nvs[Math.max(0, Math.min(nvs.length - 1, Math.floor(Number(d.nivel) || 1) - 1))];
+    (Array.isArray(d.membros) ? d.membros : []).slice(0, 200).forEach(function (mid) { mid = clip_(mid, 30); if (mem[mid] && awardBadge_(mid, nivelCod_(r.DefID, nv.k), nivelTitulo_(r, nv, nvs.length), '', nv.xp)) n++; }); audit_(u.email, 'INSIGNIA_CONCEDIDA', r.DefID + ' x' + n, 'OK'); return { n: n };
   });
 }
 // registro de participação em escalas/atividades (ex.: limpeza), um lançamento por pessoa e mês
@@ -1360,17 +1417,29 @@ function listServicos_(d, u) {
   const q = norm_(d.atividade || ''); return { atividades: Object.keys(ativ).sort(), itens: rows.filter(function (r) { return !q || norm_(r.Atividade) === q; }).slice(-200).reverse().map(function (r) { return { atividade: r.Atividade, mes: r.Mes, membroId: r.MembroID, nome: nome[r.MembroID] || '—' }; }) };
 }
 function listInsignias_(mid) {
-  const defs = {}; table_('InsigniaDefs').rows.forEach(function (r) { defs['cust:' + r.DefID] = r; });
-  return table_('Insignias').rows.filter(function (r) { return r.MembroID === mid; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).map(function (r) { const o = { codigo: r.Codigo, titulo: r.Titulo, ano: r.Ano || '', data: r.Data }; if (defs[r.Codigo]) { const x = defOut_(defs[r.Codigo]); o.visual = x.visual; o.descricao = x.descricao; o.regra = x.regra; } return o; });
+  const defs = {}; table_('InsigniaDefs').rows.forEach(function (r) { defs[r.DefID] = r; });
+  const parte = function (cod) { const m = /^cust:([^#]+)(?:#(\d+))?$/.exec(String(cod)); return m ? { id: m[1], k: Number(m[2] || 1) } : null; };
+  const rows = table_('Insignias').rows.filter(function (r) { return r.MembroID === mid; }), melhor = {};
+  rows.forEach(function (r) { const p = parte(r.Codigo); if (p && defs[p.id] && jparse_(defs[p.id].Niveis, []).length) melhor[p.id] = Math.max(melhor[p.id] || 0, p.k); });
+  return rows.filter(function (r) { const p = parte(r.Codigo); return !(p && melhor[p.id] && p.k < melhor[p.id]); }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).map(function (r) {
+    const o = { codigo: r.Codigo, titulo: r.Titulo, ano: r.Ano || '', data: r.Data }, p = parte(r.Codigo);
+    if (p && defs[p.id]) { const x = defOut_(defs[p.id]); o.visual = x.visual; o.descricao = x.descricao; o.regra = x.regra; if (x.niveis) { const nv = x.niveis[p.k - 1]; if (nv) { o.visual = nv.visual; o.nivel = p.k; o.niveis = x.niveis.length; o.regra = critTexto_(Object.assign({}, x.criterio, x.criterio.tipo === 'servico' ? { meses: nv.n } : { n: nv.n })); } } }
+    return o;
+  });
 }
 // as que ainda não foram conquistadas aparecem escuras no perfil
 function bloqueadas_(mid, meu, ganhas) {
-  const tem = {}; ganhas.forEach(function (g) { tem[g.codigo + (g.ano ? ':' + g.ano : '')] = 1; tem[g.codigo] = 1; }); const out = [], ano = today_().slice(0, 4);
+  const tem = {}; ganhas.forEach(function (g) { tem[g.codigo + (g.ano ? ':' + g.ano : '')] = 1; tem[g.codigo] = 1; }); table_('Insignias').rows.forEach(function (r) { if (r.MembroID === mid) { tem[r.Codigo] = 1; tem[r.Ref] = 1; } }); const out = [], ano = today_().slice(0, 4);
   [['perfil', 'Perfil completo', 'Preencha todos os dados em Editar perfil.', ''], ['decisao', 'Decisão por Cristo', 'Registre a sua decisão por Cristo.', ''], ['batismo', 'Batizado', 'Registre a data do seu batismo.', ''], ['presenca', 'Presença total', 'Compareça a todos os eventos do ano.', ano]].forEach(function (b) {
     if (!ganhas.some(function (g) { return g.codigo === b[0] && (b[0] !== 'presenca' || g.ano === ano); })) out.push({ codigo: b[0], titulo: b[1], descricao: b[2], ano: b[3] });
   });
   table_('Eventos').rows.forEach(function (e) { if (!e.Insignia || e.Status === 'Cancelado' || String(e.Data).slice(0, 4) !== ano) return; if (!ganhas.some(function (g) { return g.codigo === 'evento:' + e.EventoID; })) out.push({ codigo: 'evento:' + e.EventoID, titulo: e.Insignia, descricao: 'Compareça a ' + e.Titulo + '.', ano: ano }); });
-  defsAtivas_().forEach(function (r) { if (tem['cust:' + r.DefID]) return; const x = defOut_(r), o = { codigo: x.codigo, titulo: x.titulo, descricao: x.descricao, regra: x.regra, visual: x.visual, ano: '' }; if (meu) { const p = critProg_(x.criterio, mid); o.progresso = { atual: Math.min(p.atual, p.meta), meta: p.meta }; } out.push(o); });
+  defsAtivas_().forEach(function (r) {
+    const nvs = defNiveis_(r), prox = nvs.filter(function (nv) { return !tem[nivelCod_(r.DefID, nv.k)]; })[0]; if (!prox) return;
+    const x = defOut_(r), explicito = !!x.niveis, o = { codigo: nivelCod_(r.DefID, prox.k), titulo: nivelTitulo_(r, prox, nvs.length), descricao: x.descricao, regra: explicito ? critTexto_(Object.assign({}, x.criterio, x.criterio.tipo === 'servico' ? { meses: prox.n } : { n: prox.n })) : x.regra, visual: explicito ? prox.visual : x.visual, ano: '' };
+    if (explicito) { o.nivel = prox.k; o.niveis = nvs.length; }
+    if (meu) { const p = critProg_(x.criterio, mid); const meta = explicito ? prox.n : p.meta; o.progresso = { atual: Math.min(p.atual, meta), meta: meta }; } out.push(o);
+  });
   return out;
 }
 function perfilRow_(mid) { return table_('Perfis').rows.filter(function (r) { return r.MembroID === mid; })[0]; }
