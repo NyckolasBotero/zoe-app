@@ -311,3 +311,6 @@ O Studio Zoe tem duas áreas: **Lives** — Estúdio e Plataformas e conexão �
 
 ### Fundos da projeção (estáticos e dinâmicos)
 Em **Projeção › Layout padrão** (abas *Músicas* e *Versículos*) e no layout de cada música, o grupo **Fundo** permite: degradê, cor sólida, **imagem** da biblioteca (ou enviar nova), **vídeo em loop** por link https, escurecer o fundo e animações (luzes, aurora, ondas, céu estrelado). Versículos herdam o layout das músicas e sobrescrevem só o que mudar. Rotas: `saveLayoutVers`, `listSongs` (devolve `layoutVers`).
+
+### Zoe arrastável
+Segure e arraste a Zoe para qualquer posição da tela (mouse ou toque); a posição fica guardada no aparelho e o balão/chat se ajustam para não sair da tela.

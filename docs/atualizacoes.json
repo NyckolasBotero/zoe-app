@@ -15,8 +15,8 @@
    "Layout padrão agora tem abas Músicas e Versículos; o versículo herda o das músicas e muda só o que você alterar. O Estúdio ao vivo espelha esses fundos.",
    "Zoe agora pode ser arrastada para qualquer posição da tela (celular e computador); a posição fica guardada no aparelho."
   ],
-  "v": "1.21",
-  "data": "30/10/2026"
+  "data": "30/10/2026",
+  "v": "1.28"
  },
  {
   "titulo": "Consolidação: célula mais próxima na hora e aviso ao supervisor",

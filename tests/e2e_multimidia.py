@@ -23,7 +23,7 @@ with sync_playwright() as p:
     pg.click('button:has-text("Salvar")'); pg.wait_for_selector('.toast:has-text("Música salva")'); pg.wait_for_selector('#mm_lista .opt:has-text("Santo")')
     assert 'layout próprio' in pg.inner_text('#mm_lista')
     # layout padrão
-    pg.click('.tabs >> text=Layout padrão'); pg.wait_for_selector('#mmprev canvas'); pg.evaluate("mmSetV('tam',7)"); pg.click('button:has-text("Salvar layout padrão")'); pg.wait_for_selector('.toast:has-text("Layout padrão salvo")')
+    pg.click('.tabs >> text=Layout padrão'); pg.wait_for_selector('#mmprev canvas'); pg.evaluate("mmSetV('tam',7)"); pg.click('button:has-text("Salvar layout padrão")'); pg.wait_for_selector('.toast:has-text("Layout padrão das músicas salvo")')
     pg.click('.tabs >> text=Músicas'); pg.click('#mm_lista .opt:has-text("Santo") >> button:has-text("Projetar")'); pg.wait_for_selector('#mm_cur canvas')
     assert pg.locator('.mm-it').count()==3; pg.screenshot(path=OUT+'/mm_proj_antes.png')
     with pg.expect_popup() as pi: pg.click('#mm_ini')

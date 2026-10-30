@@ -29,5 +29,10 @@ with sync_playwright() as p:
     x2,y2=centro(pm); assert x2<x-150 and y2<y-300,((x,y),(x2,y2))
     assert pm.evaluate("document.querySelector('#zchat').hidden")
     pm.wait_for_timeout(500); pm.touchscreen.tap(x2,y2); pm.wait_for_function("!document.querySelector('#zchat').hidden")
+    # chat e balão sempre dentro da tela, com a Zoe no centro
+    pm.evaluate("zFechaChat();localStorage.zoePos=JSON.stringify({x:.5,y:.5});zPosAplica()"); pm.wait_for_timeout(300)
+    pm.evaluate("zAbreChat()"); pm.wait_for_timeout(500)
+    r=pm.evaluate("(()=>{const a=document.querySelector('#zchat').getBoundingClientRect();return [a.x,a.y,a.right,a.bottom]})()"); assert r[0]>=0 and r[1]>=0 and r[2]<=390 and r[3]<=844,r
+    assert pm.evaluate("getComputedStyle(document.querySelector('#zhint')).display")=='none'
     assert not errs,errs
     print('OK zoe arrasta')
