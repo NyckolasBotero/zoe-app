@@ -3498,11 +3498,12 @@ function vsPanel(){if(!BIB.idx){if(!VS.pend){VS.pend=1;bibLoadIdx();const w=()=>
  <div class="row" style="margin-top:8px"><button class="btn ghost" onclick="vsPreve()">${ic('eye',16)} Ver texto</button><button class="btn" onclick="vsEnvia()">${ic('send',16)} Transmitir</button></div><div id="vs_pre" class="vs-pre muted sm"></div></details></div>`}
 async function vsRef(){const i=$('#vs_ref'),msg=$('#vs_msg'),p=vsParse((i||{}).value||'');if(!p){if(msg)msg.textContent='Não entendi essa referência. Exemplos: Jo 3:16, Sl 23, 1 Co 13:4-7.';return}
  Object.assign(VS,{b:p.b,c:p.c,v1:p.v1,v2:p.v2});if(msg)msg.textContent='Buscando…';await vsEnvia();if(msg)msg.textContent='No telão: '+vsNome(vsKey())+'. Use ◀ ▶ para andar pelos versículos.';if(i){i.select()}}
-async function vsNav(d){const st=TL.st,it=st&&st.item,m=it&&/^v:(\w+)_(\d+)_(\d+)_(\d+)(?:-(\d+))?$/.exec(it);if(!m){const p=$('#vs_msg');if(p)p.textContent='Transmita um versículo primeiro.';return}
+async function vsNav(d){const st=TL.st,it=(MM.pj&&MM.pj.item&&MM.pj.item[0]==='v')?MM.pj.item:(st&&st.item),m=it&&/^v:(\w+)_(\d+)_(\d+)_(\d+)(?:-(\d+))?$/.exec(it);if(!m){const p=$('#vs_msg');if(p)p.textContent='Transmita um versículo primeiro.';return}
  let b=+m[2],c=+m[3],v=+(m[5]||m[4]);const L=BIB.idx.livros,bk=L.find(x=>x.id===b);let tx;try{tx=await bibText(m[1],b,c)}catch(e){return toast('Não consegui abrir o capítulo.','err')}
  const max=Math.max(...Object.keys(tx).map(Number));let nv=(d>0?v:+m[4])+d;
  if(nv>max){if(c<bk.c){c++;nv=1}else return toast('Fim do livro.')}else if(nv<1){if(c>1){c--;try{const t2=await bibText(m[1],b,c);nv=Math.max(...Object.keys(t2).map(Number))}catch(e){return}}else return toast('Início do livro.')}
- Object.assign(VS,{ver:m[1],b,c,v1:nv,v2:0});await vsEnvia()}
+ Object.assign(VS,{ver:m[1],b,c,v1:nv,v2:0});await vsEnvia();if(R.r==='multimidia'&&MM.sub==='projetor')bpSync()}
+function bpSync(){const ch=BP.b!==VS.b||BP.c!==VS.c;BP.b=VS.b;BP.c=VS.c;BP.sel=VS.v1;const bk=BIB.idx&&BIB.idx!=='erro'&&BIB.idx.livros.find(x=>x.id===VS.b);if(bk){BP.q=bk.n+' '+VS.c;const i=$('#bp_q');if(i)i.value=BP.q}if(ch){BP.tx=null;bpCarrega()}else bpDraw()}
 function vsSet(k,v){VS[k]=v;if(k==='b'){VS.c=1;VS.v1=1;VS.v2=0;VS.adv=true;const p0=$('#tl_pan');if(p0)p0.innerHTML=tlPanel()}else if(k==='c'){VS.v1=1;VS.v2=0;VS.adv=true;const p0=$('#tl_pan');if(p0)p0.innerHTML=tlPanel()}const p=$('#vs_pre');if(p)p.textContent='Toque em “Ver texto” para conferir.'}
 async function vsPreve(){const p=$('#vs_pre');if(p)p.textContent='Buscando…';const u=await vsUnit(vsKey());if(p)p.innerHTML=u?`<b>${esc(u.titulo)}</b> · ${esc(u.artista)}<br>${esc(u.letra)}`:'Não encontrei esse versículo. Confira capítulo e número (ou troque para Almeida 1819, que funciona sem internet).'}
 async function vsEnvia(){const k=vsKey(),u=await vsUnit(k);if(!u)return toast('Não encontrei esse versículo.','err');
