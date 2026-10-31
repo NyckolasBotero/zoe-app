@@ -105,7 +105,7 @@
   "itens": [
    "Canva Zoe (menu Canva Zoe, rota artes): editor em canvas HTML5 sem dependências (cv*). Quem cria: pastores, administradores e membros autorizados do ministério Mídia, Social ou Redes. Quem aprova: pastor, admin ou pessoas definidas em Config ArtesAprovadores.",
    "Fluxo: rascunho, pendente, aprovada ou recusada (com motivo). Ao aprovar, a arte vira uma linha em MidiasTelao e aparece na biblioteca do telão e nas lives. Editar uma arte aprovada a desativa até nova aprovação.",
-   "Controle remoto (tlControle): pílulas SLIDE/ITEM, pausa, área de toque com deslize (#rc_pad) e botão Recolher (TL.padOff).",
+   "Projeção (mmProjetorHTML): #pj_songs, #pj_bib (BP, bpTipa) e #pj_ban com duplo clique (pjClk, projSel). Esc chama projLimpa. Controle remoto (tlControle) só passa slides: pílula SLIDE e área de toque (#rc_pad).",
    "Sod por usuário: Membros.SodOff, rota saveMySod, S.sodUser; sodOn() = global e pessoal."
   ]
  }
