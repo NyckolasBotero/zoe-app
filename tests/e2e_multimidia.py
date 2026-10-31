@@ -24,7 +24,7 @@ with sync_playwright() as p:
     # layout padrão
     pg.evaluate("mmSub('padrao')"); pg.wait_for_selector('#mmprev canvas'); pg.evaluate("mmSetV('tam',7)"); pg.click('button:has-text("Salvar layout padrão")'); pg.wait_for_selector('.toast:has-text("Layout padrão das músicas salvo")')
     pg.evaluate("mmSub('projetor')"); pg.click('#pj_lst .opt:has-text("Santo")'); pg.wait_for_selector('#mm_cur canvas')
-    assert pg.locator('.mm-it').count()==3; pg.screenshot(path=OUT+'/mm_proj_antes.png')
+    assert pg.locator('.mm-lst .mm-it').count()==3; pg.screenshot(path=OUT+'/mm_proj_antes.png')
     with pg.expect_popup() as pi: pg.click('#mm_ini')
     w=pi.value; w.wait_for_selector('#st canvas'); w.wait_for_function("document.querySelector('#st div div')&&document.querySelector('#st div div').textContent.includes('Santo, Santo')",timeout=8000)
     pg.wait_for_selector('text=Transmitindo'); print('modo:',pg.inner_text('.chip.g'))

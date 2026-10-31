@@ -5,10 +5,12 @@ with sync_playwright() as p:
     b=p.chromium.launch(); ph=entra(b,390,844)
     ph.add_style_tag(content='#pushbar{display:none!important}')
     ph.evaluate("go('multimidia')"); ph.wait_for_selector('.tabs')
-    tabs=ph.inner_text('.tabs')
-    for t in ['Bíblia e letras de músicas','Agendas de músicas','Controle remoto','Tela de pausa','Layout']: assert t.lower() in tabs.lower(), t
-    ph.click('.mm-area >> text=Lives'); t2=ph.inner_text('.tabs'); assert 'Estúdio' in t2 and 'Plataformas e conexão' in t2
-    assert 'canva' not in tabs.lower()
+    ar=ph.inner_text('.mm-area')
+    for t in ['Lives','Projeção','Social Mídia','Configurações']: assert t in ar, t
+    ph.click('.mm-area button:has-text("Configurações")'); ct=ph.inner_text('.tabs')
+    for t in ['Tela de pausa','Edição de layouts','Agendas']: assert t in ct, t
+    ph.click('.mm-area button:has-text("Lives")'); t2=ph.inner_text('.tabs'); assert 'Estúdio' in t2 and 'Plataformas e conexão' in t2
+    ph.click('.mm-area button:has-text("Social Mídia")'); ph.wait_for_selector('#cvc')
     ph.evaluate("go('artes')"); ph.wait_for_selector('#cvc')
     ph.select_option('select[aria-label="Formato da arte"]','sto'); assert ph.evaluate('[CV.w,CV.h]')==[1080,1920]
     ph.select_option('select[aria-label="Formato da arte"]','per'); ph.fill('#cv_w','900'); ph.fill('#cv_h','500'); ph.click('button:has-text("Aplicar")'); assert ph.evaluate('[CV.w,CV.h]')==[900,500]
