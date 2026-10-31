@@ -9,8 +9,8 @@ def entra(b,vw,vh):
 with sync_playwright() as p:
     b=p.chromium.launch(); pc=entra(b,1280,900)
     pc.evaluate("api('saveSong',{titulo:'Santo',artista:'Zoe',letra:%r})"%LETRA)
-    pc.evaluate("go('multimidia')"); pc.wait_for_selector('#mm_lista .opt:has-text("Santo")')
-    pc.click('#mm_lista .opt:has-text("Santo") >> button:has-text("Projetar")'); pc.wait_for_selector('#mm_cur canvas')
+    pc.evaluate("go('multimidia')"); pc.wait_for_selector('#pj_lst .opt:has-text("Santo")')
+    pc.click('#pj_lst .opt:has-text("Santo")'); pc.wait_for_selector('#mm_cur canvas')
     with pc.expect_popup() as pi: pc.click('#mm_ini')
     w=pi.value; w.wait_for_selector('#st canvas'); w.wait_for_function("document.body.innerText.includes('Santo, Santo')",timeout=8000)
     # celular
@@ -20,10 +20,10 @@ with sync_playwright() as p:
     ph.click('.rc .tl-next'); w.wait_for_function("document.body.innerText.includes('Cordeiro')",timeout=8000)
     pc.wait_for_function("MM.pj.i===1",timeout=8000)
     ph.click('.tl-chips .chip >> nth=2'); w.wait_for_function("document.body.innerText.includes('digno de louvor')",timeout=8000)
-    ph.click('.tl-p'); w.wait_for_function("document.querySelector('.mmpause').style.opacity==='1'",timeout=8000)
-    ph.click('.tl-p'); w.wait_for_function("document.querySelector('.mmpause').style.opacity==='0'",timeout=8000)
+    pc.keyboard.press('Escape'); w.wait_for_function("document.querySelector('.mmpause').style.opacity==='1'",timeout=8000)
+    pc.click('button:has-text("Mostrar de novo")'); w.wait_for_function("document.querySelector('.mmpause').style.opacity==='0'",timeout=8000)
     ph.click('.rc .tl-prev'); w.wait_for_function("document.body.innerText.includes('Cordeiro')",timeout=8000)
     # o computador também publica: avança no PC e o celular vê
-    pc.click('button:has-text("Próximo")'); ph.wait_for_function("document.querySelector('.tl-sl').innerText.includes('digno de louvor')",timeout=8000)
+    pc.click('button:has-text("Próximo →")'); ph.wait_for_function("document.querySelector('.tl-sl').innerText.includes('digno de louvor')",timeout=8000)
     print('ERRS',errs); assert not errs
 print('OK')

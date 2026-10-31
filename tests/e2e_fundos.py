@@ -8,7 +8,7 @@ with sync_playwright() as p:
     pg.evaluate("go('multimidia')"); pg.wait_for_selector('.mm-area')
     assert 'Studio Zoe' in pg.inner_text('#view h1') and 'Projeção' in pg.inner_text('.mm-area')
     assert 'Studio Zoe' in pg.inner_text('nav, .tabbar, #nav, body')
-    pg.click('.tabs >> text=Layout padrão'); pg.wait_for_selector('#mmprev canvas')
+    pg.evaluate("mmSub('padrao')"); pg.wait_for_selector('#mmprev canvas')
     # padrão das músicas: cor sólida
     pg.select_option('select >> nth=0','cor'); pg.wait_for_function("MM.padrao.fundoTipo==='cor'")
     pg.wait_for_timeout(300)

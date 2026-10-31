@@ -10,7 +10,7 @@ def entra(b,vw,vh):
 with sync_playwright() as p:
     b=p.chromium.launch(); pc=entra(b,1280,900)
     for t,l in [('Santo','Santo\nSanto'),('Grande','Grande\nSenhor')]: pc.evaluate("api('saveSong',{titulo:%r,artista:'Zoe',letra:%r})"%(t,l))
-    pc.evaluate("go('multimidia')"); pc.wait_for_selector('.tabs'); pc.click('.tabs >> text=Agendas'); pc.wait_for_selector('text=Nova agenda')
+    pc.evaluate("go('multimidia')"); pc.wait_for_selector('.tabs'); pc.evaluate("mmSub('agendas')"); pc.wait_for_selector('text=Nova agenda')
     pc.screenshot(path=OUT+'/ag_lista.png')
     pc.click('text=Nova agenda'); pc.wait_for_selector('#ag_data')
     pc.click('.ag-pk:has-text("Santo")'); pc.click('.ag-pk:has-text("Grande")')
@@ -26,7 +26,7 @@ with sync_playwright() as p:
     mid=pc.evaluate("api('listMidias')"); assert mid
     r=pc.evaluate("api('addAgendaItem',{t:'imagem',id:%r})"%mid[0]['id']); assert any(i['t']=='imagem' for i in r['itens']),r
     # tela de pausa
-    pc.click('.tabs >> text=Tela de pausa'); pc.wait_for_selector('#mmprev canvas'); pc.screenshot(path=OUT+'/ag_pausa.png')
+    pc.evaluate("mmSub('pausa')"); pc.wait_for_selector('#mmprev canvas'); pc.screenshot(path=OUT+'/ag_pausa.png')
     pc.click('.chip[aria-label="Direção 90 graus"]'); pc.click('button:has-text("Salvar")')
     pc.wait_for_timeout(600); assert pc.evaluate("api('listSongs')")['pausa']['dir']==90
     print('ERRS',errs); assert not errs
