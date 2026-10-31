@@ -91,6 +91,7 @@ const SHEETS = {
   Produtos: ['ProdutoID', 'Nome', 'Categoria', 'Preco', 'Descricao', 'Foto', 'Opcoes', 'Ativo', 'Ordem', 'Disponivel', 'PromoPreco', 'PromoAte'],
   Pastores: ['PastorID', 'Nome', 'Cargo', 'Foto', 'Ordem', 'Ativo'],
   Agendas: ['AgendaID', 'Data', 'Nome', 'Itens', 'CriadoPor', 'CriadoEm', 'AtualizadoPor', 'AtualizadoEm'],
+  Artes: ['ArteID', 'Titulo', 'Formato', 'Largura', 'Altura', 'Projeto', 'Foto', 'Mini', 'Status', 'CriadoPor', 'CriadoEm', 'DecididoPor', 'DecididoEm', 'Motivo', 'MidiaID'],
   MidiasTelao: ['MidiaID', 'Titulo', 'Foto', 'Mini', 'Ativo', 'CriadoPor', 'CriadoEm'],
   MuralFam: ['ItemID', 'Pagina', 'Tipo', 'X', 'Y', 'W', 'R', 'Z', 'Texto', 'Cor', 'Foto', 'Dados', 'CriadoEm'],
   FamiliaMidia: ['MidiaID', 'Tipo', 'Url', 'Foto', 'Legenda', 'Ordem', 'Ativo'],
@@ -282,7 +283,7 @@ function me_(d, u) {
   const nivelCel = !cel ? '' : (full || (cel.LiderID === u.membroId) ? 'lider' : cel.SupervisorID === u.membroId ? 'supervisor' : cel.TreinamentoID === u.membroId ? 'treinamento' : 'membro');
   const tef = tipoEf_(u), abas = abasPorTipo_()[tef] || {}, cp = cel ? (full ? allCelPerm_() : celPermMap_(u, cel)) : null;
   const urow = table_('Usuarios').rows.filter(function (r) { return String(r.Email).toLowerCase() === u.email; })[0] || {};
-  return { multimidia: multiOk_(u), xp: xpResumo_(u.membroId), guiaVisto: urow.GuiaVisto !== '0', usuario: { email: u.email, papel: u.papel, tipo: tef }, abas: abas, permCelula: cp, membro: memberFull_(mm), celula: cel ? cellOut_(cel, nivelCel !== 'membro') : null, nivelCelula: nivelCel, cargos: cg, minhasCelulas: minhas, permissoes: permMatrix_()[tef], config: publicConfig_(), interesses: interessesDe_(u.membroId), membresia: membresiaDe_(u.membroId) };
+  return { multimidia: multiOk_(u), artes: { cria: artesCria_(u), aprova: artesAprova_(u) }, xp: xpResumo_(u.membroId), guiaVisto: urow.GuiaVisto !== '0', usuario: { email: u.email, papel: u.papel, tipo: tef }, abas: abas, permCelula: cp, membro: memberFull_(mm), celula: cel ? cellOut_(cel, nivelCel !== 'membro') : null, nivelCelula: nivelCel, cargos: cg, minhasCelulas: minhas, permissoes: permMatrix_()[tef], config: publicConfig_(), interesses: interessesDe_(u.membroId), membresia: membresiaDe_(u.membroId) };
 }
 function saveMember_(d, u) {
   return withLock_(function () {
@@ -1771,6 +1772,72 @@ function saveMySod_(d, u) {
   if (!u.membroId) throw new ApiError('FORBIDDEN', 'Sem cadastro de membro.');
   return withLock_(function () { const t = table_('Membros'), m = t.rows.filter(function (x) { return x.MembroID === u.membroId; })[0]; if (!m) throw new ApiError('NOT_FOUND', 'Cadastro não encontrado.'); const off = d.on === false || d.on === 0 || d.on === '0'; writeRow_(t, m._row, { SodOff: off ? '1' : '' }); audit_(u.email, off ? 'SOD_OFF' : 'SOD_ON', u.membroId, 'OK'); return { on: !off }; });
 }
+// ===== Canva Zoe: artes da equipe de Social Mídia, com aprovação do pastor líder =====
+function artesCria_(u) {
+  if (podeCurar_(u)) return true;
+  const mins = table_('Ministerios').rows.filter(function (m) { const n = norm_(m.Nome); return m.Ativo !== '0' && (n === 'midia' || n.indexOf('social') >= 0 || n.indexOf('redes') >= 0); }).map(function (m) { return m.MinisterioID; });
+  return table_('Interesses').rows.some(function (i) { return i.MembroID === u.membroId && stN_(i.Status) === 'autorizado' && mins.indexOf(i.MinisterioID) >= 0; });
+}
+function artesAprovadores_() { const a = jparse_(cfgMap_().ArtesAprovadores, []); return Array.isArray(a) ? a.map(String) : []; }
+function artesAprova_(u) { return u.papel === 'admin' || u.papel === 'pastor' || can_(u, 'config') || artesAprovadores_().indexOf(String(u.membroId)) >= 0; }
+function arteExige_(u) { if (!artesCria_(u) && !artesAprova_(u)) throw new ApiError('FORBIDDEN', 'O Canva Zoe é da equipe de Social Mídia.'); }
+function arteOut_(a, nm) { return { id: a.ArteID, titulo: a.Titulo, formato: a.Formato, w: Number(a.Largura) || 0, h: Number(a.Altura) || 0, mini: a.Mini || '', status: a.Status, autor: nm[a.CriadoPor] || '', autorId: a.CriadoPor, em: a.CriadoEm, decididoPor: nm[a.DecididoPor] || '', decididoEm: a.DecididoEm || '', motivo: a.Motivo || '', midiaId: a.MidiaID || '' }; }
+function listArtes_(d, u) {
+  arteExige_(u); const ap = artesAprova_(u), nm = nomes_();
+  const itens = table_('Artes').rows.filter(function (a) { return a.Status !== 'excluida' && (ap || a.CriadoPor === u.membroId || a.Status === 'aprovada'); }).map(function (a) { return arteOut_(a, nm); }).sort(function (x, y) { return x.em < y.em ? 1 : -1; });
+  return { itens: itens.slice(0, 300), aprova: ap, aprovadores: ap ? artesAprovadores_().map(function (id) { return { id: id, nome: nm[id] || id }; }) : [] };
+}
+function getArte_(d, u) {
+  arteExige_(u); const id = clip_(d.id, 30), a = table_('Artes').rows.filter(function (x) { return x.ArteID === id && x.Status !== 'excluida'; })[0]; if (!a) throw new ApiError('NOT_FOUND', 'Arte não encontrada.');
+  if (!(artesAprova_(u) || a.CriadoPor === u.membroId || a.Status === 'aprovada')) throw new ApiError('FORBIDDEN', 'Sem acesso a esta arte.');
+  return Object.assign(arteOut_(a, nomes_()), { projeto: a.Projeto || '', foto: a.Foto || '' });
+}
+function saveArte_(d, u) {
+  arteExige_(u);
+  const foto = String(d.foto || ''), mini = String(d.mini || ''), titulo = clip_(d.titulo, 60) || 'Arte', fmt = clip_(d.formato, 40) || 'Personalizado', w = Math.round(Number(d.w)), h = Math.round(Number(d.h));
+  if (!/^data:image\/(jpeg|png|webp);base64,/.test(foto) || foto.length > 45000) throw new ApiError('VALIDATION', 'Imagem inválida ou muito grande.');
+  if (mini && (!/^data:image\/(jpeg|png|webp);base64,/.test(mini) || mini.length > 6000)) throw new ApiError('VALIDATION', 'Miniatura inválida.');
+  if (!(w >= 100 && w <= 4000 && h >= 100 && h <= 4000)) throw new ApiError('VALIDATION', 'Tamanho inválido.');
+  const proj = String(d.projeto || ''); if (proj.length > 45000) throw new ApiError('VALIDATION', 'Projeto muito grande.');
+  return withLock_(function () {
+    const t = table_('Artes'); let a = d.id ? t.rows.filter(function (x) { return x.ArteID === clip_(d.id, 30) && x.Status !== 'excluida'; })[0] : null;
+    if (a && !(a.CriadoPor === u.membroId || artesAprova_(u))) throw new ApiError('FORBIDDEN', 'Só quem criou ou o aprovador edita esta arte.');
+    const enviar = d.enviar === true || d.enviar === 1 || d.enviar === '1', ap = artesAprova_(u), st = enviar ? 'pendente' : 'rascunho';
+    const base = { Titulo: titulo, Formato: fmt, Largura: String(w), Altura: String(h), Projeto: proj, Foto: foto, Mini: mini, Status: st, DecididoPor: '', DecididoEm: '', Motivo: '' };
+    let id;
+    if (a) { id = a.ArteID; if (a.MidiaID) { const mt = table_('MidiasTelao'), mr = mt.rows.filter(function (x) { return x.MidiaID === a.MidiaID; })[0]; if (mr) writeRow_(mt, mr._row, { Ativo: '0' }); base.MidiaID = ''; } writeRow_(t, a._row, base); }
+    else { id = id_('AR'); appendRow_(t, Object.assign({ ArteID: id, CriadoPor: u.membroId, CriadoEm: now_() }, base)); }
+    if (enviar) { const nm = nomes_(); artesAprovadores_().concat(table_('Usuarios').rows.filter(function (x) { return x.Status === 'Ativo' && (x.Papel === 'pastor' || x.Papel === 'admin') && x.MembroID; }).map(function (x) { return x.MembroID; })).filter(function (m, i, arr) { return m && m !== u.membroId && arr.indexOf(m) === i; }).forEach(function (m) { notify_(m, 'arte', 'Arte para aprovar', (nm[u.membroId] || 'Alguém') + ' enviou “' + titulo + '”.', id); }); }
+    audit_(u.email, enviar ? 'ARTE_ENVIA' : 'ARTE_SALVA', id, 'OK'); return { id: id, status: st };
+  });
+}
+function decideArte_(d, u) {
+  if (!artesAprova_(u)) throw new ApiError('FORBIDDEN', 'Só o pastor líder da Social Mídia aprova artes.');
+  return withLock_(function () {
+    const t = table_('Artes'), a = t.rows.filter(function (x) { return x.ArteID === clip_(d.id, 30) && x.Status !== 'excluida'; })[0]; if (!a) throw new ApiError('NOT_FOUND', 'Arte não encontrada.');
+    const ok = d.ok === true || d.ok === 1 || d.ok === '1', motivo = clip_(d.motivo, 200); if (!ok && !motivo) throw new ApiError('VALIDATION', 'Explique o motivo para a equipe ajustar.');
+    const mt = table_('MidiasTelao'); let mid = a.MidiaID || '';
+    if (ok) { if (mid) { const mr = mt.rows.filter(function (x) { return x.MidiaID === mid; })[0]; if (mr) writeRow_(mt, mr._row, { Ativo: '1', Titulo: a.Titulo, Foto: a.Foto, Mini: a.Mini }); else mid = ''; } if (!mid) { mid = id_('MI'); appendRow_(mt, { MidiaID: mid, Titulo: a.Titulo, Foto: a.Foto, Mini: a.Mini, Ativo: '1', CriadoPor: a.CriadoPor, CriadoEm: now_() }); } }
+    writeRow_(t, a._row, { Status: ok ? 'aprovada' : 'recusada', DecididoPor: u.membroId, DecididoEm: now_(), Motivo: ok ? '' : motivo, MidiaID: ok ? mid : a.MidiaID });
+    notify_(a.CriadoPor, 'arte', ok ? 'Arte aprovada' : 'Arte precisa de ajuste', ok ? '“' + a.Titulo + '” foi aprovada e já pode ir ao telão e às lives.' : '“' + a.Titulo + '”: ' + motivo, a.ArteID);
+    audit_(u.email, ok ? 'ARTE_APROVA' : 'ARTE_RECUSA', a.ArteID, 'OK'); return { status: ok ? 'aprovada' : 'recusada', midiaId: ok ? mid : '' };
+  });
+}
+function deleteArte_(d, u) {
+  arteExige_(u);
+  return withLock_(function () {
+    const t = table_('Artes'), a = t.rows.filter(function (x) { return x.ArteID === clip_(d.id, 30) && x.Status !== 'excluida'; })[0]; if (!a) throw new ApiError('NOT_FOUND', 'Arte não encontrada.');
+    if (!(artesAprova_(u) || (a.CriadoPor === u.membroId && a.Status !== 'aprovada'))) throw new ApiError('FORBIDDEN', 'Esta arte já foi aprovada. Peça ao aprovador para excluir.');
+    if (a.MidiaID) { const mt = table_('MidiasTelao'), mr = mt.rows.filter(function (x) { return x.MidiaID === a.MidiaID; })[0]; if (mr) writeRow_(mt, mr._row, { Ativo: '0' }); }
+    writeRow_(t, a._row, { Status: 'excluida', Projeto: '', Foto: '', Mini: '' }); audit_(u.email, 'ARTE_EXCLUI', a.ArteID, 'OK'); return { ok: true };
+  });
+}
+function saveArteAprovadores_(d, u) {
+  if (!(u.papel === 'admin' || u.papel === 'pastor' || can_(u, 'config'))) throw new ApiError('FORBIDDEN', 'Só pastor ou administração define quem aprova.');
+  const ms = {}; table_('Membros').rows.forEach(function (m) { ms[m.MembroID] = 1; });
+  const ids = (Array.isArray(d.ids) ? d.ids : []).map(function (x) { return clip_(x, 30); }).filter(function (x, i, a) { return x && ms[x] && a.indexOf(x) === i; }).slice(0, 10);
+  return withLock_(function () { const t = table_('Config'), r0 = t.rows.filter(function (x) { return x.Chave === 'ArtesAprovadores'; })[0]; if (r0) writeRow_(t, r0._row, { Valor: JSON.stringify(ids) }); else appendRow_(t, { Chave: 'ArtesAprovadores', Valor: JSON.stringify(ids) }); audit_(u.email, 'ARTE_APROVADORES', ids.join(','), 'OK'); const nm = nomes_(); return { aprovadores: ids.map(function (id) { return { id: id, nome: nm[id] || id }; }) }; });
+}
 function saveSupCor_(d, u) {
   const sid = clip_(d.supId, 30), cor = String(d.cor || ''); if (!sid) throw new ApiError('VALIDATION', 'Supervisão inválida.'); if (cor && !/^#[0-9a-fA-F]{6}$/.test(cor)) throw new ApiError('VALIDATION', 'Cor inválida.');
   if (!(u.papel === 'admin' || u.papel === 'pastor' || can_(u, 'config') || can_(u, 'celulas') || (u.membroId === sid && (u.supervisiona || []).length > 0))) throw new ApiError('FORBIDDEN', 'Só a administração ou o próprio supervisor muda a cor da supervisão.');
@@ -3032,7 +3099,7 @@ const ROUTES = {
   getPushKey: { auth: 'any', fn: getPushKey_ }, pushDiag: { auth: 'any', fn: pushDiag_ }, savePushSub: { auth: 'any', write: 1, fn: savePushSub_ }, delPushSub: { auth: 'any', write: 1, fn: delPushSub_ },
   sodGet: { auth: 'any', write: 1, fn: sodGet_ }, sodAbrir: { auth: 'any', write: 1, fn: sodAbrir_ }, sodEquipar: { auth: 'any', write: 1, fn: sodEquipar_ }, sodDescartar: { auth: 'any', write: 1, fn: sodDescartar_ }, sodAparencia: { auth: 'any', write: 1, fn: sodAparencia_ }, sodOrar: { auth: 'any', write: 1, fn: sodOrar_ }, sodComprar: { auth: 'any', write: 1, fn: sodComprar_ },
   listMarks: { auth: 'any', fn: listMarks_ }, saveMark: { auth: 'any', write: 1, fn: saveMark_ }, saveNote: { auth: 'any', write: 1, fn: saveNote_ }, listCultoNotes: { auth: 'any', fn: listCultoNotes_ }, getMural: { auth: 'any', fn: getMural_ },
-  listInsigniaDefs: { auth: 'any', fn: listInsigniaDefs_ }, saveInsigniaDef: { auth: 'any', write: 1, fn: saveInsigniaDef_ }, grantBadge: { auth: 'any', write: 1, fn: grantBadge_ }, logServico: { auth: 'any', write: 1, fn: logServico_ }, listServicos: { auth: 'any', fn: listServicos_ }, searchPeople: { auth: 'any', fn: findPeople_ }, sendChat: { auth: 'any', write: 1, fn: sendChat_ }, getChat: { auth: 'any', fn: getChat_ }, chatRead: { auth: 'any', write: 1, fn: chatRead_ }, chatTyping: { auth: 'any', fn: chatTyping_ }, listChats: { auth: 'any', fn: listChats_ }, getCertLayout: { auth: 'any', fn: getCertLayout_ }, saveCertLayout: { auth: 'any', write: 1, fn: saveCertLayout_ }, previewCert: { auth: 'any', fn: previewCert_ }, revokeCert: { auth: 'any', write: 1, fn: revokeCert_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, saveFaces: { auth: 'eventos', write: 1, fn: saveFaces_ }, faceRoster: { auth: 'eventos', fn: faceRoster_ }, setFaceAuth: { auth: 'eventos', write: 1, fn: setFaceAuth_ }, listFaces: { auth: 'eventos', fn: listFaces_ }, clearFaces: { auth: 'eventos', write: 1, fn: clearFaces_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, learnFace: { auth: 'eventos', write: 1, fn: learnFace_ }, clearSamples: { auth: 'eventos', write: 1, fn: clearSamples_ }, listFichas: { auth: 'any', fn: listFichas_ }, getFicha: { auth: 'any', fn: getFicha_ }, routeVisitor: { auth: 'any', write: 1, fn: routeVisitor_ }, getMapa: { auth: 'any', fn: getMapa_ }, saveMySod: { auth: 'any', write: 1, fn: saveMySod_ }, saveSupCor: { auth: 'any', write: 1, fn: saveSupCor_ }, saveMyGeo: { auth: 'any', write: 1, fn: saveMyGeo_ }, saveMapaCfg: { auth: 'config', write: 1, fn: saveMapaCfg_ }, listGeoPendentes: { auth: 'any', fn: listGeoPendentes_ }, saveGeoLote: { auth: 'any', write: 1, fn: saveGeoLote_ }, celFotos: { auth: 'any', fn: celFotos_ }, acceptVisitor: { auth: 'any', write: 1, fn: acceptVisitor_ }, saveFichaEntrada: { auth: 'any', write: 1, fn: saveFichaEntrada_ }, faceMe: { auth: 'any', fn: faceMe_ }, faceScan: { auth: 'any', write: 1, fn: faceScan_ }, faceRevoke: { auth: 'any', write: 1, fn: faceRevoke_ }, faceStat: { auth: 'eventos', write: 1, fn: faceStat_ }, faceStats: { auth: 'eventos', fn: faceStats_ }, cultoPresenca: { auth: 'eventos', fn: cultoPresenca_ }, checkinCulto: { auth: 'eventos', write: 1, fn: checkinCulto_ }, cultosResumo: { auth: 'eventos', fn: cultosResumo_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
+  listInsigniaDefs: { auth: 'any', fn: listInsigniaDefs_ }, saveInsigniaDef: { auth: 'any', write: 1, fn: saveInsigniaDef_ }, grantBadge: { auth: 'any', write: 1, fn: grantBadge_ }, logServico: { auth: 'any', write: 1, fn: logServico_ }, listServicos: { auth: 'any', fn: listServicos_ }, searchPeople: { auth: 'any', fn: findPeople_ }, sendChat: { auth: 'any', write: 1, fn: sendChat_ }, getChat: { auth: 'any', fn: getChat_ }, chatRead: { auth: 'any', write: 1, fn: chatRead_ }, chatTyping: { auth: 'any', fn: chatTyping_ }, listChats: { auth: 'any', fn: listChats_ }, getCertLayout: { auth: 'any', fn: getCertLayout_ }, saveCertLayout: { auth: 'any', write: 1, fn: saveCertLayout_ }, previewCert: { auth: 'any', fn: previewCert_ }, revokeCert: { auth: 'any', write: 1, fn: revokeCert_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, saveFaces: { auth: 'eventos', write: 1, fn: saveFaces_ }, faceRoster: { auth: 'eventos', fn: faceRoster_ }, setFaceAuth: { auth: 'eventos', write: 1, fn: setFaceAuth_ }, listFaces: { auth: 'eventos', fn: listFaces_ }, clearFaces: { auth: 'eventos', write: 1, fn: clearFaces_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, learnFace: { auth: 'eventos', write: 1, fn: learnFace_ }, clearSamples: { auth: 'eventos', write: 1, fn: clearSamples_ }, listFichas: { auth: 'any', fn: listFichas_ }, getFicha: { auth: 'any', fn: getFicha_ }, routeVisitor: { auth: 'any', write: 1, fn: routeVisitor_ }, getMapa: { auth: 'any', fn: getMapa_ }, listArtes: { auth: 'any', fn: listArtes_ }, getArte: { auth: 'any', fn: getArte_ }, saveArte: { auth: 'any', write: 1, fn: saveArte_ }, decideArte: { auth: 'any', write: 1, fn: decideArte_ }, deleteArte: { auth: 'any', write: 1, fn: deleteArte_ }, saveArteAprovadores: { auth: 'any', write: 1, fn: saveArteAprovadores_ }, saveMySod: { auth: 'any', write: 1, fn: saveMySod_ }, saveSupCor: { auth: 'any', write: 1, fn: saveSupCor_ }, saveMyGeo: { auth: 'any', write: 1, fn: saveMyGeo_ }, saveMapaCfg: { auth: 'config', write: 1, fn: saveMapaCfg_ }, listGeoPendentes: { auth: 'any', fn: listGeoPendentes_ }, saveGeoLote: { auth: 'any', write: 1, fn: saveGeoLote_ }, celFotos: { auth: 'any', fn: celFotos_ }, acceptVisitor: { auth: 'any', write: 1, fn: acceptVisitor_ }, saveFichaEntrada: { auth: 'any', write: 1, fn: saveFichaEntrada_ }, faceMe: { auth: 'any', fn: faceMe_ }, faceScan: { auth: 'any', write: 1, fn: faceScan_ }, faceRevoke: { auth: 'any', write: 1, fn: faceRevoke_ }, faceStat: { auth: 'eventos', write: 1, fn: faceStat_ }, faceStats: { auth: 'eventos', fn: faceStats_ }, cultoPresenca: { auth: 'eventos', fn: cultoPresenca_ }, checkinCulto: { auth: 'eventos', write: 1, fn: checkinCulto_ }, cultosResumo: { auth: 'eventos', fn: cultosResumo_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
   searchCells: { auth: 'any', fn: searchCells_ }, addPrayer: { auth: 'any', write: 1, fn: addPrayer_ }, listPrayers: { auth: 'any', fn: listPrayers_ },
   cellMembers: { auth: 'any', fn: cellMembers_ }, saveCell: { auth: 'any', write: 1, fn: saveCell_ }, saveAttendance: { auth: 'any', write: 1, fn: saveAttendance_ }, history: { auth: 'any', fn: history_ },
   indicators: { auth: 'any', fn: indicators_ }, getPapeis: { auth: 'any', fn: getPapeis_ }, savePapeis: { auth: 'any', write: 1, fn: savePapeis_ }, createCellEvent: { auth: 'any', write: 1, fn: createCellEvent_ },

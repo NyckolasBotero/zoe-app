@@ -1308,3 +1308,25 @@ test('Sod por usuário: cada pessoa liga e desliga o próprio', () => {
   assert.equal(e.call('me', {}, A).data.membro.SodOff || '', ''); assert.equal(e.call('saveMySod', { on: false }, A).data.on, false); assert.equal(e.call('me', {}, A).data.membro.SodOff, '1');
   assert.equal(e.call('saveMySod', { on: true }, A).data.on, true); assert.equal(e.call('me', {}, A).data.membro.SodOff || '', ''); assert.equal(e.call('saveMySod', { on: false }).error.code, 'SESSION');
 });
+
+test('Canva Zoe: arte da social mídia vai para aprovação e depois aparece no telão', () => {
+  const { e, tok, mk } = boot(); mk('p@zoe.com', 'pastor'); mk('m@zoe.com', 'membro'); mk('b@zoe.com', 'membro');
+  const P = tok('p@zoe.com', 'Temp12345'), M = tok('m@zoe.com', 'Temp12345'), B = tok('b@zoe.com', 'Temp12345');
+  const img = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ', arte = { titulo: 'Culto', formato: 'Story 9:16', w: 1080, h: 1920, projeto: '{"els":[]}', foto: img, mini: img };
+  assert.equal(e.call('listArtes', {}, M).error.code, 'FORBIDDEN');
+  const r = e.call('saveArte', Object.assign({ enviar: true }, arte), P).data; assert.equal(r.status, 'pendente');
+  const bId = e.call('me', {}, B).data.membro.MembroID;
+  assert.equal(e.call('decideArte', { id: r.id, ok: true }, B).error.code, 'FORBIDDEN');
+  assert.equal(e.call('saveArteAprovadores', { ids: [bId] }, P).data.aprovadores.length, 1);
+  assert.equal(e.call('me', {}, B).data.artes.aprova, true);
+  assert.equal(e.call('decideArte', { id: r.id, ok: false }, B).error.code, 'VALIDATION');
+  assert.equal(e.call('decideArte', { id: r.id, ok: false, motivo: 'Trocar a cor' }, B).data.status, 'recusada');
+  assert.equal(e.call('getArte', { id: r.id }, P).data.motivo, 'Trocar a cor');
+  const r2 = e.call('saveArte', Object.assign({ id: r.id, enviar: true }, arte), P).data; assert.equal(r2.id, r.id);
+  const ok = e.call('decideArte', { id: r.id, ok: true }, B).data; assert.equal(ok.status, 'aprovada'); assert.ok(ok.midiaId);
+  assert.ok(e.call('listMidias', {}, P).data.some(function (x) { return x.id === ok.midiaId; }));
+  e.call('saveArte', Object.assign({ id: r.id }, arte), P);
+  assert.ok(!e.call('listMidias', {}, P).data.some(function (x) { return x.id === ok.midiaId; }));
+  assert.equal(e.call('saveArte', Object.assign({}, arte, { foto: 'x' }), P).error.code, 'VALIDATION');
+  assert.equal(e.call('deleteArte', { id: r.id }, P).data.ok, true);
+});
