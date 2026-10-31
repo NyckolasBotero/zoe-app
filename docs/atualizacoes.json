@@ -1,5 +1,15 @@
 [
  {
+  "titulo": "Presença facial: reconhecimento mais confiável",
+  "melhorias": [
+   "O app agora acompanha cada rosto por alguns quadros e só então compara a média das assinaturas com os rostos cadastrados, em vez de decidir quadro a quadro.",
+   "Parecidos mas incertos aparecem como Talvez, com aviso para conferir; rostos sem correspondência vão para a lista como Rosto não reconhecido, com a pergunta Quem é?.",
+   "Opção de guardar o rosto de quem você identificar manualmente, para melhorar os próximos reconhecimentos."
+  ],
+  "v": "1.59",
+  "data": "31/10/2026"
+ },
+ {
   "titulo": "Correção: câmera de presença não abria",
   "melhorias": [
    "O botão Abrir câmera não fica mais bloqueado quando ainda não há rostos indexados: a câmera abre em modo teste e mostra Desconhecido.",

@@ -44,7 +44,7 @@ with sync_playwright() as p:
     # Ana (reconhecida) e uma pessoa desconhecida na imagem
     a.evaluate("__faces=[{seed:1,box:{x:100,y:80,width:120,height:150}},{seed:77,box:{x:380,y:120,width:100,height:130}}]")
     a.wait_for_selector('.fcard[data-id] button:has-text("Confirmar")',timeout=10000)
-    assert 'Ana Souza' in a.inner_text('#fc_l'); assert 'Carla' not in a.inner_text('#fc_l')
+    assert 'Ana Souza' in a.inner_text('#fc_l'); assert 'Carla' not in a.inner_text('#fc_l'); a.wait_for_function("document.querySelector('#fc_l').textContent.includes('não reconhecido')",timeout=10000)
     assert a.inner_text('#fc_info').startswith('2 rosto')
     px=a.evaluate("(()=>{const c=document.querySelector('#fc_cv'),d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let n=0;for(let i=3;i<d.length;i+=4)if(d[i]>0)n++;return n})()"); assert px>500,px   # caixas desenhadas
     a.screenshot(path=OUT+'/face_lista.png')

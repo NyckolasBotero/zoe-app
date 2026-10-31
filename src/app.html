@@ -3770,7 +3770,7 @@ const fcIdx=info=>info.itens.map(x=>({id:x.id,nome:x.nome,d:Float32Array.from(x.
 const fcDist=(a,b)=>{let s=0;for(let i=0;i<128;i++){const t=a[i]-b[i];s+=t*t}return Math.sqrt(s)};
 async function fcAbre(eid){if(!ONLINE)return toast('A câmera de presença funciona no app online.');const id=(typeof eid==='string'&&eid)||($('#ck_ev')||{}).value;if(!id)return toast('Escolha o evento','err');
  let ev,info;try{ev=await api('eventoPresenca',{eventoId:id});info=await api('listFaces')}catch(e){return toast(e.message,'err')}
- FC={id,titulo:ev.titulo,presentes:new Set(ev.presentes),membros:ev.membros,info,idx:fcIdx(info),cand:new Map(),conf:new Map(),rejD:[],facing:'environment',run:false,thr:.5,ocup:false};
+ FC={id,titulo:ev.titulo,presentes:new Set(ev.presentes),membros:ev.membros,info,idx:fcIdx(info),cand:new Map(),conf:new Map(),rejD:[],tr:[],tid:0,aprende:new Map(),facing:'environment',run:false,thr:.5,ocup:false};
  document.body.classList.add('fcOn');const d=document.createElement('div');d.id='fcov';document.body.appendChild(d);fcDesenha()}
 function fcDesenha(){const o=$('#fcov');if(!o||!FC)return;const i=FC.info,tem=FC.idx.length;
  o.innerHTML=`<div class="fch"><b>Presença por rosto · ${esc(FC.titulo)}</b><button class="btn ghost sm" onclick="fcFecha()">Fechar</button></div>
@@ -3812,23 +3812,37 @@ async function fcLoop(){if(!FC||!FC.run)return;const t0=performance.now();
  catch(e){if(FC){FC.err=(FC.err||0)+1;if(FC.err>6){toast('A detecção parou: '+(e.message||e),'err');return fcPara()}}}
  if(FC&&FC.run)setTimeout(fcLoop,Math.max(60,230-(performance.now()-t0)))}
 function fcMatch(d){let b=null,bd=9;for(const m of FC.idx){const x=fcDist(d,m.d);if(x<bd){bd=x;b=m}}return b&&bd<FC.thr?{m:b,d:bd}:null}
+/* Rostos vistos são agrupados por "rastro" (a mesma pessoa em vários quadros). Só depois de alguns quadros o rastro é comparado com os rostos cadastrados, usando a média das assinaturas: bem mais estável que decidir quadro a quadro. */
+function fcMedia(ds){const o=new Float32Array(128);ds.forEach(d=>{for(let i=0;i<128;i++)o[i]+=d[i]});for(let i=0;i<128;i++)o[i]/=ds.length;return o}
+function fcRank(d){return FC.idx.map(m=>({m,d:fcDist(d,m.d)})).sort((a,b)=>a.d-b.d)}
+function fcRastro(b,now,ds){const cx=b.x+b.width/2,cy=b.y+b.height/2;let bt=null,bd=1e9;for(const t of FC.tr){if(t.used||now-t.last>1500)continue;const d=Math.hypot(t.cx-cx,t.cy-cy);if(d<Math.max(b.width,b.height)*.8&&d<bd&&(!t.descs.length||fcDist(t.descs[t.descs.length-1],ds)<.6)){bd=d;bt=t}}
+ if(!bt){bt={id:++FC.tid,descs:[],n:0,thumb:'',tw:0,res:null};FC.tr.push(bt)}bt.cx=cx;bt.cy=cy;bt.last=now;bt.used=true;return bt}
+function fcAvalia(t){const dsc=fcMedia(t.descs),top=fcRank(dsc).filter(r=>!FC.rejD.some(z=>z.id===r.m.id&&fcDist(z.d,dsc)<.4)),b=top[0];
+ t.dsc=dsc;t.res=b&&b.d<FC.thr+.12?{m:b.m,d:b.d,ok:b.d<FC.thr}:{m:null,d:b?b.d:9};fcRegistra(t)}
+function fcRegistra(t){const r=t.res;let mud=false;
+ if(r.m){const id=r.m.id;if(FC.presentes.has(id)||FC.conf.has(id))return;let c=FC.cand.get(id);if(!c){c={id,nome:r.m.nome,n:0,best:9,thumb:'',dsc:null,prov:false};FC.cand.set(id,c);mud=true}
+  c.n=Math.max(c.n,t.n);if(r.d<c.best-.005||!c.thumb){c.best=r.d;c.prov=!r.ok;c.dsc=Array.from(t.dsc);c.thumb=t.thumb;mud=true}}
+ else{let u=[...FC.cand.values()].find(x=>x.q&&x.u&&fcDist(Float32Array.from(x.dsc),t.dsc)<.45);if(u){u.n=Math.max(u.n,t.n)}else{FC.cand.set('u'+t.id,{id:'u'+t.id,u:1,q:true,nome:'',n:Math.max(2,t.n),best:9,thumb:t.thumb,dsc:Array.from(t.dsc)});mud=true}}
+ if(mud)fcLista()}
 function fcProc(dets,v){const cv=$('#fc_cv');if(!cv)return;const W=v.clientWidth,H=v.clientHeight,dp=Math.min(2,devicePixelRatio||1);if(cv.width!==Math.round(W*dp)||cv.height!==Math.round(H*dp)){cv.width=Math.round(W*dp);cv.height=Math.round(H*dp)}
- const g=cv.getContext('2d');g.setTransform(dp,0,0,dp,0,0);g.clearRect(0,0,W,H);const sx=W/v.videoWidth,sy=H/v.videoHeight;let mud=false,vis=0;const vistos=new Set();
- dets.forEach(dt=>{const b=dt.detection.box,x=b.x*sx,y=b.y*sy,w=b.width*sx,h=b.height*sy;vis++;let r=fcMatch(dt.descriptor);
-  if(r&&FC.rejD.some(z=>z.id===r.m.id&&fcDist(z.d,dt.descriptor)<.4))r=null;
-  let cor='#f5b301',txt='Desconhecido';
-  if(r){const id=r.m.id,pct=Math.round(Math.max(0,Math.min(1,1-r.d/(FC.thr*2)))*100),ja=FC.presentes.has(id),cf=FC.conf.has(id);cor=ja||cf?'#3b82f6':'#22c55e';txt=r.m.nome.split(' ').slice(0,2).join(' ')+' · '+pct+'%'+(ja?' ✓ já presente':cf?' ✓ confirmado':'');
-   if(!ja&&!cf&&!vistos.has(id)){vistos.add(id);let c=FC.cand.get(id);if(!c){c={id,nome:r.m.nome,n:0,best:9,thumb:'',dsc:null};FC.cand.set(id,c)}c.n++;if(r.d<c.best-.01||!c.thumb){c.best=r.d;c.dsc=Array.from(dt.descriptor);c.thumb=fcRecorte(v,b);if(c.n>=2)mud=true}else if(c.n===2)mud=true}}
+ const g=cv.getContext('2d');g.setTransform(dp,0,0,dp,0,0);g.clearRect(0,0,W,H);const sx=W/v.videoWidth,sy=H/v.videoHeight,now=Date.now();let vis=0;
+ FC.tr.forEach(t=>t.used=false);
+ dets.forEach(dt=>{const b=dt.detection.box,x=b.x*sx,y=b.y*sy,w=b.width*sx,h=b.height*sy;vis++;const t=fcRastro(b,now,dt.descriptor);
+  t.n++;if(t.descs.length<12&&(t.n<=4||t.n%3===0))t.descs.push(Float32Array.from(dt.descriptor));if(b.width>t.tw*1.05||!t.thumb){t.tw=b.width;t.thumb=fcRecorte(v,b)}
+  if((t.n===4||t.n===8||t.n===12)&&t.descs.length>=Math.min(t.n,4))fcAvalia(t);
+  let cor='#94a3b8',txt='Analisando…';const r=t.res;
+  if(r){if(r.m){const id=r.m.id,pct=Math.round(Math.max(0,Math.min(1,1-r.d/(FC.thr*2)))*100),ja=FC.presentes.has(id),cf=FC.conf.has(id);cor=ja||cf?'#3b82f6':r.ok?'#22c55e':'#f5b301';txt=(r.ok?'':'Talvez ')+r.m.nome.split(' ').slice(0,2).join(' ')+' · '+pct+'%'+(ja?' ✓ já presente':cf?' ✓ confirmado':'')}else{cor='#f5b301';txt='Desconhecido'}}
   fcCaixa(g,x,y,w,h,cor,txt)});
- const inf=$('#fc_info');if(inf)inf.textContent=vis?`${vis} rosto(s) na imagem`:'Procurando rostos…';if(mud)fcLista()}
+ FC.tr=FC.tr.filter(t=>now-t.last<6000);
+ const inf=$('#fc_info');if(inf)inf.textContent=vis?`${vis} rosto(s) na imagem`:'Procurando rostos…'}
 function fcCaixa(g,x,y,w,h,cor,txt){g.lineWidth=3;g.strokeStyle=cor;g.lineCap='round';const l=Math.min(w,h)*.28;g.beginPath();[[x,y,1,1],[x+w,y,-1,1],[x,y+h,1,-1],[x+w,y+h,-1,-1]].forEach(([a,b,dx,dy])=>{g.moveTo(a,b+dy*l);g.lineTo(a,b);g.lineTo(a+dx*l,b)});g.stroke();
  g.globalAlpha=.16;g.fillStyle=cor;g.fillRect(x,y,w,h);g.globalAlpha=1;g.font='600 13px system-ui,sans-serif';const tw=g.measureText(txt).width+14,ty=y>26?y-24:y+h+4;g.fillStyle=cor;g.beginPath();g.roundRect?g.roundRect(x,ty,tw,21,7):g.rect(x,ty,tw,21);g.fill();g.fillStyle='#10131a';g.fillText(txt,x+7,ty+15)}
 function fcRecorte(v,b){const c=document.createElement('canvas');c.width=c.height=96;const m=b.width*.25,x=Math.max(0,b.x-m),y=Math.max(0,b.y-m),w=Math.min(v.videoWidth-x,b.width+2*m),h=Math.min(v.videoHeight-y,b.height+2*m),s=Math.min(w,h);try{c.getContext('2d').drawImage(v,x,y,s,s,0,0,96,96);return c.toDataURL('image/jpeg',.7)}catch(e){return''}}
-function fcLista(){const l=$('#fc_l');if(!l||!FC)return;const pend=[...FC.cand.values()].filter(c=>c.n>=2).sort((a,b)=>a.best-b.best),cf=[...FC.conf.values()];
+function fcLista(){const l=$('#fc_l');if(!l||!FC)return;if(l.contains(document.activeElement)&&document.activeElement.tagName==='INPUT'){FC.sujo=1;return}FC.sujo=0;const pend=[...FC.cand.values()].filter(c=>c.n>=2).sort((a,b)=>a.best-b.best),cf=[...FC.conf.values()];
  const pct=c=>Math.round(Math.max(0,Math.min(1,1-c.best/(FC.thr*2)))*100);
- l.innerHTML=`<h3>Para confirmar <span class="chip">${pend.length}</span></h3>${pend.length?`<div class="row"><button class="btn ghost sm" onclick="fcTodos()">Confirmar todos</button></div>`:'<p class="muted sm">Aponte a câmera para as pessoas. Os rostos reconhecidos aparecem aqui para você conferir.</p>'}`+
- pend.map(c=>c.q?`<div class="fcard" data-id="${esc(c.id)}"><div class="fcp"><img src="${c.thumb}" alt=""></div><div class="fci"><b>Quem é?</b><input placeholder="Buscar pelo nome" oninput="fcBusca('${esc(c.id)}',this.value)"><div id="fq_${esc(c.id)}" class="fcq"></div></div><button class="btn ghost sm" onclick="fcIgnora('${esc(c.id)}')">Ignorar</button></div>`:
- `<div class="fcard" data-id="${esc(c.id)}"><div class="fcp"><img src="${c.thumb}" alt="Rosto visto pela câmera"><span>→</span>${av(c.id,c.nome,44)}</div><div class="fci"><b>${esc(c.nome)}</b><span class="muted sm">${pct(c)}% de semelhança · visto ${c.n}x</span></div><div class="fcb2"><button class="btn sm" onclick="fcOk('${esc(c.id)}')">Confirmar</button><button class="btn ghost sm" onclick="fcNao('${esc(c.id)}')">Não é</button></div></div>`).join('')
+ l.innerHTML=`<h3>Para confirmar <span class="chip">${pend.length}</span></h3><label class="sm" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="fc_ap" ${FC.ap===0?'':'checked'} onchange="FC.ap=this.checked?1:0"> Guardar o rosto de quem eu identificar manualmente (melhora os próximos reconhecimentos)</label>${pend.length?`<div class="row"><button class="btn ghost sm" onclick="fcTodos()">Confirmar todos</button></div>`:'<p class="muted sm">Aponte a câmera para as pessoas. Os rostos reconhecidos aparecem aqui para você conferir.</p>'}`+
+ pend.map(c=>c.q?`<div class="fcard" data-id="${esc(c.id)}"><div class="fcp"><img src="${c.thumb}" alt=""></div><div class="fci"><b>${c.u?'Rosto não reconhecido. Quem é?':'Quem é?'}</b><input placeholder="Buscar pelo nome" oninput="fcBusca('${esc(c.id)}',this.value)"><div id="fq_${esc(c.id)}" class="fcq"></div></div><button class="btn ghost sm" onclick="fcIgnora('${esc(c.id)}')">Ignorar</button></div>`:
+ `<div class="fcard" data-id="${esc(c.id)}"><div class="fcp"><img src="${c.thumb}" alt="Rosto visto pela câmera"><span>→</span>${av(c.id,c.nome,44)}</div><div class="fci"><b>${esc(c.nome)}</b><span class="muted sm">${pct(c)}% de semelhança${c.prov?' · <b>talvez, confira com atenção</b>':''}</span></div><div class="fcb2"><button class="btn sm" onclick="fcOk('${esc(c.id)}')">Confirmar</button><button class="btn ghost sm" onclick="fcNao('${esc(c.id)}')">Não é</button></div></div>`).join('')
  +`<h3>Confirmados <span class="chip g">${cf.length}</span></h3>`+cf.map(c=>`<div class="fcard ok"><div class="fcp"><img src="${c.thumb}" alt=""></div><div class="fci"><b>${esc(c.nome)}</b></div><button class="btn ghost sm" onclick="fcDesf('${esc(c.id)}')">Desfazer</button></div>`).join('')
  +(cf.length?`<div class="row"><button class="btn" id="fc_reg" onclick="fcSalva()">Registrar ${cf.length} presença(s)</button></div>`:'');if(window.avScan)avScan()}
 function fcOk(id){const c=FC.cand.get(id);if(!c)return;FC.cand.delete(id);FC.conf.set(id,c);fcLista()}
@@ -3836,9 +3850,10 @@ function fcTodos(){[...FC.cand.values()].filter(c=>c.n>=2&&!c.q).forEach(c=>{FC.
 function fcNao(id){const c=FC.cand.get(id);if(!c)return;if(c.dsc)FC.rejD.push({id,d:Float32Array.from(c.dsc)});c.q=true;fcLista()}
 function fcIgnora(id){FC.cand.delete(id);fcLista()}
 function fcBusca(id,q){const el=$('#fq_'+id);if(!el)return;q=q.trim().toLowerCase();el.innerHTML=q.length<2?'':FC.membros.filter(m=>m.nome.toLowerCase().includes(q)&&!FC.presentes.has(m.id)&&!FC.conf.has(m.id)).slice(0,6).map(m=>`<button class="btn ghost sm" onclick="fcEra('${esc(id)}','${esc(m.id)}')">${esc(m.nome)}</button>`).join('')}
-function fcEra(id,mid){const c=FC.cand.get(id),m=FC.membros.find(x=>x.id===mid);if(!c||!m)return;FC.cand.delete(id);FC.conf.set(mid,{id:mid,nome:m.nome,thumb:c.thumb});fcLista()}
+function fcEra(id,mid){const c=FC.cand.get(id),m=FC.membros.find(x=>x.id===mid);if(!c||!m)return;FC.cand.delete(id);FC.conf.set(mid,{id:mid,nome:m.nome,thumb:c.thumb});if(c.dsc&&FC.ap!==0)FC.aprende.set(mid,c.dsc);fcLista()}
 function fcDesf(id){FC.conf.delete(id);fcLista()}
-async function fcSalva(){const ids=[...FC.conf.keys()];if(!ids.length)return;try{const r=await api('checkinEvento',{eventoId:FC.id,membros:ids});ids.forEach(i=>FC.presentes.add(i));FC.conf.clear();toast(r.n+' presença(s) registrada(s)');fcLista()}catch(e){toast(e.message,'err')}}
+async function fcSalva(){const ids=[...FC.conf.keys()];if(!ids.length)return;try{const r=await api('checkinEvento',{eventoId:FC.id,membros:ids});ids.forEach(i=>FC.presentes.add(i));FC.conf.clear();toast(r.n+' presença(s) registrada(s)');await fcAprende();fcLista()}catch(e){toast(e.message,'err')}}
+async function fcAprende(){if(!FC||!FC.aprende.size)return;const it=[...FC.aprende].map(([id,d])=>({id,d:d.map(n=>Math.round(n*1000)/1000)}));FC.aprende.clear();try{await api('saveFaces',{itens:it});FC.info=await api('listFaces');FC.idx=fcIdx(FC.info)}catch(e){}}
 /* ===== Aba Presença facial: evento, lista de pessoas autorizadas (whitelist) e câmera ===== */
 const RF={itens:null,q:'',f:'todos',ev:'',busy:false,st:'',load:false,evLoad:false};
 async function rfCarrega(){RF.load=true;try{RF.itens=(await api('faceRoster')).itens}catch(e){RF.itens=[];toast(e.message,'err')}RF.load=false;if(R.r==='rostos')renderKeepSuave()}
