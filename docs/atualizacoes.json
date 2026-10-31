@@ -1,5 +1,16 @@
 [
  {
+  "titulo": "Chamada da célula: nota de presença de Deus por pessoa, visitantes e mural compartilhado",
+  "melhorias": [
+   "Chamada corrigida: o que você marcou (presentes, resumo e termômetro) não some mais ao tirar a foto.",
+   "Presença de Deus por pessoa: o líder dá a nota na chamada e cada pessoa da célula dá a sua no app depois da reunião (14 dias). A média soma a nota do líder com a de quem votou; quem não vota não entra na conta. Aparece no Histórico e em Indicadores.",
+   "Adicionar pessoa na chamada, acima do resumo: digite o nome. Visitante novo recebe pré-cadastro e completa os dados ao entrar no app. Quem é de outra célula fica só como visitante da reunião, sem mudar de célula, e o líder ainda pode pedir transferência ao supervisor.",
+   "A foto da chamada vai sozinha para o Mural da célula, que agora é compartilhado por quem é da célula. O nome da polaroid se muda no lápis (em Mover e ajustar). Qualquer pessoa vê o mural no Perfil e mural da célula, nos mapas e em Buscar uma célula."
+  ],
+  "v": "1.83",
+  "data": "31/10/2026"
+ },
+ {
   "titulo": "Dados da célula no mapa e casa marcada que não some",
   "v": "1.82",
   "data": "31/10/2026",

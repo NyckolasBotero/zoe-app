@@ -1385,3 +1385,50 @@ test('Dados da célula no mapa: todos veem o público, só a administração edi
   assert.equal(e.call('saveCell', { celulaId: cid, nome: 'Norte Novo', uf: 'DF' }, adm).ok, true); assert.equal(e.call('getCellCard', { celulaId: cid }, adm).data.nome, 'Norte Novo');
   assert.equal(e.call('getCellCard', { celulaId: 'x' }, M).error.code, 'NOT_FOUND');
 });
+
+test('Presença de Deus: média do líder com os votos de quem votou; visitantes na chamada', () => {
+  const { e, adm, tok, mk } = boot(); const l = mk('lid@zoe.com', 'membro'), a = mk('ana@zoe.com', 'membro'), b = mk('bia@zoe.com', 'membro'), o = mk('out@zoe.com', 'membro', { nome: 'Otávio de Outra' });
+  const c = e.call('createCell', { nome: 'Norte', liderId: l, dia: 'Quinta' }, adm).data.id, c2 = e.call('createCell', { nome: 'Sul' }, adm).data.id;
+  for (const [m, cel] of [[a, c], [b, c], [o, c2]]) assert.ok(e.call('adminSave', { tipo: 'membros', id: m, valores: { Nome: m === o ? 'Otávio de Outra' : 'Pessoa ' + m, CelulaID: cel } }, adm).ok);
+  const L = tok('lid@zoe.com', 'Temp12345'), A = tok('ana@zoe.com', 'Temp12345'), B = tok('bia@zoe.com', 'Temp12345');
+  const data = e.run('today_()');
+  // fora do dia da célula: confirma
+  const r = e.call('saveAttendance', { data, confirmaDia: true, presentes: [a, b], termometro: 40, visitas: [{ membroId: o }, { nome: 'Visitante Novo' }, { nome: 'visitante novo' }, { membroId: a }] }, L);
+  assert.equal(r.ok, true, JSON.stringify(r)); assert.equal(r.data.visitantes, 2);
+  let h = e.call('history', {}, L).data.reunioes[0]; assert.equal(h.presentes, 2); assert.equal(h.visitantes.length, 2);
+  assert.equal(h.visitantes.find(v => !v.novo).de, 'Sul'); assert.equal(h.visitantes.find(v => v.novo).nome, 'Visitante Novo'); assert.equal(h.termometro, 40);
+  assert.equal(e.sheets.Visitantes.rows.filter(x => x.includes('Visitante Novo')).length, 1);
+  assert.equal(e.call('cellMembers', {}, L).data.length, 3, 'visitante de outra célula não entra na célula'); assert.equal(e.call('cellMembers', { celulaId: c2 }, adm).data.length, 1);
+  // regravar a chamada não duplica
+  e.call('saveAttendance', { data, confirmaDia: true, presentes: [a, b], termometro: 40, visitas: [{ membroId: o }, { nome: 'Visitante Novo' }] }, L); assert.equal(e.call('history', {}, L).data.reunioes[0].visitantes.length, 2); assert.equal(e.sheets.Visitantes.rows.filter(x => x.includes('Visitante Novo')).length, 1);
+  // votos
+  let vi = e.call('getVoteInfo', {}, A).data; assert.equal(vi.podeVotar, true); assert.equal(vi.media, 40); assert.equal(vi.meu, null);
+  assert.equal(e.call('voteGod', { data, valor: 100 }, A).data.media, 70);
+  assert.equal(e.call('voteGod', { data, valor: 80 }, A).data.votos, 1, 'voto atualizado, não duplicado');
+  assert.equal(e.call('voteGod', { data, valor: 20 }, B).data.media, Math.round((40 + 80 + 20) / 3));
+  assert.equal(e.call('history', {}, L).data.reunioes[0].termometro, 47); assert.equal(e.call('history', {}, L).data.reunioes[0].votos, 2);
+  assert.equal(e.call('voteGod', { data, valor: 50 }, L).error.code, 'VALIDATION', 'o líder já deu a nota na chamada');
+  assert.equal(e.call('voteGod', { data, valor: 101 }, A).error.code, 'VALIDATION');
+  assert.equal(e.call('voteGod', { data, valor: 50, celulaId: c }, tok('out@zoe.com', 'Temp12345')).error.code, 'FORBIDDEN', 'quem é de outra célula não vota');
+  assert.equal(e.call('getVoteInfo', {}, A).data.meu, 80);
+});
+
+test('Mural da célula: compartilhado por quem é da célula, visível a todos; foto da chamada vai para o mural', () => {
+  const { e, adm, tok, mk } = boot(); const l = mk('lid@zoe.com', 'membro'), a = mk('ana@zoe.com', 'membro'), x = mk('x@zoe.com', 'membro');
+  const c = e.call('createCell', { nome: 'Norte', liderId: l, dia: 'Quinta' }, adm).data.id;
+  assert.ok(e.call('adminSave', { tipo: 'membros', id: a, valores: { Nome: 'Ana', CelulaID: c } }, adm).ok);
+  const L = tok('lid@zoe.com', 'Temp12345'), A = tok('ana@zoe.com', 'Temp12345'), X = tok('x@zoe.com', 'Temp12345');
+  const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAFUlEQVR42mP8z8BQz0AEYBxVSF+FABJADveWkH6oAAAAAElFTkSuQmCC';
+  const data = e.run('today_()');
+  assert.ok(e.call('saveAttendance', { data, confirmaDia: true, presentes: [a], foto: png }, L).ok);
+  let m = e.call('getCellMural', { celulaId: c }, X).data; assert.equal(m.itens.length, 1); assert.equal(m.pode, false); assert.match(m.itens[0].l, /^Célula /); assert.ok(m.itens[0].img);
+  e.call('saveAttendance', { data, confirmaDia: true, presentes: [a], foto: png }, L); assert.equal(e.call('getCellMural', { celulaId: c }, X).data.itens.length, 1, 'mesma reunião não duplica a foto');
+  const novo = e.call('saveMuralItem', { item: { t: 'p', x: 10, y: 20, w: 170, r: 3, l: '', img: png } }, A); assert.ok(novo.ok, JSON.stringify(novo));
+  assert.equal(e.call('saveMuralItem', { celulaId: c, item: { id: novo.data.id, t: 'p', x: 50, y: 60, w: 200, r: 3, l: 'Culto de jovens' } }, A).data.id, novo.data.id);
+  m = e.call('getCellMural', { celulaId: c }, X).data; const it = m.itens.find(i => i.id === novo.data.id); assert.equal(it.l, 'Culto de jovens'); assert.equal(it.x, 50); assert.equal(m.itens.length, 2);
+  assert.equal(e.call('saveMuralItem', { celulaId: c, item: { t: 's', k: 'heart', x: 1, y: 1 } }, X).error.code, 'FORBIDDEN');
+  assert.equal(e.call('delMuralItem', { celulaId: c, itemId: novo.data.id }, X).error.code, 'FORBIDDEN');
+  assert.equal(e.call('saveMuralItem', { item: { t: 'p', x: 1, y: 1 } }, A).error.code, 'VALIDATION', 'foto obrigatória');
+  assert.equal(e.call('delMuralItem', { itemId: novo.data.id }, A).ok, true); assert.equal(e.call('getCellMural', { celulaId: c }, adm).data.itens.length, 1);
+  assert.equal(e.call('getCellMural', { celulaId: 'nada' }, X).error.code, 'NOT_FOUND');
+});
