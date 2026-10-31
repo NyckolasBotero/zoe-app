@@ -371,3 +371,8 @@ Segure e arraste a Zoe para qualquer posição da tela (mouse ou toque); a posi�
 - Backend: rotas `faceMe`, `faceScan` (exige os dois consentimentos; mínimo 5 assinaturas diferentes; sempre autoriza a pessoa), `faceRevoke`; colunas `ConsentimentoBio`, `ConsentimentoImagem`, `TermoVersao`, `Revogado` em `Rostos`. `clearFaces` mantém o registro do consentimento. Até 12 amostras por pessoa.
 - Testes: `tests/zoe.test.mjs` e `FACEGATE=1 bash /tmp/run1.sh tests/e2e_scan.py`.
 - Computador sem câmera: `fgCelular()` (user agent/toque) decide; só no computador aparece "Estou em um computador sem câmera" (adia por esta sessão via `sessionStorage zoe-fgskip`). No celular não há como pular.
+
+## Ficha geral do membro e triagem de visitantes
+- Aba **Fichas de membros** (`listFichas`, `getFicha`, `saveFichaEntrada`): linha do tempo e dados completos, com alcance por papel.
+- Visitantes: status `triagem` → `encaminhado` → `aceito` (`routeVisitor`, `acceptVisitor`); o supervisor decide a célula e o consolidador direto.
+- Após colar o Code.gs, rodar `setup()` (novas colunas em Membros e Visitantes).

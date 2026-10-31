@@ -1,5 +1,16 @@
 [
  {
+  "titulo": "Ficha geral do membro e triagem de visitantes pelo supervisor",
+  "melhorias": [
+   "Nova aba Fichas de membros (administração, pastores, supervisores e líderes): linha do tempo e todos os dados de uma pessoa — primeiro dia na igreja, decisão, batismo, primeiro acesso ao app, preenchimento do cadastro, primeiro devocional, entrada em ministério, cursos, inscrições, presenças e células.",
+   "Cada papel vê só o seu alcance: líder vê os membros da própria célula (sem dados sensíveis), supervisor as células que supervisiona, administração e pastores todos. Administração e pastores podem definir o primeiro dia na igreja.",
+   "Visitante lançado no culto agora cai primeiro no supervisor da região, que escolhe a célula e, se quiser, uma pessoa específica para consolidar (a célula e o líder continuam registrados). Quem recebe aceita ou devolve ao supervisor.",
+   "A ficha mostra quando o visitante foi cadastrado, quando foi encaminhado, para quem e quando foi aceito para consolidação."
+  ],
+  "v": "1.76",
+  "data": "31/10/2026"
+ },
+ {
   "titulo": "Cadastro facial: opção para computador sem câmera",
   "melhorias": [
    "No computador, quem não tem câmera pode escolher Estou em um computador sem câmera e fazer o cadastro depois pelo celular (o app pede de novo no próximo acesso).",

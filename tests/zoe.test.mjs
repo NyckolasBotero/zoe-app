@@ -798,8 +798,20 @@ test('consolidação: visitante, célula mais próxima, alerta ao líder', () =>
   assert.equal(e.call('nearCell', { lat: -23.51, lng: -46.61 }, A).error.code, 'FORBIDDEN'); assert.equal(e.call('nearCell', { lat: 'x', lng: 1 }, adm).error.code, 'VALIDATION');
   const nc = e.call('nearCell', { lat: -23.89, lng: -46.6 }, adm).data.celula; assert.equal(nc.nome, 'Célula Sul'); assert.ok(nc.km < 5);
   const sup = mk('sup@zoe.com', 'membro'); assert.ok(e.call('createCell', { nome: 'Célula Leste', liderId: lid, supervisorId: sup, coordenadas: '-23.50, -46.20' }, adm).ok);
-  const r2 = e.call('saveVisitor', { nome: 'Rita Leste', telefone: '11977776666', lat: -23.5, lng: -46.21 }, adm).data; assert.equal(r2.celula.nome, 'Célula Leste'); assert.equal(r2.avisados, 2);
-  assert.equal(e.sheets.Notificacoes.rows.slice(1).filter(x => x[1] === sup && x[2] === 'visitante').length, 1); assert.equal(e.sheets.Notificacoes.rows.slice(1).filter(x => x[1] === lid && x[2] === 'visitante').length, 2);
+  const r2 = e.call('saveVisitor', { nome: 'Rita Leste', telefone: '11977776666', lat: -23.5, lng: -46.21 }, adm).data; assert.equal(r2.celula.nome, 'Célula Leste'); assert.equal(r2.avisados, 1);
+  // com supervisor: só ele é avisado; o líder fica de fora até o encaminhamento
+  const nv = (m) => e.sheets.Notificacoes.rows.slice(1).filter(x => x[1] === m && x[2] === 'visitante').length;
+  assert.equal(nv(sup), 1); assert.equal(nv(lid), 1);
+  let lv0 = e.call('listVisitors', {}, adm).data.itens.find(x => x.id === r2.id); assert.equal(lv0.status, 'triagem'); assert.equal(lv0.supervisor, 'sup');
+  const S = tok('sup@zoe.com', 'Temp12345'), LD = tok('lid@zoe.com', 'Temp12345'), amigo = mk('amigo@zoe.com', 'membro'), AM = tok('amigo@zoe.com', 'Temp12345');
+  assert.equal(e.call('listVisitors', {}, LD).data.itens.some(x => x.id === r2.id), false); // líder ainda não vê
+  assert.equal(e.call('routeVisitor', { id: r2.id }, LD).error.code, 'FORBIDDEN'); assert.equal(e.call('acceptVisitor', { id: r2.id }, LD).error.code, 'FORBIDDEN');
+  const rt = e.call('routeVisitor', { id: r2.id, consolidadorId: amigo }, S); assert.ok(rt.ok, JSON.stringify(rt)); assert.equal(nv(amigo), 1); assert.equal(nv(lid), 2);
+  let it = e.call('listVisitors', {}, AM).data.itens[0]; assert.equal(it.consolidador, 'amigo'); assert.equal(it.lider, 'lid'); assert.equal(it.status, 'encaminhado'); assert.ok(it.encaminhadoEm);
+  assert.equal(e.call('acceptVisitor', { id: r2.id }, S).ok, true); // supervisor também pode, mas testamos a recusa do amigo primeiro
+  assert.ok(e.call('acceptVisitor', { id: r2.id, aceitar: false }, AM).ok); assert.equal(e.call('listVisitors', {}, S).data.itens.find(x => x.id === r2.id).status, 'triagem');
+  assert.ok(e.call('routeVisitor', { id: r2.id, consolidadorId: amigo }, S).ok); assert.ok(e.call('contactVisitor', { id: r2.id }, AM).ok);
+  assert.ok(e.call('acceptVisitor', { id: r2.id }, AM).ok); it = e.call('listVisitors', {}, AM).data.itens[0]; assert.equal(it.status, 'aceito'); assert.equal(it.aceitoPor, 'amigo'); assert.ok(it.aceitoEm);
   const lv = e.call('listVisitors', {}, adm).data; assert.equal(lv.itens.length, 2); assert.ok(lv.itens.some(x => x.msg.includes('Pedrão')));
   assert.ok(e.call('contactVisitor', { id: r.data.id, msg: 'Oi!' }, adm).ok); assert.equal(e.call('listVisitors', {}, adm).data.itens.find(x => x.id === r.data.id).contatado, true);
 });
@@ -1232,4 +1244,22 @@ test('cadastro facial do membro: consentimento LGPD obrigatório, scanner guiado
   assert.ok(e.call('faceRevoke', {}, m).ok); me = e.call('faceMe', {}, m).data; assert.equal(me.precisa, false, 'quem revogou não é obrigado de novo'); assert.ok(me.revogado);
   assert.equal(e.call('listFaces', {}, adm).data.itens.length, 0, 'revogar apaga assinaturas');
   assert.ok(e.call('faceScan', { consentBio: true, consentImg: true, itens: itens(10) }, m).ok, 'pode refazer depois de revogar'); assert.equal(e.call('faceMe', {}, m).data.revogado, '');
+});
+
+test('ficha geral do membro: escopo por papel e histórico completo', () => {
+  const { e, adm, tok, mk } = boot(); const lid = mk('lid@zoe.com', 'membro'), sup = mk('sup@zoe.com', 'membro'), ana = mk('ana@zoe.com', 'membro'), out = mk('out@zoe.com', 'membro');
+  const c = e.call('createCell', { nome: 'Célula Norte', liderId: lid, supervisorId: sup, coordenadas: '-23.50, -46.60' }, adm).data.id; e.call('createCell', { nome: 'Célula Sul', coordenadas: '-23.90, -46.60' }, adm);
+  e.run(`(function(){const t=table_('Membros');t.rows.forEach(function(m){if(m.Email==='ana@zoe.com')writeRow_(t,m._row,{CelulaID:'${c}',Nome:'Ana Souza',Telefone:'11955554444',DataDecisao:'2026-01-10',Sangue:'O+',Mae:'Maria'})})})()`);
+  const A = tok('ana@zoe.com', 'Temp12345'), L = tok('lid@zoe.com', 'Temp12345'), S = tok('sup@zoe.com', 'Temp12345'), O = tok('out@zoe.com', 'Temp12345');
+  const vis = e.call('saveVisitor', { nome: 'Ana Souza', telefone: '11955554444', lat: -23.5, lng: -46.6 }, adm).data; assert.ok(vis.id);
+  assert.ok(e.call('routeVisitor', { id: vis.id }, S).ok); assert.ok(e.call('acceptVisitor', { id: vis.id }, L).ok);
+  assert.equal(e.call('getFicha', { membroId: ana }, O).error.code, 'FORBIDDEN'); assert.equal(e.call('listFichas', {}, O).data.itens.length, 0);
+  const fa = e.call('getFicha', { membroId: ana }, adm); assert.ok(fa.ok, JSON.stringify(fa)); assert.equal(fa.data.nivel, 'total'); assert.equal(fa.data.sens.sangue, 'O+'); assert.equal(fa.data.datas.decisao, '2026-01-10');
+  assert.equal(fa.data.consolidacao.supervisor, 'sup'); assert.equal(fa.data.consolidacao.aceitoPor, 'lid'); assert.ok(fa.data.consolidacao.encaminhadoEm && fa.data.consolidacao.aceitoEm);
+  assert.ok(fa.data.linha.some(x => x.tipo === 'consolidacao' && /Aceito/.test(x.titulo))); assert.equal(fa.data.celulas.atual.nome, 'Célula Norte'); assert.equal(fa.data.celulas.atual.lider, 'lid');
+  const fl = e.call('getFicha', { membroId: ana }, L).data; assert.equal(fl.nivel, 'lider'); assert.equal(fl.sens, null); assert.equal(fl.rosto, null); assert.equal(fl.podeEditar, false);
+  assert.equal(e.call('getFicha', { membroId: ana }, S).data.nivel, 'super'); assert.ok(e.call('getFicha', { membroId: ana }, S).data.sens);
+  assert.equal(e.call('listFichas', {}, L).data.itens.some(x => x.id === ana), true); assert.equal(e.call('listFichas', { q: 'zzz' }, adm).data.itens.length, 0);
+  assert.equal(e.call('saveFichaEntrada', { membroId: ana, entrada: '2025-03-02' }, L).error.code, 'FORBIDDEN'); assert.ok(e.call('saveFichaEntrada', { membroId: ana, entrada: '2025-03-02' }, adm).ok);
+  assert.equal(e.call('getFicha', { membroId: ana }, adm).data.datas.entrada, '2025-03-02'); assert.equal(e.call('saveFichaEntrada', { membroId: ana, entrada: 'x' }, adm).error.code, 'VALIDATION');
 });

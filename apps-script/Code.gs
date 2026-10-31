@@ -34,12 +34,12 @@ const DEFAULT_PERMS = {
 const PERMS_ZERO = { eventos: 0, transf: 0, celulas: 0, min: 0, config: 0, prof: 0, cursos: 0 };
 const SHEETS = {
   Usuarios: ['Email', 'SenhaHash', 'Salt', 'Papel', 'Status', 'MembroID', 'TrocarSenha', 'CriadoEm', 'UltimoAcesso', 'GuiaVisto'],
-  Membros: ['MembroID', 'Nome', 'Simples', 'Apelido', 'Sexo', 'Nascimento', 'Nacionalidade', 'Naturalidade', 'Sangue', 'Doador', 'Profissao', 'Telefone', 'Email', 'CEP', 'UF', 'Cidade', 'Endereco', 'Bairro', 'DataDecisao', 'Batizado', 'DataBatismo', 'IgrejaBatismo', 'Mae', 'Pai', 'EstadoCivil', 'Conjuge', 'DataCasamento', 'Filhos', 'Foto', 'CelulaID', 'EhMembro', 'Status', 'DataSaida', 'Extras', 'AceitePrivacidade', 'AceiteTermos', 'CriadoEm'],
+  Membros: ['MembroID', 'Nome', 'Simples', 'Apelido', 'Sexo', 'Nascimento', 'Nacionalidade', 'Naturalidade', 'Sangue', 'Doador', 'Profissao', 'Telefone', 'Email', 'CEP', 'UF', 'Cidade', 'Endereco', 'Bairro', 'DataDecisao', 'Batizado', 'DataBatismo', 'IgrejaBatismo', 'Mae', 'Pai', 'EstadoCivil', 'Conjuge', 'DataCasamento', 'Filhos', 'Foto', 'CelulaID', 'EhMembro', 'Status', 'DataSaida', 'Extras', 'AceitePrivacidade', 'AceiteTermos', 'CriadoEm', 'DataEntrada'],
   Celulas: ['CelulaID', 'Nome', 'Descricao', 'Foto', 'LiderID', 'SupervisorID', 'Dia', 'Inicio', 'Fim', 'Categoria', 'Faixa', 'Bairro', 'Cidade', 'UF', 'Endereco', 'TreinamentoID', 'MaeID', 'PrivGrupo', 'PrivTel', 'PrivEmail', 'PrivEnd', 'Status', 'Lat', 'Lng'],
   Reunioes: ['ReuniaoID', 'CelulaID', 'Data', 'Presentes', 'PresencaDeDeus', 'Obs', 'ForaDoDia', 'Elenco', 'Termometro', 'Foto'],
   Posts: ['PostID', 'Tipo', 'Escopo', 'CelulaID', 'AutorID', 'Titulo', 'Texto', 'Foto', 'Meta', 'Data', 'Status'],
   Comentarios: ['ComentID', 'PostID', 'MembroID', 'Texto', 'Data'],
-  Visitantes: ['VisitanteID', 'Nome', 'Apelido', 'Telefone', 'Email', 'Nascimento', 'Endereco', 'Bairro', 'Cidade', 'UF', 'Lat', 'Lng', 'Data', 'RegistradoPor', 'CelulaID', 'Distancia', 'Contatado', 'ContatadoPor', 'ContatoData', 'Msg', 'Obs', 'Decisao'],
+  Visitantes: ['VisitanteID', 'Nome', 'Apelido', 'Telefone', 'Email', 'Nascimento', 'Endereco', 'Bairro', 'Cidade', 'UF', 'Lat', 'Lng', 'Data', 'RegistradoPor', 'CelulaID', 'Distancia', 'Contatado', 'ContatadoPor', 'ContatoData', 'Msg', 'Obs', 'Decisao', 'Status', 'SupervisorID', 'LiderID', 'ConsolidadorID', 'TriagemPor', 'EncaminhadoEm', 'AceitoEm', 'AceitoPor', 'MembroID'],
   BibMarcas: ['MembroID', 'Ref', 'Cor', 'Tipo', 'Comentario', 'Publico', 'Data'],
   Presencas: ['ReuniaoID', 'CelulaID', 'Data', 'MembroID'],
   Papeis: ['CelulaID', 'MembroID', 'Papel'],
@@ -1652,6 +1652,104 @@ function faceRevoke_(d, u) {
     audit_(u.email, 'FACE_REVOGADO', '', 'OK'); return { n: 1 };
   });
 }
+/* ===== Ficha geral do membro: visão completa e histórico para administração, pastor, supervisor e líder (cada um vê só o seu alcance) ===== */
+function fichaNivel_(u, m) { // 'total' (administração/pastor), 'super' (supervisor), 'lider' (líder ou em treinamento) ou lança erro
+  if (can_(u, 'config') || can_(u, 'celulas') || can_(u, 'min') || u.papel === 'pastor') return 'total';
+  const cs = table_('Celulas').rows, sup = u.supervisiona || [], lid = (u.lidera || []).concat(u.treina || []);
+  if (m.CelulaID && sup.indexOf(m.CelulaID) >= 0) return 'super';
+  if (cs.some(function (c) { return sup.indexOf(c.CelulaID) >= 0 && c.LiderID === m.MembroID; })) return 'super';
+  if (m.CelulaID && lid.indexOf(m.CelulaID) >= 0) return 'lider';
+  throw new ApiError('FORBIDDEN', 'Você só pode ver a ficha de pessoas da sua célula ou das células que você supervisiona.');
+}
+function listFichas_(d, u) {
+  const cs = table_('Celulas').rows, cel = {}; cs.forEach(function (c) { cel[c.CelulaID] = c.Nome; });
+  const q = norm_(d.q || '');
+  const itens = table_('Membros').rows.filter(function (m) { return m.Status !== 'Inativo'; }).filter(function (m) { try { fichaNivel_(u, m); return true; } catch (e) { return false; } })
+    .filter(function (m) { return !q || norm_(m.Nome + ' ' + (m.Apelido || '') + ' ' + (m.Simples || '')).indexOf(q) >= 0; })
+    .map(function (m) { return { id: m.MembroID, nome: m.Nome, apelido: m.Apelido || m.Simples || '', celula: cel[m.CelulaID] || '', foto: m.Foto ? 1 : 0, membro: m.EhMembro === '1' || m.EhMembro === 'true' || m.EhMembro === 'sim' ? 1 : 0 }; })
+    .sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome)); });
+  return { itens: itens.slice(0, 700), total: itens.length };
+}
+function dia10_(x) { const v = String(x || '').slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : ''; }
+function getFicha_(d, u) {
+  const mid = clip_(d.membroId, 30), m = table_('Membros').rows.filter(function (x) { return x.MembroID === mid; })[0]; if (!m) throw new ApiError('NOT_FOUND', 'Pessoa não encontrada.');
+  const nivel = fichaNivel_(u, m), tot = nivel === 'total', sens = nivel !== 'lider';
+  const cels = table_('Celulas').rows, cel = {}; cels.forEach(function (c) { cel[c.CelulaID] = c; });
+  const nm = {}; table_('Membros').rows.forEach(function (x) { nm[x.MembroID] = x.Apelido || x.Simples || x.Nome; });
+  const cn = function (id) { return (cel[id] || {}).Nome || ''; };
+  const me = function (r) { return r.MembroID === mid; };
+  const usu = table_('Usuarios').rows.filter(function (x) { return x.MembroID === mid; })[0] || null, email = usu ? String(usu.Email).toLowerCase() : '';
+  const hoje = today_(), d90 = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
+  // presenças
+  const evT = {}; table_('Eventos').rows.forEach(function (e) { evT[e.EventoID] = e; });
+  const pc = table_('Presencas').rows.filter(me).map(function (r) { return { data: dia10_(r.Data), onde: cn(r.CelulaID) || 'Célula', tipo: 'celula' }; });
+  const pe = table_('EventoPresenca').rows.filter(me).map(function (r) { const e = evT[r.EventoID] || {}; return { data: dia10_(e.Data) || dia10_(r.Data), onde: e.Titulo || 'Evento', tipo: 'evento' }; });
+  const pu = table_('Cultos').rows.filter(me).map(function (r) { return { data: dia10_(r.Data), onde: r.Culto, tipo: 'culto' }; });
+  const aulasP = table_('AulaPresenca').rows.filter(function (r) { return me(r) && r.Presente === '1'; }).length;
+  const todasP = pc.concat(pe, pu).filter(function (x) { return x.data; }).sort(function (a, b) { return a.data < b.data ? -1 : a.data > b.data ? 1 : 0; });
+  const presencas = { celula: pc.length, evento: pe.length, culto: pu.length, aulas: aulasP, total: pc.length + pe.length + pu.length, ultimos90: todasP.filter(function (x) { return x.data >= d90; }).length, primeira: todasP.length ? todasP[0].data : '', ultima: todasP.length ? todasP[todasP.length - 1].data : '', recentes: todasP.slice(-12).reverse() };
+  // cursos
+  const cu = {}; table_('Cursos').rows.forEach(function (c) { cu[c.CursoID] = c.Nome; });
+  const cursos = table_('Matriculas').rows.filter(me).map(function (r) { return { curso: cu[r.CursoID] || 'Curso', status: stN_(r.Status), data: dia10_(r.Data), decisao: dia10_(r.DataDecisao), presenca: r.PresencaPct || '', cert: r.Cert ? 1 : 0, certData: dia10_(r.CertData) }; }).sort(function (a, b) { return a.data < b.data ? 1 : -1; });
+  const inscricoes = table_('Inscricoes').rows.filter(me).map(function (r) { const e = evT[r.EventoID] || {}; return { evento: e.Titulo || 'Evento', data: dia10_(e.Data), inscritoEm: dia10_(r.Data) }; }).sort(function (a, b) { return a.inscritoEm < b.inscritoEm ? 1 : -1; });
+  // células
+  const hist = [];
+  table_('Membresias').rows.filter(me).forEach(function (r) { hist.push({ data: dia10_(r.DataDecisao) || dia10_(r.Data), tipo: 'membresia', celula: cn(r.CelulaID), texto: 'Membresia ' + stN_(r.Status) + (r.Frequencias ? ' (' + r.Frequencias + ' frequências)' : '') }); });
+  table_('Transferencias').rows.filter(me).forEach(function (r) { hist.push({ data: dia10_(r.DataDecisao) || dia10_(r.Data), tipo: 'transferencia', celula: cn(r.ParaCelulaID), texto: 'Transferência de ' + (cn(r.DeCelulaID) || '—') + ' para ' + (cn(r.ParaCelulaID) || '—') + ' (' + stN_(r.Status) + ')' }); });
+  table_('Saidas').rows.filter(me).forEach(function (r) { hist.push({ data: dia10_(r.DataDecisao) || dia10_(r.Data), tipo: 'saida', celula: cn(r.CelulaID), texto: 'Saída da célula ' + (cn(r.CelulaID) || '') + ' (' + stN_(r.Status) + ')' }); });
+  hist.sort(function (a, b) { return a.data < b.data ? -1 : 1; });
+  const ids = {}; if (m.CelulaID) ids[m.CelulaID] = 1; table_('Membresias').rows.filter(me).forEach(function (r) { if (r.CelulaID) ids[r.CelulaID] = 1; }); table_('Transferencias').rows.filter(me).forEach(function (r) { if (r.Status === 'aprovado' || r.Status === 'Aprovado') { if (r.DeCelulaID) ids[r.DeCelulaID] = 1; if (r.ParaCelulaID) ids[r.ParaCelulaID] = 1; } });
+  const atual = cel[m.CelulaID] || null, cargos = [];
+  cels.forEach(function (c) { if (c.LiderID === mid) cargos.push('Líder de ' + c.Nome); if (c.TreinamentoID === mid) cargos.push('Líder em treinamento de ' + c.Nome); if (c.SupervisorID === mid) cargos.push('Supervisor de ' + c.Nome); });
+  table_('Papeis').rows.filter(me).forEach(function (r) { cargos.push(r.Papel + ' em ' + cn(r.CelulaID)); });
+  const celulas = { atual: atual ? { id: atual.CelulaID, nome: atual.Nome, lider: nm[atual.LiderID] || '', supervisor: nm[atual.SupervisorID] || '', dia: atual.Dia || '' } : null, qtd: Object.keys(ids).length, cargos: cargos, historico: hist };
+  // ministérios
+  const mi = {}; table_('Ministerios').rows.forEach(function (x) { mi[x.MinisterioID] = x.Nome; });
+  const escs = table_('Escalas').rows.filter(me), escD = escs.map(function (r) { return dia10_(r.Data); }).filter(String).sort();
+  const ministerios = { itens: table_('Interesses').rows.filter(me).map(function (r) { return { ministerio: mi[r.MinisterioID] || '', status: stN_(r.Status), pedido: dia10_(r.Data), decisao: dia10_(r.DataDecisao) }; }).sort(function (a, b) { return a.pedido < b.pedido ? -1 : 1; }), escalas: escs.length, primeiraEscala: escD[0] || '' };
+  // devocionais e publicações
+  const cl = table_('CorridaLeitura').rows.filter(me).filter(function (r) { return r.Status !== 'Recusado'; }), clD = cl.map(function (r) { return dia10_(r.Data); }).filter(String).sort();
+  const posts = table_('Posts').rows.filter(function (r) { return r.AutorID === mid; }), notas = posts.filter(function (r) { return r.Tipo === 'nota'; }), notasD = notas.map(function (r) { return dia10_(r.Data); }).filter(String).sort();
+  const tes = table_('Testemunhos').rows.filter(me).map(function (r) { return dia10_(r.Data); }).filter(String).sort(), ora = table_('Oracoes').rows.filter(me).map(function (r) { return dia10_(r.Data); }).filter(String).sort();
+  const devocionais = { maratona: cl.length, capitulos: cl.filter(function (r) { return r.Status === 'Validado'; }).reduce(function (a, r) { return a + (Number(r.Capitulos) || 0); }, 0), primeiroMaratona: clD[0] || '', notas: notas.length, primeiraNota: notasD[0] || '', testemunhos: tes.length, primeiroTestemunho: tes[0] || '', oracoes: ora.length, publicacoes: posts.length };
+  const rs = xpResumo_(mid);
+  // app (primeiro acesso, preenchimento do cadastro, uso)
+  const aud = email ? table_('Auditoria').rows.filter(function (r) { return String(r.Usuario).toLowerCase() === email; }) : [];
+  const logins = aud.filter(function (r) { return r.Acao === 'LOGIN' && r.Resultado === 'OK'; }).map(function (r) { return dia10_(r.Data); }).filter(String).sort();
+  const regs = aud.filter(function (r) { return r.Acao === 'MEMBRO_SALVO' && r.Alvo === mid; }).map(function (r) { return dia10_(r.Data); }).filter(String).sort();
+  const usos = table_('Uso').rows.filter(me); let seg = 0, nlog = 0, primMes = ''; const telas = {};
+  usos.forEach(function (r) { if (r.Tela === '_login') { nlog += Number(r.Visitas || 0); } else { seg += Number(r.Segundos || 0); telas[r.Tela] = (telas[r.Tela] || 0) + Number(r.Segundos || 0); } if (!primMes || r.Mes < primMes) primMes = r.Mes; });
+  const app = { conta: usu ? dia10_(usu.CriadoEm) : '', primeiroLogin: logins[0] || (primMes ? primMes + '-01' : ''), ultimoAcesso: usu ? dia10_(usu.UltimoAcesso) : '', logins: logins.length || nlog, registroPreenchido: regs[0] || '', papel: usu ? usu.Papel : '', situacao: usu ? usu.Status : '' };
+  if (sens) { app.segundos = seg; app.telas = Object.keys(telas).sort(function (a, b) { return telas[b] - telas[a]; }).slice(0, 5).map(function (k) { return { tela: k, segundos: telas[k] }; }); }
+  let rosto = null; if (tot) { const r = table_('Rostos').rows.filter(me)[0]; if (r) rosto = { autorizado: rostoAut_(r), consentiu: dia10_(r.ConsentimentoBio), imagem: dia10_(r.ConsentimentoImagem), amostras: amostras_(r.Amostras).length, base: !!vetor_(r.Descritor), revogado: dia10_(r.Revogado) }; }
+  // consolidação (visitante no culto → supervisor → líder/consolidador)
+  const tel = String(m.Telefone || '').replace(/\D/g, ''), nmN = norm_(m.Nome), vis = table_('Visitantes').rows.filter(function (v) { return v.MembroID === mid || (tel.length >= 10 && String(v.Telefone || '').replace(/\D/g, '') === tel) || norm_(v.Nome) === nmN; }).sort(function (a, b) { return a.Data < b.Data ? -1 : 1; })[0] || null;
+  const consolidacao = vis ? { registrado: dia10_(vis.Data), registradoPor: nm[vis.RegistradoPor] || '', celula: cn(vis.CelulaID), supervisor: nm[vis.SupervisorID] || '', lider: nm[vis.LiderID] || '', consolidador: vis.ConsolidadorID ? nm[vis.ConsolidadorID] || '' : '', encaminhadoEm: String(vis.EncaminhadoEm || '').slice(0, 16), aceitoEm: String(vis.AceitoEm || '').slice(0, 16), aceitoPor: nm[vis.AceitoPor] || '', contatadoEm: String(vis.ContatoData || '').slice(0, 16), status: vis.Status || 'encaminhado' } : null;
+  // datas-chave
+  const idade = m.Nascimento ? Math.floor((Date.now() - new Date(String(m.Nascimento).slice(0, 10) + 'T12:00:00Z')) / 31557600000) : '';
+  const datas = { cadastro: dia10_(m.CriadoEm), entrada: dia10_(m.DataEntrada), primeiroRegistro: [dia10_(m.CriadoEm), presencas.primeira, clD[0] || '', notasD[0] || '', consolidacao ? consolidacao.registrado : ''].filter(String).sort()[0] || '', decisao: dia10_(m.DataDecisao), batizado: m.Batizado, batismo: dia10_(m.DataBatismo), igrejaBatismo: m.IgrejaBatismo || '', casamento: dia10_(m.DataCasamento), termos: dia10_(m.AceiteTermos), privacidade: dia10_(m.AceitePrivacidade) };
+  // linha do tempo
+  const tl = []; const add = function (data, tipo, titulo) { data = dia10_(data); if (data) tl.push({ data: data, tipo: tipo, titulo: titulo }); };
+  add(datas.entrada, 'igreja', 'Primeiro dia na igreja'); if (consolidacao) { add(consolidacao.registrado, 'consolidacao', 'Ficha de visitante preenchida no culto' + (consolidacao.registradoPor ? ' (por ' + consolidacao.registradoPor + ')' : '')); add(consolidacao.encaminhadoEm, 'consolidacao', 'Encaminhado por ' + (consolidacao.supervisor || 'supervisor') + ' para ' + (consolidacao.consolidador || consolidacao.lider || 'o líder')); add(consolidacao.aceitoEm, 'consolidacao', 'Aceito para consolidação por ' + (consolidacao.aceitoPor || 'o líder')); add(consolidacao.contatadoEm, 'consolidacao', 'Primeiro contato registrado'); } add(datas.cadastro, 'cadastro', 'Cadastro criado'); add(datas.decisao, 'decisao', 'Decisão por Cristo'); if (m.Batizado === 'sim' || m.Batizado === '1') add(datas.batismo, 'batismo', 'Batismo' + (datas.igrejaBatismo ? ' (' + datas.igrejaBatismo + ')' : ''));
+  add(app.primeiroLogin, 'app', 'Primeiro acesso ao aplicativo'); add(app.registroPreenchido, 'app', 'Preencheu o próprio cadastro'); add(datas.termos, 'app', 'Aceitou os termos de uso'); add(datas.privacidade, 'app', 'Aceitou a política de privacidade');
+  add(presencas.primeira, 'presenca', 'Primeira presença registrada'); add(devocionais.primeiroMaratona, 'devocional', 'Primeiro devocional (Maratona Bíblica)'); add(devocionais.primeiraNota, 'devocional', 'Primeira anotação publicada'); add(devocionais.primeiroTestemunho, 'devocional', 'Primeiro testemunho');
+  cursos.forEach(function (c) { add(c.data, 'curso', 'Matrícula: ' + c.curso + ' (' + c.status + ')'); add(c.certData, 'curso', 'Certificado: ' + c.curso); });
+  ministerios.itens.forEach(function (i) { add(i.decisao || i.pedido, 'ministerio', 'Ministério ' + i.ministerio + ' (' + i.status + ')'); }); add(ministerios.primeiraEscala, 'ministerio', 'Primeira escala em ministério');
+  hist.forEach(function (h) { add(h.data, 'celula', h.texto); }); if (rosto) { add(rosto.consentiu, 'app', 'Consentiu o cadastro facial'); }
+  tl.sort(function (a, b) { return a.data < b.data ? -1 : a.data > b.data ? 1 : 0; });
+  return { id: mid, nivel: nivel, nome: m.Nome, simples: m.Simples || '', apelido: m.Apelido || '', foto: m.Foto || '', status: m.Status || 'Ativo', membro: m.EhMembro === '1' || m.EhMembro === 'true' || m.EhMembro === 'sim', idade: idade, sexo: m.Sexo || '', estadoCivil: m.EstadoCivil || '', conjuge: m.Conjuge || '', profissao: m.Profissao || '', telefone: m.Telefone || '', email: m.Email || '', cidade: m.Cidade || '', bairro: m.Bairro || '', uf: m.UF || '',
+    sens: sens ? { endereco: m.Endereco || '', cep: m.CEP || '', sangue: m.Sangue || '', doador: m.Doador || '', mae: m.Mae || '', pai: m.Pai || '', nacionalidade: m.Nacionalidade || '', naturalidade: m.Naturalidade || '', nascimento: dia10_(m.Nascimento) } : null,
+    datas: datas, consolidacao: consolidacao, app: app, presencas: presencas, cursos: cursos, inscricoes: inscricoes, celulas: celulas, ministerios: ministerios, devocionais: devocionais, nivelXp: { nivel: rs.nivel, xp: rs.xp, insignias: listInsignias_(mid).length }, rosto: rosto, linha: tl, podeEditar: tot };
+}
+function saveFichaEntrada_(d, u) {
+  const mid = clip_(d.membroId, 30), v = clip_(d.entrada, 10);
+  return withLock_(function () {
+    const t = table_('Membros'), m = t.rows.filter(function (x) { return x.MembroID === mid; })[0]; if (!m) throw new ApiError('NOT_FOUND', 'Pessoa não encontrada.');
+    if (fichaNivel_(u, m) !== 'total') throw new ApiError('FORBIDDEN', 'Só a administração e os pastores editam a data de entrada.');
+    if (v && !dia10_(v)) throw new ApiError('VALIDATION', 'Data inválida.');
+    writeRow_(t, m._row, { DataEntrada: v }); audit_(u.email, 'FICHA_ENTRADA', mid, 'OK'); return { ok: true };
+  });
+}
 function clearSamples_(d, u) { // apaga só as amostras aprendidas/enviadas; a assinatura da foto de perfil continua
   return withLock_(function () {
     const t = table_('Rostos'), id = clip_(d.id, 30), r = t.rows.filter(function (x) { return x.MembroID === id; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Pessoa não encontrada na lista de rostos.');
@@ -2166,11 +2264,16 @@ function saveVisitor_(d, u) {
     const ap = clip_(d.apelido, 40) || nome.split(' ')[0], pr = celulaProxima_(lat, lng), id = id_('V');
     appendRow_(table_('Visitantes'), { VisitanteID: id, Nome: nome, Apelido: ap, Telefone: tel, Email: clip_(d.email, 80), Nascimento: clip_(d.nascimento, 10), Endereco: clip_(d.endereco, 200), Bairro: clip_(d.bairro, 80), Cidade: clip_(d.cidade, 80), UF: clip_(d.uf, 2), Lat: String(Math.round(lat * 1e6) / 1e6), Lng: String(Math.round(lng * 1e6) / 1e6), Data: today_(), RegistradoPor: u.membroId, CelulaID: pr ? pr.cel.CelulaID : '', Distancia: pr ? String(Math.round(pr.km * 10) / 10) : '', Contatado: '0', Msg: msgPadrao_(ap), Obs: clip_(d.obs, 300), Decisao: '0' });
     if (pr) {
-      const km = Math.round(pr.km * 10) / 10, avisados = {}, nomes = nomes_();
-      if (pr.cel.LiderID && pr.cel.LiderID !== u.membroId) { avisados[pr.cel.LiderID] = 1; notify_(pr.cel.LiderID, 'visitante', 'Novo visitante perto da sua célula: ' + nome, ap + ' esteve no culto e mora a ' + km + ' km. Abra Consolidação para chamar no WhatsApp.', 'visitante:' + id); }
-      if (pr.cel.SupervisorID && pr.cel.SupervisorID !== u.membroId && !avisados[pr.cel.SupervisorID]) notify_(pr.cel.SupervisorID, 'visitante', 'Novo visitante na célula ' + pr.cel.Nome + ': ' + nome, ap + ' mora a ' + km + ' km da célula' + (pr.cel.LiderID ? ' de ' + (nomes[pr.cel.LiderID] || 'seu líder') : '') + '. O líder já foi avisado.', 'visitante:' + id);
+      const km = Math.round(pr.km * 10) / 10, nomes = nomes_(), sup = pr.cel.SupervisorID || '', t = table_('Visitantes'), vr = t.rows.filter(function (x) { return x.VisitanteID === id; })[0];
+      if (sup) { // o supervisor decide para quem o visitante vai; o líder só é avisado depois do encaminhamento
+        writeRow_(t, vr._row, { Status: 'triagem', SupervisorID: sup, LiderID: pr.cel.LiderID || '' });
+        if (sup !== u.membroId) notify_(sup, 'visitante', 'Visitante para encaminhar: ' + nome, ap + ' mora a ' + km + ' km da célula ' + pr.cel.Nome + (pr.cel.LiderID ? ' (líder ' + (nomes[pr.cel.LiderID] || '—') + ')' : '') + '. Abra Consolidação para escolher quem vai consolidar.', 'visitante:' + id);
+      } else { // sem supervisor: vai direto para o líder da célula mais próxima
+        writeRow_(t, vr._row, { Status: 'encaminhado', LiderID: pr.cel.LiderID || '', EncaminhadoEm: now_() });
+        if (pr.cel.LiderID && pr.cel.LiderID !== u.membroId) notify_(pr.cel.LiderID, 'visitante', 'Novo visitante perto da sua célula: ' + nome, ap + ' esteve no culto e mora a ' + km + ' km. Abra Consolidação para aceitar e chamar no WhatsApp.', 'visitante:' + id);
+      }
     }
-    audit_(u.email, 'VISITANTE', id + ' ' + nome, 'OK'); return { id: id, celula: pr ? { id: pr.cel.CelulaID, nome: pr.cel.Nome, km: Math.round(pr.km * 10) / 10 } : null, avisados: pr ? [pr.cel.LiderID, pr.cel.SupervisorID].filter(function (x, i, a) { return x && a.indexOf(x) === i; }).length : 0 };
+    audit_(u.email, 'VISITANTE', id + ' ' + nome, 'OK'); return { id: id, celula: pr ? { id: pr.cel.CelulaID, nome: pr.cel.Nome, km: Math.round(pr.km * 10) / 10 } : null, avisados: pr ? [pr.cel.SupervisorID || pr.cel.LiderID].filter(String).length : 0 };
   });
 }
 function nearCell_(d, u) {
@@ -2179,18 +2282,48 @@ function nearCell_(d, u) {
   const pr = celulaProxima_(lat, lng); if (!pr) return { celula: null };
   const nm = nomes_(); return { celula: { id: pr.cel.CelulaID, nome: pr.cel.Nome, km: Math.round(pr.km * 10) / 10, dia: pr.cel.Dia || '', inicio: pr.cel.Inicio || '', bairro: pr.cel.Bairro || '', lider: nm[pr.cel.LiderID] || '', supervisor: nm[pr.cel.SupervisorID] || '' } };
 }
-function visitorOut_(v, cn) { return { id: v.VisitanteID, nome: v.Nome, apelido: v.Apelido, telefone: v.Telefone, email: v.Email || '', endereco: [v.Endereco, v.Bairro, v.Cidade].filter(String).join(', '), lat: v.Lat === '' ? null : Number(v.Lat), lng: v.Lng === '' ? null : Number(v.Lng), data: v.Data, celulaId: v.CelulaID, celula: cn[v.CelulaID] || '', km: v.Distancia === '' ? null : Number(v.Distancia), contatado: v.Contatado === '1', contatadoEm: v.ContatoData || '', msg: v.Msg || msgPadrao_(v.Apelido || v.Nome), obs: v.Obs || '', decisao: v.Decisao === '1' }; }
+function visitorOut_(v, cn, nm) { const dest = v.ConsolidadorID || v.LiderID || ''; return { id: v.VisitanteID, nome: v.Nome, apelido: v.Apelido, telefone: v.Telefone, email: v.Email || '', endereco: [v.Endereco, v.Bairro, v.Cidade].filter(String).join(', '), lat: v.Lat === '' ? null : Number(v.Lat), lng: v.Lng === '' ? null : Number(v.Lng), data: v.Data, celulaId: v.CelulaID, celula: cn[v.CelulaID] || '', km: v.Distancia === '' ? null : Number(v.Distancia), contatado: v.Contatado === '1', contatadoEm: v.ContatoData || '', msg: v.Msg || msgPadrao_(v.Apelido || v.Nome), obs: v.Obs || '', decisao: v.Decisao === '1',
+    status: v.Status || 'encaminhado', supervisorId: v.SupervisorID || '', supervisor: nm[v.SupervisorID] || '', liderId: v.LiderID || '', lider: nm[v.LiderID] || '', consolidadorId: v.ConsolidadorID || '', consolidador: nm[v.ConsolidadorID] || '', destinoId: dest, destino: nm[dest] || '', registradoPor: nm[v.RegistradoPor] || '', encaminhadoEm: v.EncaminhadoEm || '', aceitoEm: v.AceitoEm || '', aceitoPor: nm[v.AceitoPor] || '' }; }
+function triagemPode_(u, v) { return u.papel === 'admin' || u.papel === 'pastor' || can_(u, 'celulas') || (!!v.SupervisorID && v.SupervisorID === u.membroId) || (!!v.CelulaID && (u.supervisiona || []).indexOf(v.CelulaID) >= 0); }
+function destinoPode_(u, v) { return u.papel === 'admin' || triagemPode_(u, v) || (v.ConsolidadorID || v.LiderID) === u.membroId || (!v.ConsolidadorID && !!v.CelulaID && (u.lidera || []).indexOf(v.CelulaID) >= 0); }
 function listVisitors_(d, u) {
-  if (!ehLider_(u)) throw new ApiError('FORBIDDEN', 'Só líderes veem a consolidação.');
-  const cn = {}, cels = table_('Celulas').rows; cels.forEach(function (c) { cn[c.CelulaID] = c.Nome; });
-  const todos = u.papel === 'admin' || u.papel === 'pastor' || can_(u, 'celulas'), minhas = (u.lidera || []).concat(u.supervisiona || []);
-  const itens = table_('Visitantes').rows.filter(function (v) { return todos || v.RegistradoPor === u.membroId || (v.CelulaID && minhas.indexOf(v.CelulaID) >= 0); }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).slice(0, 200).map(function (v) { return visitorOut_(v, cn); });
-  return { itens: itens, celulas: cels.filter(function (c) { return c.Status !== 'Inativa' && c.Lat !== '' && c.Lat !== undefined; }).map(function (c) { return { id: c.CelulaID, nome: c.Nome, lat: Number(c.Lat), lng: Number(c.Lng) }; }), msgPadrao: msgPadrao_('{apelido}') };
+  const rows = table_('Visitantes').rows;
+  if (!ehLider_(u) && !rows.some(function (v) { return v.ConsolidadorID === u.membroId; })) throw new ApiError('FORBIDDEN', 'Só líderes e consolidadores veem a consolidação.');
+  const cn = {}, cels = table_('Celulas').rows, nm = nomes_(); cels.forEach(function (c) { cn[c.CelulaID] = c.Nome; });
+  const todos = u.papel === 'admin' || u.papel === 'pastor' || can_(u, 'celulas'), lid = u.lidera || [];
+  const vis = function (v) { return todos || v.RegistradoPor === u.membroId || v.ConsolidadorID === u.membroId || triagemPode_(u, v) || (v.Status !== 'triagem' && !!v.CelulaID && lid.indexOf(v.CelulaID) >= 0); };
+  const itens = rows.filter(vis).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).slice(0, 200).map(function (v) { const o = visitorOut_(v, cn, nm); o.podeEncaminhar = triagemPode_(u, v); o.souDestino = destinoPode_(u, v); return o; });
+  return { itens: itens, celulas: cels.filter(function (c) { return c.Status !== 'Inativa'; }).map(function (c) { return { id: c.CelulaID, nome: c.Nome, lider: nm[c.LiderID] || '', lat: c.Lat === '' || c.Lat === undefined ? null : Number(c.Lat), lng: c.Lng === '' || c.Lng === undefined ? null : Number(c.Lng) }; }), pessoas: itens.some(function (o) { return o.podeEncaminhar; }) ? table_('Membros').rows.filter(function (m) { return m.Status !== 'Inativo'; }).map(function (m) { return { id: m.MembroID, nome: m.Nome }; }).sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome)); }) : [], msgPadrao: msgPadrao_('{apelido}') };
 }
-function contactVisitor_(d, u) {
-  if (!ehLider_(u)) throw new ApiError('FORBIDDEN', 'Só líderes.');
+function routeVisitor_(d, u) {
   return withLock_(function () {
     const t = table_('Visitantes'), v = t.rows.filter(function (x) { return x.VisitanteID === clip_(d.id, 30); })[0]; if (!v) throw new ApiError('NOT_FOUND', 'Visitante não encontrado.');
+    if (!triagemPode_(u, v)) throw new ApiError('FORBIDDEN', 'Só o supervisor da região (ou a administração) encaminha este visitante.');
+    const cid = clip_(d.celulaId, 30) || v.CelulaID, cel = table_('Celulas').rows.filter(function (c) { return c.CelulaID === cid; })[0]; if (!cel) throw new ApiError('VALIDATION', 'Escolha a célula do visitante.');
+    const cons = clip_(d.consolidadorId, 30); if (cons && !table_('Membros').rows.some(function (m) { return m.MembroID === cons; })) throw new ApiError('VALIDATION', 'Consolidador não encontrado.');
+    const lider = cel.LiderID || '', dest = cons || lider; if (!dest) throw new ApiError('VALIDATION', 'Essa célula não tem líder. Escolha um consolidador.');
+    const nm = nomes_(), ap = v.Apelido || v.Nome;
+    writeRow_(t, v._row, { CelulaID: cid, LiderID: lider, SupervisorID: v.SupervisorID || (u.membroId || ''), ConsolidadorID: cons && cons !== lider ? cons : '', Status: 'encaminhado', TriagemPor: u.membroId || '', EncaminhadoEm: now_(), AceitoEm: '', AceitoPor: '' });
+    notify_(dest, 'visitante', 'Visitante encaminhado para você: ' + v.Nome, (cons && cons !== lider ? 'O supervisor ' + (nm[u.membroId] || '') + ' escolheu você para consolidar ' + ap + '. ' : ap + ' foi encaminhado para a sua célula. ') + 'Abra Consolidação para aceitar e chamar no WhatsApp.', 'visitante:' + v.VisitanteID);
+    if (cons && cons !== lider && lider) notify_(lider, 'visitante', 'Visitante da sua célula com consolidador definido', ap + ' será acompanhado por ' + (nm[cons] || 'outra pessoa') + ' e continua registrado na sua célula.', 'visitante:' + v.VisitanteID);
+    audit_(u.email, 'VISITANTE_ENCAMINHADO', v.VisitanteID + ' -> ' + dest, 'OK'); return { ok: true, destino: nm[dest] || '' };
+  });
+}
+function acceptVisitor_(d, u) {
+  return withLock_(function () {
+    const t = table_('Visitantes'), v = t.rows.filter(function (x) { return x.VisitanteID === clip_(d.id, 30); })[0]; if (!v) throw new ApiError('NOT_FOUND', 'Visitante não encontrado.');
+    if (v.Status === 'triagem' || !destinoPode_(u, v)) throw new ApiError('FORBIDDEN', 'Esse visitante não foi encaminhado para você.');
+    const nm = nomes_();
+    if (d.aceitar === false) { writeRow_(t, v._row, { Status: 'triagem', ConsolidadorID: '', EncaminhadoEm: '' }); if (v.SupervisorID) notify_(v.SupervisorID, 'visitante', 'Visitante devolvido: ' + v.Nome, (nm[u.membroId] || 'O destino') + ' não pôde aceitar. Escolha outra pessoa para consolidar.', 'visitante:' + v.VisitanteID); audit_(u.email, 'VISITANTE_RECUSADO', v.VisitanteID, 'OK'); return { ok: true, status: 'triagem' }; }
+    writeRow_(t, v._row, { Status: 'aceito', AceitoEm: now_(), AceitoPor: u.membroId || '' });
+    if (v.SupervisorID && v.SupervisorID !== u.membroId) notify_(v.SupervisorID, 'visitante', 'Visitante aceito: ' + v.Nome, (nm[u.membroId] || 'O consolidador') + ' aceitou consolidar ' + (v.Apelido || v.Nome) + '.', 'visitante:' + v.VisitanteID);
+    audit_(u.email, 'VISITANTE_ACEITO', v.VisitanteID, 'OK'); return { ok: true, status: 'aceito' };
+  });
+}
+function contactVisitor_(d, u) {
+  return withLock_(function () {
+    const t = table_('Visitantes'), v = t.rows.filter(function (x) { return x.VisitanteID === clip_(d.id, 30); })[0]; if (!v) throw new ApiError('NOT_FOUND', 'Visitante não encontrado.');
+    if (!ehLider_(u) && v.ConsolidadorID !== u.membroId) throw new ApiError('FORBIDDEN', 'Só líderes e o consolidador escolhido.');
     const patch = { Contatado: d.contatado === false ? '0' : '1', ContatadoPor: u.membroId, ContatoData: now_() }; if (d.msg !== undefined) patch.Msg = clip_(d.msg, 500); writeRow_(t, v._row, patch); return { ok: true };
   });
 }
@@ -2824,7 +2957,7 @@ const ROUTES = {
   getPushKey: { auth: 'any', fn: getPushKey_ }, pushDiag: { auth: 'any', fn: pushDiag_ }, savePushSub: { auth: 'any', write: 1, fn: savePushSub_ }, delPushSub: { auth: 'any', write: 1, fn: delPushSub_ },
   sodGet: { auth: 'any', write: 1, fn: sodGet_ }, sodAbrir: { auth: 'any', write: 1, fn: sodAbrir_ }, sodEquipar: { auth: 'any', write: 1, fn: sodEquipar_ }, sodDescartar: { auth: 'any', write: 1, fn: sodDescartar_ }, sodAparencia: { auth: 'any', write: 1, fn: sodAparencia_ }, sodOrar: { auth: 'any', write: 1, fn: sodOrar_ }, sodComprar: { auth: 'any', write: 1, fn: sodComprar_ },
   listMarks: { auth: 'any', fn: listMarks_ }, saveMark: { auth: 'any', write: 1, fn: saveMark_ }, saveNote: { auth: 'any', write: 1, fn: saveNote_ }, listCultoNotes: { auth: 'any', fn: listCultoNotes_ }, getMural: { auth: 'any', fn: getMural_ },
-  listInsigniaDefs: { auth: 'any', fn: listInsigniaDefs_ }, saveInsigniaDef: { auth: 'any', write: 1, fn: saveInsigniaDef_ }, grantBadge: { auth: 'any', write: 1, fn: grantBadge_ }, logServico: { auth: 'any', write: 1, fn: logServico_ }, listServicos: { auth: 'any', fn: listServicos_ }, searchPeople: { auth: 'any', fn: findPeople_ }, sendChat: { auth: 'any', write: 1, fn: sendChat_ }, getChat: { auth: 'any', fn: getChat_ }, chatRead: { auth: 'any', write: 1, fn: chatRead_ }, chatTyping: { auth: 'any', fn: chatTyping_ }, listChats: { auth: 'any', fn: listChats_ }, getCertLayout: { auth: 'any', fn: getCertLayout_ }, saveCertLayout: { auth: 'any', write: 1, fn: saveCertLayout_ }, previewCert: { auth: 'any', fn: previewCert_ }, revokeCert: { auth: 'any', write: 1, fn: revokeCert_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, saveFaces: { auth: 'eventos', write: 1, fn: saveFaces_ }, faceRoster: { auth: 'eventos', fn: faceRoster_ }, setFaceAuth: { auth: 'eventos', write: 1, fn: setFaceAuth_ }, listFaces: { auth: 'eventos', fn: listFaces_ }, clearFaces: { auth: 'eventos', write: 1, fn: clearFaces_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, learnFace: { auth: 'eventos', write: 1, fn: learnFace_ }, clearSamples: { auth: 'eventos', write: 1, fn: clearSamples_ }, faceMe: { auth: 'any', fn: faceMe_ }, faceScan: { auth: 'any', write: 1, fn: faceScan_ }, faceRevoke: { auth: 'any', write: 1, fn: faceRevoke_ }, faceStat: { auth: 'eventos', write: 1, fn: faceStat_ }, faceStats: { auth: 'eventos', fn: faceStats_ }, cultoPresenca: { auth: 'eventos', fn: cultoPresenca_ }, checkinCulto: { auth: 'eventos', write: 1, fn: checkinCulto_ }, cultosResumo: { auth: 'eventos', fn: cultosResumo_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
+  listInsigniaDefs: { auth: 'any', fn: listInsigniaDefs_ }, saveInsigniaDef: { auth: 'any', write: 1, fn: saveInsigniaDef_ }, grantBadge: { auth: 'any', write: 1, fn: grantBadge_ }, logServico: { auth: 'any', write: 1, fn: logServico_ }, listServicos: { auth: 'any', fn: listServicos_ }, searchPeople: { auth: 'any', fn: findPeople_ }, sendChat: { auth: 'any', write: 1, fn: sendChat_ }, getChat: { auth: 'any', fn: getChat_ }, chatRead: { auth: 'any', write: 1, fn: chatRead_ }, chatTyping: { auth: 'any', fn: chatTyping_ }, listChats: { auth: 'any', fn: listChats_ }, getCertLayout: { auth: 'any', fn: getCertLayout_ }, saveCertLayout: { auth: 'any', write: 1, fn: saveCertLayout_ }, previewCert: { auth: 'any', fn: previewCert_ }, revokeCert: { auth: 'any', write: 1, fn: revokeCert_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, saveFaces: { auth: 'eventos', write: 1, fn: saveFaces_ }, faceRoster: { auth: 'eventos', fn: faceRoster_ }, setFaceAuth: { auth: 'eventos', write: 1, fn: setFaceAuth_ }, listFaces: { auth: 'eventos', fn: listFaces_ }, clearFaces: { auth: 'eventos', write: 1, fn: clearFaces_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, learnFace: { auth: 'eventos', write: 1, fn: learnFace_ }, clearSamples: { auth: 'eventos', write: 1, fn: clearSamples_ }, listFichas: { auth: 'any', fn: listFichas_ }, getFicha: { auth: 'any', fn: getFicha_ }, routeVisitor: { auth: 'any', write: 1, fn: routeVisitor_ }, acceptVisitor: { auth: 'any', write: 1, fn: acceptVisitor_ }, saveFichaEntrada: { auth: 'any', write: 1, fn: saveFichaEntrada_ }, faceMe: { auth: 'any', fn: faceMe_ }, faceScan: { auth: 'any', write: 1, fn: faceScan_ }, faceRevoke: { auth: 'any', write: 1, fn: faceRevoke_ }, faceStat: { auth: 'eventos', write: 1, fn: faceStat_ }, faceStats: { auth: 'eventos', fn: faceStats_ }, cultoPresenca: { auth: 'eventos', fn: cultoPresenca_ }, checkinCulto: { auth: 'eventos', write: 1, fn: checkinCulto_ }, cultosResumo: { auth: 'eventos', fn: cultosResumo_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
   searchCells: { auth: 'any', fn: searchCells_ }, addPrayer: { auth: 'any', write: 1, fn: addPrayer_ }, listPrayers: { auth: 'any', fn: listPrayers_ },
   cellMembers: { auth: 'any', fn: cellMembers_ }, saveCell: { auth: 'any', write: 1, fn: saveCell_ }, saveAttendance: { auth: 'any', write: 1, fn: saveAttendance_ }, history: { auth: 'any', fn: history_ },
   indicators: { auth: 'any', fn: indicators_ }, getPapeis: { auth: 'any', fn: getPapeis_ }, savePapeis: { auth: 'any', write: 1, fn: savePapeis_ }, createCellEvent: { auth: 'any', write: 1, fn: createCellEvent_ },

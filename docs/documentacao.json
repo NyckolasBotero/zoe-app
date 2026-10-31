@@ -80,5 +80,14 @@
    "O titular pode refazer o scanner ou apagar os dados e revogar o consentimento em Meu perfil › Configurações; quem revoga não é obrigado de novo.",
    "Quem faz o scanner (com os termos aceitos) fica autorizado para a chamada; um administrador pode desautorizar depois na aba Presença facial."
   ]
+ },
+ {
+  "t": "Ficha do membro e consolidação",
+  "itens": [
+   "Aba Fichas de membros: lista com busca e ficha completa com linha do tempo; o alcance depende do papel (líder, supervisor, pastor, administração).",
+   "Visitante novo: fica 'aguardando o supervisor'; o supervisor encaminha para a célula e, opcionalmente, para um consolidador direto; o líder da célula segue como registro.",
+   "Quem recebe aceita (ou devolve ao supervisor). Datas de cadastro, encaminhamento e aceite aparecem na ficha.",
+   "Backend: colunas novas em Membros (DataEntrada) e Visitantes (Status, SupervisorID, LiderID, ConsolidadorID, TriagemPor, EncaminhadoEm, AceitoEm, AceitoPor, MembroID): rodar setup() após colar o Code.gs."
+  ]
  }
 ]
