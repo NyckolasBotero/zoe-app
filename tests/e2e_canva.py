@@ -14,7 +14,7 @@ with sync_playwright() as p:
     ph.click('.cv-b:has-text("Círculo")'); assert ph.evaluate("CV.els.length")==2
     ph.click('button[aria-label=Desfazer]'); assert ph.evaluate("CV.els.length")==1
     ph.click('button[aria-label=Refazer]'); assert ph.evaluate("CV.els.length")==2
-    ph.click('#cvtabs >> text=Modelos'); ph.once('dialog',lambda d:d.accept()); ph.click('.cv-b:has-text("Versículo")'); assert ph.evaluate("CV.els.length")==2
+    ph.click('#cvtabs >> text=Modelos'); ph.click('.cv-b:has-text("Versículo")'); assert ph.evaluate("CV.els.length")==2
     px=ph.evaluate("(()=>{const c=document.getElementById('cvc'),d=c.getContext('2d').getImageData(5,5,1,1).data;return d[0]+d[1]+d[2]})()"); assert px>0
     ph.click('#cvc',position={'x':100,'y':60}); ph.evaluate("CV.sel=CV.els[0].id"); ph.evaluate("cvDel()"); assert ph.evaluate("CV.els.length")==1
     assert ph.evaluate("(cvJpeg(45000)||'').length")>0
@@ -22,6 +22,6 @@ with sync_playwright() as p:
     assert ph.evaluate("(AGD.mid||[]).length")>=1
     # Sod por usuário
     ph.evaluate("go('perfil','info')"); ph.wait_for_selector('text=Usar o Sod')
-    on=ph.evaluate("sodOn()"); ph.click('input[aria-label="Usar o Sod"]'); assert ph.evaluate("sodOn()")!=on
-    ph.click('input[aria-label="Usar o Sod"]'); assert ph.evaluate("sodOn()")==on
+    on=ph.evaluate("sodOn()"); ph.click('input[aria-label="Usar o Sod"]'); ph.wait_for_function("sodOn()!=="+("true" if on else "false"),timeout=6000)
+    ph.wait_for_timeout(500); ph.click('input[aria-label="Usar o Sod"]'); ph.wait_for_function("sodOn()==="+("true" if on else "false"),timeout=6000)
     print('OK canva+sod'); b.close()
