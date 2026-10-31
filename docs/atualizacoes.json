@@ -1,5 +1,15 @@
 [
  {
+  "titulo": "Sede marcada no mapa com o símbolo da Zoe e Dados da igreja junto com Mapas",
+  "melhorias": [
+   "Administração › Definições de Parâmetros: Dados da igreja e Mapas viraram um cartão só, com um botão Salvar.",
+   "Sede da igreja: toque no mapa para marcar onde fica (ou digite as coordenadas, ou use a sua localização).",
+   "A sede aparece em todos os mapas num pin verde maior, com o símbolo da árvore da Zoe dentro."
+  ],
+  "v": "1.84",
+  "data": "31/10/2026"
+ },
+ {
   "titulo": "Chamada da célula: nota de presença de Deus por pessoa, visitantes e mural compartilhado",
   "melhorias": [
    "Chamada corrigida: o que você marcou (presentes, resumo e termômetro) não some mais ao tirar a foto.",

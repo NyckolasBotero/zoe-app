@@ -1,7 +1,7 @@
 # Mapas: distribuição de membros (cards, filtros, calor, foco na célula, alerta de congregação), pin do visitante com células no raio, parâmetros
 from playwright.sync_api import sync_playwright
 import os
-URL='http://localhost:8799/'; errs=[]; OUT=os.environ.get('SHOTS','/tmp')
+URL=os.environ.get('URL','http://localhost:8799/'); errs=[]; OUT=os.environ.get('SHOTS','/tmp')
 def entra(b,email,senha,w=1280,h=900):
     ctx=b.new_context(viewport={'width':w,'height':h}); pg=ctx.new_page(); pg.add_init_script('Error.stackTraceLimit=60'); pg.on('pageerror',lambda e:(errs.append(str(e)),print('PAGEERR',e.stack[:2500]))); pg.on('dialog',lambda d:d.accept())
     pg.goto(URL); pg.wait_for_selector('#lg_e'); pg.fill('#lg_e',email); pg.fill('#lg_s',senha); pg.click('#lg_b'); pg.wait_for_selector('#view h1,#fp_n'); pg.wait_for_selector('#splash',state='detached',timeout=15000)
@@ -18,6 +18,7 @@ with sync_playwright() as p:
     assert a.locator('.leaflet-marker-icon .pcl .pct:has-text("Lid1")').count()==1 or a.locator('.pcl .pct span').count()>=1
     assert a.locator('.leaflet-marker-icon .ppes').count()==5
     assert a.locator('.ppes.cz').count()==2, 'quem não tem célula fica cinza'
+    assert a.locator('.leaflet-marker-icon .psd img').count()==1, 'sede com o símbolo da Zoe no mapa'
     a.screenshot(path=OUT+'/mapa_dist.png',full_page=True)
     # filtros
     a.click('label.chip:has-text("Membros")'); a.wait_for_function("document.querySelectorAll('.leaflet-marker-icon .ppes').length<5")
@@ -43,6 +44,13 @@ with sync_playwright() as p:
     a.evaluate("go('admin')"); a.wait_for_selector('.admtabs'); a.click('.admtabs button:has-text("Definições")'); a.wait_for_selector('#mc_v',timeout=8000)
     a.fill('#mc_a','20'); a.click('button:has-text("Salvar") >> nth=0') if False else None
     a.evaluate("mcSalva()"); a.wait_for_function("S.mapaCfg&&S.mapaCfg.alerta===20",timeout=8000)
+    # sede: cartão único (dados da igreja + mapas) e clique no mapa marca a sede com o pin da Zoe
+    a.evaluate("go('admin')"); a.wait_for_selector('.admtabs'); a.click('.admtabs button:has-text(\"Definições\")'); a.wait_for_selector('#sedemapa.leaflet-container',timeout=10000)
+    assert a.locator('h3:has-text("Dados da igreja e mapas")').count()==1 and a.locator('h3:has-text("Dados da igreja")').count()==1, 'um cartão só'
+    assert a.locator('#sedemapa .psd img').count()==1, 'pin da sede com o símbolo'
+    antes=a.input_value('#mc_la'); a.evaluate("SED.m.fire('click',{latlng:L.latLng(-15.8123,-47.9011)})")
+    a.wait_for_function("document.querySelector('#mc_la').value!==%r"%antes,timeout=5000); nova=a.input_value('#mc_la')
+    a.click('button:has-text("Salvar") >> nth=-1'); a.wait_for_function("S.mapaCfg&&String(S.mapaCfg.sedeLat)===%r"%nova.replace(',','.'),timeout=8000)
     a.click('.nv[aria-label="Mapas"]'); a.click('.tabs button:has-text("Distribuição de membros")'); a.wait_for_selector('.mpal.r',timeout=10000); assert 'Necessidade de abertura de uma congregação' in a.inner_text('#view')
     # pin do visitante: células no raio
     a.click('.nv[aria-label="Consolidação"]'); a.wait_for_selector('#vmapa .leaflet-container, #vmapa.leaflet-container',timeout=8000)
