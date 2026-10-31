@@ -5,10 +5,11 @@
   "data": "31/10/2026",
   "melhorias": [
    "Controle remoto com layout de controle: pílulas SLIDE (＋ próximo, － anterior) e ITEM (▲ ▼), botão vermelho de pausa, atalhos redondos e área de toque (deslize para os lados troca o slide, para cima ou para baixo troca o item). O botão Recolher esconde a área de toque.",
-   "Studio Zoe reorganizado. Projeção: Bíblia e letras de músicas, Agendas de músicas, Controle remoto, Tela de pausa, Layout e Canva Zoe. Lives: Estúdio e Plataformas e conexão. A aba de músicas ganhou o atalho Bíblia no telão.",
-   "Canva Zoe: editor de artes gratuito dentro do app, sem biblioteca externa. Texto com várias fontes, formas, imagens, fundos em degradê, 6 modelos da igreja, camadas, desfazer e refazer, tamanhos Telão, Quadrado e Story, baixar PNG e enviar direto ao telão.",
+   "Studio Zoe reorganizado. Projeção: Bíblia e letras de músicas, Agendas de músicas, Controle remoto, Tela de pausa e Layout. Lives: Estúdio e Plataformas e conexão. A aba de músicas ganhou o atalho Bíblia no telão.",
+   "Canva Zoe: nova área no menu para a equipe de Social Mídia, com editor de artes gratuito dentro do app. Formatos: telão e YouTube, feed quadrado, feed retrato 4:5, story e reels, capa do Facebook, cartaz A4 e tamanho personalizado. Texto com fontes, formas, imagens, fundos em degradê, 6 modelos, camadas, desfazer e refazer, baixar PNG e JPG no tamanho total.",
+   "Aprovação das artes: a equipe salva rascunho ou envia para aprovação. O pastor líder da Social Mídia (e pastores e administradores) aprova ou pede ajuste com motivo. Arte aprovada entra sozinha na biblioteca do telão e nas fontes do Estúdio para as lives. Pastores e administradores escolhem quem mais pode aprovar.",
    "Sod por pessoa: no Perfil, em Informações, cada membro liga ou desliga o próprio Sod. O progresso fica guardado. Se a administração desligar o Sod para todos, a opção some.",
-   "Backend: nova coluna SodOff em Membros e rota saveMySod. Cole o Code.gs no Apps Script e rode setup()."
+   "Backend: coluna SodOff em Membros, tabela Artes e rotas saveMySod, listArtes, getArte, saveArte, decideArte, deleteArte e saveArteAprovadores. Cole o Code.gs no Apps Script e rode setup()."
   ]
  },
  {

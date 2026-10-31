@@ -384,5 +384,5 @@ Segure e arraste a Zoe para qualquer posição da tela (mouse ou toque); a posi�
 - Teste: `SEED_MAPAS=1 node tests/devserver.mjs` e `python3 tests/e2e_mapas.py`.
 
 ## Telão ao vivo
-- Controle remoto em formato de controle (`tlControle`: SLIDE, ITEM, pausa, área de toque), aba **Canva Zoe** (editor nativo `cv*`) e Sod por usuário (`SodOff`, `saveMySod`).
+- Controle remoto em formato de controle (`tlControle`: SLIDE, ITEM, pausa, área de toque), área **Canva Zoe** (editor nativo `cv*` com fluxo de aprovação: tabela `Artes`, rotas `saveArte`/`decideArte`) e Sod por usuário (`SodOff`, `saveMySod`).
 - Controle remoto com abas (Agenda, Músicas, Versículos, Artes), recentes (`TL.rec`), referência digitada (`vsParse`), navegação de versículos (`vsNav`) e envio de várias artes (`midiasSobe`). Teste: `tests/e2e_telao_rapido.py`.
