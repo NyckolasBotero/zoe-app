@@ -37,6 +37,24 @@ with sync_playwright() as p:
     assert a.evaluate("api('listFaces').then(r=>r.itens.length)")==2,'quem não está autorizado não entra'
     a.evaluate("rfCarrega()"); a.wait_for_function("RF.itens.filter(x=>x.idx).length===2"); a.wait_for_selector('button:has-text("Abrir câmera"):not([disabled])')
     a.screenshot(path=OUT+'/face_aba.png')
+    # fotos de exemplo enviadas à mão: uma foto com um rosto vira amostra; foto com dois rostos é recusada; quem não está autorizado não recebe
+    import zlib,struct
+    def png():
+        raw=b''.join(b'\x00'+b'\xff\x88\x44'*4 for _ in range(4)); ch=lambda t,d:struct.pack('>I',len(d))+t+d+struct.pack('>I',zlib.crc32(t+d)&0xffffffff)
+        return b'\x89PNG\r\n\x1a\n'+ch(b'IHDR',struct.pack('>IIBBBBB',4,4,8,2,0,0,0))+ch(b'IDAT',zlib.compress(raw))+ch(b'IEND',b'')
+    open('/tmp/rosto_ex.png','wb').write(png())
+    a.fill('#rf_q','ana'); a.wait_for_function("document.querySelectorAll('#rf_l .rfrow').length===1")
+    a.evaluate("__faces=[{seed:5,box:{x:100,y:80,width:120,height:150}}]")
+    with a.expect_file_chooser() as fc: a.click('#rf_l .rfrow button:has-text("Enviar fotos")')
+    fc.value.set_files('/tmp/rosto_ex.png'); a.wait_for_function("document.querySelector('#rf_st').textContent.includes('1 foto(s) adicionada')",timeout=15000)
+    assert a.evaluate("api('listFaces').then(r=>r.itens.find(x=>x.nome.startsWith('Ana')).s.length)")==1
+    a.wait_for_function("document.querySelector('#rf_l').textContent.includes('1 amostra')")
+    a.evaluate("__faces=[{seed:6,box:{x:100,y:80,width:120,height:150}},{seed:7,box:{x:300,y:80,width:120,height:150}}]")
+    with a.expect_file_chooser() as fc: a.click('#rf_l .rfrow button:has-text("Enviar fotos")')
+    fc.value.set_files('/tmp/rosto_ex.png'); a.wait_for_function("document.querySelector('#rf_st').textContent.includes('mais de um rosto')",timeout=15000)
+    assert a.evaluate("api('listFaces').then(r=>r.itens.find(x=>x.nome.startsWith('Ana')).s.length)")==1
+    a.evaluate("__faces=[]"); a.fill('#rf_q','carl'); a.wait_for_function("document.querySelectorAll('#rf_l .rfrow').length===1"); assert a.locator('#rf_l .rfrow button:has-text("Enviar fotos")').count()==0,'só quem está autorizado tem o botão'
+    a.fill('#rf_q','')
     a.click('button:has-text("Abrir câmera")'); a.wait_for_selector('#fcov #fc_go'); assert a.inner_text('#fc_n')=='2'
     # indexação: sem foto de perfil nenhuma é indexada, mas o fluxo termina sem erro
     a.evaluate("FC.info.falta=['x_inexistente']; fcDesenha()"); a.click('#fc_ix'); a.wait_for_function("document.querySelector('#fc_st').textContent.includes('sem rosto')",timeout=10000)

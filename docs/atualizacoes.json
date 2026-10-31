@@ -1,5 +1,15 @@
 [
  {
+  "titulo": "Presença facial: enviar fotos de exemplo à mão",
+  "melhorias": [
+   "Na lista de autorizados, cada pessoa tem o botão Enviar fotos: escolha uma ou várias fotos (até 12) e cada foto com um rosto nítido vira uma amostra para o reconhecimento.",
+   "Fotos sem rosto, borradas ou com mais de um rosto são avisadas e ignoradas; fotos quase iguais às já guardadas não repetem.",
+   "A lista mostra quantas amostras cada pessoa já tem. Rode a atualização do Code.gs (colar e publicar nova versão)."
+  ],
+  "v": "1.66",
+  "data": "31/10/2026"
+ },
+ {
   "titulo": "Presença facial: aprende com cada culto e mede a taxa de acerto",
   "melhorias": [
    "Aprendizado contínuo: cada rosto que você confirma ou corrige é guardado como amostra da pessoa (até 6, em ângulos e luzes diferentes). A foto de perfil continua como base e o reconhecimento usa a assinatura mais parecida.",

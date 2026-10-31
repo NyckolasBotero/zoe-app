@@ -360,3 +360,5 @@ Segure e arraste a Zoe para qualquer posição da tela (mouse ou toque); a posi�
 - Cada pessoa tem a assinatura da foto de perfil (`Descritor`) e até 6 `Amostras` aprendidas na câmera (`learnFace`: ignora rosto quase igual, <0,18; cheio, renova a amostra mais parecida). A distância a uma pessoa é a menor entre todas as assinaturas.
 - Rastros: o rosto é acompanhado por vários quadros e comparado pela média; rostos pequenos (<70 px) ou com baixa confiança não contam.
 - Taxa de acerto = confirmadas / (confirmadas + "Não é" + identificadas à mão). Rotas `faceStat` e `faceStats`; aba `RostoLog`.
+
+- Fotos de exemplo à mão: botão "Enviar fotos" por pessoa autorizada (`rfFotos`/`rfFotosLe`): só fotos com exatamente um rosto viram amostra (`learnFace`); `faceRoster` devolve `am` (quantidade de amostras).

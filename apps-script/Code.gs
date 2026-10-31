@@ -1578,7 +1578,7 @@ function descOk_(v) { if (!Array.isArray(v) || v.length !== 128) return ''; cons
 const rostoAut_ = function (r) { return !!r && r.Autorizado !== '0'; };
 function faceRoster_(d, u) {
   const lin = {}; table_('Rostos').rows.forEach(function (r) { lin[r.MembroID] = r; });
-  const itens = table_('Membros').rows.filter(function (m) { return m.Status !== 'Inativo'; }).map(function (m) { const r = lin[m.MembroID]; return { id: m.MembroID, nome: m.Nome, foto: m.Foto ? 1 : 0, aut: rostoAut_(r), idx: !!(r && (r.Descritor || r.Amostras)), em: r && r.AutorizadoEm || '' }; });
+  const itens = table_('Membros').rows.filter(function (m) { return m.Status !== 'Inativo'; }).map(function (m) { const r = lin[m.MembroID]; return { id: m.MembroID, nome: m.Nome, foto: m.Foto ? 1 : 0, aut: rostoAut_(r), idx: !!(r && (r.Descritor || r.Amostras)), am: r ? amostras_(r.Amostras).length : 0, em: r && r.AutorizadoEm || '' }; });
   itens.sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome)); }); return { itens: itens };
 }
 function setFaceAuth_(d, u) {
