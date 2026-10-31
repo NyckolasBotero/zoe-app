@@ -5,7 +5,7 @@ self.addEventListener('push', (e) => {
   let d = {}; try { d = e.data ? e.data.json() : {}; } catch (x) { d = { title: 'Zoe', body: e.data ? e.data.text() : '' }; }
   e.waitUntil((async () => {
     const cs = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    if (cs.some((c) => c.visibilityState === 'visible' && c.focused)) return; // quem está com o app aberto já vê dentro dele
+    // sempre mostra: o iPhone exige que todo aviso recebido apareça, senão desliga as notificações do app
     await self.registration.showNotification(d.title || 'Ministério Zoe', { body: d.body || '', tag: d.tag || 'zoe', icon: 'assets/img/icon-192.png', badge: 'assets/img/icon-192.png', data: { url: d.url || './' }, renotify: true });
   })());
 });

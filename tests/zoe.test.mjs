@@ -1134,7 +1134,7 @@ test('Sod liga/desliga, lembrete diário das missões, Web Push (inscrição, ch
   assert.ok(e.call('sendChat', { para: ana, texto: 'Oi, Ana! Tudo bem?' }, adm).ok);
   const p = e.run('CALLS.filter(c => /push$/.test(c.u))'); assert.equal(p.length, 1); const env = JSON.parse(p[0].o.payload).envios; assert.equal(env.length, 2); assert.match(env[0].payload.title, /Pastor|admin/i); assert.equal(env[0].payload.body, 'Oi, Ana! Tudo bem?'); assert.equal(p[0].o.headers.Authorization, 'Bearer seg');
   assert.equal(e.run('table_("PushSubs").rows.filter(r=>r.Endpoint).length'), 1, 'endpoint expirado (410) é descartado');
-  e.call('getChat', { com: idDe(adm) }, A); e.run('CALLS.length = 0'); assert.ok(e.call('sendChat', { para: ana, texto: 'Segunda' }, adm).ok); assert.equal(e.run('CALLS.filter(c => /push$/.test(c.u))').length, 0, 'online: sem pop-up');
+  e.call('getChat', { com: idDe(adm) }, A); e.run('CALLS.length = 0'); assert.ok(e.call('sendChat', { para: ana, texto: 'Segunda' }, adm).ok); assert.equal(e.run('CALLS.filter(c => /push$/.test(c.u))').length, 1, 'online também recebe: o aparelho decide como mostrar');
   // notificações guardadas também viram pop-up
   e.run('CALLS.length = 0'); e.run(`notify_('${ana}', 'aniv', 'Aniversário', 'Hoje é dia de festa'); pushFlush_()`); assert.equal(e.run('CALLS.filter(c => /push$/.test(c.u))').length, 1);
   assert.ok(e.call('delPushSub', { endpoint: 'https://push.example.com/ana-1' }, A).ok); assert.equal(e.run('table_("PushSubs").rows.filter(r=>r.Endpoint).length'), 0);
@@ -1151,4 +1151,9 @@ test('rostos: salva assinatura, lista, valida e apaga (só quem tem permissão d
   const l = e.call('listFaces', {}, adm).data; assert.equal(l.itens.length, 1); assert.equal(l.itens[0].d.length, 128);
   assert.equal(e.call('saveFaces', { itens: [{ id: mid, d }] }, adm).data.n, 1); assert.equal(e.call('listFaces', {}, adm).data.itens.length, 1);
   assert.equal(e.call('clearFaces', {}, adm).data.n, 1); assert.equal(e.call('listFaces', {}, adm).data.itens.length, 0);
+});
+test('notificações: diagnóstico sem relay e chat sempre enfileira push', () => {
+  const { e, adm } = boot();
+  const d = e.call('pushDiag', { teste: true }, adm).data; assert.equal(d.relayCfg, false); assert.equal(d.relayOk, false); assert.match(d.relayMsg, /relay/);
+  assert.ok(e.run('sendChat_.toString()').includes("PUSHQ_.push({ m: para") && !e.run('sendChat_.toString()').includes('presDe_(para'));
 });

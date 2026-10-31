@@ -1,5 +1,16 @@
 [
  {
+  "titulo": "Notificações do chat mais confiáveis",
+  "melhorias": [
+   "Mensagens do chat agora sempre geram notificação no celular de quem recebe, mesmo se o app estiver aberto em segundo plano.",
+   "O aviso aparece sempre no aparelho (exigência do iPhone para manter as notificações ligadas).",
+   "Novo botão em Administração › Definições › Notificações no aparelho: verifica o servidor de avisos, mostra quem ativou e envia um teste para o seu celular.",
+   "Se a chave do servidor mudar, o app refaz a inscrição do aparelho sozinho."
+  ],
+  "v": "1.41",
+  "data": "30/10/2026"
+ },
+ {
   "titulo": "Câmera de presença por rosto",
   "melhorias": [
    "Em Administração › Publicações › Presença nos eventos há o botão Câmera de presença: abre a câmera do celular e marca com caixas coloridas onde há rostos (verde = reconhecido, amarelo = desconhecido, azul = já presente).",

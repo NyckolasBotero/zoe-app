@@ -1653,7 +1653,7 @@ function sendChat_(d, u) {
     const t = table_('ChatMsgs'), agora = Date.now(); let n = 0; for (let i = t.rows.length - 1; i >= 0 && i > t.rows.length - 200; i--) { const r = t.rows[i]; if (r.De === u.membroId && agora - Number(r.Ts) < 60000) n++; }
     if (n >= CHAT_POR_MIN) throw new ApiError('RATE', 'Muitas mensagens seguidas. Espere um minuto.');
     CacheService.getScriptCache().remove('t:' + u.membroId + ':' + para); const id = id_('MS'); appendRow_(t, { MsgID: id, ConvID: convId_(u.membroId, para), De: u.membroId, Para: para, Texto: texto, Ts: String(agora), Lida: '0' });
-    if (!presDe_(para, {}).online) { const eu = table_('Membros').rows.filter(function (x) { return x.MembroID === u.membroId; })[0]; PUSHQ_.push({ m: para, t: (eu && (eu.Simples || eu.Apelido || eu.Nome)) || 'Nova mensagem', b: texto.length > 90 ? texto.slice(0, 90) + '…' : texto, k: 'chat' }); }
+    { const eu = table_('Membros').rows.filter(function (x) { return x.MembroID === u.membroId; })[0]; PUSHQ_.push({ m: para, t: (eu && (eu.Simples || eu.Apelido || eu.Nome)) || 'Nova mensagem', b: texto.length > 90 ? texto.slice(0, 90) + '…' : texto, k: 'chat' }); }
     return { id: id, ts: agora };
   });
 }
@@ -2664,7 +2664,7 @@ const ROUTES = {
   listScales: { auth: 'any', fn: listScales_ }, claimScale: { auth: 'any', write: 1, fn: claimScale_ }, saveScale: { auth: 'any', write: 1, fn: saveScale_ }, rescheduleScale: { auth: 'any', write: 1, fn: rescheduleScale_ }, deleteScale: { auth: 'any', write: 1, fn: deleteScale_ }, respondScale: { auth: 'any', write: 1, fn: respondScale_ }, requestSwap: { auth: 'any', write: 1, fn: requestSwap_ }, answerSwap: { auth: 'any', write: 1, fn: answerSwap_ }, markScale: { auth: 'any', write: 1, fn: markScale_ }, requestJoin: { auth: 'any', write: 1, fn: requestJoin_ }, decideJoin: { auth: 'any', write: 1, fn: decideJoin_ },
   listSongs: { auth: 'any', fn: listSongs_ }, saveSong: { auth: 'any', write: 1, fn: saveSong_ }, deleteSong: { auth: 'any', write: 1, fn: deleteSong_ }, saveSongDefault: { auth: 'any', write: 1, fn: saveSongDefault_ }, searchLyrics: { auth: 'any', fn: searchLyrics_ }, importLyrics: { auth: 'any', fn: importLyrics_ },
   boot: { auth: 'any', fn: boot_ },
-  getPushKey: { auth: 'any', fn: getPushKey_ }, savePushSub: { auth: 'any', write: 1, fn: savePushSub_ }, delPushSub: { auth: 'any', write: 1, fn: delPushSub_ },
+  getPushKey: { auth: 'any', fn: getPushKey_ }, pushDiag: { auth: 'any', fn: pushDiag_ }, savePushSub: { auth: 'any', write: 1, fn: savePushSub_ }, delPushSub: { auth: 'any', write: 1, fn: delPushSub_ },
   sodGet: { auth: 'any', write: 1, fn: sodGet_ }, sodAbrir: { auth: 'any', write: 1, fn: sodAbrir_ }, sodEquipar: { auth: 'any', write: 1, fn: sodEquipar_ }, sodDescartar: { auth: 'any', write: 1, fn: sodDescartar_ }, sodAparencia: { auth: 'any', write: 1, fn: sodAparencia_ }, sodOrar: { auth: 'any', write: 1, fn: sodOrar_ }, sodComprar: { auth: 'any', write: 1, fn: sodComprar_ },
   listMarks: { auth: 'any', fn: listMarks_ }, saveMark: { auth: 'any', write: 1, fn: saveMark_ }, saveNote: { auth: 'any', write: 1, fn: saveNote_ }, listCultoNotes: { auth: 'any', fn: listCultoNotes_ }, getMural: { auth: 'any', fn: getMural_ },
   listInsigniaDefs: { auth: 'any', fn: listInsigniaDefs_ }, saveInsigniaDef: { auth: 'any', write: 1, fn: saveInsigniaDef_ }, grantBadge: { auth: 'any', write: 1, fn: grantBadge_ }, logServico: { auth: 'any', write: 1, fn: logServico_ }, listServicos: { auth: 'any', fn: listServicos_ }, searchPeople: { auth: 'any', fn: findPeople_ }, sendChat: { auth: 'any', write: 1, fn: sendChat_ }, getChat: { auth: 'any', fn: getChat_ }, chatRead: { auth: 'any', write: 1, fn: chatRead_ }, chatTyping: { auth: 'any', fn: chatTyping_ }, listChats: { auth: 'any', fn: listChats_ }, getCertLayout: { auth: 'any', fn: getCertLayout_ }, saveCertLayout: { auth: 'any', write: 1, fn: saveCertLayout_ }, previewCert: { auth: 'any', fn: previewCert_ }, revokeCert: { auth: 'any', write: 1, fn: revokeCert_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, saveFaces: { auth: 'eventos', write: 1, fn: saveFaces_ }, listFaces: { auth: 'eventos', fn: listFaces_ }, clearFaces: { auth: 'eventos', write: 1, fn: clearFaces_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
@@ -2724,6 +2724,37 @@ function savePushSub_(d, u) {
   });
 }
 function delPushSub_(d, u) { return withLock_(function () { const t = table_('PushSubs'), r = t.rows.filter(function (x) { return x.Endpoint === String(d.endpoint || '') && x.MembroID === u.membroId; })[0]; if (r) writeRow_(t, r._row, { MembroID: '', Endpoint: '' }); return { ok: true }; }); }
+// Diagnóstico das notificações: confere o servidor relay, a chave e as inscrições; com d.teste envia uma notificação de teste aos aparelhos de quem pediu
+function pushDiag_(d, u) {
+  const rl = pushRelayHttp_(), out = { relayCfg: !!rl, relayOk: false, relayMsg: '', chaveTroca: false, subs: 0, pessoas: 0, meus: 0, teste: null };
+  let subs = []; try { subs = table_('PushSubs').rows.filter(function (x) { return x.MembroID && x.Endpoint; }); } catch (e) { subs = []; }
+  const quem = {}; subs.forEach(function (x) { quem[x.MembroID] = 1; }); out.subs = subs.length; out.pessoas = Object.keys(quem).length; out.meus = subs.filter(function (x) { return x.MembroID === u.membroId; }).length;
+  if (!rl) { out.relayMsg = 'O servidor de notificações (relay) não está configurado em Studio Zoe › Lives.'; return out; }
+  try {
+    const x = UrlFetchApp.fetch(rl.base + '/vapid', { muteHttpExceptions: true }), cod = x.getResponseCode();
+    if (cod === 404) out.relayMsg = 'O servidor responde, mas está com a versão antiga (sem notificações). Atualize o relay.';
+    else if (cod !== 200) out.relayMsg = 'O servidor respondeu com erro ' + cod + '.';
+    else { const k = String(jparse_(x.getContentText(), {}).key || ''); if (!/^[A-Za-z0-9_-]{60,120}$/.test(k)) out.relayMsg = 'O servidor devolveu uma chave inválida.'; else { out.relayOk = true;
+      const c = cfgMap_(); if (c.PushPub !== k) { out.chaveTroca = !!c.PushPub; withLock_(function () { const t = table_('Config'), r0 = t.rows.filter(function (q) { return q.Chave === 'PushPub'; })[0]; if (r0) writeRow_(t, r0._row, { Valor: k }); else appendRow_(t, { Chave: 'PushPub', Valor: k }); }); } } }
+  } catch (e) { out.relayMsg = 'Não consegui falar com o servidor: ' + String(e && e.message || e).slice(0, 120); }
+  if (d && d.teste && out.relayOk) {
+    const meus = subs.filter(function (x) { return x.MembroID === u.membroId; });
+    if (!meus.length) out.teste = { enviados: 0, ok: 0, msg: 'Este aparelho ainda não está inscrito. Ative as notificações neste celular primeiro.' };
+    else {
+      try {
+        const envios = meus.map(function (sb) { return { sub: { endpoint: sb.Endpoint, keys: { p256dh: sb.P256dh, auth: sb.Auth } }, payload: { title: 'Teste da Zoe 🔔', body: 'Se você está lendo isto, as notificações funcionam neste aparelho.', tag: 'teste', url: './' } }; });
+        const r = UrlFetchApp.fetch(rl.base + '/push', { method: 'post', contentType: 'application/json', headers: { Authorization: 'Bearer ' + rl.token }, payload: JSON.stringify({ envios: envios }), muteHttpExceptions: true });
+        if (r.getResponseCode() === 401) out.teste = { enviados: 0, ok: 0, msg: 'O servidor recusou a senha (token). Confira o token do relay em Studio Zoe › Lives.' };
+        else if (r.getResponseCode() !== 200) out.teste = { enviados: 0, ok: 0, msg: 'O servidor de notificações respondeu com erro ' + r.getResponseCode() + '.' };
+        else { const res = jparse_(r.getContentText(), {}).res || []; const ok = res.filter(function (x) { return x && x.status >= 200 && x.status < 300; }).length, st = res.map(function (x) { return x && x.status; });
+          out.teste = { enviados: res.length, ok: ok, status: st, msg: ok ? 'Enviada. Ela deve chegar em alguns segundos.' : 'O serviço de entrega do aparelho recusou o envio (código ' + st.join(', ') + '). Desative e ative as notificações de novo neste celular.' };
+          const mortos = {}; res.forEach(function (x) { if (x && (x.status === 404 || x.status === 410)) mortos[x.endpoint] = 1; }); if (Object.keys(mortos).length) withLock_(function () { const t = table_('PushSubs'); t.rows.forEach(function (sb) { if (mortos[sb.Endpoint]) writeRow_(t, sb._row, { MembroID: '', Endpoint: '' }); }); });
+        }
+      } catch (e) { out.teste = { enviados: 0, ok: 0, msg: 'Falha no envio: ' + String(e && e.message || e).slice(0, 120) }; }
+    }
+  }
+  return out;
+}
 function pushFlush_() {
   if (!PUSHQ_.length) return; const q = PUSHQ_.splice(0, PUSHQ_.length), rl = pushRelayHttp_(); if (!rl) return;
   let subs; try { subs = table_('PushSubs').rows; } catch (e) { return; } if (!subs.length) return;
