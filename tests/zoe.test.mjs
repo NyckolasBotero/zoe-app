@@ -1204,11 +1204,33 @@ test('aprendizado contínuo: amostras por pessoa (até 6), sem repetir, e taxa d
   assert.equal(e.call('learnFace', { itens: [{ id: a, d: vec(1) }] }, adm).data.n, 1, 'sem foto: o primeiro rosto vira a base');
   assert.equal(e.call('learnFace', { itens: [{ id: a, d: vec(1) }] }, adm).data.n, 0, 'rosto quase igual não repete');
   for (let k = 1; k <= 8; k++) e.call('learnFace', { itens: [{ id: a, d: perto(vec(1), k * 0.6) }] }, adm);
-  const l = e.call('listFaces', {}, adm).data.itens.find(x => x.id === a); assert.ok(l.d.length === 128 && l.s.length > 0 && l.s.length <= 6, 'no máximo 6 amostras: ' + l.s.length);
+  const l = e.call('listFaces', {}, adm).data.itens.find(x => x.id === a); assert.ok(l.d.length === 128 && l.s.length > 0 && l.s.length <= 12, 'no máximo 12 amostras: ' + l.s.length);
   assert.ok(e.call('faceRoster', {}, adm).data.itens.find(x => x.id === a).idx);
   assert.equal(e.call('clearSamples', { id: a }, m).error.code, 'FORBIDDEN'); assert.equal(e.call('clearSamples', { id: 'XX' }, adm).error.code, 'NOT_FOUND');
   const cs = e.call('clearSamples', { id: a }, adm); assert.ok(cs.ok && cs.data.n === l.s.length); const l2 = e.call('listFaces', {}, adm).data.itens.find(x => x.id === a); assert.equal(l2.s.length, 0); assert.equal(l2.d.length, 128, 'a base continua');
   e.call('setFaceAuth', { ids: [a], on: false }, adm); assert.equal(e.call('listFaces', {}, adm).data.itens.length, 0, 'desautorizar apaga base e amostras');
   assert.ok(e.call('faceStat', { ctx: 'Culto de sábado', ok: 8, nao: 1, man: 1 }, adm).ok); e.call('faceStat', { ctx: 'teste', ok: 2, nao: 0, man: 0 }, adm); e.call('faceStat', { ctx: 'vazio', ok: 0, nao: 0, man: 0 }, adm);
   const st = e.call('faceStats', {}, adm).data; assert.deepEqual(st.geral, { ok: 10, nao: 1, man: 1 }); assert.equal(st.sessoes.length, 2); assert.equal(e.call('faceStats', {}, m).error.code, 'FORBIDDEN');
+});
+
+test('cadastro facial do membro: consentimento LGPD obrigatório, scanner guiado, revogação e bloqueio do administrador', () => {
+  const { e, adm, tok, mk } = boot(); const a = mk('ana@zoe.com', 'membro'); const m = tok('ana@zoe.com', 'Temp12345');
+  const vec = (s) => { let x = s * 9301 + 49297; const o = []; for (let i = 0; i < 128; i++) { x = (x * 9301 + 49297) % 233280; o.push(x / 233280 - 0.5); } return o; };
+  const itens = (n) => Array.from({ length: n }, (_, i) => ({ d: vec(i + 1) }));
+  let me = e.call('faceMe', {}, m).data; assert.equal(me.precisa, true); assert.equal(me.consentido, ''); assert.ok(me.versao);
+  assert.equal(e.call('faceScan', { consentBio: true, itens: itens(10) }, m).error.code, 'VALIDATION', 'precisa dos dois consentimentos');
+  assert.equal(e.call('faceScan', { consentBio: true, consentImg: true, itens: itens(3) }, m).error.code, 'VALIDATION', 'poucas fotos');
+  assert.equal(e.call('faceScan', { consentBio: true, consentImg: true, itens: [{ d: vec(1) }, { d: vec(1) }, { d: vec(1) }, { d: vec(1) }, { d: vec(1) }, { d: vec(1) }] }, m).error.code, 'VALIDATION', 'fotos iguais não contam');
+  const r = e.call('faceScan', { consentBio: true, consentImg: true, itens: itens(10) }, m); assert.ok(r.ok && r.data.n >= 9, JSON.stringify(r));
+  me = e.call('faceMe', {}, m).data; assert.equal(me.precisa, false); assert.ok(me.consentido && me.imagem && me.autorizado && me.amostras >= 8);
+  const l = e.call('listFaces', {}, adm).data.itens.find(x => x.id === a); assert.ok(l && l.d.length === 128 && l.s.length >= 8, 'base + amostras');
+  const ro = e.call('faceRoster', {}, adm).data.itens.find(x => x.id === a); assert.ok(ro.cons && ro.aut && ro.idx);
+  e.call('clearFaces', {}, adm); me = e.call('faceMe', {}, m).data; assert.equal(me.precisa, true, 'dados apagados pedem novo scanner'); assert.ok(me.consentido, 'o registro do consentimento permanece');
+  assert.ok(e.call('faceScan', { consentBio: true, consentImg: true, itens: itens(10) }, m).ok);
+  e.call('setFaceAuth', { ids: [a], on: false }, adm);
+  assert.equal(e.call('faceScan', { consentBio: true, consentImg: true, itens: itens(10) }, m).error.code, 'FORBIDDEN', 'administrador desativou');
+  e.call('setFaceAuth', { ids: [a], on: true }, adm); assert.ok(e.call('faceScan', { consentBio: true, consentImg: true, itens: itens(10) }, m).ok);
+  assert.ok(e.call('faceRevoke', {}, m).ok); me = e.call('faceMe', {}, m).data; assert.equal(me.precisa, false, 'quem revogou não é obrigado de novo'); assert.ok(me.revogado);
+  assert.equal(e.call('listFaces', {}, adm).data.itens.length, 0, 'revogar apaga assinaturas');
+  assert.ok(e.call('faceScan', { consentBio: true, consentImg: true, itens: itens(10) }, m).ok, 'pode refazer depois de revogar'); assert.equal(e.call('faceMe', {}, m).data.revogado, '');
 });

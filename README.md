@@ -363,3 +363,10 @@ Segure e arraste a Zoe para qualquer posição da tela (mouse ou toque); a posi�
 
 - Fotos de exemplo à mão: botão "Enviar fotos" por pessoa autorizada (`rfFotos`/`rfFotosLe`): só fotos com exatamente um rosto viram amostra (`learnFace`); `faceRoster` devolve `am` (quantidade de amostras).
 - Apagar amostras: botão por pessoa (`rfApagaAm`, rota `clearSamples`): limpa só `Amostras`; a base (`Descritor`) continua.
+
+## Cadastro facial obrigatório (LGPD) e scanner guiado
+
+- Ao entrar (online), `faceGate()` consulta `faceMe`; se `precisa` (sem consentimento+rosto e sem revogação), abre o overlay `#fgov`: termos (biometria + imagem; responsável legal para menores) e scanner de 10 poses. Desligável em teste com `ZOE_CONFIG.faceGate=false` (o devserver usa `FACEGATE=1` para ligar).
+- Pose a partir dos 68 pontos (`fcPose`): yaw = posição do nariz entre as laterais do rosto; pit = altura do nariz entre olhos e queixo (relativa à base medida nas fotos de frente). Captura após 3 quadros estáveis; botão manual após 8 s.
+- Backend: rotas `faceMe`, `faceScan` (exige os dois consentimentos; mínimo 5 assinaturas diferentes; autoriza a pessoa), `faceRevoke`; colunas `ConsentimentoBio`, `ConsentimentoImagem`, `TermoVersao`, `Revogado` em `Rostos`. `clearFaces` mantém o registro do consentimento. Até 12 amostras por pessoa.
+- Testes: `tests/zoe.test.mjs` e `FACEGATE=1 bash /tmp/run1.sh tests/e2e_scan.py`.

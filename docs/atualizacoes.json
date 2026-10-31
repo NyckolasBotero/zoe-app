@@ -1,5 +1,19 @@
 [
  {
+  "titulo": "Cadastro facial obrigatório com termos LGPD e scanner guiado",
+  "melhorias": [
+   "Ao entrar no app, quem ainda não fez o cadastro facial vê os termos (biometria para a chamada e uso/divulgação de imagem) e precisa aceitar os dois para continuar.",
+   "Scanner guiado com 10 fotos: de frente, um pouco para a esquerda, para a direita, para cima e para baixo. O app orienta por texto e setas e só tira a foto quando a posição está certa (sem guardar imagens, apenas as assinaturas numéricas).",
+   "Quem faz o scanner é autorizado para a chamada e o rosto passa a ser reconhecido com várias amostras; o aprendizado dos cultos continua somando.",
+   "Em Meu perfil › Configurações: refazer o scanner e apagar os dados faciais revogando o consentimento (direito do titular).",
+   "Na lista de autorizados, cada pessoa mostra se consentiu (data), revogou ou ainda não consentiu, e há o filtro Sem consentimento.",
+   "Menores de 18 anos precisam da confirmação de um responsável legal. Recomenda-se que um advogado revise o texto dos termos.",
+   "Atualize o Code.gs e rode setup() (novas colunas em Rostos)."
+  ],
+  "v": "1.72",
+  "data": "31/10/2026"
+ },
+ {
   "titulo": "Presença facial: apagar amostras de uma pessoa",
   "melhorias": [
    "Novo botão Apagar amostras na lista de autorizados (aparece para quem tem amostras): remove só as fotos aprendidas ou enviadas, mantém a assinatura da foto de perfil e o app volta a aprender nas próximas confirmações.",

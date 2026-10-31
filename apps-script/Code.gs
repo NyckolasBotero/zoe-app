@@ -48,7 +48,7 @@ const SHEETS = {
   EventoPresenca: ['EventoID', 'MembroID', 'Data'],
   Cultos: ['Data', 'Culto', 'MembroID', 'RegistradoPor', 'Hora'],
   Metricas: ['Slot', 'Pagina', 'Acao', 'N', 'Erros', 'RttSoma', 'RttMax', 'SrvSoma', 'SrvMax', 'Lentas', 'Aparelhos', 'Hist', 'LockSoma', 'EsperaSoma'],
-  Rostos: ['MembroID', 'Descritor', 'AtualizadoEm', 'Autorizado', 'AutorizadoPor', 'AutorizadoEm', 'Amostras'],
+  Rostos: ['MembroID', 'Descritor', 'AtualizadoEm', 'Autorizado', 'AutorizadoPor', 'AutorizadoEm', 'Amostras', 'ConsentimentoBio', 'ConsentimentoImagem', 'TermoVersao', 'Revogado'],
   RostoLog: ['Data', 'Hora', 'Por', 'Contexto', 'Acertos', 'Erros', 'Manuais'],
   Corridas: ['CorridaID', 'Titulo', 'Ano', 'Inicio', 'Fim', 'CapDia', 'TotalCap', 'Status'],
   CorridaLeitura: ['CorridaID', 'MembroID', 'Data', 'Capitulos', 'Resumo', 'Status', 'ValidadoPor', 'Obs'],
@@ -1578,7 +1578,7 @@ function descOk_(v) { if (!Array.isArray(v) || v.length !== 128) return ''; cons
 const rostoAut_ = function (r) { return !!r && r.Autorizado !== '0'; };
 function faceRoster_(d, u) {
   const lin = {}; table_('Rostos').rows.forEach(function (r) { lin[r.MembroID] = r; });
-  const itens = table_('Membros').rows.filter(function (m) { return m.Status !== 'Inativo'; }).map(function (m) { const r = lin[m.MembroID]; return { id: m.MembroID, nome: m.Nome, foto: m.Foto ? 1 : 0, aut: rostoAut_(r), idx: !!(r && (r.Descritor || r.Amostras)), am: r ? amostras_(r.Amostras).length : 0, em: r && r.AutorizadoEm || '' }; });
+  const itens = table_('Membros').rows.filter(function (m) { return m.Status !== 'Inativo'; }).map(function (m) { const r = lin[m.MembroID]; return { id: m.MembroID, nome: m.Nome, foto: m.Foto ? 1 : 0, aut: rostoAut_(r), idx: !!(r && (r.Descritor || r.Amostras)), am: r ? amostras_(r.Amostras).length : 0, cons: r && r.ConsentimentoBio || '', rev: r && r.Revogado || '', em: r && r.AutorizadoEm || '' }; });
   itens.sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome)); }); return { itens: itens };
 }
 function setFaceAuth_(d, u) {
@@ -1609,8 +1609,8 @@ function listFaces_(d, u) {
   const ids = Object.keys(aut);
   return { itens: itens, falta: ids.filter(function (i) { return foto[i] && !idx[i]; }), semFoto: ids.filter(function (i) { return !foto[i]; }).length, total: ids.length };
 }
-// ---- Aprendizado contínuo: além da assinatura da foto de perfil, cada pessoa guarda até 6 "amostras" (rostos confirmados na câmera, em ângulos e luzes diferentes)
-const AMOSTRAS_MAX_ = 6;
+// ---- Aprendizado contínuo: além da assinatura da foto de perfil, cada pessoa guarda até 12 "amostras" (rostos confirmados na câmera, em ângulos e luzes diferentes)
+const AMOSTRAS_MAX_ = 12, TERMO_FACE_ = '2026-10-31-v1';
 function vetor_(v) { let a; try { a = typeof v === 'string' ? JSON.parse(v) : v; } catch (e) { return null; } return Array.isArray(a) && a.length === 128 ? a : null; }
 function amostras_(v) { let a; try { a = v ? JSON.parse(v) : []; } catch (e) { return []; } return Array.isArray(a) ? a.filter(function (x) { return vetor_(x); }).slice(0, AMOSTRAS_MAX_) : []; }
 function distV_(a, b) { let t = 0; for (let i = 0; i < 128; i++) { const x = a[i] - b[i]; t += x * x; } return Math.sqrt(t); }
@@ -1625,6 +1625,32 @@ function learnFace_(d, u) {
       const txt = JSON.stringify(am); writeRow_(t, r._row, { Amostras: txt, AtualizadoEm: today_() }); r.Amostras = txt; n++;
     });
     audit_(u.email, 'ROSTOS_APRENDIDOS', String(n), 'OK'); return { n: n };
+  });
+}
+// ---- Cadastro facial do próprio membro (scanner guiado) com consentimento LGPD: biometria para a chamada + uso de imagem
+function faceMe_(d, u) {
+  const r = table_('Rostos').rows.filter(function (x) { return x.MembroID === u.membroId; })[0], tem = !!(r && (vetor_(r.Descritor) || amostras_(r.Amostras).length)), cons = r && r.ConsentimentoBio || '', rev = r && r.Revogado || '';
+  return { precisa: !rev && !(cons && tem), consentido: cons, imagem: r && r.ConsentimentoImagem || '', revogado: rev, amostras: r ? amostras_(r.Amostras).length : 0, autorizado: rostoAut_(r), versao: TERMO_FACE_ };
+}
+function faceScan_(d, u) {
+  if (d.consentBio !== true || d.consentImg !== true) throw new ApiError('VALIDATION', 'É preciso aceitar os dois consentimentos para fazer o cadastro facial.');
+  const vs = []; (Array.isArray(d.itens) ? d.itens : []).slice(0, 14).forEach(function (it) { const ds = descOk_(it && it.d); if (!ds) return; const v = JSON.parse(ds); if (!vs.some(function (x) { return distV_(x, v) < 0.12; })) vs.push(v); });
+  if (vs.length < 5) throw new ApiError('VALIDATION', 'Poucas fotos nítidas e diferentes. Refaça o scanner em um lugar com boa luz.');
+  return withLock_(function () {
+    const t = table_('Rostos'), r = t.rows.filter(function (x) { return x.MembroID === u.membroId; })[0], hoje = today_();
+    if (r && r.Autorizado === '0' && !r.Revogado && /@/.test(r.AutorizadoPor || '')) throw new ApiError('FORBIDDEN', 'Seu reconhecimento facial foi desativado por um administrador. Fale com a secretaria da igreja.');
+    const base = r ? vetor_(r.Descritor) : null, am = (base ? vs : vs.slice(1)).slice(0, AMOSTRAS_MAX_);
+    const patch = { Amostras: JSON.stringify(am), AtualizadoEm: hoje, Autorizado: '1', AutorizadoPor: 'autocadastro', AutorizadoEm: hoje, ConsentimentoBio: hoje, ConsentimentoImagem: hoje, TermoVersao: TERMO_FACE_, Revogado: '' };
+    if (!base) patch.Descritor = JSON.stringify(vs[0]);
+    if (r) writeRow_(t, r._row, patch); else { patch.MembroID = u.membroId; appendRow_(t, patch); }
+    audit_(u.email, 'FACE_CADASTRO', String(vs.length), 'OK'); return { n: am.length + (base ? 0 : 1) };
+  });
+}
+function faceRevoke_(d, u) {
+  return withLock_(function () {
+    const t = table_('Rostos'), r = t.rows.filter(function (x) { return x.MembroID === u.membroId; })[0]; if (!r) return { n: 0 };
+    writeRow_(t, r._row, { Descritor: '', Amostras: '', Autorizado: '0', AutorizadoPor: 'revogado', AutorizadoEm: today_(), Revogado: today_() });
+    audit_(u.email, 'FACE_REVOGADO', '', 'OK'); return { n: 1 };
   });
 }
 function clearSamples_(d, u) { // apaga só as amostras aprendidas/enviadas; a assinatura da foto de perfil continua
@@ -1645,9 +1671,11 @@ function faceStats_(d, u) {
   const lim = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
   return { geral: tot(rows), ultimos30: tot(rows.filter(function (x) { return x.data >= lim; })), sessoes: rows.slice(-30).reverse() };
 }
-function clearFaces_(d, u) {
+function clearFaces_(d, u) { // apaga assinaturas e autorizações; o registro do consentimento (prova do aceite) permanece
   return withLock_(function () {
-    const t = table_('Rostos'), n = t.rows.length; t.rows.map(function (r) { return r._row; }).sort(function (a, b) { return b - a; }).forEach(function (rw) { t.sh.deleteRow(rw); });
+    const t = table_('Rostos'), n = t.rows.length, tem = function (r) { return r.ConsentimentoBio || r.ConsentimentoImagem; };
+    t.rows.filter(tem).forEach(function (r) { writeRow_(t, r._row, { Descritor: '', Amostras: '', Autorizado: '0', AutorizadoPor: 'limpeza' }); });
+    t.rows.filter(function (r) { return !tem(r); }).map(function (r) { return r._row; }).sort(function (a, b) { return b - a; }).forEach(function (rw) { t.sh.deleteRow(rw); });
     audit_(u.email, 'ROSTOS_APAGADOS', String(n), 'OK'); return { n: n };
   });
 }
@@ -2797,7 +2825,7 @@ const ROUTES = {
   getPushKey: { auth: 'any', fn: getPushKey_ }, pushDiag: { auth: 'any', fn: pushDiag_ }, savePushSub: { auth: 'any', write: 1, fn: savePushSub_ }, delPushSub: { auth: 'any', write: 1, fn: delPushSub_ },
   sodGet: { auth: 'any', write: 1, fn: sodGet_ }, sodAbrir: { auth: 'any', write: 1, fn: sodAbrir_ }, sodEquipar: { auth: 'any', write: 1, fn: sodEquipar_ }, sodDescartar: { auth: 'any', write: 1, fn: sodDescartar_ }, sodAparencia: { auth: 'any', write: 1, fn: sodAparencia_ }, sodOrar: { auth: 'any', write: 1, fn: sodOrar_ }, sodComprar: { auth: 'any', write: 1, fn: sodComprar_ },
   listMarks: { auth: 'any', fn: listMarks_ }, saveMark: { auth: 'any', write: 1, fn: saveMark_ }, saveNote: { auth: 'any', write: 1, fn: saveNote_ }, listCultoNotes: { auth: 'any', fn: listCultoNotes_ }, getMural: { auth: 'any', fn: getMural_ },
-  listInsigniaDefs: { auth: 'any', fn: listInsigniaDefs_ }, saveInsigniaDef: { auth: 'any', write: 1, fn: saveInsigniaDef_ }, grantBadge: { auth: 'any', write: 1, fn: grantBadge_ }, logServico: { auth: 'any', write: 1, fn: logServico_ }, listServicos: { auth: 'any', fn: listServicos_ }, searchPeople: { auth: 'any', fn: findPeople_ }, sendChat: { auth: 'any', write: 1, fn: sendChat_ }, getChat: { auth: 'any', fn: getChat_ }, chatRead: { auth: 'any', write: 1, fn: chatRead_ }, chatTyping: { auth: 'any', fn: chatTyping_ }, listChats: { auth: 'any', fn: listChats_ }, getCertLayout: { auth: 'any', fn: getCertLayout_ }, saveCertLayout: { auth: 'any', write: 1, fn: saveCertLayout_ }, previewCert: { auth: 'any', fn: previewCert_ }, revokeCert: { auth: 'any', write: 1, fn: revokeCert_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, saveFaces: { auth: 'eventos', write: 1, fn: saveFaces_ }, faceRoster: { auth: 'eventos', fn: faceRoster_ }, setFaceAuth: { auth: 'eventos', write: 1, fn: setFaceAuth_ }, listFaces: { auth: 'eventos', fn: listFaces_ }, clearFaces: { auth: 'eventos', write: 1, fn: clearFaces_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, learnFace: { auth: 'eventos', write: 1, fn: learnFace_ }, clearSamples: { auth: 'eventos', write: 1, fn: clearSamples_ }, faceStat: { auth: 'eventos', write: 1, fn: faceStat_ }, faceStats: { auth: 'eventos', fn: faceStats_ }, cultoPresenca: { auth: 'eventos', fn: cultoPresenca_ }, checkinCulto: { auth: 'eventos', write: 1, fn: checkinCulto_ }, cultosResumo: { auth: 'eventos', fn: cultosResumo_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
+  listInsigniaDefs: { auth: 'any', fn: listInsigniaDefs_ }, saveInsigniaDef: { auth: 'any', write: 1, fn: saveInsigniaDef_ }, grantBadge: { auth: 'any', write: 1, fn: grantBadge_ }, logServico: { auth: 'any', write: 1, fn: logServico_ }, listServicos: { auth: 'any', fn: listServicos_ }, searchPeople: { auth: 'any', fn: findPeople_ }, sendChat: { auth: 'any', write: 1, fn: sendChat_ }, getChat: { auth: 'any', fn: getChat_ }, chatRead: { auth: 'any', write: 1, fn: chatRead_ }, chatTyping: { auth: 'any', fn: chatTyping_ }, listChats: { auth: 'any', fn: listChats_ }, getCertLayout: { auth: 'any', fn: getCertLayout_ }, saveCertLayout: { auth: 'any', write: 1, fn: saveCertLayout_ }, previewCert: { auth: 'any', fn: previewCert_ }, revokeCert: { auth: 'any', write: 1, fn: revokeCert_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, saveFaces: { auth: 'eventos', write: 1, fn: saveFaces_ }, faceRoster: { auth: 'eventos', fn: faceRoster_ }, setFaceAuth: { auth: 'eventos', write: 1, fn: setFaceAuth_ }, listFaces: { auth: 'eventos', fn: listFaces_ }, clearFaces: { auth: 'eventos', write: 1, fn: clearFaces_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, learnFace: { auth: 'eventos', write: 1, fn: learnFace_ }, clearSamples: { auth: 'eventos', write: 1, fn: clearSamples_ }, faceMe: { auth: 'any', fn: faceMe_ }, faceScan: { auth: 'any', write: 1, fn: faceScan_ }, faceRevoke: { auth: 'any', write: 1, fn: faceRevoke_ }, faceStat: { auth: 'eventos', write: 1, fn: faceStat_ }, faceStats: { auth: 'eventos', fn: faceStats_ }, cultoPresenca: { auth: 'eventos', fn: cultoPresenca_ }, checkinCulto: { auth: 'eventos', write: 1, fn: checkinCulto_ }, cultosResumo: { auth: 'eventos', fn: cultosResumo_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
   searchCells: { auth: 'any', fn: searchCells_ }, addPrayer: { auth: 'any', write: 1, fn: addPrayer_ }, listPrayers: { auth: 'any', fn: listPrayers_ },
   cellMembers: { auth: 'any', fn: cellMembers_ }, saveCell: { auth: 'any', write: 1, fn: saveCell_ }, saveAttendance: { auth: 'any', write: 1, fn: saveAttendance_ }, history: { auth: 'any', fn: history_ },
   indicators: { auth: 'any', fn: indicators_ }, getPapeis: { auth: 'any', fn: getPapeis_ }, savePapeis: { auth: 'any', write: 1, fn: savePapeis_ }, createCellEvent: { auth: 'any', write: 1, fn: createCellEvent_ },

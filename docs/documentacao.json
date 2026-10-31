@@ -70,5 +70,15 @@
    "Cutscene com a história do Sod (SC em src/app.html), mostrada na primeira visita e reabrível.",
    "Config SodAtivo (Administração › Definições): desligado, o Sod some do perfil, do Início e da Zoe e o servidor recusa as ações."
   ]
+ },
+ {
+  "t": "Cadastro facial e LGPD",
+  "itens": [
+   "Todo membro precisa fazer o scanner facial uma vez ao entrar (termos: biometria para a chamada + uso e divulgação de imagem). Menores precisam do aceite de um responsável legal.",
+   "O scanner pede 10 poses (frente, esquerda e direita leves, cima e baixo leves). Só as assinaturas numéricas do rosto são guardadas, na aba Rostos; as imagens da câmera nunca saem do celular.",
+   "O registro do aceite (data e versão do termo) fica na aba Rostos e permanece mesmo quando um administrador apaga as assinaturas.",
+   "O titular pode refazer o scanner ou apagar os dados e revogar o consentimento em Meu perfil › Configurações; quem revoga não é obrigado de novo.",
+   "Um administrador pode desativar o reconhecimento de uma pessoa na aba Presença facial; nesse caso o scanner dela é recusado até reativar."
+  ]
  }
 ]
