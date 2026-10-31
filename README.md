@@ -331,3 +331,10 @@ Segure e arraste a Zoe para qualquer posição da tela (mouse ou toque); a posi�
 - Câmera: caixas sobre os rostos, lista para confirmar (Confirmar / Não é / Confirmar todos) e *Registrar presenças* usa `checkinEvento`. Precisa de HTTPS e permissão de câmera.
 - Aviso LGPD: rosto é dado biométrico sensível; use com ciência e consentimento da comunidade.
 - Teste: `tests/e2e_face.py` (biblioteca e câmera simuladas).
+
+
+## Notificações no aparelho (Web Push) — sem servidor externo
+- O Apps Script faz tudo: cria a chave VAPID (privada em `PropertiesService`, pública em `Config.PushPub`), assina (ES256) e cifra (aes128gcm) em JavaScript puro (`P256_` / `WP_` em `Code.gs`) e envia com `UrlFetchApp.fetchAll` direto ao Google/Apple. O `relay/` continua só para a transmissão ao vivo.
+- Fluxo: o app pede `getPushKey` → o aparelho assina `savePushSub` → eventos (chat, avisos, lembrete diário do Sod) chamam `pushFlush_()`.
+- Diagnóstico: Administração › Definições › *Notificações no aparelho* (`pushDiag`, com envio de teste).
+- iPhone: precisa do app instalado na Tela de Início (iOS 16.4+). Testes: `node tests/webpush_puro.test.mjs` (compara com o `crypto` do Node) e `tests/zoe.test.mjs`.

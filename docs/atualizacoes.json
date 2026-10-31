@@ -1,5 +1,15 @@
 [
  {
+  "titulo": "Notificações sem servidor externo",
+  "melhorias": [
+   "As notificações no celular agora são enviadas direto pelo Apps Script, sem precisar do servidor relay: ele assina e criptografa o aviso e entrega ao Google/Apple.",
+   "A chave de notificações é criada sozinha na primeira vez (a privada fica guardada só no Apps Script, não na planilha).",
+   "Para ativar: cole o novo Code.gs, rode setup(), publique nova versão e peça para cada pessoa abrir o app e aceitar as notificações."
+  ],
+  "v": "1.45",
+  "data": "31/10/2026"
+ },
+ {
   "titulo": "Correção: instalar o app no celular",
   "melhorias": [
    "Corrigido o aviso \"Não é possível instalar o app\" no Chrome: o arquivo de instalação agora é lido com a sessão do site privado e o app registra o serviço de notificações logo ao abrir.",

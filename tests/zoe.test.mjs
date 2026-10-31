@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { makeEnv } from './mock_env.mjs'; import assert from 'node:assert/strict'; import test from 'node:test';
 function boot() {
   const e = makeEnv(); e.run(`criarAdmin('admin@zoe.com','SenhaForte123','Pastor Admin')`);
@@ -1119,24 +1120,26 @@ test('Sod liga/desliga, lembrete diário das missões, Web Push (inscrição, ch
   assert.equal(e.call('sodGet', {}, A).data.off, true); assert.equal(e.call('sodAbrir', {}, A).error.code, 'FORBIDDEN');
   e.run('lembreteMissoes()'); assert.equal(notifs(A).filter((x) => x.tipo === 'sod_missao').length, 1, 'desligado: não lembra');
   assert.ok(e.call('saveConfig', { SodAtivo: true }, adm).ok); assert.equal(e.call('sodGet', {}, A).data.pedra, 700, 'o progresso continua guardado');
-  // Web Push: sem relay não há chave; com relay, a chave vem do servidor e fica guardada
-  assert.equal(e.call('getPushKey', {}, A).data.key, '');
-  const KEY = 'B' + 'x'.repeat(86); const calls = [];
-  e.run(`UrlFetchApp = { fetch: (u, o) => { CALLS.push({ u, o }); if (/vapid$/.test(u)) return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ key: '${KEY}' }) }; const b = JSON.parse(o.payload); return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ res: b.envios.map((x, i) => ({ endpoint: x.sub.endpoint, status: /morto/.test(x.sub.endpoint) ? 410 : 201 })) }) }; } }; var CALLS = [];`);
-  assert.ok(e.call('saveLiveCfg', { relay: { url: 'wss://relay.zoe.com/live', token: 'seg' } }, adm).ok);
-  assert.equal(e.call('getPushKey', {}, A).data.key, KEY); assert.equal(e.call('getPushKey', {}, B).data.key, KEY);
-  const sub = (ep) => ({ endpoint: ep, keys: { p256dh: 'p'.repeat(87), auth: 'a'.repeat(22) } });
+  // Web Push direto do Apps Script: a chave é criada sozinha (privada só nas propriedades do script) e a pública vai para o app
+  const KEY = e.call('getPushKey', {}, A).data.key; assert.match(KEY, /^[A-Za-z0-9_-]{87}$/); assert.equal(e.call('getPushKey', {}, B).data.key, KEY, 'mesma chave para todos');
+  assert.ok(!JSON.stringify(e.sheets.Config.rows).includes(e.run("PropertiesService.getScriptProperties().getProperty('VAPID_PRIV')")), 'a privada não vai para a planilha');
+  const mkSub = () => { const k = crypto.createECDH('prime256v1'); k.generateKeys(); return { p256dh: k.getPublicKey().toString('base64url'), auth: crypto.randomBytes(16).toString('base64url') }; };
+  e.run('var CALLS = []'); e.run(`UrlFetchApp = { fetchAll: (rs) => rs.map((r) => { CALLS.push({ u: r.url, o: r }); return { getResponseCode: () => (/morto/.test(r.url) ? 410 : 201), getContentText: () => '' }; }), fetch: (u, o) => { CALLS.push({ u, o }); return { getResponseCode: () => 201, getContentText: () => '' }; } }`);
+  const sub = (ep) => ({ endpoint: ep, keys: mkSub() });
   assert.equal(e.call('savePushSub', { endpoint: 'http://x.com/a', keys: sub('x').keys }, A).error.code, 'VALIDATION'); assert.equal(e.call('savePushSub', { endpoint: 'https://push.example.com/abc123456', keys: { p256dh: '!', auth: 'a' } }, A).error.code, 'VALIDATION');
   assert.ok(e.call('savePushSub', sub('https://push.example.com/ana-1'), A).ok); assert.ok(e.call('savePushSub', sub('https://push.example.com/ana-1'), A).ok, 'idempotente'); assert.ok(e.call('savePushSub', sub('https://push.example.com/morto-ana'), A).ok);
   assert.equal(e.run('table_("PushSubs").rows.length'), 2);
-  // chat: Ana está offline (sem presença) → pop-up com o nome de quem mandou; quem está online não recebe pop-up
+  // chat: o aviso sai para todos os aparelhos de Ana, com o nome de quem mandou, assinado (VAPID) e cifrado
   const ana = idDe(A); e.run('CALLS.length = 0');
   assert.ok(e.call('sendChat', { para: ana, texto: 'Oi, Ana! Tudo bem?' }, adm).ok);
-  const p = e.run('CALLS.filter(c => /push$/.test(c.u))'); assert.equal(p.length, 1); const env = JSON.parse(p[0].o.payload).envios; assert.equal(env.length, 2); assert.match(env[0].payload.title, /Pastor|admin/i); assert.equal(env[0].payload.body, 'Oi, Ana! Tudo bem?'); assert.equal(p[0].o.headers.Authorization, 'Bearer seg');
+  const p = e.run('CALLS.filter(c => /push\\.example\\.com/.test(c.u))'); assert.equal(p.length, 2);
+  assert.match(p[0].o.headers.Authorization, /^vapid t=[\w-]+\.[\w-]+\.[\w-]+, k=/); assert.equal(p[0].o.headers['Content-Encoding'], 'aes128gcm'); assert.ok(p[0].o.payload.length > 100);
   assert.equal(e.run('table_("PushSubs").rows.filter(r=>r.Endpoint).length'), 1, 'endpoint expirado (410) é descartado');
-  e.call('getChat', { com: idDe(adm) }, A); e.run('CALLS.length = 0'); assert.ok(e.call('sendChat', { para: ana, texto: 'Segunda' }, adm).ok); assert.equal(e.run('CALLS.filter(c => /push$/.test(c.u))').length, 1, 'online também recebe: o aparelho decide como mostrar');
+  e.call('getChat', { com: idDe(adm) }, A); e.run('CALLS.length = 0'); assert.ok(e.call('sendChat', { para: ana, texto: 'Segunda' }, adm).ok); assert.equal(e.run('CALLS.filter(c => /push\\.example\\.com/.test(c.u))').length, 1, 'online também recebe: o aparelho decide como mostrar');
+  // diagnóstico + teste
+  const dg = e.call('pushDiag', { teste: true }, A).data; assert.equal(dg.chave, true); assert.equal(dg.meus, 1); assert.equal(dg.teste.ok, 1);
   // notificações guardadas também viram pop-up
-  e.run('CALLS.length = 0'); e.run(`notify_('${ana}', 'aniv', 'Aniversário', 'Hoje é dia de festa'); pushFlush_()`); assert.equal(e.run('CALLS.filter(c => /push$/.test(c.u))').length, 1);
+  e.run('CALLS.length = 0'); e.run(`notify_('${ana}', 'aniv', 'Aniversário', 'Hoje é dia de festa'); pushFlush_()`); assert.equal(e.run('CALLS.filter(c => /push\\.example\\.com/.test(c.u))').length, 1);
   assert.ok(e.call('delPushSub', { endpoint: 'https://push.example.com/ana-1' }, A).ok); assert.equal(e.run('table_("PushSubs").rows.filter(r=>r.Endpoint).length'), 0);
   // Início: altura e ajuste das fotos
   const lay = e.call('saveHomeLayout', { layout: [{ id: 'eventos', w: 8, h: 14, fh: 9999, fit: 'contain' }, { id: 'proxevento', w: 4, h: 13, fh: 'x', fit: 'xx' }, { id: 'hero', w: 5, h: 5, fh: 120 }] }, adm).data.layout;
@@ -1152,8 +1155,8 @@ test('rostos: salva assinatura, lista, valida e apaga (só quem tem permissão d
   assert.equal(e.call('saveFaces', { itens: [{ id: mid, d }] }, adm).data.n, 1); assert.equal(e.call('listFaces', {}, adm).data.itens.length, 1);
   assert.equal(e.call('clearFaces', {}, adm).data.n, 1); assert.equal(e.call('listFaces', {}, adm).data.itens.length, 0);
 });
-test('notificações: diagnóstico sem relay e chat sempre enfileira push', () => {
+test('notificações: diagnóstico sem inscrições e chat sempre enfileira push', () => {
   const { e, adm } = boot();
-  const d = e.call('pushDiag', { teste: true }, adm).data; assert.equal(d.relayCfg, false); assert.equal(d.relayOk, false); assert.match(d.relayMsg, /relay/);
+  const d = e.call('pushDiag', { teste: true }, adm).data; assert.equal(d.chave, true); assert.equal(d.subs, 0); assert.match(d.teste.msg, /não está inscrito/);
   assert.ok(e.run('sendChat_.toString()').includes("PUSHQ_.push({ m: para") && !e.run('sendChat_.toString()').includes('presDe_(para'));
 });

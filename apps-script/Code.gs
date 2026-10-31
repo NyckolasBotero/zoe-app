@@ -2706,14 +2706,63 @@ function doPost(e) {
 }
 
 
-/* ===== Notificações no aparelho (Web Push via servidor relay) e lembrete diário das missões do Sod ===== */
+/* ===== Web Push direto do Apps Script (sem servidor externo): VAPID (ES256) + criptografia aes128gcm em JavaScript puro ===== */
+const P256_ = (function () {
+  const p = 0xffffffff00000001000000000000000000000000ffffffffffffffffffffffffn, n = 0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551n;
+  const b = 0x5ac635d8aa3a93e7b3ebbd55769886bc651d06b0cc53b0f63bce3c3e27d2604bn, gx = 0x6b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296n, gy = 0x4fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5n;
+  const mod = function (a, m) { const r = a % m; return r >= 0n ? r : r + m; };
+  function inv(a, m) { let lo = mod(a, m), hi = m, x0 = 1n, x1 = 0n; while (hi) { const q = lo / hi; const t = lo - q * hi; lo = hi; hi = t; const u = x0 - q * x1; x0 = x1; x1 = u; } return mod(x0, m); }
+  function dbl(P) { const X = P[0], Y = P[1], Z = P[2]; if (!Z || !Y) return [0n, 1n, 0n]; const d = Z * Z % p, g = Y * Y % p, be = X * g % p, al = 3n * mod((X - d) * (X + d), p) % p; const X3 = mod(al * al - 8n * be, p), Z3 = mod((Y + Z) * (Y + Z) - g - d, p), Y3 = mod(al * (4n * be - X3) - 8n * g * g, p); return [X3, Y3, Z3]; }
+  function add(P, Q) { if (!P[2]) return Q; if (!Q[2]) return P; const z1 = P[2] * P[2] % p, z2 = Q[2] * Q[2] % p, u1 = P[0] * z2 % p, u2 = Q[0] * z1 % p, s1 = P[1] * Q[2] % p * z2 % p, s2 = Q[1] * P[2] % p * z1 % p; if (u1 === u2) return s1 === s2 ? dbl(P) : [0n, 1n, 0n]; const h = mod(u2 - u1, p), r = mod(s2 - s1, p), h2 = h * h % p, h3 = h2 * h % p, v = u1 * h2 % p; const X3 = mod(r * r - h3 - 2n * v, p); return [X3, mod(r * (v - X3) - s1 * h3, p), P[2] * Q[2] % p * h % p]; }
+  function mul(k, P) { let R = [0n, 1n, 0n], i = 255; for (; i >= 0; i--) { R = dbl(R); if ((k >> BigInt(i)) & 1n) R = add(R, P); } return R; }
+  function aff(P) { if (!P[2]) throw new Error('infinito'); const zi = inv(P[2], p), z2 = zi * zi % p; return [P[0] * z2 % p, P[1] * z2 % p * zi % p]; }
+  return { p: p, n: n, G: [gx, gy, 1n], mod: mod, inv: inv, mul: mul, aff: aff, noCurva: function (x, y) { return mod(y * y - (x * x * x - 3n * x + b), p) !== 0n; } };
+})();
+const WP_ = {
+  hex2big: function (a) { let r = 0n; for (let i = 0; i < a.length; i++) r = (r << 8n) | BigInt(a[i]); return r; },
+  big2b: function (v, len) { const o = []; for (let i = 0; i < len; i++) { o.unshift(Number(v & 255n)); v >>= 8n; } return o; },
+  sg: function (a) { return a.map(function (x) { return x > 127 ? x - 256 : x; }); },
+  us: function (a) { return Array.prototype.map.call(a, function (x) { return x < 0 ? x + 256 : x; }); },
+  str: function (s) { return WP_.us(Utilities.newBlob(s).getBytes()); },
+  b64u: function (a) { const T = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'; let o = ''; for (let i = 0; i < a.length; i += 3) { const v = (a[i] << 16) | ((a[i + 1] || 0) << 8) | (a[i + 2] || 0); o += T[v >> 18 & 63] + T[v >> 12 & 63] + (i + 1 < a.length ? T[v >> 6 & 63] : '') + (i + 2 < a.length ? T[v & 63] : ''); } return o; },
+  unb64u: function (s) { const T = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'; const o = []; let acc = 0, bits = 0; for (let i = 0; i < s.length; i++) { const v = T.indexOf(s[i]); if (v < 0) continue; acc = (acc << 6) | v; bits += 6; if (bits >= 8) { bits -= 8; o.push((acc >> bits) & 255); acc &= (1 << bits) - 1; } } return o; },
+  hmac: function (key, data) { return WP_.us(Utilities.computeHmacSha256Signature(WP_.sg(data), WP_.sg(key))); },
+  sha: function (data) { return WP_.us(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, WP_.sg(data))); },
+  hkdf: function (salt, ikm, info, len) { const prk = WP_.hmac(salt, ikm); let t = [], o = [], i = 1; while (o.length < len) { t = WP_.hmac(prk, t.concat(info, [i++])); o = o.concat(t); } return o.slice(0, len); },
+  rand: function (len) { let o = []; while (o.length < len) o = o.concat(WP_.hmac(WP_.str(Utilities.getUuid() + Utilities.getUuid()), WP_.str(String(Date.now()) + Math.random() + Utilities.getUuid()))); return o.slice(0, len); },
+  chavePriv: function () { for (;;) { const k = WP_.hex2big(WP_.rand(32)); if (k > 0n && k < P256_.n) return k; } },
+  pub: function (d) { const A = P256_.aff(P256_.mul(d, P256_.G)); return [4].concat(WP_.big2b(A[0], 32), WP_.big2b(A[1], 32)); },
+  ecdh: function (d, pubB) { const x = WP_.hex2big(pubB.slice(1, 33)), y = WP_.hex2big(pubB.slice(33, 65)); if (pubB.length !== 65 || pubB[0] !== 4 || P256_.noCurva(x, y)) throw new Error('chave inválida'); return WP_.big2b(P256_.aff(P256_.mul(d, [x, y, 1n]))[0], 32); },
+  ecdsa: function (d, msg) { const z = WP_.hex2big(WP_.sha(msg)); for (let c = 0; c < 20; c++) { const k = P256_.mod(WP_.hex2big(WP_.hmac(WP_.big2b(d, 32), WP_.sha(msg).concat([c]))), P256_.n - 1n) + 1n; const r = P256_.mod(P256_.aff(P256_.mul(k, P256_.G))[0], P256_.n); if (!r) continue; const s = P256_.mod(P256_.inv(k, P256_.n) * (z + r * d), P256_.n); if (!s) continue; return WP_.big2b(r, 32).concat(WP_.big2b(s, 32)); } throw new Error('assinatura'); },
+  jwt: function (aud, d, sub) { const h = WP_.b64u(WP_.str(JSON.stringify({ typ: 'JWT', alg: 'ES256' }))), pl = WP_.b64u(WP_.str(JSON.stringify({ aud: aud, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: sub }))); return h + '.' + pl + '.' + WP_.b64u(WP_.ecdsa(d, WP_.str(h + '.' + pl))); },
+  // AES-128-GCM
+  SB: null,
+  sbox: function () { if (WP_.SB) return WP_.SB; const s = new Array(256), xt = function (a) { return ((a << 1) ^ ((a & 128) ? 27 : 0)) & 255; }; let p = 1, q = 1; do { p = p ^ xt(p); q ^= q << 1; q ^= q << 2; q ^= q << 4; q &= 255; if (q & 128) q ^= 9; const x = q ^ ((q << 1) | (q >> 7)) & 255 ^ ((q << 2) | (q >> 6)) & 255 ^ ((q << 3) | (q >> 5)) & 255 ^ ((q << 4) | (q >> 4)) & 255; s[p] = (x ^ 99) & 255; } while (p !== 1); s[0] = 99; WP_.SB = s; return s; },
+  aesKey: function (key) { const S = WP_.sbox(), w = []; for (let i = 0; i < 4; i++) w.push(key.slice(4 * i, 4 * i + 4)); let rc = 1; for (let i = 4; i < 44; i++) { let t = w[i - 1].slice(); if (i % 4 === 0) { t = [S[t[1]] ^ rc, S[t[2]], S[t[3]], S[t[0]]]; rc = ((rc << 1) ^ ((rc & 128) ? 27 : 0)) & 255; } w.push([w[i - 4][0] ^ t[0], w[i - 4][1] ^ t[1], w[i - 4][2] ^ t[2], w[i - 4][3] ^ t[3]]); } const rk = []; for (let r = 0; r < 11; r++) rk.push([].concat(w[4 * r], w[4 * r + 1], w[4 * r + 2], w[4 * r + 3])); return rk; },
+  aesBlock: function (rk, blk) { const S = WP_.sbox(), xt = function (a) { return ((a << 1) ^ ((a & 128) ? 27 : 0)) & 255; }; let s = blk.map(function (v, i) { return v ^ rk[0][i]; }); for (let r = 1; r <= 10; r++) { const t = new Array(16); for (let c = 0; c < 4; c++) for (let rr = 0; rr < 4; rr++) t[4 * c + rr] = S[s[4 * ((c + rr) % 4) + rr]]; if (r < 10) { for (let c = 0; c < 4; c++) { const a = t.slice(4 * c, 4 * c + 4), x = a[0] ^ a[1] ^ a[2] ^ a[3]; s[4 * c] = a[0] ^ x ^ xt(a[0] ^ a[1]); s[4 * c + 1] = a[1] ^ x ^ xt(a[1] ^ a[2]); s[4 * c + 2] = a[2] ^ x ^ xt(a[2] ^ a[3]); s[4 * c + 3] = a[3] ^ x ^ xt(a[3] ^ a[0]); } } else s = t; s = s.map(function (v, i) { return v ^ rk[r][i]; }); } return s; },
+  gmul: function (x, y) { const R = 0xe1n << 120n; let z = 0n, v = y; for (let i = 127; i >= 0; i--) { if ((x >> BigInt(i)) & 1n) z ^= v; v = (v & 1n) ? (v >> 1n) ^ R : v >> 1n; } return z; },
+  gcm: function (key, iv, pt) { const rk = WP_.aesKey(key), H = WP_.hex2big(WP_.aesBlock(rk, new Array(16).fill(0))), ct = []; for (let i = 0; i < pt.length; i += 16) { const ks = WP_.aesBlock(rk, iv.concat(WP_.big2b(BigInt(2 + i / 16), 4))); for (let j = 0; j < 16 && i + j < pt.length; j++) ct.push(pt[i + j] ^ ks[j]); }
+    let g = 0n; for (let i = 0; i < ct.length; i += 16) { const bl = ct.slice(i, i + 16); while (bl.length < 16) bl.push(0); g = WP_.gmul(g ^ WP_.hex2big(bl), H); } g = WP_.gmul(g ^ (BigInt(ct.length) * 8n), H);
+    const ej = WP_.hex2big(WP_.aesBlock(rk, iv.concat([0, 0, 0, 1]))); return ct.concat(WP_.big2b(g ^ ej, 16)); },
+  cifra: function (payload, sub) { const ua = WP_.unb64u(sub.keys.p256dh), auth = WP_.unb64u(sub.keys.auth), e = WP_.chavePriv(), asPub = WP_.pub(e), shared = WP_.ecdh(e, ua), salt = WP_.rand(16);
+    const ikm = WP_.hkdf(auth, shared, WP_.str('WebPush: info\0').concat(ua, asPub), 32), cek = WP_.hkdf(salt, ikm, WP_.str('Content-Encoding: aes128gcm\0'), 16), nonce = WP_.hkdf(salt, ikm, WP_.str('Content-Encoding: nonce\0'), 12);
+    return salt.concat([0, 0, 16, 0, asPub.length], asPub, WP_.gcm(cek, nonce, WP_.str(JSON.stringify(payload)).concat([2]))); }
+};
+
+/* ===== Notificações no aparelho (Web Push direto, sem servidor) e lembrete diário das missões do Sod ===== */
 function pushRelayHttp_() { const u = liveCfgLer_().relay; if (!u.url || !u.token) return null; return { base: u.url.replace(/^ws/, 'http').replace(/\/+$/, ''), token: u.token }; }
-function getPushKey_() {
-  const r = pushRelayHttp_(); if (!r) return { key: '' };
-  const c = cfgMap_(); if (c.PushPub) return { key: c.PushPub };
-  try { const x = UrlFetchApp.fetch(r.base + '/vapid', { muteHttpExceptions: true }); if (x.getResponseCode() !== 200) return { key: '' }; const k = String(JSON.parse(x.getContentText()).key || ''); if (!/^[A-Za-z0-9_-]{60,120}$/.test(k)) return { key: '' };
-    withLock_(function () { const t = table_('Config'), r0 = t.rows.filter(function (q) { return q.Chave === 'PushPub'; })[0]; if (r0) writeRow_(t, r0._row, { Valor: k }); else appendRow_(t, { Chave: 'PushPub', Valor: k }); }); return { key: k }; } catch (e) { return { key: '' }; }
+function setPushPub_(k) { const t = table_('Config'), r0 = t.rows.filter(function (q) { return q.Chave === 'PushPub'; })[0]; if (r0) writeRow_(t, r0._row, { Valor: k }); else appendRow_(t, { Chave: 'PushPub', Valor: k }); }
+// Chaves do servidor de avisos (VAPID): a privada fica só nas propriedades do script (nunca na planilha); a pública vai para o app
+function vapid_() {
+  const pr = PropertiesService.getScriptProperties(); let hex = pr.getProperty('VAPID_PRIV'), c = cfgMap_();
+  if (hex && /^[0-9a-f]{64}$/.test(hex) && c.PushPub) return { d: BigInt('0x' + hex), pub: c.PushPub };
+  return withLock_(function () {
+    hex = pr.getProperty('VAPID_PRIV'); c = cfgMap_(); let d;
+    if (hex && /^[0-9a-f]{64}$/.test(hex)) d = BigInt('0x' + hex); else { d = WP_.chavePriv(); pr.setProperty('VAPID_PRIV', d.toString(16).padStart(64, '0')); }
+    const pub = WP_.b64u(WP_.pub(d)); if (c.PushPub !== pub) setPushPub_(pub); return { d: d, pub: pub };
+  });
 }
+function getPushKey_() { return { key: vapid_().pub }; }
 function savePushSub_(d, u) {
   const ep = String(d.endpoint || ''), k = d.keys || {}, p = String(k.p256dh || ''), a = String(k.auth || '');
   if (!/^https:\/\/[^\s"'<>]{10,600}$/.test(ep) || !/^[A-Za-z0-9_-]{20,200}$/.test(p) || !/^[A-Za-z0-9_-]{10,60}$/.test(a)) throw new ApiError('VALIDATION', 'Inscrição inválida.');
@@ -2725,46 +2774,47 @@ function savePushSub_(d, u) {
 }
 function delPushSub_(d, u) { return withLock_(function () { const t = table_('PushSubs'), r = t.rows.filter(function (x) { return x.Endpoint === String(d.endpoint || '') && x.MembroID === u.membroId; })[0]; if (r) writeRow_(t, r._row, { MembroID: '', Endpoint: '' }); return { ok: true }; }); }
 // Diagnóstico das notificações: confere o servidor relay, a chave e as inscrições; com d.teste envia uma notificação de teste aos aparelhos de quem pediu
+// Diagnóstico das notificações: confere a chave, as inscrições e, com d.teste, envia uma notificação de teste aos aparelhos de quem pediu
 function pushDiag_(d, u) {
-  const rl = pushRelayHttp_(), out = { relayCfg: !!rl, relayOk: false, relayMsg: '', chaveTroca: false, subs: 0, pessoas: 0, meus: 0, teste: null };
+  const out = { chave: false, subs: 0, pessoas: 0, meus: 0, teste: null };
+  try { out.chave = !!vapid_().pub; } catch (e) { out.chaveMsg = String(e && e.message || e).slice(0, 100); }
   let subs = []; try { subs = table_('PushSubs').rows.filter(function (x) { return x.MembroID && x.Endpoint; }); } catch (e) { subs = []; }
   const quem = {}; subs.forEach(function (x) { quem[x.MembroID] = 1; }); out.subs = subs.length; out.pessoas = Object.keys(quem).length; out.meus = subs.filter(function (x) { return x.MembroID === u.membroId; }).length;
-  if (!rl) { out.relayMsg = 'O servidor de notificações (relay) não está configurado em Studio Zoe › Lives.'; return out; }
-  try {
-    const x = UrlFetchApp.fetch(rl.base + '/vapid', { muteHttpExceptions: true }), cod = x.getResponseCode();
-    if (cod === 404) out.relayMsg = 'O servidor responde, mas está com a versão antiga (sem notificações). Atualize o relay.';
-    else if (cod !== 200) out.relayMsg = 'O servidor respondeu com erro ' + cod + '.';
-    else { const k = String(jparse_(x.getContentText(), {}).key || ''); if (!/^[A-Za-z0-9_-]{60,120}$/.test(k)) out.relayMsg = 'O servidor devolveu uma chave inválida.'; else { out.relayOk = true;
-      const c = cfgMap_(); if (c.PushPub !== k) { out.chaveTroca = !!c.PushPub; withLock_(function () { const t = table_('Config'), r0 = t.rows.filter(function (q) { return q.Chave === 'PushPub'; })[0]; if (r0) writeRow_(t, r0._row, { Valor: k }); else appendRow_(t, { Chave: 'PushPub', Valor: k }); }); } } }
-  } catch (e) { out.relayMsg = 'Não consegui falar com o servidor: ' + String(e && e.message || e).slice(0, 120); }
-  if (d && d.teste && out.relayOk) {
+  if (d && d.teste && out.chave) {
     const meus = subs.filter(function (x) { return x.MembroID === u.membroId; });
     if (!meus.length) out.teste = { enviados: 0, ok: 0, msg: 'Este aparelho ainda não está inscrito. Ative as notificações neste celular primeiro.' };
     else {
       try {
-        const envios = meus.map(function (sb) { return { sub: { endpoint: sb.Endpoint, keys: { p256dh: sb.P256dh, auth: sb.Auth } }, payload: { title: 'Teste da Zoe 🔔', body: 'Se você está lendo isto, as notificações funcionam neste aparelho.', tag: 'teste', url: './' } }; });
-        const r = UrlFetchApp.fetch(rl.base + '/push', { method: 'post', contentType: 'application/json', headers: { Authorization: 'Bearer ' + rl.token }, payload: JSON.stringify({ envios: envios }), muteHttpExceptions: true });
-        if (r.getResponseCode() === 401) out.teste = { enviados: 0, ok: 0, msg: 'O servidor recusou a senha (token). Confira o token do relay em Studio Zoe › Lives.' };
-        else if (r.getResponseCode() !== 200) out.teste = { enviados: 0, ok: 0, msg: 'O servidor de notificações respondeu com erro ' + r.getResponseCode() + '.' };
-        else { const res = jparse_(r.getContentText(), {}).res || []; const ok = res.filter(function (x) { return x && x.status >= 200 && x.status < 300; }).length, st = res.map(function (x) { return x && x.status; });
-          out.teste = { enviados: res.length, ok: ok, status: st, msg: ok ? 'Enviada. Ela deve chegar em alguns segundos.' : 'O serviço de entrega do aparelho recusou o envio (código ' + st.join(', ') + '). Desative e ative as notificações de novo neste celular.' };
-          const mortos = {}; res.forEach(function (x) { if (x && (x.status === 404 || x.status === 410)) mortos[x.endpoint] = 1; }); if (Object.keys(mortos).length) withLock_(function () { const t = table_('PushSubs'); t.rows.forEach(function (sb) { if (mortos[sb.Endpoint]) writeRow_(t, sb._row, { MembroID: '', Endpoint: '' }); }); });
-        }
+        const res = pushEnvia_(meus.map(function (sb) { return { sub: { endpoint: sb.Endpoint, keys: { p256dh: sb.P256dh, auth: sb.Auth } }, payload: { title: 'Teste da Zoe 🔔', body: 'Se você está lendo isto, as notificações funcionam neste aparelho.', tag: 'teste', url: './' } }; }));
+        const ok = res.filter(function (x) { return x.status >= 200 && x.status < 300; }).length, st = res.map(function (x) { return x.status + (x.erro ? ' ' + x.erro : ''); });
+        out.teste = { enviados: res.length, ok: ok, status: st, msg: ok ? 'Enviada. Ela deve chegar em alguns segundos.' : 'O serviço de entrega recusou o envio (' + st.join('; ') + '). Desative e ative as notificações de novo neste celular.' }; pushMortos_(res);
       } catch (e) { out.teste = { enviados: 0, ok: 0, msg: 'Falha no envio: ' + String(e && e.message || e).slice(0, 120) }; }
     }
   }
   return out;
 }
+function pushEnvia_(envios) {
+  const v = vapid_(), cache = CacheService.getScriptCache(), jw = {}, reqs = [], eps = [], out = [];
+  envios.forEach(function (e) {
+    try {
+      const u = e.sub.endpoint, aud = u.match(/^https:\/\/[^\/]+/)[0]; let tk = jw[aud] || cache.get('vj:' + aud);
+      if (!tk) { tk = WP_.jwt(aud, v.d, 'mailto:contato@mczoe.com.br'); cache.put('vj:' + aud, tk, 21600); } jw[aud] = tk;
+      reqs.push({ url: u, method: 'post', contentType: 'application/octet-stream', payload: WP_.sg(WP_.cifra(e.payload, e.sub)), headers: { 'Content-Encoding': 'aes128gcm', TTL: '86400', Urgency: 'high', Authorization: 'vapid t=' + tk + ', k=' + v.pub }, muteHttpExceptions: true }); eps.push(u);
+    } catch (err) { out.push({ endpoint: e.sub && e.sub.endpoint, status: 0, erro: String(err && err.message || err).slice(0, 80) }); }
+  });
+  if (!reqs.length) return out;
+  let rs; try { rs = UrlFetchApp.fetchAll(reqs); } catch (err) { rs = reqs.map(function (r) { try { return UrlFetchApp.fetch(r.url, r); } catch (e2) { return null; } }); }
+  rs.forEach(function (r, i) { let st = 0, txt = ''; try { st = r.getResponseCode(); if (st >= 400) txt = String(r.getContentText()).slice(0, 120); } catch (e3) { /* sem resposta */ } out.push({ endpoint: eps[i], status: st, erro: txt }); });
+  return out;
+}
+function pushMortos_(res) { const m = {}; res.forEach(function (x) { if (x && (x.status === 404 || x.status === 410)) m[x.endpoint] = 1; }); if (Object.keys(m).length) withLock_(function () { const t = table_('PushSubs'); t.rows.forEach(function (sb) { if (m[sb.Endpoint]) writeRow_(t, sb._row, { MembroID: '', Endpoint: '' }); }); }); }
 function pushFlush_() {
-  if (!PUSHQ_.length) return; const q = PUSHQ_.splice(0, PUSHQ_.length), rl = pushRelayHttp_(); if (!rl) return;
+  if (!PUSHQ_.length) return; const q = PUSHQ_.splice(0, PUSHQ_.length);
   let subs; try { subs = table_('PushSubs').rows; } catch (e) { return; } if (!subs.length) return;
   const por = {}; subs.forEach(function (s) { if (s.MembroID && s.Endpoint) (por[s.MembroID] = por[s.MembroID] || []).push(s); });
   const envios = []; q.forEach(function (n) { (por[n.m] || []).forEach(function (s) { envios.push({ sub: { endpoint: s.Endpoint, keys: { p256dh: s.P256dh, auth: s.Auth } }, payload: { title: clip_(n.t, 80), body: clip_(n.b, 160), tag: n.k, url: './' } }); }); });
   if (!envios.length) return;
-  const r = UrlFetchApp.fetch(rl.base + '/push', { method: 'post', contentType: 'application/json', headers: { Authorization: 'Bearer ' + rl.token }, payload: JSON.stringify({ envios: envios.slice(0, 300) }), muteHttpExceptions: true });
-  if (r.getResponseCode() !== 200) return;
-  const res = jparse_(r.getContentText(), {}).res || [], mortos = {}; res.forEach(function (x) { if (x && (x.status === 404 || x.status === 410)) mortos[x.endpoint] = 1; });
-  if (Object.keys(mortos).length) withLock_(function () { const t = table_('PushSubs'); t.rows.forEach(function (s) { if (mortos[s.Endpoint]) writeRow_(t, s._row, { MembroID: '', Endpoint: '' }); }); });
+  pushMortos_(pushEnvia_(envios.slice(0, 120)));
 }
 // Roda todos os dias (gatilho criado no setup): avisa quem tem missões do Sod pendentes
 function lembreteMissoes() {
