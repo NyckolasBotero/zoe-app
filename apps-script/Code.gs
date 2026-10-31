@@ -39,7 +39,7 @@ const SHEETS = {
   Reunioes: ['ReuniaoID', 'CelulaID', 'Data', 'Presentes', 'PresencaDeDeus', 'Obs', 'ForaDoDia', 'Elenco', 'Termometro', 'Foto'],
   Posts: ['PostID', 'Tipo', 'Escopo', 'CelulaID', 'AutorID', 'Titulo', 'Texto', 'Foto', 'Meta', 'Data', 'Status'],
   Comentarios: ['ComentID', 'PostID', 'MembroID', 'Texto', 'Data'],
-  Visitantes: ['VisitanteID', 'Nome', 'Apelido', 'Telefone', 'Email', 'Nascimento', 'Endereco', 'Bairro', 'Cidade', 'UF', 'Lat', 'Lng', 'Data', 'RegistradoPor', 'CelulaID', 'Distancia', 'Contatado', 'ContatadoPor', 'ContatoData', 'Msg', 'Obs', 'Decisao', 'Status', 'SupervisorID', 'LiderID', 'ConsolidadorID', 'TriagemPor', 'EncaminhadoEm', 'AceitoEm', 'AceitoPor', 'MembroID'],
+  Visitantes: ['VisitanteID', 'Nome', 'Apelido', 'Telefone', 'Email', 'Nascimento', 'Endereco', 'Bairro', 'Cidade', 'UF', 'Lat', 'Lng', 'Data', 'RegistradoPor', 'CelulaID', 'Distancia', 'Contatado', 'ContatadoPor', 'ContatoData', 'Msg', 'Obs', 'Decisao', 'Status', 'SupervisorID', 'LiderID', 'ConsolidadorID', 'TriagemPor', 'EncaminhadoEm', 'AceitoEm', 'AceitoPor', 'MembroID', 'CelulaProximaID'],
   BibMarcas: ['MembroID', 'Ref', 'Cor', 'Tipo', 'Comentario', 'Publico', 'Data'],
   Presencas: ['ReuniaoID', 'CelulaID', 'Data', 'MembroID'],
   Papeis: ['CelulaID', 'MembroID', 'Papel'],
@@ -1724,7 +1724,7 @@ function getFicha_(d, u) {
   let rosto = null; if (tot) { const r = table_('Rostos').rows.filter(me)[0]; if (r) rosto = { autorizado: rostoAut_(r), consentiu: dia10_(r.ConsentimentoBio), imagem: dia10_(r.ConsentimentoImagem), amostras: amostras_(r.Amostras).length, base: !!vetor_(r.Descritor), revogado: dia10_(r.Revogado) }; }
   // consolidação (visitante no culto → supervisor → líder/consolidador)
   const tel = String(m.Telefone || '').replace(/\D/g, ''), nmN = norm_(m.Nome), vis = table_('Visitantes').rows.filter(function (v) { return v.MembroID === mid || (tel.length >= 10 && String(v.Telefone || '').replace(/\D/g, '') === tel) || norm_(v.Nome) === nmN; }).sort(function (a, b) { return a.Data < b.Data ? -1 : 1; })[0] || null;
-  const consolidacao = vis ? { registrado: dia10_(vis.Data), registradoPor: nm[vis.RegistradoPor] || '', celula: cn(vis.CelulaID), supervisor: nm[vis.SupervisorID] || '', lider: nm[vis.LiderID] || '', consolidador: vis.ConsolidadorID ? nm[vis.ConsolidadorID] || '' : '', encaminhadoEm: String(vis.EncaminhadoEm || '').slice(0, 16), aceitoEm: String(vis.AceitoEm || '').slice(0, 16), aceitoPor: nm[vis.AceitoPor] || '', contatadoEm: String(vis.ContatoData || '').slice(0, 16), status: vis.Status || 'encaminhado' } : null;
+  const consolidacao = vis ? { registrado: dia10_(vis.Data), registradoPor: nm[vis.RegistradoPor] || '', celula: cn(vis.CelulaID), proxima: cn(vis.CelulaProximaID || vis.CelulaID), km: vis.Distancia === '' ? null : Number(vis.Distancia), supervisor: nm[vis.SupervisorID] || '', lider: nm[vis.LiderID] || '', consolidador: vis.ConsolidadorID ? nm[vis.ConsolidadorID] || '' : '', encaminhadoEm: String(vis.EncaminhadoEm || '').slice(0, 16), aceitoEm: String(vis.AceitoEm || '').slice(0, 16), aceitoPor: nm[vis.AceitoPor] || '', contatadoEm: String(vis.ContatoData || '').slice(0, 16), status: vis.Status || 'encaminhado' } : null;
   // datas-chave
   const idade = m.Nascimento ? Math.floor((Date.now() - new Date(String(m.Nascimento).slice(0, 10) + 'T12:00:00Z')) / 31557600000) : '';
   const datas = { cadastro: dia10_(m.CriadoEm), entrada: dia10_(m.DataEntrada), primeiroRegistro: [dia10_(m.CriadoEm), presencas.primeira, clD[0] || '', notasD[0] || '', consolidacao ? consolidacao.registrado : ''].filter(String).sort()[0] || '', decisao: dia10_(m.DataDecisao), batizado: m.Batizado, batismo: dia10_(m.DataBatismo), igrejaBatismo: m.IgrejaBatismo || '', casamento: dia10_(m.DataCasamento), termos: dia10_(m.AceiteTermos), privacidade: dia10_(m.AceitePrivacidade) };
@@ -2266,10 +2266,10 @@ function saveVisitor_(d, u) {
     if (pr) {
       const km = Math.round(pr.km * 10) / 10, nomes = nomes_(), sup = pr.cel.SupervisorID || '', t = table_('Visitantes'), vr = t.rows.filter(function (x) { return x.VisitanteID === id; })[0];
       if (sup) { // o supervisor decide para quem o visitante vai; o líder só é avisado depois do encaminhamento
-        writeRow_(t, vr._row, { Status: 'triagem', SupervisorID: sup, LiderID: pr.cel.LiderID || '' });
+        writeRow_(t, vr._row, { Status: 'triagem', SupervisorID: sup, LiderID: pr.cel.LiderID || '', CelulaProximaID: pr.cel.CelulaID });
         if (sup !== u.membroId) notify_(sup, 'visitante', 'Visitante para encaminhar: ' + nome, ap + ' mora a ' + km + ' km da célula ' + pr.cel.Nome + (pr.cel.LiderID ? ' (líder ' + (nomes[pr.cel.LiderID] || '—') + ')' : '') + '. Abra Consolidação para escolher quem vai consolidar.', 'visitante:' + id);
       } else { // sem supervisor: vai direto para o líder da célula mais próxima
-        writeRow_(t, vr._row, { Status: 'encaminhado', LiderID: pr.cel.LiderID || '', EncaminhadoEm: now_() });
+        writeRow_(t, vr._row, { Status: 'encaminhado', LiderID: pr.cel.LiderID || '', EncaminhadoEm: now_(), CelulaProximaID: pr.cel.CelulaID });
         if (pr.cel.LiderID && pr.cel.LiderID !== u.membroId) notify_(pr.cel.LiderID, 'visitante', 'Novo visitante perto da sua célula: ' + nome, ap + ' esteve no culto e mora a ' + km + ' km. Abra Consolidação para aceitar e chamar no WhatsApp.', 'visitante:' + id);
       }
     }
@@ -2283,7 +2283,7 @@ function nearCell_(d, u) {
   const nm = nomes_(); return { celula: { id: pr.cel.CelulaID, nome: pr.cel.Nome, km: Math.round(pr.km * 10) / 10, dia: pr.cel.Dia || '', inicio: pr.cel.Inicio || '', bairro: pr.cel.Bairro || '', lider: nm[pr.cel.LiderID] || '', supervisor: nm[pr.cel.SupervisorID] || '' } };
 }
 function visitorOut_(v, cn, nm) { const dest = v.ConsolidadorID || v.LiderID || ''; return { id: v.VisitanteID, nome: v.Nome, apelido: v.Apelido, telefone: v.Telefone, email: v.Email || '', endereco: [v.Endereco, v.Bairro, v.Cidade].filter(String).join(', '), lat: v.Lat === '' ? null : Number(v.Lat), lng: v.Lng === '' ? null : Number(v.Lng), data: v.Data, celulaId: v.CelulaID, celula: cn[v.CelulaID] || '', km: v.Distancia === '' ? null : Number(v.Distancia), contatado: v.Contatado === '1', contatadoEm: v.ContatoData || '', msg: v.Msg || msgPadrao_(v.Apelido || v.Nome), obs: v.Obs || '', decisao: v.Decisao === '1',
-    status: v.Status || 'encaminhado', supervisorId: v.SupervisorID || '', supervisor: nm[v.SupervisorID] || '', liderId: v.LiderID || '', lider: nm[v.LiderID] || '', consolidadorId: v.ConsolidadorID || '', consolidador: nm[v.ConsolidadorID] || '', destinoId: dest, destino: nm[dest] || '', registradoPor: nm[v.RegistradoPor] || '', encaminhadoEm: v.EncaminhadoEm || '', aceitoEm: v.AceitoEm || '', aceitoPor: nm[v.AceitoPor] || '' }; }
+    proximaId: v.CelulaProximaID || v.CelulaID, proxima: cn[v.CelulaProximaID || v.CelulaID] || '', status: v.Status || 'encaminhado', supervisorId: v.SupervisorID || '', supervisor: nm[v.SupervisorID] || '', liderId: v.LiderID || '', lider: nm[v.LiderID] || '', consolidadorId: v.ConsolidadorID || '', consolidador: nm[v.ConsolidadorID] || '', destinoId: dest, destino: nm[dest] || '', registradoPor: nm[v.RegistradoPor] || '', encaminhadoEm: v.EncaminhadoEm || '', aceitoEm: v.AceitoEm || '', aceitoPor: nm[v.AceitoPor] || '' }; }
 function triagemPode_(u, v) { return u.papel === 'admin' || u.papel === 'pastor' || can_(u, 'celulas') || (!!v.SupervisorID && v.SupervisorID === u.membroId) || (!!v.CelulaID && (u.supervisiona || []).indexOf(v.CelulaID) >= 0); }
 function destinoPode_(u, v) { return u.papel === 'admin' || triagemPode_(u, v) || (v.ConsolidadorID || v.LiderID) === u.membroId || (!v.ConsolidadorID && !!v.CelulaID && (u.lidera || []).indexOf(v.CelulaID) >= 0); }
 function listVisitors_(d, u) {
@@ -2299,14 +2299,19 @@ function routeVisitor_(d, u) {
   return withLock_(function () {
     const t = table_('Visitantes'), v = t.rows.filter(function (x) { return x.VisitanteID === clip_(d.id, 30); })[0]; if (!v) throw new ApiError('NOT_FOUND', 'Visitante não encontrado.');
     if (!triagemPode_(u, v)) throw new ApiError('FORBIDDEN', 'Só o supervisor da região (ou a administração) encaminha este visitante.');
-    const cid = clip_(d.celulaId, 30) || v.CelulaID, cel = table_('Celulas').rows.filter(function (c) { return c.CelulaID === cid; })[0]; if (!cel) throw new ApiError('VALIDATION', 'Escolha a célula do visitante.');
-    const cons = clip_(d.consolidadorId, 30); if (cons && !table_('Membros').rows.some(function (m) { return m.MembroID === cons; })) throw new ApiError('VALIDATION', 'Consolidador não encontrado.');
+    const cons0 = clip_(d.consolidadorId, 30), cels = table_('Celulas').rows; let cid = clip_(d.celulaId, 30) || v.CelulaID;
+    const consM = cons0 ? table_('Membros').rows.filter(function (m) { return m.MembroID === cons0; })[0] : null; if (cons0 && !consM) throw new ApiError('VALIDATION', 'Consolidador não encontrado.');
+    if (consM) { // o consolidador escolhido manda: a célula dele (ou a que ele lidera) vira a célula de acompanhamento, e o líder dela o líder registrado
+      const dele = consM.CelulaID || (cels.filter(function (c) { return c.LiderID === cons0; })[0] || {}).CelulaID; if (dele) cid = dele;
+    }
+    const cel = cels.filter(function (c) { return c.CelulaID === cid; })[0]; if (!cel) throw new ApiError('VALIDATION', 'Escolha a célula do visitante.');
+    const cons = cons0;
     const lider = cel.LiderID || '', dest = cons || lider; if (!dest) throw new ApiError('VALIDATION', 'Essa célula não tem líder. Escolha um consolidador.');
     const nm = nomes_(), ap = v.Apelido || v.Nome;
-    writeRow_(t, v._row, { CelulaID: cid, LiderID: lider, SupervisorID: v.SupervisorID || (u.membroId || ''), ConsolidadorID: cons && cons !== lider ? cons : '', Status: 'encaminhado', TriagemPor: u.membroId || '', EncaminhadoEm: now_(), AceitoEm: '', AceitoPor: '' });
+    writeRow_(t, v._row, { CelulaID: cid, CelulaProximaID: v.CelulaProximaID || v.CelulaID, LiderID: lider, SupervisorID: v.SupervisorID || (u.membroId || ''), ConsolidadorID: cons && cons !== lider ? cons : '', Status: 'encaminhado', TriagemPor: u.membroId || '', EncaminhadoEm: now_(), AceitoEm: '', AceitoPor: '' });
     notify_(dest, 'visitante', 'Visitante encaminhado para você: ' + v.Nome, (cons && cons !== lider ? 'O supervisor ' + (nm[u.membroId] || '') + ' escolheu você para consolidar ' + ap + '. ' : ap + ' foi encaminhado para a sua célula. ') + 'Abra Consolidação para aceitar e chamar no WhatsApp.', 'visitante:' + v.VisitanteID);
-    if (cons && cons !== lider && lider) notify_(lider, 'visitante', 'Visitante da sua célula com consolidador definido', ap + ' será acompanhado por ' + (nm[cons] || 'outra pessoa') + ' e continua registrado na sua célula.', 'visitante:' + v.VisitanteID);
-    audit_(u.email, 'VISITANTE_ENCAMINHADO', v.VisitanteID + ' -> ' + dest, 'OK'); return { ok: true, destino: nm[dest] || '' };
+    if (cons && cons !== lider && lider) notify_(lider, 'visitante', 'Visitante na sua célula com consolidador definido', ap + ' será acompanhado por ' + (nm[cons] || 'outra pessoa') + ' e fica registrado na sua célula, porque o consolidador escolhido é da sua célula.', 'visitante:' + v.VisitanteID);
+    audit_(u.email, 'VISITANTE_ENCAMINHADO', v.VisitanteID + ' -> ' + dest, 'OK'); return { ok: true, destino: nm[dest] || '', celula: cel.Nome };
   });
 }
 function acceptVisitor_(d, u) {

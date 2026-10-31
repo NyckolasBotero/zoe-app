@@ -1,5 +1,14 @@
 [
  {
+  "titulo": "Consolidador amigo tem prioridade sobre a célula mais próxima",
+  "melhorias": [
+   "Quando o supervisor escolhe um consolidador direto, a célula e o líder dele passam a ser os do visitante, mesmo que a célula mais próxima da casa seja outra.",
+   "A ficha e a lista de visitantes mostram as duas coisas: a célula mais próxima (com a distância) e a célula de acompanhamento definida pelo consolidador."
+  ],
+  "v": "1.77",
+  "data": "31/10/2026"
+ },
+ {
   "titulo": "Ficha geral do membro e triagem de visitantes pelo supervisor",
   "melhorias": [
    "Nova aba Fichas de membros (administração, pastores, supervisores e líderes): linha do tempo e todos os dados de uma pessoa — primeiro dia na igreja, decisão, batismo, primeiro acesso ao app, preenchimento do cadastro, primeiro devocional, entrada em ministério, cursos, inscrições, presenças e células.",

@@ -1263,3 +1263,14 @@ test('ficha geral do membro: escopo por papel e histórico completo', () => {
   assert.equal(e.call('saveFichaEntrada', { membroId: ana, entrada: '2025-03-02' }, L).error.code, 'FORBIDDEN'); assert.ok(e.call('saveFichaEntrada', { membroId: ana, entrada: '2025-03-02' }, adm).ok);
   assert.equal(e.call('getFicha', { membroId: ana }, adm).data.datas.entrada, '2025-03-02'); assert.equal(e.call('saveFichaEntrada', { membroId: ana, entrada: 'x' }, adm).error.code, 'VALIDATION');
 });
+
+test('consolidador amigo de outra célula tem prioridade sobre a célula mais próxima', () => {
+  const { e, adm, tok, mk } = boot(); const l1 = mk('l1@zoe.com', 'membro'), l2 = mk('l2@zoe.com', 'membro'), sup = mk('sup@zoe.com', 'membro'), am = mk('am@zoe.com', 'membro');
+  const c1 = e.call('createCell', { nome: 'Perto', liderId: l1, supervisorId: sup, coordenadas: '-23.50, -46.60' }, adm).data.id, c2 = e.call('createCell', { nome: 'Longe', liderId: l2, supervisorId: sup, coordenadas: '-23.90, -46.60' }, adm).data.id;
+  e.run(`(function(){const t=table_('Membros');t.rows.forEach(function(m){if(m.Email==='am@zoe.com')writeRow_(t,m._row,{CelulaID:'${c2}'})})})()`);
+  const S = tok('sup@zoe.com', 'Temp12345'), L2 = tok('l2@zoe.com', 'Temp12345'), v = e.call('saveVisitor', { nome: 'Bia Visita', telefone: '11944443333', lat: -23.5, lng: -46.6 }, adm).data;
+  const r = e.call('routeVisitor', { id: v.id, consolidadorId: am }, S); assert.ok(r.ok, JSON.stringify(r)); assert.equal(r.data.celula, 'Longe');
+  const it = e.call('listVisitors', {}, S).data.itens.find(x => x.id === v.id); assert.equal(it.proxima, 'Perto'); assert.equal(it.celula, 'Longe'); assert.equal(it.lider, 'l2'); assert.equal(it.consolidador, 'am');
+  const nt = (m) => e.sheets.Notificacoes.rows.slice(1).filter(x => x[1] === m && x[2] === 'visitante').length; assert.equal(nt(l2), 1);
+  const f = e.call('getFicha', { membroId: e.run(`(function(){return 'x'})()`) && 'nenhum' }, adm); assert.equal(f.error.code, 'NOT_FOUND');
+});
