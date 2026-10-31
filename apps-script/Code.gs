@@ -46,7 +46,7 @@ const SHEETS = {
   Oracoes: ['OracaoID', 'CelulaID', 'MembroID', 'Tema', 'Titulo', 'Texto', 'Data'],
   Eventos: ['EventoID', 'Titulo', 'Data', 'Hora', 'Local', 'Descricao', 'Programacao', 'Escopo', 'CelulaID', 'CriadoPor', 'Status', 'Foto', 'Insignia'],
   EventoPresenca: ['EventoID', 'MembroID', 'Data'],
-  Rostos: ['MembroID', 'Descritor', 'AtualizadoEm'],
+  Rostos: ['MembroID', 'Descritor', 'AtualizadoEm', 'Autorizado', 'AutorizadoPor', 'AutorizadoEm'],
   Corridas: ['CorridaID', 'Titulo', 'Ano', 'Inicio', 'Fim', 'CapDia', 'TotalCap', 'Status'],
   CorridaLeitura: ['CorridaID', 'MembroID', 'Data', 'Capitulos', 'Resumo', 'Status', 'ValidadoPor', 'Obs'],
   CorridaConc: ['CorridaID', 'MembroID', 'Fim', 'Faltas', 'Faixa', 'Pos'],
@@ -1528,22 +1528,40 @@ function checkinEvento_(d, u) {
 }
 // ---- Presença por rosto: o aparelho calcula a "assinatura" numérica (128 números) da foto de perfil; a imagem do rosto nunca é guardada pela câmera
 function descOk_(v) { if (!Array.isArray(v) || v.length !== 128) return ''; const o = []; for (let i = 0; i < 128; i++) { const n = Number(v[i]); if (!isFinite(n) || Math.abs(n) > 5) return ''; o.push(Math.round(n * 1000) / 1000); } return JSON.stringify(o); }
+// Lista de autorizados (whitelist): só quem está autorizado tem o rosto indexado e reconhecido. Linhas antigas sem marca valem como autorizadas.
+const rostoAut_ = function (r) { return !!r && r.Autorizado !== '0'; };
+function faceRoster_(d, u) {
+  const lin = {}; table_('Rostos').rows.forEach(function (r) { lin[r.MembroID] = r; });
+  const itens = table_('Membros').rows.filter(function (m) { return m.Status !== 'Inativo'; }).map(function (m) { const r = lin[m.MembroID]; return { id: m.MembroID, nome: m.Nome, foto: m.Foto ? 1 : 0, aut: rostoAut_(r), idx: !!(r && r.Descritor), em: r && r.AutorizadoEm || '' }; });
+  itens.sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome)); }); return { itens: itens };
+}
+function setFaceAuth_(d, u) {
+  return withLock_(function () {
+    const t = table_('Rostos'), lin = {}, mem = {}; t.rows.forEach(function (r) { lin[r.MembroID] = r; }); table_('Membros').rows.forEach(function (m) { if (m.Status !== 'Inativo') mem[m.MembroID] = 1; });
+    const on = d.on === true || d.on === 'true' || d.on === 1; let n = 0;
+    (Array.isArray(d.ids) ? d.ids : []).slice(0, 600).forEach(function (x) {
+      const id = clip_(x, 30); if (!mem[id]) return; const r = lin[id];
+      if (on) { if (r) { if (!rostoAut_(r)) { writeRow_(t, r._row, { Autorizado: '1', AutorizadoPor: u.email, AutorizadoEm: today_() }); n++; } } else { appendRow_(t, { MembroID: id, Descritor: '', AtualizadoEm: '', Autorizado: '1', AutorizadoPor: u.email, AutorizadoEm: today_() }); t.rows.push({ MembroID: id }); lin[id] = { _row: t.rows.length + 1, Autorizado: '1' }; n++; } }
+      else if (r) { writeRow_(t, r._row, { Descritor: '', Autorizado: '0', AutorizadoPor: u.email, AutorizadoEm: today_() }); n++; } // desautorizar apaga a assinatura do rosto
+    });
+    audit_(u.email, on ? 'ROSTOS_AUTORIZADOS' : 'ROSTOS_DESAUTORIZADOS', String(n), 'OK'); return { n: n };
+  });
+}
 function saveFaces_(d, u) {
   return withLock_(function () {
-    const t = table_('Rostos'), mem = {}, ex = {}; table_('Membros').rows.forEach(function (m) { mem[m.MembroID] = m.Status !== 'Inativo'; }); t.rows.forEach(function (r) { ex[r.MembroID] = r; });
+    const t = table_('Rostos'), ex = {}; t.rows.forEach(function (r) { ex[r.MembroID] = r; });
     let n = 0; (Array.isArray(d.itens) ? d.itens : []).slice(0, 60).forEach(function (it) {
-      const id = clip_(it && it.id, 30), ds = descOk_(it && it.d); if (!id || !mem[id] || !ds) return;
-      if (ex[id]) writeRow_(t, ex[id]._row, { Descritor: ds, AtualizadoEm: today_() }); else { appendRow_(t, { MembroID: id, Descritor: ds, AtualizadoEm: today_() }); t.rows.push({ MembroID: id }); ex[id] = { _row: t.rows.length + 1 }; }
-      n++;
+      const id = clip_(it && it.id, 30), ds = descOk_(it && it.d), r = ex[id]; if (!id || !ds || !rostoAut_(r)) return;
+      writeRow_(t, r._row, { Descritor: ds, AtualizadoEm: today_() }); n++;
     });
     audit_(u.email, 'ROSTOS_SALVOS', String(n), 'OK'); return { n: n };
   });
 }
 function listFaces_(d, u) {
   const nome = {}, foto = {}; table_('Membros').rows.forEach(function (m) { if (m.Status !== 'Inativo') { nome[m.MembroID] = m.Nome; foto[m.MembroID] = m.Foto ? 1 : 0; } });
-  const idx = {}, itens = []; table_('Rostos').rows.forEach(function (r) { if (nome[r.MembroID] === undefined) return; let ds; try { ds = JSON.parse(r.Descritor); } catch (e) { return; } if (!Array.isArray(ds) || ds.length !== 128) return; idx[r.MembroID] = 1; itens.push({ id: r.MembroID, nome: nome[r.MembroID], d: ds }); });
-  const falta = Object.keys(nome).filter(function (i) { return foto[i] && !idx[i]; });
-  return { itens: itens, falta: falta, semFoto: Object.keys(nome).filter(function (i) { return !foto[i]; }).length, total: Object.keys(nome).length };
+  const idx = {}, itens = [], aut = {}; table_('Rostos').rows.forEach(function (r) { if (nome[r.MembroID] === undefined || !rostoAut_(r)) return; aut[r.MembroID] = 1; let ds; try { ds = JSON.parse(r.Descritor); } catch (e) { return; } if (!Array.isArray(ds) || ds.length !== 128) return; idx[r.MembroID] = 1; itens.push({ id: r.MembroID, nome: nome[r.MembroID], d: ds }); });
+  const ids = Object.keys(aut);
+  return { itens: itens, falta: ids.filter(function (i) { return foto[i] && !idx[i]; }), semFoto: ids.filter(function (i) { return !foto[i]; }).length, total: ids.length };
 }
 function clearFaces_(d, u) {
   return withLock_(function () {
@@ -2667,7 +2685,7 @@ const ROUTES = {
   getPushKey: { auth: 'any', fn: getPushKey_ }, pushDiag: { auth: 'any', fn: pushDiag_ }, savePushSub: { auth: 'any', write: 1, fn: savePushSub_ }, delPushSub: { auth: 'any', write: 1, fn: delPushSub_ },
   sodGet: { auth: 'any', write: 1, fn: sodGet_ }, sodAbrir: { auth: 'any', write: 1, fn: sodAbrir_ }, sodEquipar: { auth: 'any', write: 1, fn: sodEquipar_ }, sodDescartar: { auth: 'any', write: 1, fn: sodDescartar_ }, sodAparencia: { auth: 'any', write: 1, fn: sodAparencia_ }, sodOrar: { auth: 'any', write: 1, fn: sodOrar_ }, sodComprar: { auth: 'any', write: 1, fn: sodComprar_ },
   listMarks: { auth: 'any', fn: listMarks_ }, saveMark: { auth: 'any', write: 1, fn: saveMark_ }, saveNote: { auth: 'any', write: 1, fn: saveNote_ }, listCultoNotes: { auth: 'any', fn: listCultoNotes_ }, getMural: { auth: 'any', fn: getMural_ },
-  listInsigniaDefs: { auth: 'any', fn: listInsigniaDefs_ }, saveInsigniaDef: { auth: 'any', write: 1, fn: saveInsigniaDef_ }, grantBadge: { auth: 'any', write: 1, fn: grantBadge_ }, logServico: { auth: 'any', write: 1, fn: logServico_ }, listServicos: { auth: 'any', fn: listServicos_ }, searchPeople: { auth: 'any', fn: findPeople_ }, sendChat: { auth: 'any', write: 1, fn: sendChat_ }, getChat: { auth: 'any', fn: getChat_ }, chatRead: { auth: 'any', write: 1, fn: chatRead_ }, chatTyping: { auth: 'any', fn: chatTyping_ }, listChats: { auth: 'any', fn: listChats_ }, getCertLayout: { auth: 'any', fn: getCertLayout_ }, saveCertLayout: { auth: 'any', write: 1, fn: saveCertLayout_ }, previewCert: { auth: 'any', fn: previewCert_ }, revokeCert: { auth: 'any', write: 1, fn: revokeCert_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, saveFaces: { auth: 'eventos', write: 1, fn: saveFaces_ }, listFaces: { auth: 'eventos', fn: listFaces_ }, clearFaces: { auth: 'eventos', write: 1, fn: clearFaces_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
+  listInsigniaDefs: { auth: 'any', fn: listInsigniaDefs_ }, saveInsigniaDef: { auth: 'any', write: 1, fn: saveInsigniaDef_ }, grantBadge: { auth: 'any', write: 1, fn: grantBadge_ }, logServico: { auth: 'any', write: 1, fn: logServico_ }, listServicos: { auth: 'any', fn: listServicos_ }, searchPeople: { auth: 'any', fn: findPeople_ }, sendChat: { auth: 'any', write: 1, fn: sendChat_ }, getChat: { auth: 'any', fn: getChat_ }, chatRead: { auth: 'any', write: 1, fn: chatRead_ }, chatTyping: { auth: 'any', fn: chatTyping_ }, listChats: { auth: 'any', fn: listChats_ }, getCertLayout: { auth: 'any', fn: getCertLayout_ }, saveCertLayout: { auth: 'any', write: 1, fn: saveCertLayout_ }, previewCert: { auth: 'any', fn: previewCert_ }, revokeCert: { auth: 'any', write: 1, fn: revokeCert_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, saveFaces: { auth: 'eventos', write: 1, fn: saveFaces_ }, faceRoster: { auth: 'eventos', fn: faceRoster_ }, setFaceAuth: { auth: 'eventos', write: 1, fn: setFaceAuth_ }, listFaces: { auth: 'eventos', fn: listFaces_ }, clearFaces: { auth: 'eventos', write: 1, fn: clearFaces_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
   searchCells: { auth: 'any', fn: searchCells_ }, addPrayer: { auth: 'any', write: 1, fn: addPrayer_ }, listPrayers: { auth: 'any', fn: listPrayers_ },
   cellMembers: { auth: 'any', fn: cellMembers_ }, saveCell: { auth: 'any', write: 1, fn: saveCell_ }, saveAttendance: { auth: 'any', write: 1, fn: saveAttendance_ }, history: { auth: 'any', fn: history_ },
   indicators: { auth: 'any', fn: indicators_ }, getPapeis: { auth: 'any', fn: getPapeis_ }, savePapeis: { auth: 'any', write: 1, fn: savePapeis_ }, createCellEvent: { auth: 'any', write: 1, fn: createCellEvent_ },

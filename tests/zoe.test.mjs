@@ -1145,15 +1145,19 @@ test('Sod liga/desliga, lembrete diário das missões, Web Push (inscrição, ch
   const lay = e.call('saveHomeLayout', { layout: [{ id: 'eventos', w: 8, h: 14, fh: 9999, fit: 'contain' }, { id: 'proxevento', w: 4, h: 13, fh: 'x', fit: 'xx' }, { id: 'hero', w: 5, h: 5, fh: 120 }] }, adm).data.layout;
   assert.equal(lay[0].fh, 700); assert.equal(lay[0].fit, 'contain'); assert.equal(lay[1].fh, undefined); assert.equal(lay[1].fit, undefined); assert.equal(lay[2].fh, 120);
 });
-test('rostos: salva assinatura, lista, valida e apaga (só quem tem permissão de eventos)', () => {
+test('rostos: lista de autorizados, assinatura, listagem e apagar (só quem tem permissão de eventos)', () => {
   const { e, adm, tok, mk } = boot(); mk('maria@zoe.com', 'membro'); const m = tok('maria@zoe.com', 'Temp12345');
-  const mid = e.run("table_('Membros').rows[0].MembroID");
-  const d = Array.from({ length: 128 }, (_, i) => i / 200);
-  for (const a of ['saveFaces', 'listFaces', 'clearFaces']) assert.equal(e.call(a, {}, m).error.code, 'FORBIDDEN', a);
+  const mid = e.run("table_('Membros').rows[0].MembroID"), d = Array.from({ length: 128 }, (_, i) => i / 200);
+  for (const a of ['saveFaces', 'listFaces', 'clearFaces', 'faceRoster', 'setFaceAuth']) assert.equal(e.call(a, {}, m).error.code, 'FORBIDDEN', a);
+  assert.equal(e.call('faceRoster', {}, adm).data.itens.every((x) => !x.aut), true, 'ninguém autorizado no começo');
+  assert.equal(e.call('saveFaces', { itens: [{ id: mid, d }] }, adm).data.n, 0, 'sem autorização não guarda assinatura');
+  assert.equal(e.call('setFaceAuth', { ids: [mid, 'inexistente'], on: true }, adm).data.n, 1);
   assert.equal(e.call('saveFaces', { itens: [{ id: mid, d }, { id: mid, d: [1, 2] }, { id: 'inexistente', d }] }, adm).data.n, 1);
-  const l = e.call('listFaces', {}, adm).data; assert.equal(l.itens.length, 1); assert.equal(l.itens[0].d.length, 128);
-  assert.equal(e.call('saveFaces', { itens: [{ id: mid, d }] }, adm).data.n, 1); assert.equal(e.call('listFaces', {}, adm).data.itens.length, 1);
-  assert.equal(e.call('clearFaces', {}, adm).data.n, 1); assert.equal(e.call('listFaces', {}, adm).data.itens.length, 0);
+  let r = e.call('faceRoster', {}, adm).data.itens.find((x) => x.id === mid); assert.equal(r.aut, true); assert.equal(r.idx, true);
+  const l = e.call('listFaces', {}, adm).data; assert.equal(l.itens.length, 1); assert.equal(l.itens[0].d.length, 128); assert.equal(l.total, 1);
+  assert.equal(e.call('setFaceAuth', { ids: [mid], on: false }, adm).data.n, 1, 'desautorizar apaga a assinatura');
+  r = e.call('faceRoster', {}, adm).data.itens.find((x) => x.id === mid); assert.equal(r.aut, false); assert.equal(r.idx, false); assert.equal(e.call('listFaces', {}, adm).data.itens.length, 0);
+  e.call('setFaceAuth', { ids: [mid], on: true }, adm); e.call('saveFaces', { itens: [{ id: mid, d }] }, adm); assert.equal(e.call('clearFaces', {}, adm).data.n, 1); assert.equal(e.call('listFaces', {}, adm).data.itens.length, 0);
 });
 test('notificações: diagnóstico sem inscrições e chat sempre enfileira push', () => {
   const { e, adm } = boot();

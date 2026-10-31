@@ -19,12 +19,21 @@ def entra(b,email,senha):
 with sync_playwright() as p:
     b=p.chromium.launch(); a=entra(b,'admin@zoe.com','SenhaForte123')
     a.evaluate("""async()=>{for(const n of ['Ana Souza','Bruno Alvares','Carla Dias'])await api('createUser',{nome:n,email:n.split(' ')[0].toLowerCase()+'@zoe.com',senha:'Temp12345',papel:'membro'});await api('createEvent',{titulo:'Culto de Domingo',data:'2099-01-10',hora:'19:00',local:'Templo'})}""")
-    a.evaluate("go('admin');admGrupo('pub')"); a.wait_for_selector('button:has-text("Carregar eventos")'); a.click('button:has-text("Carregar eventos")'); a.wait_for_selector('#ck_ev')
-    eid=a.evaluate("document.querySelector('#ck_ev').value")
+    # aba própria na barra de navegação: lista de autorizados (whitelist)
+    a.wait_for_selector('.nv[aria-label="Presença facial"]',state='attached'); a.evaluate("(()=>{const e=document.querySelector('.nv[aria-label=\\'Presença facial\\']');e.scrollIntoView({inline:'center',block:'nearest'});e.click()})()"); a.wait_for_selector('#rf_l .rfrow'); a.wait_for_function("document.querySelector('#rf_ev').value")
+    eid=a.evaluate("document.querySelector('#rf_ev').value"); assert eid
+    assert a.is_disabled('button:has-text("Abrir câmera")'),'sem ninguém autorizado e indexado a câmera fica bloqueada'
+    assert a.evaluate("document.querySelectorAll('#rf_l input:checked').length")==0
     ids=a.evaluate("async(e)=>{const r=await api('eventoPresenca',{eventoId:e});const o={};r.membros.forEach(m=>o[m.nome.split(' ')[0]]=m.id);return o}",eid)
-    # assinaturas de Ana (semente 1) e Bruno (semente 2) já indexadas
-    a.evaluate("async(i)=>{await api('saveFaces',{itens:[{id:i.Ana,d:Array.from(__vec(1))},{id:i.Bruno,d:Array.from(__vec(2))}]})}",ids)
-    a.click('button:has-text("Câmera de presença")'); a.wait_for_selector('#fcov #fc_go'); assert a.inner_text('#fc_n')=='2'
+    a.fill('#rf_q','ana'); a.wait_for_function("document.querySelectorAll('#rf_l .rfrow').length===1"); a.check('#rf_l .rfrow input'); a.wait_for_function("RF.itens.find(x=>x.nome.startsWith('Ana')).aut")
+    a.fill('#rf_q','bru'); a.check('#rf_l .rfrow input'); a.wait_for_function("RF.itens.find(x=>x.nome.startsWith('Bruno')).aut"); a.fill('#rf_q','')
+    assert a.evaluate("api('faceRoster').then(r=>r.itens.filter(x=>x.aut).length)")==2
+    # assinaturas de Ana (semente 1) e Bruno (semente 2) já indexadas; Carla não está autorizada
+    a.evaluate("async(i)=>{await api('saveFaces',{itens:[{id:i.Ana,d:Array.from(__vec(1))},{id:i.Bruno,d:Array.from(__vec(2))},{id:i.Carla,d:Array.from(__vec(3))}]})}",ids)
+    assert a.evaluate("api('listFaces').then(r=>r.itens.length)")==2,'quem não está autorizado não entra'
+    a.evaluate("rfCarrega()"); a.wait_for_function("RF.itens.filter(x=>x.idx).length===2"); a.wait_for_selector('button:has-text("Abrir câmera"):not([disabled])')
+    a.screenshot(path=OUT+'/face_aba.png')
+    a.click('button:has-text("Abrir câmera")'); a.wait_for_selector('#fcov #fc_go'); assert a.inner_text('#fc_n')=='2'
     # indexação: sem foto de perfil nenhuma é indexada, mas o fluxo termina sem erro
     a.evaluate("FC.info.falta=['x_inexistente']; fcDesenha()"); a.click('#fc_ix'); a.wait_for_function("document.querySelector('#fc_st').textContent.includes('sem rosto')",timeout=10000)
     a.click('#fc_go'); a.wait_for_selector('#fc_cv'); a.wait_for_function("FC&&FC.run")
@@ -48,5 +57,6 @@ with sync_playwright() as p:
     a.evaluate("__faces=[{seed:1,box:{x:100,y:80,width:120,height:150}}]"); a.wait_for_timeout(1000); assert 'Ana' not in a.inner_text('#fc_l').split('Confirmados')[0]
     a.click('button:has-text("Parar")'); a.wait_for_selector('#fc_go'); a.click('button:has-text("Apagar todos")'); a.wait_for_function("document.querySelector('#fc_n').textContent==='0'",timeout=8000)
     a.click('#fcov .fch button'); assert a.query_selector('#fcov') is None
+    a.wait_for_selector('#rf_l .rfrow'); a.fill('#rf_q','ana'); a.uncheck('#rf_l .rfrow input'); a.wait_for_function("!RF.itens.find(x=>x.nome.startsWith('Ana')).aut")
     assert not errs,errs
     print('OK face')

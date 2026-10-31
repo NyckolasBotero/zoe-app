@@ -338,3 +338,5 @@ Segure e arraste a Zoe para qualquer posição da tela (mouse ou toque); a posi�
 - Fluxo: o app pede `getPushKey` → o aparelho assina `savePushSub` → eventos (chat, avisos, lembrete diário do Sod) chamam `pushFlush_()`.
 - Diagnóstico: Administração › Definições › *Notificações no aparelho* (`pushDiag`, com envio de teste).
 - iPhone: precisa do app instalado na Tela de Início (iOS 16.4+). Testes: `node tests/webpush_puro.test.mjs` (compara com o `crypto` do Node) e `tests/zoe.test.mjs`.
+
+- **Aba *Presença facial*** (`rostos`, permissão `eventos`): escolhe o evento, mostra a **lista de autorizados** (whitelist, aba `Rostos` com `Autorizado/AutorizadoPor/AutorizadoEm`; rotas `faceRoster`, `setFaceAuth`) e abre a câmera. Só autorizados são indexados e reconhecidos; desautorizar apaga a assinatura.

@@ -1,5 +1,16 @@
 [
  {
+  "titulo": "Nova aba: Presença facial (lista de autorizados)",
+  "melhorias": [
+   "Nova aba Presença facial na barra de navegação (para quem gerencia eventos): escolha o evento, veja todas as pessoas e abra a câmera de presença.",
+   "Lista de pessoas autorizadas (whitelist): só quem estiver autorizado tem o rosto indexado e reconhecido; os demais aparecem como Desconhecido.",
+   "Autorize pessoa por pessoa ou todas as que têm foto; desautorizar apaga a assinatura do rosto. Filtros e busca por nome.",
+   "Botão Indexar rostos pendentes lê as fotos de perfil das pessoas autorizadas direto da aba."
+  ],
+  "v": "1.50",
+  "data": "31/10/2026"
+ },
+ {
   "titulo": "Zoe voadora: inércia, tontura e fuga",
   "melhorias": [
    "Ao soltar a Zoe, ela não para de repente: continua voando com as asinhas batendo e pousa no canto ou borda livre da tela mais perto.",
