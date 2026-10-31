@@ -323,3 +323,11 @@ Segure e arraste a Zoe para qualquer posição da tela (mouse ou toque); a posi�
 - **Cutscene do Sod:** 8 cenas com a história (luz, pedras, personagem, missões, ausência, libertação, domingo); abre na primeira visita ao Sod e pode ser revista em *Ver a história*.
 - **Liga/desliga do Sod:** Administração › Definições de Parâmetros › *Sod (gamificação)* (chave `SodAtivo`).
 - **Início:** a edição de blocos (arrastar, tamanho em colunas × linhas) funciona também no celular; blocos com fotos (Próximos eventos, Próximo evento) têm controle de altura da foto e de ajuste (preencher ou inteira).
+
+
+## Presença por rosto (câmera)
+- Admin › Publicações › *Presença nos eventos* › **Câmera de presença**. Usa `face-api` (@vladmandic, via jsDelivr; endereços podem ser trocados em `ZOE_CONFIG.faceLib` / `faceModels`) e roda **no celular**.
+- Cadastro: botão *Indexar* lê a foto de perfil de cada pessoa e grava só a assinatura (128 números) na aba `Rostos` (rotas `saveFaces`, `listFaces`, `clearFaces`; permissão `eventos`). *Apagar todos os dados faciais* limpa a aba; excluir uma pessoa apaga a assinatura dela.
+- Câmera: caixas sobre os rostos, lista para confirmar (Confirmar / Não é / Confirmar todos) e *Registrar presenças* usa `checkinEvento`. Precisa de HTTPS e permissão de câmera.
+- Aviso LGPD: rosto é dado biométrico sensível; use com ciência e consentimento da comunidade.
+- Teste: `tests/e2e_face.py` (biblioteca e câmera simuladas).

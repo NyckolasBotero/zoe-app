@@ -1,5 +1,16 @@
 [
  {
+  "titulo": "Câmera de presença por rosto",
+  "melhorias": [
+   "Em Administração › Publicações › Presença nos eventos há o botão Câmera de presença: abre a câmera do celular e marca com caixas coloridas onde há rostos (verde = reconhecido, amarelo = desconhecido, azul = já presente).",
+   "Os rostos reconhecidos entram numa lista para você conferir: Confirmar, Não é (e escolher quem é de verdade) ou Confirmar todos; só depois de confirmar a presença é registrada no evento.",
+   "O app aprende os rostos a partir da foto de perfil de cada pessoa (botão Indexar). Tudo é calculado no próprio aparelho; só uma assinatura numérica é guardada e dá para apagar todos os dados faciais.",
+   "Controle de rigor (rigoroso, normal, flexível) e troca entre câmera frontal e traseira."
+  ],
+  "v": "1.39",
+  "data": "30/10/2026"
+ },
+ {
   "titulo": "Zoe renovada: chama viva e voo",
   "melhorias": [
    "A Zoe agora se chama apenas Zoe.",
