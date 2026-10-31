@@ -1,5 +1,14 @@
 [
  {
+  "titulo": "Correção: instalar o app no celular",
+  "melhorias": [
+   "Corrigido o aviso \"Não é possível instalar o app\" no Chrome: o arquivo de instalação agora é lido com a sessão do site privado e o app registra o serviço de notificações logo ao abrir.",
+   "Se o ícone de instalação ainda não aparecer, feche e abra o site de novo (ou limpe os dados do site) para o Chrome ler a configuração nova."
+  ],
+  "v": "1.43",
+  "data": "30/10/2026"
+ },
+ {
   "titulo": "Notificações do chat mais confiáveis",
   "melhorias": [
    "Mensagens do chat agora sempre geram notificação no celular de quem recebe, mesmo se o app estiver aberto em segundo plano.",

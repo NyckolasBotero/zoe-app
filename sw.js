@@ -17,3 +17,9 @@ self.addEventListener('notificationclick', (e) => {
     if (self.clients.openWindow) await self.clients.openWindow(url);
   })());
 });
+
+// Exigido para o navegador oferecer "Instalar app": só repassa a abertura de páginas à rede e avisa se estiver sem internet
+self.addEventListener('fetch', (e) => {
+  if (e.request.mode !== 'navigate') return;
+  e.respondWith(fetch(e.request).catch(() => new Response('Sem conexão. Abra o app de novo quando a internet voltar.', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } })));
+});

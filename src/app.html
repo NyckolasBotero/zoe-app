@@ -3837,6 +3837,7 @@ function puEstado(){if(!ONLINE||!TOKEN)return null;
  if(PU.key===null)return null;if(!PU.key||!puSuporta())return null;
  const p=Notification.permission;if(p==='denied')return 'bloqueado';if(p==='default')return 'ativar';return PU.ok?null:'inscrever'}
 function puDispensa(){try{return sessionStorage.getItem('zoe-pushbar')==='1'}catch(e){return false}}
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>0));
 async function pushIni(){if(!ONLINE||!TOKEN)return;try{const r=await api('getPushKey');PU.key=(r&&r.key)||''}catch(e){PU.key=''}
  if(PU.key&&puSuporta()&&puStand()||PU.key&&puSuporta()&&!puIOS()){try{await navigator.serviceWorker.register('sw.js')}catch(e){}}
  if(PU.key&&puSuporta()&&Notification.permission==='granted')await puInscreve();
