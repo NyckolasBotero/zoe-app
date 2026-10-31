@@ -1206,6 +1206,8 @@ test('aprendizado contínuo: amostras por pessoa (até 6), sem repetir, e taxa d
   for (let k = 1; k <= 8; k++) e.call('learnFace', { itens: [{ id: a, d: perto(vec(1), k * 0.6) }] }, adm);
   const l = e.call('listFaces', {}, adm).data.itens.find(x => x.id === a); assert.ok(l.d.length === 128 && l.s.length > 0 && l.s.length <= 6, 'no máximo 6 amostras: ' + l.s.length);
   assert.ok(e.call('faceRoster', {}, adm).data.itens.find(x => x.id === a).idx);
+  assert.equal(e.call('clearSamples', { id: a }, m).error.code, 'FORBIDDEN'); assert.equal(e.call('clearSamples', { id: 'XX' }, adm).error.code, 'NOT_FOUND');
+  const cs = e.call('clearSamples', { id: a }, adm); assert.ok(cs.ok && cs.data.n === l.s.length); const l2 = e.call('listFaces', {}, adm).data.itens.find(x => x.id === a); assert.equal(l2.s.length, 0); assert.equal(l2.d.length, 128, 'a base continua');
   e.call('setFaceAuth', { ids: [a], on: false }, adm); assert.equal(e.call('listFaces', {}, adm).data.itens.length, 0, 'desautorizar apaga base e amostras');
   assert.ok(e.call('faceStat', { ctx: 'Culto de sábado', ok: 8, nao: 1, man: 1 }, adm).ok); e.call('faceStat', { ctx: 'teste', ok: 2, nao: 0, man: 0 }, adm); e.call('faceStat', { ctx: 'vazio', ok: 0, nao: 0, man: 0 }, adm);
   const st = e.call('faceStats', {}, adm).data; assert.deepEqual(st.geral, { ok: 10, nao: 1, man: 1 }); assert.equal(st.sessoes.length, 2); assert.equal(e.call('faceStats', {}, m).error.code, 'FORBIDDEN');

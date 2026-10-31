@@ -362,3 +362,4 @@ Segure e arraste a Zoe para qualquer posição da tela (mouse ou toque); a posi�
 - Taxa de acerto = confirmadas / (confirmadas + "Não é" + identificadas à mão). Rotas `faceStat` e `faceStats`; aba `RostoLog`.
 
 - Fotos de exemplo à mão: botão "Enviar fotos" por pessoa autorizada (`rfFotos`/`rfFotosLe`): só fotos com exatamente um rosto viram amostra (`learnFace`); `faceRoster` devolve `am` (quantidade de amostras).
+- Apagar amostras: botão por pessoa (`rfApagaAm`, rota `clearSamples`): limpa só `Amostras`; a base (`Descritor`) continua.

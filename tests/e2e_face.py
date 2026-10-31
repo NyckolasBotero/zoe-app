@@ -49,10 +49,14 @@ with sync_playwright() as p:
     fc.value.set_files('/tmp/rosto_ex.png'); a.wait_for_function("document.querySelector('#rf_st').textContent.includes('1 foto(s) adicionada')",timeout=15000)
     assert a.evaluate("api('listFaces').then(r=>r.itens.find(x=>x.nome.startsWith('Ana')).s.length)")==1
     a.wait_for_function("document.querySelector('#rf_l').textContent.includes('1 amostra')")
+    a.wait_for_function("document.querySelector('#rf_l').textContent.includes('1 amostra')")
+    # apagar amostras: apaga as amostras e mantém a base
+    a.click('#rf_l .rfrow button:has-text("Apagar amostras")'); a.wait_for_function("!document.querySelector('#rf_l').textContent.includes('amostra(s) aprendida')",timeout=10000)
+    assert a.evaluate("api('listFaces').then(r=>{const x=r.itens.find(x=>x.nome.startsWith('Ana'));return x.s.length+':'+x.d.length})")=='0:128'
     a.evaluate("__faces=[{seed:6,box:{x:100,y:80,width:120,height:150}},{seed:7,box:{x:300,y:80,width:120,height:150}}]")
     with a.expect_file_chooser() as fc: a.click('#rf_l .rfrow button:has-text("Enviar fotos")')
     fc.value.set_files('/tmp/rosto_ex.png'); a.wait_for_function("document.querySelector('#rf_st').textContent.includes('mais de um rosto')",timeout=15000)
-    assert a.evaluate("api('listFaces').then(r=>r.itens.find(x=>x.nome.startsWith('Ana')).s.length)")==1
+    assert a.evaluate("api('listFaces').then(r=>r.itens.find(x=>x.nome.startsWith('Ana')).s.length)")==0
     a.evaluate("__faces=[]"); a.fill('#rf_q','carl'); a.wait_for_function("document.querySelectorAll('#rf_l .rfrow').length===1"); assert a.locator('#rf_l .rfrow button:has-text("Enviar fotos")').count()==0,'só quem está autorizado tem o botão'
     a.fill('#rf_q','')
     a.click('button:has-text("Abrir câmera")'); a.wait_for_selector('#fcov #fc_go'); assert a.inner_text('#fc_n')=='2'

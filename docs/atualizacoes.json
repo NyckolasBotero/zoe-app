@@ -1,5 +1,14 @@
 [
  {
+  "titulo": "Presença facial: apagar amostras de uma pessoa",
+  "melhorias": [
+   "Novo botão Apagar amostras na lista de autorizados (aparece para quem tem amostras): remove só as fotos aprendidas ou enviadas, mantém a assinatura da foto de perfil e o app volta a aprender nas próximas confirmações.",
+   "Atualize o Code.gs (colar e publicar nova versão)."
+  ],
+  "v": "1.68",
+  "data": "31/10/2026"
+ },
+ {
   "titulo": "Presença facial: enviar fotos de exemplo à mão",
   "melhorias": [
    "Na lista de autorizados, cada pessoa tem o botão Enviar fotos: escolha uma ou várias fotos (até 12) e cada foto com um rosto nítido vira uma amostra para o reconhecimento.",
