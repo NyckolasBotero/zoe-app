@@ -108,5 +108,14 @@
    "Projeção (mmProjetorHTML): #pj_songs, #pj_bib (BP, bpTipa) e #pj_ban com duplo clique (pjClk, projSel). Esc chama projLimpa. Controle remoto (tlControle) só passa slides: pílula SLIDE e área de toque (#rc_pad).",
    "Sod por usuário: Membros.SodOff, rota saveMySod, S.sodUser; sodOn() = global e pessoal."
   ]
+ },
+ {
+  "t": "Árvore Zoe e ficha rápida",
+  "itens": [
+   "Tabela Parentes (A, B, Tipo): conjuge (simétrico), filho (A é pai/mãe de B) e irmao (simétrico). Irmãos por pais em comum são deduzidos. Regras: sem ciclos, no máximo 2 pais, 1 cônjuge por pessoa.",
+   "suggestKin procura por sobrenome (iguais e família); saveKin devolve sugestões deduzidas (casal pelo filho em comum, filhos do cônjuge). Quem vincula: a própria pessoa, quem já está na família ou a liderança (fichaNivel_).",
+   "getArvore: família de uma pessoa ou, com todos, a visão da igreja (só liderança). avLayout/avSVG desenham gerações em SVG.",
+   "Pessoas usa listPeople (só quem tem acesso ativo). Células › Membros usa getMemberCard (fichaNivel_), mostrando endereço e o ponto marcado pela pessoa."
+  ]
  }
 ]

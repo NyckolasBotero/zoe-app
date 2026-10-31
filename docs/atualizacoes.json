@@ -1,5 +1,17 @@
 [
  {
+  "titulo": "Árvore Zoe, Pessoas com foto e ficha rápida do membro",
+  "v": "1.81",
+  "data": "31/10/2026",
+  "melhorias": [
+   "Árvore Zoe: nova área no menu que mostra a árvore da sua família (pais, filhos, irmãos e cônjuges da igreja) com foto e célula. Pastores e supervisores têm a aba Toda a igreja, com as famílias, quantas pessoas, em quantas células estão espalhadas e quem está sem célula.",
+   "Parentes na Zoe: no perfil, em Família, ao digitar o nome de um parente a Zoe procura pelo sobrenome e pergunta se é da mesma família (Mãe, Pai, Filho, Irmão ou Cônjuge). Ao vincular, ela deduz o resto: dois pais do mesmo filho viram casal, e os filhos de um cônjuge são sugeridos para o outro.",
+   "Pessoas: agora lista todo mundo que tem acesso ao app, com foto e em ordem alfabética, com busca e botão Ver mais.",
+   "Células › Membros: toque em qualquer membro para ver onde mora (endereço e o ponto da casa no mapa), telefone, e-mail, atalho para o perfil, para a ficha completa e para o Google Maps.",
+   "Backend: tabela Parentes e rotas suggestKin, listKin, saveKin, delKin, getArvore, listPeople e getMemberCard. Cole o Code.gs no Apps Script e rode setup()."
+  ]
+ },
+ {
   "titulo": "Studio Zoe reorganizado: Projeção única, Social Mídia e Configurações",
   "v": "1.80",
   "data": "31/10/2026",

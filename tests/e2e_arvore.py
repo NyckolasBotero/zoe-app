@@ -10,7 +10,7 @@ with sync_playwright() as p:
     pg.evaluate("api('saveKin',{a:'%s',b:'%s',rel:'pai'})"%(ids['a'],ids['f'])); pg.evaluate("api('saveKin',{a:'%s',b:'%s',rel:'mae'})"%(ids['a'],ids['i']))
     r=pg.evaluate("api('saveKin',{a:'%s',b:'%s',rel:'irma'})"%(ids['c'],ids['n'])); assert r['id']
     # Pessoas: todos com acesso, com avatar
-    pg.evaluate("go('pessoas')"); pg.wait_for_selector('#ps_r .opt',timeout=10000); print('PESSOAS',pg.locator('#ps_r .opt').count(),pg.locator('#ps_r .opt .fa').count(),pg.inner_text('#ps_r')[:200]); assert pg.locator('#ps_r .opt').count()>=5 and pg.locator('#ps_r .opt .av').count()>=5
+    pg.evaluate("go('pessoas')"); pg.wait_for_selector('#ps_r .opt',timeout=10000); print('PESSOAS',pg.locator('#ps_r .opt').count(),pg.locator('#ps_r .opt .fa').count(),pg.inner_text('#ps_r')[:200]); assert pg.locator('#ps_r .opt').count()>=5 and pg.locator('#ps_r .opt .fa').count()>=5
     # Árvore da família da Avana (visão da liderança) e da igreja
     pg.evaluate("go('arvore')"); pg.wait_for_selector('#av_arv'); pg.click('.tabs >> text=Toda a igreja'); pg.wait_for_selector('text=famílias na Árvore Zoe')
     assert pg.locator('.opt:has-text("Família Botero")').count()==1 and pg.locator('.opt:has-text("Família Nicacio")').count()==1
