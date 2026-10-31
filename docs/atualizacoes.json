@@ -1,5 +1,14 @@
 [
  {
+  "titulo": "Cadastro facial: opção para computador sem câmera",
+  "melhorias": [
+   "No computador, quem não tem câmera pode escolher Estou em um computador sem câmera e fazer o cadastro depois pelo celular (o app pede de novo no próximo acesso).",
+   "No celular essa opção não existe: o cadastro facial é obrigatório e, se a câmera estiver bloqueada, o app explica como liberar e deixa tentar de novo."
+  ],
+  "v": "1.75",
+  "data": "31/10/2026"
+ },
+ {
   "titulo": "Correção: scanner facial recusado por autorização desligada",
   "melhorias": [
    "Quem conclui o scanner facial com os termos aceitos passa a ficar autorizado automaticamente, mesmo que a autorização estivesse desligada na lista (antes aparecia a mensagem de reconhecimento desativado).",

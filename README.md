@@ -370,3 +370,4 @@ Segure e arraste a Zoe para qualquer posição da tela (mouse ou toque); a posi�
 - Pose a partir dos 68 pontos (`fcPose`): yaw = posição do nariz entre as laterais do rosto; pit = altura do nariz entre olhos e queixo (relativa à base medida nas fotos de frente). Captura após 3 quadros estáveis; botão manual após 8 s.
 - Backend: rotas `faceMe`, `faceScan` (exige os dois consentimentos; mínimo 5 assinaturas diferentes; sempre autoriza a pessoa), `faceRevoke`; colunas `ConsentimentoBio`, `ConsentimentoImagem`, `TermoVersao`, `Revogado` em `Rostos`. `clearFaces` mantém o registro do consentimento. Até 12 amostras por pessoa.
 - Testes: `tests/zoe.test.mjs` e `FACEGATE=1 bash /tmp/run1.sh tests/e2e_scan.py`.
+- Computador sem câmera: `fgCelular()` (user agent/toque) decide; só no computador aparece "Estou em um computador sem câmera" (adia por esta sessão via `sessionStorage zoe-fgskip`). No celular não há como pular.

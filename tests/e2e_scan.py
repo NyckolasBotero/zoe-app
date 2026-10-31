@@ -21,6 +21,20 @@ with sync_playwright() as p:
     a.wait_for_selector('#fgov',timeout=20000); assert 'Cadastro facial e uso de imagem' in a.inner_text('#fgov'); assert a.query_selector('#fgov button:has-text("Fechar")') is None,'não dá para fechar quando é obrigatório'
     assert a.is_disabled('#fg_go'); a.check('#fg_b'); assert a.is_disabled('#fg_go'),'precisa dos dois consentimentos'; a.check('#fg_i'); assert not a.is_disabled('#fg_go')
     a.screenshot(path=OUT+'/scan_termos.png',full_page=True)
+    assert a.query_selector('#fg_sem') is not None,'no computador há a opção de dizer que está sem câmera'
+    # no celular não existe essa opção, nem depois de erro de câmera
+    m=b.new_context(viewport={'width':390,'height':844},user_agent='Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1').new_page(); m.add_init_script(STUB); m.on('dialog',lambda d:d.accept())
+    m.goto(URL); m.wait_for_selector('#lg_e'); m.fill('#lg_e','admin@zoe.com'); m.fill('#lg_s','SenhaForte123'); m.click('#lg_b'); m.wait_for_selector('#fgov',timeout=20000)
+    assert m.query_selector('#fg_sem') is None,'no celular não há opção de pular'
+    m.check('#fg_b'); m.check('#fg_i'); m.evaluate("(()=>{navigator.mediaDevices.getUserMedia=async()=>{const e=new Error('x');e.name='NotAllowedError';throw e}})()"); m.click('#fg_go'); m.wait_for_selector('text=Tentar de novo')
+    assert 'obrigatório no celular' in m.inner_text('#fgov') and m.query_selector('#fgov button:has-text("sem câmera")') is None and m.query_selector('#fgov button:has-text("Fazer depois")') is None
+    m.close()
+    # no computador, depois de erro de câmera, também dá para dizer que está sem câmera
+    d=b.new_context(viewport={'width':1200,'height':800}).new_page(); d.add_init_script(STUB); d.on('dialog',lambda x:x.accept())
+    d.goto(URL); d.wait_for_selector('#lg_e'); d.fill('#lg_e','admin@zoe.com'); d.fill('#lg_s','SenhaForte123'); d.click('#lg_b'); d.wait_for_selector('#fgov',timeout=20000)
+    d.check('#fg_b'); d.check('#fg_i'); d.evaluate("(()=>{navigator.mediaDevices.getUserMedia=async()=>{const e=new Error('x');e.name='NotFoundError';throw e}})()"); d.click('#fg_go'); d.wait_for_selector('text=Tentar de novo'); d.click('#fgov button:has-text("sem câmera")'); assert d.query_selector('#fgov') is None
+    d.reload(); d.wait_for_selector('#view h1',timeout=20000); d.wait_for_timeout(1500); assert d.query_selector('#fgov') is None,'depois de dizer que está sem câmera não pergunta de novo na mesma sessão'
+    d.close()
     # 2) scanner guiado: só captura quando a posição pedida é feita
     a.click('#fg_go'); a.wait_for_function("FG&&FG.run",timeout=10000)
     a.evaluate("__pose={yaw:.5,pit:.5};__seed=1"); a.wait_for_function("FG.i===1",timeout=10000)
