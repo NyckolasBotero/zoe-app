@@ -89,5 +89,15 @@
    "Quem recebe aceita (ou devolve ao supervisor). Datas de cadastro, encaminhamento e aceite aparecem na ficha.",
    "Backend: colunas novas em Membros (DataEntrada) e Visitantes (Status, SupervisorID, LiderID, ConsolidadorID, TriagemPor, EncaminhadoEm, AceitoEm, AceitoPor, MembroID): rodar setup() após colar o Code.gs."
   ]
+ },
+ {
+  "t": "Mapas",
+  "itens": [
+   "Mapas › Distribuição de membros: cards com totais e %, filtros (tipo, em célula ou não, supervisão), pins com foto, mapa de calor e foco em uma célula.",
+   "Tipos: membro, frequentador (a partir de N presenças), recorrente e visitante (até N); N é definido em Administração › Definições de Parâmetros › Mapas.",
+   "Cada membro marca a própria casa em Meu perfil › Configurações › Onde eu moro (sem depender do endereço digitado).",
+   "A cor da supervisão é definida pela administração ou pelo próprio supervisor; cada pin e círculo usa a cor da sua supervisão.",
+   "Backend: colunas Lat e Lng em Membros e CelulaProximaID em Visitantes; rodar setup() depois de colar o Code.gs."
+  ]
  }
 ]

@@ -377,3 +377,8 @@ Segure e arraste a Zoe para qualquer posição da tela (mouse ou toque); a posi�
 - Visitantes: status `triagem` → `encaminhado` → `aceito` (`routeVisitor`, `acceptVisitor`); o supervisor decide a célula e o consolidador direto.
 - Após colar o Code.gs, rodar `setup()` (novas colunas em Membros e Visitantes).
 - Consolidador escolhido pelo supervisor manda: a célula dele (ou a que ele lidera) vira a de acompanhamento; a célula mais próxima fica guardada em `CelulaProximaID`. Rodar `setup()` para a coluna nova.
+
+## Mapas
+- Aba **Mapas**: Distribuição de membros (`getMapa`) e Buscar uma célula; pins com foto (`celFotos`), cores de supervisão (`saveSupCor`), casa do membro (`saveMyGeo`), parâmetros (`saveMapaCfg`).
+- Colunas novas: Membros `Lat`/`Lng`; rodar `setup()`.
+- Teste: `SEED_MAPAS=1 node tests/devserver.mjs` e `python3 tests/e2e_mapas.py`.

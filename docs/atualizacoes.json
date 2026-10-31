@@ -1,5 +1,20 @@
 [
  {
+  "titulo": "Mapas: distribuição dos membros, calor, pins com foto e supervisões coloridas",
+  "melhorias": [
+   "A aba Buscar células virou Mapas, com duas partes: Distribuição de membros (para líderes, supervisores e administração) e Buscar uma célula.",
+   "Cada membro marca a própria casa no mapa (aviso no início e cartão Onde eu moro em Configurações). Só líderes, supervisores e administração veem esse ponto.",
+   "Pins de célula com a foto da célula, o nome e o líder acima; cada supervisão tem uma cor (círculo e pin). Administração e o próprio supervisor escolhem a cor.",
+   "Mapa de distribuição com fotos dos membros, cinza para quem não está em célula, filtros por tipo, célula e supervisão, mapa de calor e cards com totais e porcentagens.",
+   "Ao tocar numa célula, o mapa mostra só os membros dela com a distância de casa até a célula.",
+   "Insights abaixo do mapa: quantos moram longe da sede e aviso de necessidade de congregação acima do percentual definido (50% por padrão).",
+   "Ao marcar a casa do visitante, o pin novo aparece junto com as células num raio de 10 km.",
+   "Parâmetros em Administração › Definições de Parâmetros › Mapas: quantas vezes define visitante e frequentador, raio, distância longe da sede, percentual de alerta e a localização da sede."
+  ],
+  "v": "1.78",
+  "data": "31/10/2026"
+ },
+ {
   "titulo": "Consolidador amigo tem prioridade sobre a célula mais próxima",
   "melhorias": [
    "Quando o supervisor escolhe um consolidador direto, a célula e o líder dele passam a ser os do visitante, mesmo que a célula mais próxima da casa seja outra.",

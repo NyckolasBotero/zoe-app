@@ -34,7 +34,7 @@ const DEFAULT_PERMS = {
 const PERMS_ZERO = { eventos: 0, transf: 0, celulas: 0, min: 0, config: 0, prof: 0, cursos: 0 };
 const SHEETS = {
   Usuarios: ['Email', 'SenhaHash', 'Salt', 'Papel', 'Status', 'MembroID', 'TrocarSenha', 'CriadoEm', 'UltimoAcesso', 'GuiaVisto'],
-  Membros: ['MembroID', 'Nome', 'Simples', 'Apelido', 'Sexo', 'Nascimento', 'Nacionalidade', 'Naturalidade', 'Sangue', 'Doador', 'Profissao', 'Telefone', 'Email', 'CEP', 'UF', 'Cidade', 'Endereco', 'Bairro', 'DataDecisao', 'Batizado', 'DataBatismo', 'IgrejaBatismo', 'Mae', 'Pai', 'EstadoCivil', 'Conjuge', 'DataCasamento', 'Filhos', 'Foto', 'CelulaID', 'EhMembro', 'Status', 'DataSaida', 'Extras', 'AceitePrivacidade', 'AceiteTermos', 'CriadoEm', 'DataEntrada'],
+  Membros: ['MembroID', 'Nome', 'Simples', 'Apelido', 'Sexo', 'Nascimento', 'Nacionalidade', 'Naturalidade', 'Sangue', 'Doador', 'Profissao', 'Telefone', 'Email', 'CEP', 'UF', 'Cidade', 'Endereco', 'Bairro', 'DataDecisao', 'Batizado', 'DataBatismo', 'IgrejaBatismo', 'Mae', 'Pai', 'EstadoCivil', 'Conjuge', 'DataCasamento', 'Filhos', 'Foto', 'CelulaID', 'EhMembro', 'Status', 'DataSaida', 'Extras', 'AceitePrivacidade', 'AceiteTermos', 'CriadoEm', 'DataEntrada', 'Lat', 'Lng'],
   Celulas: ['CelulaID', 'Nome', 'Descricao', 'Foto', 'LiderID', 'SupervisorID', 'Dia', 'Inicio', 'Fim', 'Categoria', 'Faixa', 'Bairro', 'Cidade', 'UF', 'Endereco', 'TreinamentoID', 'MaeID', 'PrivGrupo', 'PrivTel', 'PrivEmail', 'PrivEnd', 'Status', 'Lat', 'Lng'],
   Reunioes: ['ReuniaoID', 'CelulaID', 'Data', 'Presentes', 'PresencaDeDeus', 'Obs', 'ForaDoDia', 'Elenco', 'Termometro', 'Foto'],
   Posts: ['PostID', 'Tipo', 'Escopo', 'CelulaID', 'AutorID', 'Titulo', 'Texto', 'Foto', 'Meta', 'Data', 'Status'],
@@ -314,7 +314,8 @@ function greet_(d, u) {
 }
 /* ============================== CONFIG PÚBLICA ============================== */
 function cfgMap_() { const o = {}; table_('Config').rows.forEach(function (r) { o[r.Chave] = r.Valor; }); return o; }
-function publicConfig_() { const c = cfgMap_(); return { nomeIgreja: c.NomeIgreja, whatsapp: c.WhatsApp, localNome: c.LocalNome, localEndereco: c.LocalEndereco, linkMapa: c.LinkMapa || '', colunasExtras: jparse_(c.ColunasExtras, []), canalYoutube: c.CanalYoutube || '', lojaWhatsapp: c.LojaWhatsApp || '', frequentadorPct: Number(c.FrequentadorPct) || 70, frequentadorJanela: Number(c.FrequentadorJanela) || 8, celulasParaSupervisor: Math.max(0, Number(c.CelulasParaSupervisor) || 0), frequenciasParaMembro: freqMembro_(), sodAtivo: c.SodAtivo !== '0', notifTipos: notifTipos_(c), homeLayout: homeLayoutOk_(jparse_(c.HomeLayout, null)) }; }
+function publicConfig_() { const c = cfgMap_(); return { nomeIgreja: c.NomeIgreja, whatsapp: c.WhatsApp, localNome: c.LocalNome, localEndereco: c.LocalEndereco, linkMapa: c.LinkMapa || '', colunasExtras: jparse_(c.ColunasExtras, []), canalYoutube: c.CanalYoutube || '', lojaWhatsapp: c.LojaWhatsApp || '', frequentadorPct: Number(c.FrequentadorPct) || 70, frequentadorJanela: Number(c.FrequentadorJanela) || 8, celulasParaSupervisor: Math.max(0, Number(c.CelulasParaSupervisor) || 0), frequenciasParaMembro: freqMembro_(), sodAtivo: c.SodAtivo !== '0', notifTipos: notifTipos_(c), homeLayout: homeLayoutOk_(jparse_(c.HomeLayout, null)), mapa: mapaCfg_(c) }; }
+function mapaCfg_(c) { c = c || cfgMap_(); const n = function (k, d) { const v = Number(c[k]); return isFinite(v) && c[k] !== '' && c[k] !== undefined ? v : d; }; return { vis: n('MapaVisitanteVezes', 1), freq: n('MapaFrequentadorVezes', 3), raio: n('MapaRaioKm', 10), longe: n('MapaLongeKm', 10), alerta: n('MapaAlertaPct', 50), sedeLat: c.SedeLat === '' || c.SedeLat === undefined ? null : Number(c.SedeLat), sedeLng: c.SedeLng === '' || c.SedeLng === undefined ? null : Number(c.SedeLng) }; }
 const HOME_BLOCOS = ['hero', 'escalas', 'eventos', 'corrida', 'mural', 'proxevento', 'celula', 'aniv', 'domingo', 'cultos', 'testemunhos', 'noticias'];
 /* Layout do Início definido pelo administrador: lista de blocos {id,on,w (2-12 colunas),h (3-80 linhas)} */
 function homeLayoutOk_(l) {
@@ -408,7 +409,7 @@ function searchCells_(d) {
     const o = cellOut_(c, false), lid = mem.filter(function (m) { return m.MembroID === c.LiderID; })[0] || {};
     if (c.PrivTel === '1') o.telefone = lid.Telefone || ''; if (c.PrivEmail === '1') o.email = lid.Email || '';
     if (c.Lat !== '' && c.Lat !== undefined && c.Lng !== '') { const exato = c.PrivEnd === '1', k = function (x) { return exato ? Number(x) : Math.round(Number(x) * 100) / 100; }; o.lat = k(c.Lat); o.lng = k(c.Lng); o.aprox = !exato; }
-    o.local = c.PrivEnd === '1' ? [c.Endereco, c.Bairro, c.Cidade, c.UF].filter(String).join(', ') : [c.Bairro, c.Cidade, c.UF].filter(String).join(', '); return o;
+    o.supId = c.SupervisorID || ''; o.supCor = supCores_()[c.SupervisorID] || ''; o.local = c.PrivEnd === '1' ? [c.Endereco, c.Bairro, c.Cidade, c.UF].filter(String).join(', ') : [c.Bairro, c.Cidade, c.UF].filter(String).join(', '); return o;
   });
 }
 const SEMANA_ = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
@@ -1750,6 +1751,71 @@ function saveFichaEntrada_(d, u) {
     writeRow_(t, m._row, { DataEntrada: v }); audit_(u.email, 'FICHA_ENTRADA', mid, 'OK'); return { ok: true };
   });
 }
+/* ===== Mapas: distribuição dos membros, calor, parâmetros e geocodificação ===== */
+function saveMapaCfg_(d, u) {
+  return withLock_(function () {
+    const t = table_('Config'), set = function (k, v) { const r0 = t.rows.filter(function (x) { return x.Chave === k; })[0]; if (r0) writeRow_(t, r0._row, { Valor: String(v) }); else appendRow_(t, { Chave: k, Valor: String(v) }); };
+    [['vis', 'MapaVisitanteVezes', 0, 50], ['freq', 'MapaFrequentadorVezes', 1, 100], ['raio', 'MapaRaioKm', 1, 100], ['longe', 'MapaLongeKm', 1, 200], ['alerta', 'MapaAlertaPct', 1, 100]].forEach(function (q) {
+      if (d[q[0]] === undefined) return; const n = Number(d[q[0]]); if (!isFinite(n) || n < q[2] || n > q[3]) throw new ApiError('VALIDATION', 'Valor inválido em ' + q[0] + ' (de ' + q[2] + ' a ' + q[3] + ').'); set(q[1], n);
+    });
+    if (d.sedeLat !== undefined || d.sedeLng !== undefined) {
+      if (d.sedeLat === '' && d.sedeLng === '') { set('SedeLat', ''); set('SedeLng', ''); } else { const la = Number(d.sedeLat), lo = Number(d.sedeLng); if (!isFinite(la) || !isFinite(lo) || Math.abs(la) > 90 || Math.abs(lo) > 180) throw new ApiError('VALIDATION', 'Coordenadas da sede inválidas.'); set('SedeLat', Math.round(la * 1e6) / 1e6); set('SedeLng', Math.round(lo * 1e6) / 1e6); }
+    }
+    const c = cfgMap_(); if (Number(c.MapaFrequentadorVezes || 3) <= Number(c.MapaVisitanteVezes || 1)) throw new ApiError('VALIDATION', 'Frequentador precisa de mais vezes do que visitante.');
+    audit_(u.email, 'MAPA_CFG', '', 'OK'); return mapaCfg_(cfgMap_());
+  });
+}
+function geoOk_(la, lo) { la = Number(la); lo = Number(lo); return isFinite(la) && isFinite(lo) && Math.abs(la) <= 90 && Math.abs(lo) <= 180 && !(la === 0 && lo === 0); }
+function supCores_() { const c = cfgMap_(), o = {}; Object.keys(c).forEach(function (k) { if (k.indexOf('SupCor:') === 0 && /^#[0-9a-fA-F]{6}$/.test(String(c[k]))) o[k.slice(7)] = c[k]; }); return o; }
+function saveSupCor_(d, u) {
+  const sid = clip_(d.supId, 30), cor = String(d.cor || ''); if (!sid) throw new ApiError('VALIDATION', 'Supervisão inválida.'); if (cor && !/^#[0-9a-fA-F]{6}$/.test(cor)) throw new ApiError('VALIDATION', 'Cor inválida.');
+  if (!(u.papel === 'admin' || u.papel === 'pastor' || can_(u, 'config') || can_(u, 'celulas') || (u.membroId === sid && (u.supervisiona || []).length > 0))) throw new ApiError('FORBIDDEN', 'Só a administração ou o próprio supervisor muda a cor da supervisão.');
+  return withLock_(function () { const t = table_('Config'), k = 'SupCor:' + sid, r0 = t.rows.filter(function (x) { return x.Chave === k; })[0]; if (r0) writeRow_(t, r0._row, { Valor: cor }); else appendRow_(t, { Chave: k, Valor: cor }); audit_(u.email, 'SUP_COR', sid, 'OK'); return { cores: supCores_() }; });
+}
+function saveMyGeo_(d, u) {
+  if (!geoOk_(d.lat, d.lng)) throw new ApiError('VALIDATION', 'Marque no mapa onde você mora.');
+  const alvo = clip_(d.membroId, 30) || u.membroId; if (alvo !== u.membroId && !(can_(u, 'config') || can_(u, 'celulas') || u.papel === 'pastor')) throw new ApiError('FORBIDDEN', 'Só você ou a administração marcam essa casa.');
+  return withLock_(function () { const t = table_('Membros'), m = t.rows.filter(function (x) { return x.MembroID === alvo; })[0]; if (!m) throw new ApiError('NOT_FOUND', 'Pessoa não encontrada.'); writeRow_(t, m._row, { Lat: String(Math.round(Number(d.lat) * 1e6) / 1e6), Lng: String(Math.round(Number(d.lng) * 1e6) / 1e6) }); audit_(u.email, 'CASA_MARCADA', alvo, 'OK'); return { ok: true }; });
+}
+function getMapa_(d, u) {
+  if (!ehLider_(u)) throw new ApiError('FORBIDDEN', 'O mapa de distribuição é para líderes, supervisores e administração.');
+  const todos = u.papel === 'admin' || u.papel === 'pastor' || can_(u, 'celulas') || can_(u, 'config'), meus = (u.lidera || []).concat(u.treina || [], u.supervisiona || []), cfg = mapaCfg_(), nm = nomes_();
+  const dentro = function (cid) { return todos || (!!cid && meus.indexOf(cid) >= 0); };
+  const cels = table_('Celulas').rows.filter(function (c) { return c.Status !== 'Inativa' && geoOk_(c.Lat, c.Lng) && (todos || dentro(c.CelulaID)); }).map(function (c) { return { id: c.CelulaID, nome: c.Nome, lat: Number(c.Lat), lng: Number(c.Lng), liderId: c.LiderID || '', lider: nm[c.LiderID] || '', supId: c.SupervisorID || '', sup: nm[c.SupervisorID] || '', cor: supCores_()[c.SupervisorID] || '', bairro: c.Bairro || '', dia: c.Dia || '', ini: c.Inicio || '' }; });
+  const cont = {}; const soma = function (rows, f) { rows.forEach(function (r) { if (f(r)) cont[r.MembroID] = (cont[r.MembroID] || 0) + 1; }); };
+  soma(table_('Presencas').rows, function (r) { return !!r.MembroID; }); soma(table_('EventoPresenca').rows, function (r) { return !!r.MembroID; }); soma(table_('Cultos').rows, function (r) { return !!r.MembroID; }); soma(table_('AulaPresenca').rows, function (r) { return r.Presente === '1'; });
+  const tipo = function (membro, v) { return membro ? 'membro' : v <= cfg.vis ? 'visitante' : v >= cfg.freq ? 'frequentador' : 'recorrente'; };
+  let ativos = 0, semGeo = 0, comEnd = 0;
+  const pessoas = [];
+  table_('Membros').rows.forEach(function (m) {
+    if (m.Status === 'Inativo') return; if (!dentro(m.CelulaID) && !todos) return; ativos++;
+    if (!geoOk_(m.Lat, m.Lng)) { semGeo++; if (m.Endereco || m.Cidade) comEnd++; return; }
+    const membro = m.EhMembro === '1' || m.EhMembro === 'true' || m.EhMembro === 'sim', v = cont[m.MembroID] || 0;
+    pessoas.push({ id: m.MembroID, nome: m.Apelido || m.Simples || m.Nome, lat: Number(m.Lat), lng: Number(m.Lng), cel: m.CelulaID || '', tipo: tipo(membro, v), vezes: v, foto: m.Foto ? 1 : 0 });
+  });
+  table_('Visitantes').rows.forEach(function (v) {
+    if (!geoOk_(v.Lat, v.Lng) || !(todos || dentro(v.CelulaID) || dentro(v.CelulaProximaID) || v.RegistradoPor === u.membroId)) return;
+    pessoas.push({ id: 'v:' + v.VisitanteID, nome: v.Apelido || v.Nome, lat: Number(v.Lat), lng: Number(v.Lng), cel: v.Status === 'aceito' ? (v.CelulaID || '') : '', tipo: tipo(false, 1), vezes: 1, foto: 0, visitante: 1 });
+  });
+  return { cfg: cfg, cores: supCores_(), celulas: cels, pessoas: pessoas, totais: { ativos: ativos, semCoordenada: semGeo, comEndereco: comEnd }, escopo: todos ? 'total' : 'celulas' };
+}
+function listGeoPendentes_(d, u) {
+  if (!(can_(u, 'config') || can_(u, 'celulas') || u.papel === 'pastor')) throw new ApiError('FORBIDDEN', 'Só a administração prepara os endereços do mapa.');
+  const l = table_('Membros').rows.filter(function (m) { return m.Status !== 'Inativo' && !geoOk_(m.Lat, m.Lng) && (m.Endereco || m.CEP) && (m.Cidade || m.CEP); });
+  return { total: l.length, itens: l.slice(0, 300).map(function (m) { return { id: m.MembroID, nome: m.Nome, q: [m.Endereco, m.Bairro, m.Cidade, m.UF, 'Brasil'].filter(String).join(', '), cep: String(m.CEP || '').replace(/\D/g, '') }; }) };
+}
+function saveGeoLote_(d, u) {
+  if (!(can_(u, 'config') || can_(u, 'celulas') || u.papel === 'pastor')) throw new ApiError('FORBIDDEN', 'Só a administração prepara os endereços do mapa.');
+  return withLock_(function () {
+    const t = table_('Membros'), idx = {}; t.rows.forEach(function (m) { idx[m.MembroID] = m; }); let n = 0;
+    (Array.isArray(d.itens) ? d.itens : []).slice(0, 300).forEach(function (it) { const m = idx[clip_(it && it.id, 30)]; if (!m || !geoOk_(it.lat, it.lng)) return; writeRow_(t, m._row, { Lat: String(Math.round(Number(it.lat) * 1e6) / 1e6), Lng: String(Math.round(Number(it.lng) * 1e6) / 1e6) }); n++; });
+    audit_(u.email, 'MAPA_GEO', String(n), 'OK'); return { salvos: n };
+  });
+}
+function celFotos_(d) {
+  const ids = (Array.isArray(d.ids) ? d.ids : []).slice(0, 40).map(function (x) { return clip_(x, 30); }), o = {};
+  table_('Celulas').rows.forEach(function (c) { if (ids.indexOf(c.CelulaID) >= 0) o[c.CelulaID] = c.Foto || ''; }); return o;
+}
 function clearSamples_(d, u) { // apaga só as amostras aprendidas/enviadas; a assinatura da foto de perfil continua
   return withLock_(function () {
     const t = table_('Rostos'), id = clip_(d.id, 30), r = t.rows.filter(function (x) { return x.MembroID === id; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Pessoa não encontrada na lista de rostos.');
@@ -2293,7 +2359,7 @@ function listVisitors_(d, u) {
   const todos = u.papel === 'admin' || u.papel === 'pastor' || can_(u, 'celulas'), lid = u.lidera || [];
   const vis = function (v) { return todos || v.RegistradoPor === u.membroId || v.ConsolidadorID === u.membroId || triagemPode_(u, v) || (v.Status !== 'triagem' && !!v.CelulaID && lid.indexOf(v.CelulaID) >= 0); };
   const itens = rows.filter(vis).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).slice(0, 200).map(function (v) { const o = visitorOut_(v, cn, nm); o.podeEncaminhar = triagemPode_(u, v); o.souDestino = destinoPode_(u, v); return o; });
-  return { itens: itens, celulas: cels.filter(function (c) { return c.Status !== 'Inativa'; }).map(function (c) { return { id: c.CelulaID, nome: c.Nome, lider: nm[c.LiderID] || '', lat: c.Lat === '' || c.Lat === undefined ? null : Number(c.Lat), lng: c.Lng === '' || c.Lng === undefined ? null : Number(c.Lng) }; }), pessoas: itens.some(function (o) { return o.podeEncaminhar; }) ? table_('Membros').rows.filter(function (m) { return m.Status !== 'Inativo'; }).map(function (m) { return { id: m.MembroID, nome: m.Nome }; }).sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome)); }) : [], msgPadrao: msgPadrao_('{apelido}') };
+  return { itens: itens, celulas: cels.filter(function (c) { return c.Status !== 'Inativa'; }).map(function (c) { return { id: c.CelulaID, nome: c.Nome, lider: nm[c.LiderID] || '', supId: c.SupervisorID || '', cor: supCores_()[c.SupervisorID] || '', lat: c.Lat === '' || c.Lat === undefined ? null : Number(c.Lat), lng: c.Lng === '' || c.Lng === undefined ? null : Number(c.Lng) }; }), pessoas: itens.some(function (o) { return o.podeEncaminhar; }) ? table_('Membros').rows.filter(function (m) { return m.Status !== 'Inativo'; }).map(function (m) { return { id: m.MembroID, nome: m.Nome }; }).sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome)); }) : [], msgPadrao: msgPadrao_('{apelido}') };
 }
 function routeVisitor_(d, u) {
   return withLock_(function () {
@@ -2962,7 +3028,7 @@ const ROUTES = {
   getPushKey: { auth: 'any', fn: getPushKey_ }, pushDiag: { auth: 'any', fn: pushDiag_ }, savePushSub: { auth: 'any', write: 1, fn: savePushSub_ }, delPushSub: { auth: 'any', write: 1, fn: delPushSub_ },
   sodGet: { auth: 'any', write: 1, fn: sodGet_ }, sodAbrir: { auth: 'any', write: 1, fn: sodAbrir_ }, sodEquipar: { auth: 'any', write: 1, fn: sodEquipar_ }, sodDescartar: { auth: 'any', write: 1, fn: sodDescartar_ }, sodAparencia: { auth: 'any', write: 1, fn: sodAparencia_ }, sodOrar: { auth: 'any', write: 1, fn: sodOrar_ }, sodComprar: { auth: 'any', write: 1, fn: sodComprar_ },
   listMarks: { auth: 'any', fn: listMarks_ }, saveMark: { auth: 'any', write: 1, fn: saveMark_ }, saveNote: { auth: 'any', write: 1, fn: saveNote_ }, listCultoNotes: { auth: 'any', fn: listCultoNotes_ }, getMural: { auth: 'any', fn: getMural_ },
-  listInsigniaDefs: { auth: 'any', fn: listInsigniaDefs_ }, saveInsigniaDef: { auth: 'any', write: 1, fn: saveInsigniaDef_ }, grantBadge: { auth: 'any', write: 1, fn: grantBadge_ }, logServico: { auth: 'any', write: 1, fn: logServico_ }, listServicos: { auth: 'any', fn: listServicos_ }, searchPeople: { auth: 'any', fn: findPeople_ }, sendChat: { auth: 'any', write: 1, fn: sendChat_ }, getChat: { auth: 'any', fn: getChat_ }, chatRead: { auth: 'any', write: 1, fn: chatRead_ }, chatTyping: { auth: 'any', fn: chatTyping_ }, listChats: { auth: 'any', fn: listChats_ }, getCertLayout: { auth: 'any', fn: getCertLayout_ }, saveCertLayout: { auth: 'any', write: 1, fn: saveCertLayout_ }, previewCert: { auth: 'any', fn: previewCert_ }, revokeCert: { auth: 'any', write: 1, fn: revokeCert_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, saveFaces: { auth: 'eventos', write: 1, fn: saveFaces_ }, faceRoster: { auth: 'eventos', fn: faceRoster_ }, setFaceAuth: { auth: 'eventos', write: 1, fn: setFaceAuth_ }, listFaces: { auth: 'eventos', fn: listFaces_ }, clearFaces: { auth: 'eventos', write: 1, fn: clearFaces_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, learnFace: { auth: 'eventos', write: 1, fn: learnFace_ }, clearSamples: { auth: 'eventos', write: 1, fn: clearSamples_ }, listFichas: { auth: 'any', fn: listFichas_ }, getFicha: { auth: 'any', fn: getFicha_ }, routeVisitor: { auth: 'any', write: 1, fn: routeVisitor_ }, acceptVisitor: { auth: 'any', write: 1, fn: acceptVisitor_ }, saveFichaEntrada: { auth: 'any', write: 1, fn: saveFichaEntrada_ }, faceMe: { auth: 'any', fn: faceMe_ }, faceScan: { auth: 'any', write: 1, fn: faceScan_ }, faceRevoke: { auth: 'any', write: 1, fn: faceRevoke_ }, faceStat: { auth: 'eventos', write: 1, fn: faceStat_ }, faceStats: { auth: 'eventos', fn: faceStats_ }, cultoPresenca: { auth: 'eventos', fn: cultoPresenca_ }, checkinCulto: { auth: 'eventos', write: 1, fn: checkinCulto_ }, cultosResumo: { auth: 'eventos', fn: cultosResumo_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
+  listInsigniaDefs: { auth: 'any', fn: listInsigniaDefs_ }, saveInsigniaDef: { auth: 'any', write: 1, fn: saveInsigniaDef_ }, grantBadge: { auth: 'any', write: 1, fn: grantBadge_ }, logServico: { auth: 'any', write: 1, fn: logServico_ }, listServicos: { auth: 'any', fn: listServicos_ }, searchPeople: { auth: 'any', fn: findPeople_ }, sendChat: { auth: 'any', write: 1, fn: sendChat_ }, getChat: { auth: 'any', fn: getChat_ }, chatRead: { auth: 'any', write: 1, fn: chatRead_ }, chatTyping: { auth: 'any', fn: chatTyping_ }, listChats: { auth: 'any', fn: listChats_ }, getCertLayout: { auth: 'any', fn: getCertLayout_ }, saveCertLayout: { auth: 'any', write: 1, fn: saveCertLayout_ }, previewCert: { auth: 'any', fn: previewCert_ }, revokeCert: { auth: 'any', write: 1, fn: revokeCert_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, saveFaces: { auth: 'eventos', write: 1, fn: saveFaces_ }, faceRoster: { auth: 'eventos', fn: faceRoster_ }, setFaceAuth: { auth: 'eventos', write: 1, fn: setFaceAuth_ }, listFaces: { auth: 'eventos', fn: listFaces_ }, clearFaces: { auth: 'eventos', write: 1, fn: clearFaces_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, learnFace: { auth: 'eventos', write: 1, fn: learnFace_ }, clearSamples: { auth: 'eventos', write: 1, fn: clearSamples_ }, listFichas: { auth: 'any', fn: listFichas_ }, getFicha: { auth: 'any', fn: getFicha_ }, routeVisitor: { auth: 'any', write: 1, fn: routeVisitor_ }, getMapa: { auth: 'any', fn: getMapa_ }, saveSupCor: { auth: 'any', write: 1, fn: saveSupCor_ }, saveMyGeo: { auth: 'any', write: 1, fn: saveMyGeo_ }, saveMapaCfg: { auth: 'config', write: 1, fn: saveMapaCfg_ }, listGeoPendentes: { auth: 'any', fn: listGeoPendentes_ }, saveGeoLote: { auth: 'any', write: 1, fn: saveGeoLote_ }, celFotos: { auth: 'any', fn: celFotos_ }, acceptVisitor: { auth: 'any', write: 1, fn: acceptVisitor_ }, saveFichaEntrada: { auth: 'any', write: 1, fn: saveFichaEntrada_ }, faceMe: { auth: 'any', fn: faceMe_ }, faceScan: { auth: 'any', write: 1, fn: faceScan_ }, faceRevoke: { auth: 'any', write: 1, fn: faceRevoke_ }, faceStat: { auth: 'eventos', write: 1, fn: faceStat_ }, faceStats: { auth: 'eventos', fn: faceStats_ }, cultoPresenca: { auth: 'eventos', fn: cultoPresenca_ }, checkinCulto: { auth: 'eventos', write: 1, fn: checkinCulto_ }, cultosResumo: { auth: 'eventos', fn: cultosResumo_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
   searchCells: { auth: 'any', fn: searchCells_ }, addPrayer: { auth: 'any', write: 1, fn: addPrayer_ }, listPrayers: { auth: 'any', fn: listPrayers_ },
   cellMembers: { auth: 'any', fn: cellMembers_ }, saveCell: { auth: 'any', write: 1, fn: saveCell_ }, saveAttendance: { auth: 'any', write: 1, fn: saveAttendance_ }, history: { auth: 'any', fn: history_ },
   indicators: { auth: 'any', fn: indicators_ }, getPapeis: { auth: 'any', fn: getPapeis_ }, savePapeis: { auth: 'any', write: 1, fn: savePapeis_ }, createCellEvent: { auth: 'any', write: 1, fn: createCellEvent_ },

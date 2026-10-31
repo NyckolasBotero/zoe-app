@@ -1274,3 +1274,31 @@ test('consolidador amigo de outra célula tem prioridade sobre a célula mais pr
   const nt = (m) => e.sheets.Notificacoes.rows.slice(1).filter(x => x[1] === m && x[2] === 'visitante').length; assert.equal(nt(l2), 1);
   const f = e.call('getFicha', { membroId: e.run(`(function(){return 'x'})()`) && 'nenhum' }, adm); assert.equal(f.error.code, 'NOT_FOUND');
 });
+
+test('mapas: distribuição, classificação por vezes, escopo e geocodificação em lote', () => {
+  const { e, adm, tok, mk } = boot(); const l1 = mk('l1@zoe.com', 'membro'), sup = mk('sup@zoe.com', 'membro'), a = mk('a@zoe.com', 'membro'), b = mk('b@zoe.com', 'membro'), o = mk('o@zoe.com', 'membro');
+  const c1 = e.call('createCell', { nome: 'Perto', liderId: l1, supervisorId: sup, coordenadas: '-23.50, -46.60' }, adm).data.id; e.call('createCell', { nome: 'Outra', coordenadas: '-23.90, -46.60' }, adm);
+  e.run(`(function(){const t=table_('Membros');t.rows.forEach(function(m){if(m.Email==='a@zoe.com')writeRow_(t,m._row,{CelulaID:'${c1}',EhMembro:'1',Endereco:'Rua A 10',Cidade:'São Paulo',UF:'SP'});if(m.Email==='b@zoe.com')writeRow_(t,m._row,{EhMembro:'0',Endereco:'Rua B 20',Cidade:'São Paulo',UF:'SP'});if(m.Email==='o@zoe.com')writeRow_(t,m._row,{CelulaID:'zz'})})})()`);
+  const L = tok('l1@zoe.com', 'Temp12345'), O = tok('o@zoe.com', 'Temp12345');
+  assert.equal(e.call('getMapa', {}, O).error.code, 'FORBIDDEN'); assert.equal(e.call('listGeoPendentes', {}, L).error.code, 'FORBIDDEN');
+  const pend = e.call('listGeoPendentes', {}, adm).data; assert.equal(pend.itens.length, 2); assert.match(pend.itens[0].q, /Brasil/);
+  assert.equal(e.call('saveGeoLote', { itens: [{ id: a, lat: -23.51, lng: -46.61 }, { id: b, lat: -23.6, lng: -46.7 }, { id: 'x', lat: 1, lng: 1 }, { id: o, lat: 0, lng: 0 }] }, adm).data.salvos, 2);
+  e.run(`(function(){const t=table_('Presencas');for(var i=0;i<3;i++)appendRow_(t,{ReuniaoID:'r'+i,CelulaID:'${c1}',Data:'2026-10-0'+(i+1),MembroID:'${b}'})})()`);
+  const g = e.call('getMapa', {}, adm).data; assert.equal(g.cfg.vis, 1); assert.equal(g.cfg.raio, 10); assert.equal(g.celulas.length, 2);
+  const pa = g.pessoas.find(x => x.id === a), pb = g.pessoas.find(x => x.id === b); assert.equal(pa.tipo, 'membro'); assert.equal(pb.tipo, 'frequentador'); assert.equal(pb.vezes, 3); assert.equal(g.totais.semCoordenada >= 1, true);
+  const gl = e.call('getMapa', {}, L).data; assert.equal(gl.escopo, 'celulas'); assert.equal(gl.celulas.length, 1); assert.ok(gl.pessoas.some(x => x.id === a)); assert.ok(!gl.pessoas.some(x => x.id === b));
+  assert.equal(e.call('saveMapaCfg', { freq: 1 }, adm).error.code, 'VALIDATION'); const c = e.call('saveMapaCfg', { vis: 2, freq: 5, raio: 12, longe: 8, alerta: 40, sedeLat: -23.55, sedeLng: -46.63 }, adm); assert.ok(c.ok, JSON.stringify(c)); assert.equal(c.data.raio, 12);
+  assert.equal(e.call('saveMapaCfg', { raio: 5 }, L).error.code, 'FORBIDDEN'); assert.equal(e.call('getMapa', {}, adm).data.pessoas.find(x => x.id === b).tipo, 'recorrente'); assert.equal(e.call('getMapa', {}, adm).data.cfg.sedeLat, -23.55);
+  const cf = e.call('celFotos', { ids: [c1] }, L); assert.ok(cf.ok && c1 in cf.data);
+});
+
+test('mapas: membro marca a própria casa e cor da supervisão', () => {
+  const { e, adm, tok, mk } = boot(); const sup = mk('sup@zoe.com', 'membro'), a = mk('a@zoe.com', 'membro'), o = mk('o@zoe.com', 'membro');
+  e.call('createCell', { nome: 'Norte', supervisorId: sup, coordenadas: '-23.50, -46.60' }, adm);
+  const A = tok('a@zoe.com', 'Temp12345'), S = tok('sup@zoe.com', 'Temp12345'), O = tok('o@zoe.com', 'Temp12345');
+  assert.equal(e.call('saveMyGeo', { lat: 0, lng: 0 }, A).error.code, 'VALIDATION'); assert.ok(e.call('saveMyGeo', { lat: -23.52, lng: -46.62 }, A).ok);
+  assert.equal(e.call('me', {}, A).data.membro.Lat, '-23.52'); assert.equal(e.call('saveMyGeo', { lat: -23.5, lng: -46.6, membroId: o }, A).error.code, 'FORBIDDEN'); assert.ok(e.call('saveMyGeo', { lat: -23.5, lng: -46.6, membroId: o }, adm).ok);
+  assert.ok(e.call('saveSupCor', { supId: sup, cor: '#112233' }, S).ok); assert.equal(e.call('saveSupCor', { supId: sup, cor: '#445566' }, O).error.code, 'FORBIDDEN'); assert.equal(e.call('saveSupCor', { supId: sup, cor: 'red' }, adm).error.code, 'VALIDATION');
+  assert.ok(e.call('saveSupCor', { supId: sup, cor: '#AA0000' }, adm).ok); const g = e.call('getMapa', {}, S).data; assert.equal(g.cores[sup], '#AA0000'); assert.equal(g.celulas[0].cor, '#AA0000');
+  assert.equal(e.call('searchCells', {}, A).data[0].supCor, '#AA0000');
+});
