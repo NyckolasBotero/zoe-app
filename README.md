@@ -133,7 +133,7 @@ Em **Administração → Definições de Parâmetros → Regras Células** o adm
 - **Histórico** mostra o ícone e o resumo de cada reunião; **Indicadores** mostra a média e as últimas 8 reuniões.
 - Ao atualizar o `Code.gs`, rode `setup()` (cria a coluna `Termometro`).
 
-## Zoe, espírito de luz (guia de primeiro acesso + ajudante)
+## Zoe (guia de primeiro acesso + ajudante)
 
 - **Primeiro acesso:** ao entrar pela primeira vez (coluna `Usuarios.GuiaVisto` vazia), a Zoe aparece, diz o versículo (Salmos 119:105) e "como a Palavra de Deus diz, precisamos saber o que fazer! Por isso eu vou te ensinar!". Depois vem o **guia obrigatório**, passo a passo com holofote sobre cada aba (só as abas que o perfil enxerga; quem não está em célula vê *Buscar células*; quem aprova vê *Aprovações*). Ao concluir, a Zoe se despede (tchau) e fica no canto direito. O fim grava `guideDone` e o guia não volta.
 - **Ajudante:** passar o mouse mostra "Posso te ajudar em algo?". Clicar abre a conversa: a pessoa digita a dúvida ("Bíblia", "onde posso encontrar minha célula"…) e a Zoe presume o que é, e **Mostrar onde** leva até a aba com holofote. Se a pessoa está em célula, mostra a célula dela; se não, leva à busca de células. Há botão **Rever o tutorial**.

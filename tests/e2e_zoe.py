@@ -1,4 +1,4 @@
-# Zoe, espírito de luz: guia obrigatório no primeiro acesso, tchau, ajuda por conversa
+# Zoe: guia obrigatório no primeiro acesso, tchau, ajuda por conversa
 from playwright.sync_api import sync_playwright
 import os
 URL='http://localhost:8799/'; errs=[]; OUT=os.environ.get('SHOTS','/tmp')

@@ -1,5 +1,15 @@
 [
  {
+  "titulo": "Zoe renovada: chama viva e voo",
+  "melhorias": [
+   "A Zoe agora se chama apenas Zoe.",
+   "Novo visual mais detalhado e fofo: corpo de chama em camadas que tremula como o fogo da presença de Deus, asas com penas, olhos brilhantes e fagulhas subindo.",
+   "Ao arrastar, ela inclina para a direção do movimento, bate as asas mais rápido e deixa um rastro de fagulhas, como se estivesse voando."
+  ],
+  "v": "1.37",
+  "data": "30/10/2026"
+ },
+ {
   "titulo": "Studio Zoe: Lives, Projeção e fundos editáveis",
   "melhorias": [
    "O menu Multimídia virou Studio Zoe, com duas áreas: Lives e Projeção, com ícones minimalistas.",
