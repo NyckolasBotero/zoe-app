@@ -10,7 +10,7 @@ with sync_playwright() as p:
     pc.click('#mm_lista .opt:has-text("Santo") >> button:has-text("Projetar")'); pc.wait_for_selector('#mm_cur canvas')
     with pc.expect_popup() as pi: pc.click('#mm_ini')
     w=pi.value; w.wait_for_selector('#st canvas')
-    ph=entra(b,390,844); ph.evaluate("go('multimidia')"); ph.wait_for_selector('.tabs'); ph.click('.tabs >> text=Controle remoto'); ph.wait_for_selector('#tl_div .ag-card')
+    ph=entra(b,390,844); ph.evaluate("go('multimidia')"); ph.wait_for_selector('.tabs'); ph.click('.tabs >> text=Controle remoto'); ph.click('.tl-abas >> text=Artes'); ph.wait_for_selector('#tl_div .ag-card')
     ph.click('#tl_div .ag-card button >> nth=0'); ph.wait_for_function("TL.st&&TL.st.item.startsWith('i:')",timeout=8000)
     pc.wait_for_function("MM.pj&&MM.pj.item&&MM.pj.item.startsWith('i:')",timeout=8000)
     ag=pc.evaluate("api('listAgendas')"); assert any(i['t']=='imagem' for a in ag for i in a['itens']),ag

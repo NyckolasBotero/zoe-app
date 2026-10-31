@@ -382,3 +382,6 @@ Segure e arraste a Zoe para qualquer posição da tela (mouse ou toque); a posi�
 - Aba **Mapas**: Distribuição de membros (`getMapa`) e Buscar uma célula; pins com foto (`celFotos`), cores de supervisão (`saveSupCor`), casa do membro (`saveMyGeo`), parâmetros (`saveMapaCfg`).
 - Colunas novas: Membros `Lat`/`Lng`; rodar `setup()`.
 - Teste: `SEED_MAPAS=1 node tests/devserver.mjs` e `python3 tests/e2e_mapas.py`.
+
+## Telão ao vivo
+- Controle remoto com abas (Agenda, Músicas, Versículos, Artes), recentes (`TL.rec`), referência digitada (`vsParse`), navegação de versículos (`vsNav`) e envio de várias artes (`midiasSobe`). Teste: `tests/e2e_telao_rapido.py`.

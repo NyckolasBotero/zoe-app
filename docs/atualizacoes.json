@@ -1,5 +1,16 @@
 [
  {
+  "titulo": "Telão ao vivo: músicas, versículos e artes no mesmo lugar",
+  "melhorias": [
+   "No Controle remoto, abas rápidas (Agenda, Músicas, Versículos, Artes) com o painel do que está no telão sempre visível no topo.",
+   "Faixa Voltar para: os últimos itens transmitidos (música, versículo ou arte) ficam a um toque para alternar de um para outro.",
+   "Versículo digitado: escreva Jo 3:16, Sl 23 ou 1 Co 13:4-7 e aperte Enter para transmitir na hora; as setas Anterior e Próximo andam de versículo em versículo (passam de capítulo sozinhas). As listas continuam disponíveis.",
+   "Artes: envie várias imagens de uma vez para a biblioteca ou uma só para ir direto ao telão. A aba Versículos separada do Studio foi incorporada ao Controle remoto."
+  ],
+  "v": "1.79",
+  "data": "31/10/2026"
+ },
+ {
   "titulo": "Mapas: distribuição dos membros, calor, pins com foto e supervisões coloridas",
   "melhorias": [
    "A aba Buscar células virou Mapas, com duas partes: Distribuição de membros (para líderes, supervisores e administração) e Buscar uma célula.",
