@@ -17,8 +17,14 @@ _novas = [n for n in _notas if not n.get('v')]
 _h = hashlib.sha1((s.replace('__ZVER__', '').replace('__ZDOCS__', '') + json.dumps([{k: v for k, v in n.items() if k not in ('v', 'data')} for n in _notas], sort_keys=True) + json.dumps(_docs, sort_keys=True)).encode('utf-8')).hexdigest()[:10]
 try: _ant = json.load(open('version.json', encoding='utf-8'))
 except Exception: _ant = {}
-if _ant.get('h') == _h: _zv = _ant
-else: _zv = {'id': _agora.strftime('%Y%m%d-%H%M%S'), 'data': _agora.strftime('%d/%m/%Y %H:%M'), 'h': _h, 'v': '1.' + str(int(str(_ant.get('v', '1.0')).split('.')[-1]) + 1)}
+# a versão do app é a da última nota de atualização: nota nova (sem "v") = próxima 1.N; só sobe quando há novidade registrada
+def _num(n):
+    try: return int(str(n.get('v', '')).split('.')[-1])
+    except Exception: return 0
+_ult = max([_num(n) for n in _notas] + [0])
+_vers = '1.' + str(_ult + 1 if _novas else _ult)
+if _ant.get('h') == _h and _ant.get('v') == _vers: _zv = _ant
+else: _zv = {'id': _agora.strftime('%Y%m%d-%H%M%S'), 'data': _agora.strftime('%d/%m/%Y %H:%M'), 'h': _h, 'v': _vers}
 for n in _novas: n['v'] = _zv['v']; n.setdefault('data', _agora.strftime('%d/%m/%Y'))
 if _novas: json.dump(_notas, open('docs/atualizacoes.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 s = s.replace('__ZVER__', json.dumps(_zv), 1).replace('__ZDOCS__', json.dumps({'docs': _docs, 'notas': _notas}, ensure_ascii=False).replace('</', '<\\/'), 1)
