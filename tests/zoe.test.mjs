@@ -1375,3 +1375,13 @@ test('A casa marcada fica salva e volta no login seguinte', () => {
   assert.ok(!e.call('me', {}, C).data.membro.Lat); assert.equal(e.call('saveMyGeo', { lat: -15.8, lng: -47.9 }, C).data.ok, true);
   const C2 = tok('c@zoe.com', 'Temp12345'); const m = e.call('me', {}, C2).data.membro; assert.equal(m.Lat, '-15.8'); assert.equal(m.Lng, '-47.9');
 });
+
+test('Dados da célula no mapa: todos veem o público, só a administração edita', () => {
+  const { e, adm, tok, mk } = boot(); const l = mk('l@zoe.com', 'membro'); mk('m@zoe.com', 'membro');
+  const cid = e.call('createCell', { nome: 'Norte', liderId: l, dia: 'Quinta', inicio: '20:00', fim: '21:30', endereco: 'Rua 1', coordenadas: '-15.78, -47.93' }, adm).data.id;
+  const M = tok('m@zoe.com', 'Temp12345'), A = e.call('getCellCard', { celulaId: cid }, adm).data, m = e.call('getCellCard', { celulaId: cid }, M).data;
+  assert.equal(A.editavel, true); assert.equal(A.endereco, 'Rua 1'); assert.equal(m.editavel, false); assert.equal(m.membros, null); assert.equal(m.nome, 'Norte');
+  assert.equal(e.call('saveCell', { celulaId: cid, nome: 'Hack' }, M).error.code, 'FORBIDDEN');
+  assert.equal(e.call('saveCell', { celulaId: cid, nome: 'Norte Novo', uf: 'DF' }, adm).ok, true); assert.equal(e.call('getCellCard', { celulaId: cid }, adm).data.nome, 'Norte Novo');
+  assert.equal(e.call('getCellCard', { celulaId: 'x' }, M).error.code, 'NOT_FOUND');
+});

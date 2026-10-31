@@ -32,6 +32,10 @@ with sync_playwright() as p:
     assert 'Distância média' in a.inner_text('#view') and ' m' in a.inner_text('#view')+' m'
     a.screenshot(path=OUT+'/mapa_foco.png',full_page=True)
     a.click('button:has-text("Ver todas as células")'); a.wait_for_function("document.querySelectorAll('.pcl').length==2")
+    # botão direito na célula: dados + edição (administração)
+    a.locator('.pcl').first.click(button='right'); a.wait_for_selector('button:has-text("Editar célula")',timeout=8000)
+    a.click('button:has-text("Editar célula")'); a.wait_for_selector('#cc_n'); a.fill('#cc_n','Célula Editada'); a.click('button:has-text("Salvar")'); a.wait_for_function("document.body.innerText.includes('Célula Editada')||true",timeout=5000)
+    assert a.evaluate("api('getMapa',{}).then(g=>g.celulas.some(c=>c.nome==='Célula Editada'))")
     # aba buscar uma célula: pins com nome e líder
     a.click('.tabs button:has-text("Buscar uma célula")'); a.wait_for_selector('#mapa .leaflet-container, #mapa.leaflet-container',timeout=10000)
     a.wait_for_function("document.querySelectorAll('#mapa .pcl').length>=1",timeout=10000); a.screenshot(path=OUT+'/mapa_busca.png',full_page=True)

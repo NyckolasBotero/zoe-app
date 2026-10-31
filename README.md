@@ -387,5 +387,8 @@ Segure e arraste a Zoe para qualquer posição da tela (mouse ou toque); a posi�
 - Controle remoto em formato de controle (`tlControle`: SLIDE, ITEM, pausa, área de toque), área **Canva Zoe** (editor nativo `cv*` com fluxo de aprovação: tabela `Artes`, rotas `saveArte`/`decideArte`) e Sod por usuário (`SodOff`, `saveMySod`).
 - Controle remoto com abas (Agenda, Músicas, Versículos, Artes), recentes (`TL.rec`), referência digitada (`vsParse`), navegação de versículos (`vsNav`) e envio de várias artes (`midiasSobe`). Teste: `tests/e2e_telao_rapido.py`.
 
+## Dados da célula no mapa
+Botão direito (ou toque longo) numa célula de qualquer mapa abre os dados (`getCellCard`). Privacidade da célula respeitada; só administração (`cellAccess_` com permissão de células) vê Editar célula e salva por `saveCell`.
+
 ## Árvore Zoe
 - Parentescos na tabela `Parentes`; telas `kinCard` (vincular, com sugestão por sobrenome e dedução de casal) e `arvoreHTML` (árvore em SVG e visão da igreja). Rotas: `suggestKin`, `listKin`, `saveKin`, `delKin`, `getArvore`. Pessoas: `listPeople`. Células › Membros: `getMemberCard`.

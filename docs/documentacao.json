@@ -117,5 +117,12 @@
    "getArvore: família de uma pessoa ou, com todos, a visão da igreja (só liderança). avLayout/avSVG desenham gerações em SVG.",
    "Pessoas usa listPeople (só quem tem acesso ativo). Células › Membros usa getMemberCard (fichaNivel_), mostrando endereço e o ponto marcado pela pessoa."
   ]
+ },
+ {
+  "t": "Dados da célula no mapa",
+  "itens": [
+   "Botão direito (ou toque longo) numa célula do mapa abre os dados da célula; todos veem o que a privacidade permite.",
+   "Só a administração tem o botão Editar célula; usuários normais não editam."
+  ]
  }
 ]
