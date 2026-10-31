@@ -1,5 +1,17 @@
 [
  {
+  "titulo": "Presença facial: aprende com cada culto e mede a taxa de acerto",
+  "melhorias": [
+   "Aprendizado contínuo: cada rosto que você confirma ou corrige é guardado como amostra da pessoa (até 6, em ângulos e luzes diferentes). A foto de perfil continua como base e o reconhecimento usa a assinatura mais parecida.",
+   "Quem ainda não tem foto de perfil passa a ser reconhecido depois da primeira identificação manual.",
+   "Filtro de qualidade: rostos pequenos ou borrados não entram no reconhecimento (aparece Aproxime-se).",
+   "Novo painel Taxa de acerto na aba Presença facial, com a meta de 80% e o histórico das sessões.",
+   "Rode setup() no Apps Script para criar a coluna Amostras e a aba RostoLog."
+  ],
+  "v": "1.63",
+  "data": "31/10/2026"
+ },
+ {
   "titulo": "Presença facial: cultos normais e modo teste",
   "melhorias": [
    "Nova opção Culto: registre a presença de um culto normal em qualquer dia (domingo, sábado, quarta…), escolhendo o dia e o nome do culto, sem precisar cadastrar um evento.",

@@ -353,3 +353,10 @@ Segure e arraste a Zoe para qualquer posição da tela (mouse ou toque); a posi�
 - Aba Presença facial › "O que você vai registrar?": **Culto** (dia + nome, qualquer dia; sem evento cadastrado), **Evento cadastrado** ou **Modo teste** (nada é gravado).
 - Backend: aba `Cultos` (Data, Culto, MembroID, RegistradoPor, Hora); rotas `cultoPresenca`, `checkinCulto` (não duplica; 10 XP por culto) e `cultosResumo` (últimos 90 dias). Permissão `eventos`.
 - Testes: `tests/zoe.test.mjs` (cultos) e `tests/e2e_face.py` (culto e teste).
+
+## Presença facial: aprendizado contínuo e taxa de acerto
+
+- Pesquisa (face-api e Human no GitHub): vários descritores por pessoa e alinhamento por landmarks melhoram a confiabilidade; limiar padrão do face-api 0,6 (usamos 0,5 + faixa "Talvez" até 0,62).
+- Cada pessoa tem a assinatura da foto de perfil (`Descritor`) e até 6 `Amostras` aprendidas na câmera (`learnFace`: ignora rosto quase igual, <0,18; cheio, renova a amostra mais parecida). A distância a uma pessoa é a menor entre todas as assinaturas.
+- Rastros: o rosto é acompanhado por vários quadros e comparado pela média; rostos pequenos (<70 px) ou com baixa confiança não contam.
+- Taxa de acerto = confirmadas / (confirmadas + "Não é" + identificadas à mão). Rotas `faceStat` e `faceStats`; aba `RostoLog`.

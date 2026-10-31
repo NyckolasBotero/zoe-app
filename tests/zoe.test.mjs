@@ -1194,3 +1194,19 @@ test('cultos normais: presença em qualquer dia sem evento cadastrado, sem dupli
   assert.equal(e.call('checkinCulto', { data: '2026-10-31', culto: '', membros: [a] }, adm).error.code, 'VALIDATION');
   const rs = e.call('cultosResumo', {}, adm); assert.ok(rs.ok && rs.data.cultos[0].total === 2 && rs.data.cultos[0].culto === 'Culto de sábado');
 });
+test('aprendizado contínuo: amostras por pessoa (até 6), sem repetir, e taxa de acerto', () => {
+  const { e, adm, tok, mk } = boot(); const a = mk('ana@zoe.com', 'membro'), b = mk('bia@zoe.com', 'membro'); const m = tok('ana@zoe.com', 'Temp12345');
+  const vec = (s) => { let x = s * 9301 + 49297; const o = []; for (let i = 0; i < 128; i++) { x = (x * 9301 + 49297) % 233280; o.push(x / 233280 - 0.5); } return o; };
+  const perto = (v, k) => v.map((n, i) => n + (i % 2 ? k : -k) * 0.05);
+  assert.equal(e.call('learnFace', { itens: [{ id: a, d: vec(1) }] }, m).error.code, 'FORBIDDEN');
+  e.call('setFaceAuth', { ids: [a], on: true }, adm);
+  assert.equal(e.call('learnFace', { itens: [{ id: b, d: vec(9) }] }, adm).data.n, 0, 'quem não está autorizado não aprende');
+  assert.equal(e.call('learnFace', { itens: [{ id: a, d: vec(1) }] }, adm).data.n, 1, 'sem foto: o primeiro rosto vira a base');
+  assert.equal(e.call('learnFace', { itens: [{ id: a, d: vec(1) }] }, adm).data.n, 0, 'rosto quase igual não repete');
+  for (let k = 1; k <= 8; k++) e.call('learnFace', { itens: [{ id: a, d: perto(vec(1), k * 0.6) }] }, adm);
+  const l = e.call('listFaces', {}, adm).data.itens.find(x => x.id === a); assert.ok(l.d.length === 128 && l.s.length > 0 && l.s.length <= 6, 'no máximo 6 amostras: ' + l.s.length);
+  assert.ok(e.call('faceRoster', {}, adm).data.itens.find(x => x.id === a).idx);
+  e.call('setFaceAuth', { ids: [a], on: false }, adm); assert.equal(e.call('listFaces', {}, adm).data.itens.length, 0, 'desautorizar apaga base e amostras');
+  assert.ok(e.call('faceStat', { ctx: 'Culto de sábado', ok: 8, nao: 1, man: 1 }, adm).ok); e.call('faceStat', { ctx: 'teste', ok: 2, nao: 0, man: 0 }, adm); e.call('faceStat', { ctx: 'vazio', ok: 0, nao: 0, man: 0 }, adm);
+  const st = e.call('faceStats', {}, adm).data; assert.deepEqual(st.geral, { ok: 10, nao: 1, man: 1 }); assert.equal(st.sessoes.length, 2); assert.equal(e.call('faceStats', {}, m).error.code, 'FORBIDDEN');
+});
