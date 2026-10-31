@@ -2724,44 +2724,99 @@ function doPost(e) {
 }
 
 
-/* ===== Web Push direto do Apps Script (sem servidor externo): VAPID (ES256) + criptografia aes128gcm em JavaScript puro ===== */
+/* ===== Web Push direto do Apps Script (sem servidor externo): VAPID (ES256) + criptografia aes128gcm em JavaScript puro (aritmética própria de 256 bits) ===== */
+// Aritmética de 256 bits com blocos de 16 bits e multiplicação de Montgomery
+const BN_ = {
+  L: 16,
+  fromB: function (b) { const o = []; for (let i = 0; i < 16; i++) o.push(((b[31 - 2 * i] || 0) | ((b[30 - 2 * i] || 0) << 8))); return o; },
+  toB: function (a) { const o = []; for (let i = 15; i >= 0; i--) { o.push((a[i] >> 8) & 255); o.push(a[i] & 255); } return o; },
+  cmp: function (a, b) { for (let i = 15; i >= 0; i--) { if (a[i] !== b[i]) return a[i] > b[i] ? 1 : -1; } return 0; },
+  zero: function (a) { for (let i = 0; i < 16; i++) if (a[i]) return false; return true; },
+  addR: function (a, b) { const o = new Array(16); let c = 0; for (let i = 0; i < 16; i++) { const v = a[i] + b[i] + c; o[i] = v & 65535; c = v >> 16; } return { r: o, c: c }; },
+  subR: function (a, b) { const o = new Array(16); let c = 0; for (let i = 0; i < 16; i++) { let v = a[i] - b[i] - c; if (v < 0) { v += 65536; c = 1; } else c = 0; o[i] = v; } return { r: o, c: c }; },
+  bit: function (a, i) { return (a[i >> 4] >> (i & 15)) & 1; },
+  campo: function (M) {
+    const L = 16; let inv = 1; for (let k = 0; k < 5; k++) inv = (inv * ((2 - ((M[0] * inv) & 65535)) & 65535)) & 65535; const mi = (65536 - inv) & 65535;
+    const add = function (a, b) { const s = BN_.addR(a, b); if (s.c || BN_.cmp(s.r, M) >= 0) return BN_.subR(s.r, M).r; return s.r; };
+    const sub = function (a, b) { const s = BN_.subR(a, b); return s.c ? BN_.addR(s.r, M).r : s.r; };
+    const mul = function (a, b) {
+      const t = new Array(L + 2); for (let i = 0; i < L + 2; i++) t[i] = 0;
+      for (let i = 0; i < L; i++) {
+        let c = 0; const ai = a[i];
+        for (let j = 0; j < L; j++) { const v = t[j] + ai * b[j] + c; t[j] = v & 65535; c = (v / 65536) | 0; }
+        let v = t[L] + c; t[L] = v & 65535; t[L + 1] = (v / 65536) | 0;
+        const m = (t[0] * mi) & 65535; v = t[0] + m * M[0]; c = (v / 65536) | 0;
+        for (let j = 1; j < L; j++) { v = t[j] + m * M[j] + c; t[j - 1] = v & 65535; c = (v / 65536) | 0; }
+        v = t[L] + c; t[L - 1] = v & 65535; c = (v / 65536) | 0; t[L] = t[L + 1] + c; t[L + 1] = 0;
+      }
+      const r = t.slice(0, L); if (t[L] || BN_.cmp(r, M) >= 0) return BN_.subR(r, M).r; return r;
+    };
+    let x = [1]; for (let i = 1; i < L; i++) x.push(0); for (let i = 0; i < 512; i++) x = add(x, x); const R2 = x;
+    const um = [1]; for (let i = 1; i < L; i++) um.push(0);
+    const f = { M: M, add: add, sub: sub, mul: mul, toM: function (a) { return mul(a, R2); }, fromM: function (a) { return mul(a, um); }, one: mul(R2, um) };
+    f.pow = function (a, e) { let r = f.one; for (let i = 255; i >= 0; i--) { r = mul(r, r); if (BN_.bit(e, i)) r = mul(r, a); } return r; };
+    const dois = [2]; for (let i = 1; i < L; i++) dois.push(0); const em2 = BN_.subR(M, dois).r;
+    f.inv = function (a) { return f.pow(a, em2); };
+    return f;
+  }
+};
 const P256_ = (function () {
-  const p = 0xffffffff00000001000000000000000000000000ffffffffffffffffffffffffn, n = 0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551n;
-  const b = 0x5ac635d8aa3a93e7b3ebbd55769886bc651d06b0cc53b0f63bce3c3e27d2604bn, gx = 0x6b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296n, gy = 0x4fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5n;
-  const mod = function (a, m) { const r = a % m; return r >= 0n ? r : r + m; };
-  function inv(a, m) { let lo = mod(a, m), hi = m, x0 = 1n, x1 = 0n; while (hi) { const q = lo / hi; const t = lo - q * hi; lo = hi; hi = t; const u = x0 - q * x1; x0 = x1; x1 = u; } return mod(x0, m); }
-  function dbl(P) { const X = P[0], Y = P[1], Z = P[2]; if (!Z || !Y) return [0n, 1n, 0n]; const d = Z * Z % p, g = Y * Y % p, be = X * g % p, al = 3n * mod((X - d) * (X + d), p) % p; const X3 = mod(al * al - 8n * be, p), Z3 = mod((Y + Z) * (Y + Z) - g - d, p), Y3 = mod(al * (4n * be - X3) - 8n * g * g, p); return [X3, Y3, Z3]; }
-  function add(P, Q) { if (!P[2]) return Q; if (!Q[2]) return P; const z1 = P[2] * P[2] % p, z2 = Q[2] * Q[2] % p, u1 = P[0] * z2 % p, u2 = Q[0] * z1 % p, s1 = P[1] * Q[2] % p * z2 % p, s2 = Q[1] * P[2] % p * z1 % p; if (u1 === u2) return s1 === s2 ? dbl(P) : [0n, 1n, 0n]; const h = mod(u2 - u1, p), r = mod(s2 - s1, p), h2 = h * h % p, h3 = h2 * h % p, v = u1 * h2 % p; const X3 = mod(r * r - h3 - 2n * v, p); return [X3, mod(r * (v - X3) - s1 * h3, p), P[2] * Q[2] % p * h % p]; }
-  function mul(k, P) { let R = [0n, 1n, 0n], i = 255; for (; i >= 0; i--) { R = dbl(R); if ((k >> BigInt(i)) & 1n) R = add(R, P); } return R; }
-  function aff(P) { if (!P[2]) throw new Error('infinito'); const zi = inv(P[2], p), z2 = zi * zi % p; return [P[0] * z2 % p, P[1] * z2 % p * zi % p]; }
-  return { p: p, n: n, G: [gx, gy, 1n], mod: mod, inv: inv, mul: mul, aff: aff, noCurva: function (x, y) { return mod(y * y - (x * x * x - 3n * x + b), p) !== 0n; } };
+  const hx = function (s) { const o = []; for (let i = 0; i < s.length; i += 2) o.push(parseInt(s.substr(i, 2), 16)); return BN_.fromB(o); };
+  const p = hx('ffffffff00000001000000000000000000000000ffffffffffffffffffffffff'), n = hx('ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551');
+  const b = hx('5ac635d8aa3a93e7b3ebbd55769886bc651d06b0cc53b0f63bce3c3e27d2604b'), gx = hx('6b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296'), gy = hx('4fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5');
+  const F = BN_.campo(p), N = BN_.campo(n), add = F.add, sub = F.sub, mul = F.mul;
+  const x2 = function (a) { return add(a, a); }, x4 = function (a) { return x2(x2(a)); }, x8 = function (a) { return x2(x4(a)); };
+  const INF = function () { return [F.one, F.one, F.toM([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])]; };
+  function dbl(P) { const X = P[0], Y = P[1], Z = P[2]; if (BN_.zero(Z) || BN_.zero(Y)) return INF(); const d = mul(Z, Z), g = mul(Y, Y), be = mul(X, g), t = mul(sub(X, d), add(X, d)), al = add(x2(t), t), X3 = sub(mul(al, al), x8(be)), yz = add(Y, Z), Z3 = sub(sub(mul(yz, yz), g), d), Y3 = sub(mul(al, sub(x4(be), X3)), x8(mul(g, g))); return [X3, Y3, Z3]; }
+  function adc(P, Q) { if (BN_.zero(P[2])) return Q; if (BN_.zero(Q[2])) return P; const z1 = mul(P[2], P[2]), z2 = mul(Q[2], Q[2]), u1 = mul(P[0], z2), u2 = mul(Q[0], z1), s1 = mul(mul(P[1], Q[2]), z2), s2 = mul(mul(Q[1], P[2]), z1);
+    if (BN_.cmp(u1, u2) === 0) return BN_.cmp(s1, s2) === 0 ? dbl(P) : INF(); const h = sub(u2, u1), r = sub(s2, s1), h2 = mul(h, h), h3 = mul(h2, h), v = mul(u1, h2), X3 = sub(sub(mul(r, r), h3), x2(v)); return [X3, sub(mul(r, sub(v, X3)), mul(s1, h3)), mul(mul(P[2], Q[2]), h)]; }
+  function mulP(k, P) { let R = INF(), ini = false; for (let i = 255; i >= 0; i--) { if (ini) R = dbl(R); if (BN_.bit(k, i)) { R = ini ? adc(R, P) : P; ini = true; } } return R; }
+  function aff(P) { if (BN_.zero(P[2])) throw new Error('infinito'); const zi = F.inv(P[2]), z2 = mul(zi, zi); return [F.fromM(mul(P[0], z2)), F.fromM(mul(mul(P[1], z2), zi))]; }
+  const G = [F.toM(gx), F.toM(gy), F.one];
+  const redN = function (a) { return BN_.cmp(a, n) >= 0 ? BN_.subR(a, n).r : a; };
+  return { n: n, G: G, mulP: mulP, aff: aff, F: F, N: N, redN: redN,
+    noCurva: function (x, y) { const xm = F.toM(x), ym = F.toM(y), x3 = mul(mul(xm, xm), xm), r = add(sub(x3, add(add(xm, xm), xm)), F.toM(b)); return BN_.cmp(mul(ym, ym), r) !== 0; } };
 })();
 const WP_ = {
-  hex2big: function (a) { let r = 0n; for (let i = 0; i < a.length; i++) r = (r << 8n) | BigInt(a[i]); return r; },
-  big2b: function (v, len) { const o = []; for (let i = 0; i < len; i++) { o.unshift(Number(v & 255n)); v >>= 8n; } return o; },
   sg: function (a) { return a.map(function (x) { return x > 127 ? x - 256 : x; }); },
   us: function (a) { return Array.prototype.map.call(a, function (x) { return x < 0 ? x + 256 : x; }); },
   str: function (s) { return WP_.us(Utilities.newBlob(s).getBytes()); },
+  hex: function (a) { let o = ''; for (let i = 0; i < a.length; i++) o += (a[i] < 16 ? '0' : '') + a[i].toString(16); return o; },
+  unhex: function (s) { const o = []; for (let i = 0; i < s.length; i += 2) o.push(parseInt(s.substr(i, 2), 16)); return o; },
   b64u: function (a) { const T = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'; let o = ''; for (let i = 0; i < a.length; i += 3) { const v = (a[i] << 16) | ((a[i + 1] || 0) << 8) | (a[i + 2] || 0); o += T[v >> 18 & 63] + T[v >> 12 & 63] + (i + 1 < a.length ? T[v >> 6 & 63] : '') + (i + 2 < a.length ? T[v & 63] : ''); } return o; },
   unb64u: function (s) { const T = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'; const o = []; let acc = 0, bits = 0; for (let i = 0; i < s.length; i++) { const v = T.indexOf(s[i]); if (v < 0) continue; acc = (acc << 6) | v; bits += 6; if (bits >= 8) { bits -= 8; o.push((acc >> bits) & 255); acc &= (1 << bits) - 1; } } return o; },
   hmac: function (key, data) { return WP_.us(Utilities.computeHmacSha256Signature(WP_.sg(data), WP_.sg(key))); },
   sha: function (data) { return WP_.us(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, WP_.sg(data))); },
   hkdf: function (salt, ikm, info, len) { const prk = WP_.hmac(salt, ikm); let t = [], o = [], i = 1; while (o.length < len) { t = WP_.hmac(prk, t.concat(info, [i++])); o = o.concat(t); } return o.slice(0, len); },
   rand: function (len) { let o = []; while (o.length < len) o = o.concat(WP_.hmac(WP_.str(Utilities.getUuid() + Utilities.getUuid()), WP_.str(String(Date.now()) + Math.random() + Utilities.getUuid()))); return o.slice(0, len); },
-  chavePriv: function () { for (;;) { const k = WP_.hex2big(WP_.rand(32)); if (k > 0n && k < P256_.n) return k; } },
-  pub: function (d) { const A = P256_.aff(P256_.mul(d, P256_.G)); return [4].concat(WP_.big2b(A[0], 32), WP_.big2b(A[1], 32)); },
-  ecdh: function (d, pubB) { const x = WP_.hex2big(pubB.slice(1, 33)), y = WP_.hex2big(pubB.slice(33, 65)); if (pubB.length !== 65 || pubB[0] !== 4 || P256_.noCurva(x, y)) throw new Error('chave inválida'); return WP_.big2b(P256_.aff(P256_.mul(d, [x, y, 1n]))[0], 32); },
-  ecdsa: function (d, msg) { const z = WP_.hex2big(WP_.sha(msg)); for (let c = 0; c < 20; c++) { const k = P256_.mod(WP_.hex2big(WP_.hmac(WP_.big2b(d, 32), WP_.sha(msg).concat([c]))), P256_.n - 1n) + 1n; const r = P256_.mod(P256_.aff(P256_.mul(k, P256_.G))[0], P256_.n); if (!r) continue; const s = P256_.mod(P256_.inv(k, P256_.n) * (z + r * d), P256_.n); if (!s) continue; return WP_.big2b(r, 32).concat(WP_.big2b(s, 32)); } throw new Error('assinatura'); },
+  // chave privada = 32 bytes entre 1 e n-1
+  chavePriv: function () { for (;;) { const k = WP_.rand(32), l = BN_.fromB(k); if (!BN_.zero(l) && BN_.cmp(l, P256_.n) < 0) return k; } },
+  pub: function (d) { const A = P256_.aff(P256_.mulP(BN_.fromB(d), P256_.G)); return [4].concat(BN_.toB(A[0]), BN_.toB(A[1])); },
+  ecdh: function (d, pubB) { const x = BN_.fromB(pubB.slice(1, 33)), y = BN_.fromB(pubB.slice(33, 65)); if (pubB.length !== 65 || pubB[0] !== 4 || P256_.noCurva(x, y)) throw new Error('chave inválida'); const Q = [P256_.F.toM(x), P256_.F.toM(y), P256_.F.one]; return BN_.toB(P256_.aff(P256_.mulP(BN_.fromB(d), Q))[0]); },
+  ecdsa: function (d, msg) {
+    const N = P256_.N, h = WP_.sha(msg), z = P256_.redN(BN_.fromB(h)), dl = BN_.fromB(d);
+    for (let c = 0; c < 20; c++) {
+      const k = P256_.redN(BN_.fromB(WP_.hmac(d, h.concat([c])))); if (BN_.zero(k)) continue;
+      const r = P256_.redN(P256_.aff(P256_.mulP(k, P256_.G))[0]); if (BN_.zero(r)) continue;
+      const rd = N.mul(N.toM(r), N.toM(dl)), zr = N.add(N.toM(z), rd), s = N.fromM(N.mul(N.inv(N.toM(k)), zr)); if (BN_.zero(s)) continue;
+      return BN_.toB(r).concat(BN_.toB(s));
+    } throw new Error('assinatura'); },
   jwt: function (aud, d, sub) { const h = WP_.b64u(WP_.str(JSON.stringify({ typ: 'JWT', alg: 'ES256' }))), pl = WP_.b64u(WP_.str(JSON.stringify({ aud: aud, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: sub }))); return h + '.' + pl + '.' + WP_.b64u(WP_.ecdsa(d, WP_.str(h + '.' + pl))); },
   // AES-128-GCM
   SB: null,
   sbox: function () { if (WP_.SB) return WP_.SB; const s = new Array(256), xt = function (a) { return ((a << 1) ^ ((a & 128) ? 27 : 0)) & 255; }; let p = 1, q = 1; do { p = p ^ xt(p); q ^= q << 1; q ^= q << 2; q ^= q << 4; q &= 255; if (q & 128) q ^= 9; const x = q ^ ((q << 1) | (q >> 7)) & 255 ^ ((q << 2) | (q >> 6)) & 255 ^ ((q << 3) | (q >> 5)) & 255 ^ ((q << 4) | (q >> 4)) & 255; s[p] = (x ^ 99) & 255; } while (p !== 1); s[0] = 99; WP_.SB = s; return s; },
   aesKey: function (key) { const S = WP_.sbox(), w = []; for (let i = 0; i < 4; i++) w.push(key.slice(4 * i, 4 * i + 4)); let rc = 1; for (let i = 4; i < 44; i++) { let t = w[i - 1].slice(); if (i % 4 === 0) { t = [S[t[1]] ^ rc, S[t[2]], S[t[3]], S[t[0]]]; rc = ((rc << 1) ^ ((rc & 128) ? 27 : 0)) & 255; } w.push([w[i - 4][0] ^ t[0], w[i - 4][1] ^ t[1], w[i - 4][2] ^ t[2], w[i - 4][3] ^ t[3]]); } const rk = []; for (let r = 0; r < 11; r++) rk.push([].concat(w[4 * r], w[4 * r + 1], w[4 * r + 2], w[4 * r + 3])); return rk; },
   aesBlock: function (rk, blk) { const S = WP_.sbox(), xt = function (a) { return ((a << 1) ^ ((a & 128) ? 27 : 0)) & 255; }; let s = blk.map(function (v, i) { return v ^ rk[0][i]; }); for (let r = 1; r <= 10; r++) { const t = new Array(16); for (let c = 0; c < 4; c++) for (let rr = 0; rr < 4; rr++) t[4 * c + rr] = S[s[4 * ((c + rr) % 4) + rr]]; if (r < 10) { for (let c = 0; c < 4; c++) { const a = t.slice(4 * c, 4 * c + 4), x = a[0] ^ a[1] ^ a[2] ^ a[3]; s[4 * c] = a[0] ^ x ^ xt(a[0] ^ a[1]); s[4 * c + 1] = a[1] ^ x ^ xt(a[1] ^ a[2]); s[4 * c + 2] = a[2] ^ x ^ xt(a[2] ^ a[3]); s[4 * c + 3] = a[3] ^ x ^ xt(a[3] ^ a[0]); } } else s = t; s = s.map(function (v, i) { return v ^ rk[r][i]; }); } return s; },
-  gmul: function (x, y) { const R = 0xe1n << 120n; let z = 0n, v = y; for (let i = 127; i >= 0; i--) { if ((x >> BigInt(i)) & 1n) z ^= v; v = (v & 1n) ? (v >> 1n) ^ R : v >> 1n; } return z; },
-  gcm: function (key, iv, pt) { const rk = WP_.aesKey(key), H = WP_.hex2big(WP_.aesBlock(rk, new Array(16).fill(0))), ct = []; for (let i = 0; i < pt.length; i += 16) { const ks = WP_.aesBlock(rk, iv.concat(WP_.big2b(BigInt(2 + i / 16), 4))); for (let j = 0; j < 16 && i + j < pt.length; j++) ct.push(pt[i + j] ^ ks[j]); }
-    let g = 0n; for (let i = 0; i < ct.length; i += 16) { const bl = ct.slice(i, i + 16); while (bl.length < 16) bl.push(0); g = WP_.gmul(g ^ WP_.hex2big(bl), H); } g = WP_.gmul(g ^ (BigInt(ct.length) * 8n), H);
-    const ej = WP_.hex2big(WP_.aesBlock(rk, iv.concat([0, 0, 0, 1]))); return ct.concat(WP_.big2b(g ^ ej, 16)); },
+  // multiplicação em GF(2^128) do GCM, com bytes
+  gmul: function (x, y) { const z = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], v = y.slice(); for (let i = 0; i < 128; i++) { if ((x[i >> 3] >> (7 - (i & 7))) & 1) for (let j = 0; j < 16; j++) z[j] ^= v[j]; const lsb = v[15] & 1; for (let j = 15; j > 0; j--) v[j] = (v[j] >> 1) | ((v[j - 1] & 1) << 7); v[0] >>= 1; if (lsb) v[0] ^= 0xe1; } return z; },
+  gcm: function (key, iv, pt) {
+    const rk = WP_.aesKey(key), H = WP_.aesBlock(rk, [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), ct = [];
+    for (let i = 0; i < pt.length; i += 16) { const c = 2 + i / 16, ks = WP_.aesBlock(rk, iv.concat([(c >> 24) & 255, (c >> 16) & 255, (c >> 8) & 255, c & 255])); for (let j = 0; j < 16 && i + j < pt.length; j++) ct.push(pt[i + j] ^ ks[j]); }
+    let g = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    for (let i = 0; i < ct.length; i += 16) { const bl = ct.slice(i, i + 16); while (bl.length < 16) bl.push(0); g = WP_.gmul(g.map(function (v, j) { return v ^ bl[j]; }), H); }
+    const bits = ct.length * 8, lb = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, (bits >>> 24) & 255, (bits >>> 16) & 255, (bits >>> 8) & 255, bits & 255];
+    g = WP_.gmul(g.map(function (v, j) { return v ^ lb[j]; }), H);
+    const ej = WP_.aesBlock(rk, iv.concat([0, 0, 0, 1])); return ct.concat(g.map(function (v, j) { return v ^ ej[j]; })); },
   cifra: function (payload, sub) { const ua = WP_.unb64u(sub.keys.p256dh), auth = WP_.unb64u(sub.keys.auth), e = WP_.chavePriv(), asPub = WP_.pub(e), shared = WP_.ecdh(e, ua), salt = WP_.rand(16);
     const ikm = WP_.hkdf(auth, shared, WP_.str('WebPush: info\0').concat(ua, asPub), 32), cek = WP_.hkdf(salt, ikm, WP_.str('Content-Encoding: aes128gcm\0'), 16), nonce = WP_.hkdf(salt, ikm, WP_.str('Content-Encoding: nonce\0'), 12);
     return salt.concat([0, 0, 16, 0, asPub.length], asPub, WP_.gcm(cek, nonce, WP_.str(JSON.stringify(payload)).concat([2]))); }
@@ -2773,10 +2828,10 @@ function setPushPub_(k) { const t = table_('Config'), r0 = t.rows.filter(functio
 // Chaves do servidor de avisos (VAPID): a privada fica só nas propriedades do script (nunca na planilha); a pública vai para o app
 function vapid_() {
   const pr = PropertiesService.getScriptProperties(); let hex = pr.getProperty('VAPID_PRIV'), c = cfgMap_();
-  if (hex && /^[0-9a-f]{64}$/.test(hex) && c.PushPub) return { d: BigInt('0x' + hex), pub: c.PushPub };
+  if (hex && /^[0-9a-f]{64}$/.test(hex) && c.PushPub) return { d: WP_.unhex(hex), pub: c.PushPub };
   return withLock_(function () {
     hex = pr.getProperty('VAPID_PRIV'); c = cfgMap_(); let d;
-    if (hex && /^[0-9a-f]{64}$/.test(hex)) d = BigInt('0x' + hex); else { d = WP_.chavePriv(); pr.setProperty('VAPID_PRIV', d.toString(16).padStart(64, '0')); }
+    if (hex && /^[0-9a-f]{64}$/.test(hex)) d = WP_.unhex(hex); else { d = WP_.chavePriv(); pr.setProperty('VAPID_PRIV', WP_.hex(d)); }
     const pub = WP_.b64u(WP_.pub(d)); if (c.PushPub !== pub) setPushPub_(pub); return { d: d, pub: pub };
   });
 }

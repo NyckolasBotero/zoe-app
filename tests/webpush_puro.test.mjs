@@ -4,18 +4,25 @@ const U={newBlob:(s)=>({getBytes:()=>sgn(Buffer.from(s))}),computeHmacSha256Sign
 const ctx=vm.createContext({Utilities:U,Math,Date,JSON,BigInt,Error,Array,String,Number});
 vm.runInContext((()=>{const g=fs.readFileSync(new URL('../apps-script/Code.gs',import.meta.url),'utf8');return g.slice(g.indexOf('/* ===== Web Push direto'),g.indexOf('/* ===== Notificações no aparelho'))})()+'\nthis.WP_=WP_;this.P256_=P256_;',ctx);
 const W=ctx.WP_; const as=(a)=>Buffer.from(a);
-// 1) AES-GCM vs node
-const key=crypto.randomBytes(16),iv=crypto.randomBytes(12),pt=crypto.randomBytes(77);
-const c=crypto.createCipheriv('aes-128-gcm',key,iv);const ref=Buffer.concat([c.update(pt),c.final(),c.getAuthTag()]);
-const mine=as(W.gcm([...key],[...iv],[...pt])); if(!mine.equals(ref)){console.error('FALHOU AES-GCM');process.exit(1)}
+// 1) AES-GCM vs node (vários tamanhos)
+for (const n of [1, 15, 16, 17, 77, 200]) { const key=crypto.randomBytes(16),iv=crypto.randomBytes(12),pt=crypto.randomBytes(n);
+  const c=crypto.createCipheriv('aes-128-gcm',key,iv);const ref=Buffer.concat([c.update(pt),c.final(),c.getAuthTag()]);
+  const mine=as(W.gcm([...key],[...iv],[...pt])); if(!mine.equals(ref)){console.error('FALHOU AES-GCM',n);process.exit(1)} }
 // 2) chave pública e ECDH vs node
-const d=W.chavePriv(),pub=W.pub(d);const e=crypto.createECDH('prime256v1');e.setPrivateKey(Buffer.from(W.big2b(d,32)));
-if(!as(pub).equals(e.getPublicKey())){console.error('FALHOU pub');process.exit(1)}
-const o=crypto.createECDH('prime256v1');o.generateKeys();const sh=as(W.ecdh(d,[...o.getPublicKey()]));if(!sh.equals(e.computeSecret(o.getPublicKey()))){console.error('FALHOU ecdh');process.exit(1)}
+for (let i=0;i<3;i++){ const d=W.chavePriv(),pub=W.pub(d);const e=crypto.createECDH('prime256v1');e.setPrivateKey(Buffer.from(d));
+  if(!as(pub).equals(e.getPublicKey())){console.error('FALHOU pub');process.exit(1)}
+  const o=crypto.createECDH('prime256v1');o.generateKeys();const sh=as(W.ecdh(d,[...o.getPublicKey()]));if(!sh.equals(e.computeSecret(o.getPublicKey()))){console.error('FALHOU ecdh');process.exit(1)} }
 // 3) ECDSA verificado pelo node
-const jwt=W.jwt('https://fcm.googleapis.com',d,'mailto:a@b.com');const [h,p,s]=jwt.split('.');
-const kk=crypto.createPublicKey({key:{kty:'EC',crv:'P-256',x:as(pub.slice(1,33)).toString('base64url'),y:as(pub.slice(33,65)).toString('base64url')},format:'jwk'});
-if(!crypto.verify('sha256',Buffer.from(h+'.'+p),{key:kk,dsaEncoding:'ieee-p1363'},Buffer.from(s,'base64url'))){console.error('FALHOU ES256');process.exit(1)}
+const d=W.chavePriv(),pub=W.pub(d);
+for (let i=0;i<3;i++){ const jwt=W.jwt('https://fcm.googleapis.com',d,'mailto:a@b.com');const [h,p,s]=jwt.split('.');
+  const kk=crypto.createPublicKey({key:{kty:'EC',crv:'P-256',x:as(pub.slice(1,33)).toString('base64url'),y:as(pub.slice(33,65)).toString('base64url')},format:'jwk'});
+  if(!crypto.verify('sha256',Buffer.from(h+'.'+p),{key:kk,dsaEncoding:'ieee-p1363'},Buffer.from(s,'base64url'))){console.error('FALHOU ES256');process.exit(1)} }
+// 3b) o código do Apps Script não pode usar BigInt (o editor do Apps Script recusa)
+const fonte=fs.readFileSync(new URL('../apps-script/Code.gs',import.meta.url),'utf8');
+if(/\bBigInt\b|\b\d+n\b|\b0x[0-9a-fA-F]+n\b/.test(fonte)){console.error('FALHOU: Code.gs usa BigInt');process.exit(1)}
+if(/=>|\?\.[a-zA-Z_(\[]|\?\?/.test(fonte.replace(/'(?:[^'\\\n]|\\.)*'/g,"''"))){console.error('AVISO: Code.gs usa sintaxe moderna (=>, ?., ??)');process.exit(1)}
+// 3c) o arquivo inteiro tem de ser JavaScript ES2017 (o que o editor do Apps Script aceita)
+try { const { createRequire } = await import('node:module'); const ac = createRequire(import.meta.url)('../relay/node_modules/acorn'); try { ac.parse(fonte, { ecmaVersion: 2017, sourceType: 'script' }); } catch (e) { console.error('FALHOU: sintaxe além do ES2017 em Code.gs:', e.message); process.exit(1); } } catch (e) { console.log('(acorn indisponível: verificação ES2017 ignorada)'); }
 // 4) fluxo completo (RFC 8291) decifrado como o navegador
 const ua=crypto.createECDH('prime256v1');ua.generateKeys();const auth=crypto.randomBytes(16);
 const t0=Date.now();const b=as(W.cifra({title:'Olá',body:'Mensagem ✨'},{keys:{p256dh:ua.getPublicKey().toString('base64url'),auth:auth.toString('base64url')}}));const ms=Date.now()-t0;

@@ -1,5 +1,14 @@
 [
  {
+  "titulo": "Correção: erro de sintaxe no Apps Script",
+  "melhorias": [
+   "Corrigido o erro \"Unexpected token ILLEGAL\" ao colar o Code.gs: a criptografia das notificações foi reescrita sem números BigInt, que o editor do Apps Script não aceita.",
+   "Novo teste automático garante que o Code.gs inteiro usa só a sintaxe aceita pelo Apps Script."
+  ],
+  "v": "1.51",
+  "data": "31/10/2026"
+ },
+ {
   "titulo": "Nova aba: Presença facial (lista de autorizados)",
   "melhorias": [
    "Nova aba Presença facial na barra de navegação (para quem gerencia eventos): escolha o evento, veja todas as pessoas e abra a câmera de presença.",
