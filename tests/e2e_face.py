@@ -22,7 +22,10 @@ with sync_playwright() as p:
     # aba própria na barra de navegação: lista de autorizados (whitelist)
     a.wait_for_selector('.nv[aria-label="Presença facial"]',state='attached'); a.evaluate("(()=>{const e=document.querySelector('.nv[aria-label=\\'Presença facial\\']');e.scrollIntoView({inline:'center',block:'nearest'});e.click()})()"); a.wait_for_selector('#rf_l .rfrow'); a.wait_for_function("document.querySelector('#rf_ev').value")
     eid=a.evaluate("document.querySelector('#rf_ev').value"); assert eid
-    assert a.is_disabled('button:has-text("Abrir câmera")'),'sem ninguém autorizado e indexado a câmera fica bloqueada'
+    assert not a.is_disabled('button:has-text("Abrir câmera")'),'a câmera abre mesmo sem rostos indexados (modo teste)'
+    a.click('button:has-text("Abrir câmera")'); a.wait_for_selector('#fcov #fc_go'); assert not a.is_disabled('#fc_go'); a.click('#fc_go'); a.wait_for_function("FC&&FC.run&&document.querySelector('#fc_cv')"); a.wait_for_function("!document.querySelector('#fc_info').textContent"); fcFecha=a.evaluate("fcFecha()")
+    # câmera bloqueada: mensagem clara e volta ao painel
+    a.click('button:has-text("Abrir câmera")'); a.wait_for_selector('#fcov #fc_go'); a.evaluate("(()=>{window.__gum=navigator.mediaDevices.getUserMedia;navigator.mediaDevices.getUserMedia=async()=>{const e=new Error('x');e.name='NotAllowedError';throw e}})()"); a.click('#fc_go'); a.wait_for_function("document.querySelector('#fc_st')&&document.querySelector('#fc_st').textContent.includes('bloqueada')"); a.evaluate("(()=>{navigator.mediaDevices.getUserMedia=window.__gum;fcFecha()})()")
     assert a.evaluate("document.querySelectorAll('#rf_l input:checked').length")==0
     ids=a.evaluate("async(e)=>{const r=await api('eventoPresenca',{eventoId:e});const o={};r.membros.forEach(m=>o[m.nome.split(' ')[0]]=m.id);return o}",eid)
     a.fill('#rf_q','ana'); a.wait_for_function("document.querySelectorAll('#rf_l .rfrow').length===1"); a.check('#rf_l .rfrow input'); a.wait_for_function("RF.itens.find(x=>x.nome.startsWith('Ana')).aut")

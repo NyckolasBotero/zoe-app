@@ -1,5 +1,15 @@
 [
  {
+  "titulo": "Correção: câmera de presença não abria",
+  "melhorias": [
+   "O botão Abrir câmera não fica mais bloqueado quando ainda não há rostos indexados: a câmera abre em modo teste e mostra Desconhecido.",
+   "A câmera agora abre primeiro e o reconhecimento facial carrega depois, com um segundo endereço de download caso o primeiro falhe.",
+   "Mensagens claras para câmera bloqueada, não encontrada ou em uso por outro app."
+  ],
+  "v": "1.56",
+  "data": "31/10/2026"
+ },
+ {
   "titulo": "Novo painel: Desempenho e capacidade",
   "melhorias": [
    "Nova seção Desempenho e capacidade na Administração: gráficos de linha do tempo de resposta (média, 95% mais lentas e tempo dentro do servidor), requisições e erros por minuto, aparelhos com o app aberto e ocupação do cadeado de gravação.",
