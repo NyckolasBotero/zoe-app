@@ -1,5 +1,14 @@
 [
  {
+  "titulo": "Árvore Zoe: Toda a igreja em organograma",
+  "melhorias": [
+   "Árvore Zoe › Toda a igreja agora é um organograma: a Zoe no topo, cada família logo abaixo e, dentro de cada uma, a árvore com os vínculos (casal, pais e filhos, irmãos).",
+   "Dá para aumentar, diminuir e ajustar o organograma. Toque numa família para abrir só ela ou numa pessoa para ver o perfil. A lista antiga continua em \"Ver como lista\"."
+  ],
+  "v": "1.85",
+  "data": "31/10/2026"
+ },
+ {
   "titulo": "Sede marcada no mapa com o símbolo da Zoe e Dados da igreja junto com Mapas",
   "melhorias": [
    "Administração › Definições de Parâmetros: Dados da igreja e Mapas viraram um cartão só, com um botão Salvar.",
