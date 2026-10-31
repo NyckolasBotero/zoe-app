@@ -1164,3 +1164,20 @@ test('notificações: diagnóstico sem inscrições e chat sempre enfileira push
   const d = e.call('pushDiag', { teste: true }, adm).data; assert.equal(d.chave, true); assert.equal(d.subs, 0); assert.match(d.teste.msg, /não está inscrito/);
   assert.ok(e.run('sendChat_.toString()').includes("PUSHQ_.push({ m: para") && !e.run('sendChat_.toString()').includes('presDe_(para'));
 });
+test('desempenho: relatório agregado por aparelho, leitura só para administrador, tempo do servidor e cadeado no envelope', () => {
+  const { e, adm, tok, mk } = boot(); mk('maria@zoe.com', 'membro'); const m = tok('maria@zoe.com', 'Temp12345');
+  const slot = Math.floor(Date.now() / 300000) * 300000 - 300000, item = { n: 10, e: 1, rs: 5000, rm: 1200, ss: 3000, sm: 700, l: 1, ks: 800, ws: 50, h: [2, 3, 3, 1, 1, 0, 0] };
+  const rep = (tk, extra) => e.call('metricsReport', { ser: [Object.assign({ t: slot }, item)], det: [Object.assign({ p: 'chat', a: 'getChat' }, item), { p: 'x y', a: 'ruim!' }].concat(extra || []) }, tk);
+  assert.equal(e.call('metricsReport', {}).error.code, 'SESSION');
+  const r1 = rep(m); assert.ok(r1.ok && r1.data.n === 2, JSON.stringify(r1)); assert.ok(rep(adm).ok);
+  assert.equal(e.call('getMetrics', {}, m).error.code, 'FORBIDDEN');
+  const g = e.call('getMetrics', { horas: 6, dias: 1 }, adm); assert.ok(g.ok, JSON.stringify(g));
+  assert.equal(g.data.serie.length, 1); const s = g.data.serie[0];
+  assert.equal(s.n, 20); assert.equal(s.ap, 2, 'dois aparelhos no mesmo intervalo'); assert.equal(s.rm, 1200); assert.equal(s.ks, 1600); assert.deepEqual(s.h, [4, 6, 6, 2, 2, 0, 0]);
+  assert.equal(g.data.det.length, 1); assert.equal(g.data.det[0].p, 'chat'); assert.equal(g.data.det[0].n, 20); assert.equal(g.data.det[0].ap, 0);
+  const antigo = e.call('metricsReport', { ser: [Object.assign({ t: Date.now() - 5 * 86400000 }, item)], det: [] }, m); assert.equal(antigo.data.n, 0, 'intervalos muito antigos são ignorados');
+  const pg = e.call('ping', {}, m); assert.ok(pg.ok && typeof pg.data.t === 'number');
+  assert.ok(typeof pg.s === 'number' && pg.s >= 0 && pg.k === 0 && pg.w === 0, 'envelope traz tempo do servidor (s), cadeado (k) e espera (w)');
+  const gr = e.call('metricsReport', { ser: [], det: [{ p: 'inicio', a: 'track', n: 1, e: 0, rs: 100, rm: 100, ss: 50, sm: 50, l: 0, ks: 0, ws: 0 }] }, m); assert.ok(gr.ok);
+  assert.ok(e.call('track', { itens: [{ tela: 'inicio', seg: 5 }] }, m).k >= 0);
+});

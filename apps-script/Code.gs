@@ -46,6 +46,7 @@ const SHEETS = {
   Oracoes: ['OracaoID', 'CelulaID', 'MembroID', 'Tema', 'Titulo', 'Texto', 'Data'],
   Eventos: ['EventoID', 'Titulo', 'Data', 'Hora', 'Local', 'Descricao', 'Programacao', 'Escopo', 'CelulaID', 'CriadoPor', 'Status', 'Foto', 'Insignia'],
   EventoPresenca: ['EventoID', 'MembroID', 'Data'],
+  Metricas: ['Slot', 'Pagina', 'Acao', 'N', 'Erros', 'RttSoma', 'RttMax', 'SrvSoma', 'SrvMax', 'Lentas', 'Aparelhos', 'Hist', 'LockSoma', 'EsperaSoma'],
   Rostos: ['MembroID', 'Descritor', 'AtualizadoEm', 'Autorizado', 'AutorizadoPor', 'AutorizadoEm'],
   Corridas: ['CorridaID', 'Titulo', 'Ano', 'Inicio', 'Fim', 'CapDia', 'TotalCap', 'Status'],
   CorridaLeitura: ['CorridaID', 'MembroID', 'Data', 'Capitulos', 'Resumo', 'Status', 'ValidadoPor', 'Obs'],
@@ -167,7 +168,8 @@ function id_(p) { return p + Utilities.getUuid().replace(/-/g, '').slice(0, 10).
 function now_() { return Utilities.formatDate(new Date(), CFG.TZ, 'yyyy-MM-dd HH:mm:ss'); }
 function today_() { return Utilities.formatDate(new Date(), CFG.TZ, 'yyyy-MM-dd'); }
 function clip_(s, n) { return String(s === undefined || s === null ? '' : s).trim().slice(0, n || 200); }
-function withLock_(fn) { const l = LockService.getScriptLock(); l.waitLock(20000); try { return fn(); } finally { l.releaseLock(); } }
+let LOCKMS_ = 0, WAITMS_ = 0; // tempo segurando / esperando o cadeado nesta execução (painel de desempenho)
+function withLock_(fn) { const l = LockService.getScriptLock(), a = Date.now(); l.waitLock(20000); const b = Date.now(); WAITMS_ += b - a; try { return fn(); } finally { l.releaseLock(); LOCKMS_ += Date.now() - b; } }
 function norm_(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim(); }
 function jparse_(s, d) { try { return s ? JSON.parse(s) : d; } catch (e) { return d; } }
 function json_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
@@ -695,6 +697,48 @@ function track_(d, u) {
     if (awardXp_(u.membroId, 'dia:' + today_(), 5, 'Acesso diário')) avaliaDefs_(u.membroId); return { ok: true, n: n };
   });
 }
+/* ===== Desempenho e capacidade: o app mede cada requisição e envia somas agregadas (a cada 5 min, por aparelho) ===== */
+const MET_SLOT_ = 300000, MET_H_ = [200, 400, 800, 1500, 3000, 6000];
+function metNum_(x, max) { const n = Math.round(Number(x) || 0); return n < 0 ? 0 : Math.min(max || 1e9, n); }
+function metSoma_(t, key, v, row) { // soma os valores de v na linha existente (key) ou cria
+  const r = t.rows.filter(function (x) { return x.Slot === key[0] && x.Pagina === key[1] && x.Acao === key[2]; })[0];
+  if (r) {
+    const h = jparse_(r.Hist, []), nh = (v.Hist || []).length ? v.Hist.map(function (c, i) { return metNum_(c) + metNum_(h[i]); }) : h;
+    writeRow_(t, r._row, { N: String(metNum_(r.N) + v.N), Erros: String(metNum_(r.Erros) + v.Erros), RttSoma: String(metNum_(r.RttSoma) + v.RttSoma), RttMax: String(Math.max(metNum_(r.RttMax), v.RttMax)), SrvSoma: String(metNum_(r.SrvSoma) + v.SrvSoma), SrvMax: String(Math.max(metNum_(r.SrvMax), v.SrvMax)), Lentas: String(metNum_(r.Lentas) + v.Lentas), Aparelhos: String(metNum_(r.Aparelhos) + v.Aparelhos), Hist: nh.length ? JSON.stringify(nh) : '', LockSoma: String(metNum_(r.LockSoma) + v.LockSoma), EsperaSoma: String(metNum_(r.EsperaSoma) + v.EsperaSoma) });
+  } else appendRow_(t, { Slot: key[0], Pagina: key[1], Acao: key[2], N: String(v.N), Erros: String(v.Erros), RttSoma: String(v.RttSoma), RttMax: String(v.RttMax), SrvSoma: String(v.SrvSoma), SrvMax: String(v.SrvMax), Lentas: String(v.Lentas), Aparelhos: String(v.Aparelhos), Hist: (v.Hist || []).length ? JSON.stringify(v.Hist) : '', LockSoma: String(v.LockSoma), EsperaSoma: String(v.EsperaSoma) });
+}
+function metItem_(x, comHist) {
+  return { N: metNum_(x.n, 1e6), Erros: metNum_(x.e, 1e6), RttSoma: metNum_(x.rs, 1e10), RttMax: metNum_(x.rm, 1e7), SrvSoma: metNum_(x.ss, 1e10), SrvMax: metNum_(x.sm, 1e7), Lentas: metNum_(x.l, 1e6), LockSoma: metNum_(x.ks, 1e10), EsperaSoma: metNum_(x.ws, 1e10), Aparelhos: 1, Hist: comHist && Array.isArray(x.h) ? x.h.slice(0, MET_H_.length + 1).map(function (c) { return metNum_(c, 1e6); }) : [] };
+}
+function metricsReport_(d, u) {
+  const ser = (Array.isArray(d.ser) ? d.ser : []).slice(0, 40), det = (Array.isArray(d.det) ? d.det : []).slice(0, 120), agora = Date.now(); let n = 0;
+  return withLock_(function () {
+    const t = table_('Metricas');
+    ser.forEach(function (x) { const ts = Number(x.t); if (!(ts > agora - 2 * 86400000 && ts <= agora + 60000)) return; metSoma_(t, [Utilities.formatDate(new Date(ts), CFG.TZ, 'yyyy-MM-dd HH:mm'), '*', '*'], metItem_(x, true)); n++; });
+    const dia = today_();
+    det.forEach(function (x) { const p = clip_(x.p, 24), a = clip_(x.a, 40); if (!/^[a-z0-9_:-]+$/i.test(p) || !/^[a-z0-9_:-]+$/i.test(a)) return; const v = metItem_(x, false); v.Aparelhos = 0; metSoma_(t, [dia, p, a], v); n++; });
+    if (Math.random() < 0.02) metLimpa_(t);
+    return { ok: true, n: n };
+  });
+}
+function metLimpa_(t) { // mantém só os últimos 45 dias (apaga de baixo para cima para não deslocar as linhas)
+  const lim = Utilities.formatDate(new Date(Date.now() - 45 * 86400000), CFG.TZ, 'yyyy-MM-dd');
+  t.rows.filter(function (r) { return String(r.Slot).slice(0, 10) < lim; }).map(function (r) { return r._row; }).sort(function (a, b) { return b - a; }).forEach(function (rw) { t.sh.deleteRow(rw); });
+}
+function getMetrics_(d, u) {
+  const horas = Math.max(1, Math.min(72, metNum_(d.horas) || 24)), dias = Math.max(1, Math.min(30, metNum_(d.dias) || 7));
+  const desde = Utilities.formatDate(new Date(Date.now() - horas * 3600000), CFG.TZ, 'yyyy-MM-dd HH:mm'), dDesde = Utilities.formatDate(new Date(Date.now() - (dias - 1) * 86400000), CFG.TZ, 'yyyy-MM-dd');
+  const serie = [], det = [];
+  table_('Metricas').rows.forEach(function (r) {
+    const o = { n: metNum_(r.N), e: metNum_(r.Erros), rs: metNum_(r.RttSoma), rm: metNum_(r.RttMax), ss: metNum_(r.SrvSoma), sm: metNum_(r.SrvMax), l: metNum_(r.Lentas), ap: metNum_(r.Aparelhos), ks: metNum_(r.LockSoma), ws: metNum_(r.EsperaSoma) };
+    if (r.Pagina === '*') { if (r.Slot.length > 10 && r.Slot >= desde) { o.slot = r.Slot; o.h = jparse_(r.Hist, []); serie.push(o); } }
+    else if (r.Slot >= dDesde) { o.dia = r.Slot; o.p = r.Pagina; o.a = r.Acao; det.push(o); }
+  });
+  serie.sort(function (a, b) { return a.slot < b.slot ? -1 : 1; });
+  return { agora: now_(), horas: horas, dias: dias, serie: serie, det: det, limites: { hist: MET_H_ } };
+}
+function ping_(d, u) { return { t: Date.now() }; }
+
 function usageReport_(d, u) {
   const mes = String(d.mes || today_().slice(0, 7)), todos = mes === 'todos';
   const us = table_('Usuarios').rows, mem = {}; table_('Membros').rows.forEach(function (m) { mem[m.MembroID] = m; });
@@ -2692,7 +2736,7 @@ const ROUTES = {
   lookup: { auth: 'any', fn: lookup_ }, requestTransfer: { auth: 'any', write: 1, fn: requestTransfer_ }, requestExit: { auth: 'any', write: 1, fn: requestExit_ }, decideExit: { auth: 'any', write: 1, fn: decideExit_ }, addNewMember: { auth: 'any', write: 1, fn: addNewMember_ }, orgTree: { auth: 'any', fn: orgTree_ },
   listTransfers: { auth: 'any', fn: listTransfers_ }, decideTransfer: { auth: 'any', write: 1, fn: decideTransfer_ },
   createEvent: { auth: 'eventos', write: 1, fn: createEvent_ }, postNews: { auth: 'eventos', write: 1, fn: postNews_ },
-  listApprovals: { auth: 'any', fn: listApprovals_ }, guideDone: { auth: 'any', write: 1, fn: guideDone_ }, listNotifications: { auth: 'any', fn: listNotifications_ }, clearNotifications: { auth: 'any', write: 1, fn: clearNotifications_ }, readNotifications: { auth: 'any', write: 1, fn: readNotifications_ }, decideApproval: { auth: 'any', fn: decideApproval_ }, undoApproval: { auth: 'any', fn: undoApproval_ }, track: { auth: 'any', fn: track_ }, usageReport: { auth: 'config', fn: usageReport_ },
+  listApprovals: { auth: 'any', fn: listApprovals_ }, guideDone: { auth: 'any', write: 1, fn: guideDone_ }, listNotifications: { auth: 'any', fn: listNotifications_ }, clearNotifications: { auth: 'any', write: 1, fn: clearNotifications_ }, readNotifications: { auth: 'any', write: 1, fn: readNotifications_ }, decideApproval: { auth: 'any', fn: decideApproval_ }, undoApproval: { auth: 'any', fn: undoApproval_ }, track: { auth: 'any', fn: track_ }, usageReport: { auth: 'config', fn: usageReport_ }, metricsReport: { auth: 'any', fn: metricsReport_ }, getMetrics: { auth: 'config', fn: getMetrics_ }, ping: { auth: 'any', fn: ping_ },
   orgMove: { auth: 'any', write: 1, fn: orgMove_ }, saveOrgLayout: { auth: 'any', write: 1, fn: saveOrgLayout_ }, rateBook: { auth: 'any', write: 1, fn: rateBook_ }, fotos: { auth: 'any', fn: fotos_ },
   listBooks: { auth: 'any', fn: listBooks_ }, saveBook: { auth: 'any', write: 1, fn: saveBook_ }, deleteBook: { auth: 'any', write: 1, fn: deleteBook_ }, getBookFile: { auth: 'any', fn: getBookFile_ },
   listBookComments: { auth: 'any', fn: listBookComments_ }, addBookComment: { auth: 'any', write: 1, fn: addBookComment_ }, deleteBookComment: { auth: 'any', write: 1, fn: deleteBookComment_ },
@@ -2706,7 +2750,7 @@ const ROUTES = {
 };
 function doGet() { return json_({ ok: true, data: { servico: 'Zoe API', status: 'online' } }); }
 function doPost(e) {
-  let out, user = null, route = null, action = '';
+  let out, user = null, route = null, action = ''; const t0_ = Date.now(); LOCKMS_ = 0; WAITMS_ = 0;
   try {
     const raw = e && e.postData && e.postData.contents; if (!raw || raw.length > 16000000) throw new ApiError('BAD_REQUEST', 'Requisição inválida.');
     const req = JSON.parse(raw); action = String(req.action || '');
@@ -2720,6 +2764,7 @@ function doPost(e) {
   }
   TMEMO_ = null;
   try { pushFlush_(); } catch (err2) { console.error(err2 && err2.stack || err2); }
+  out.k = LOCKMS_; out.w = WAITMS_; out.s = Date.now() - t0_; // tempo gasto no servidor (ms), para o painel de desempenho
   return json_(out);
 }
 

@@ -340,3 +340,10 @@ Segure e arraste a Zoe para qualquer posição da tela (mouse ou toque); a posi�
 - iPhone: precisa do app instalado na Tela de Início (iOS 16.4+). Testes: `node tests/webpush_puro.test.mjs` (compara com o `crypto` do Node) e `tests/zoe.test.mjs`.
 
 - **Aba *Presença facial*** (`rostos`, permissão `eventos`): escolhe o evento, mostra a **lista de autorizados** (whitelist, aba `Rostos` com `Autorizado/AutorizadoPor/AutorizadoEm`; rotas `faceRoster`, `setFaceAuth`) e abre a câmera. Só autorizados são indexados e reconhecidos; desautorizar apaga a assinatura.
+
+## Desempenho e capacidade (Administração)
+
+- Cada aparelho mede toda requisição ao Apps Script (`apiRaw`: tempo de resposta, tempo no servidor `s`, cadeado segurado `k`, espera `w`, erros) e agrega por intervalo de 5 min e por página/ação. A cada minuto envia os intervalos completos com `metricsReport` (e tudo ao sair ou ao ir para segundo plano).
+- Backend: aba `Metricas` (criada por `setup()`; uma linha por intervalo de 5 min com `*|*` e uma por dia, página e ação; limpeza de 45 dias), rotas `metricsReport` (qualquer usuário), `getMetrics` (administrador) e `ping`.
+- Painel: gráficos de linha (resposta, requisições/erros, aparelhos e cadeado), medição ao vivo do aparelho, tabelas de peso por página/ação e calculadora (lei de Little: simultâneas = pessoas × req/s × tempo no servidor; limite de 30 execuções simultâneas por conta dona do script, igual em conta pessoal e Workspace; fila do cadeado das gravações).
+- Testes: `tests/zoe.test.mjs` (relatório/consulta) e `tests/e2e_desempenho.py`.

@@ -1,5 +1,17 @@
 [
  {
+  "titulo": "Novo painel: Desempenho e capacidade",
+  "melhorias": [
+   "Nova seção Desempenho e capacidade na Administração: gráficos de linha do tempo de resposta (média, 95% mais lentas e tempo dentro do servidor), requisições e erros por minuto, aparelhos com o app aberto e ocupação do cadeado de gravação.",
+   "Tabelas das páginas e das ações que mais pesam no servidor, com média de tempo, uso do cadeado e erros.",
+   "Medição da conexão deste aparelho em tempo real e botão para medir 8 pings.",
+   "Calculadora de capacidade: simule quantas pessoas o Apps Script aguenta com seus números reais (execuções simultâneas e fila de gravação), incluindo o efeito de reduzir consultas.",
+   "Cada aparelho envia só somas de tempos a cada 5 minutos, sem dados pessoais. Rode setup() no Apps Script para criar a aba Metricas."
+  ],
+  "v": "1.54",
+  "data": "31/10/2026"
+ },
+ {
   "titulo": "Correção: erro de sintaxe no Apps Script",
   "melhorias": [
    "Corrigido o erro \"Unexpected token ILLEGAL\" ao colar o Code.gs: a criptografia das notificações foi reescrita sem números BigInt, que o editor do Apps Script não aceita.",
