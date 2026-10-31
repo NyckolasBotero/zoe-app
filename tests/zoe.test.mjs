@@ -1181,3 +1181,16 @@ test('desempenho: relatório agregado por aparelho, leitura só para administrad
   const gr = e.call('metricsReport', { ser: [], det: [{ p: 'inicio', a: 'track', n: 1, e: 0, rs: 100, rm: 100, ss: 50, sm: 50, l: 0, ks: 0, ws: 0 }] }, m); assert.ok(gr.ok);
   assert.ok(e.call('track', { itens: [{ tela: 'inicio', seg: 5 }] }, m).k >= 0);
 });
+test('cultos normais: presença em qualquer dia sem evento cadastrado, sem duplicar, só com permissão', () => {
+  const { e, adm, tok, mk } = boot(); const a = mk('ana@zoe.com', 'membro'), b = mk('bia@zoe.com', 'membro'); const m = tok('ana@zoe.com', 'Temp12345');
+  assert.equal(e.call('checkinCulto', { data: '2026-10-31', culto: 'Culto de sábado', membros: [a] }, m).error.code, 'FORBIDDEN');
+  const p0 = e.call('cultoPresenca', { data: '2026-10-31', culto: 'Culto de sábado' }, adm); assert.ok(p0.ok && p0.data.presentes.length === 0 && p0.data.membros.length >= 2);
+  const r = e.call('checkinCulto', { data: '2026-10-31', culto: 'Culto de sábado', membros: [a, b, a, 'XX'] }, adm); assert.ok(r.ok && r.data.n === 2, JSON.stringify(r));
+  assert.equal(e.call('checkinCulto', { data: '2026-10-31', culto: 'Culto de sábado', membros: [a, b] }, adm).data.n, 0, 'não duplica');
+  assert.equal(e.call('cultoPresenca', { data: '2026-10-31', culto: 'Culto de sábado' }, adm).data.presentes.length, 2);
+  assert.equal(e.call('cultoPresenca', { data: '2026-10-31', culto: 'Culto de domingo (noite)' }, adm).data.presentes.length, 0, 'outro culto, outra lista');
+  assert.equal(e.call('checkinCulto', { data: '31/10/2026', culto: 'Culto', membros: [a] }, adm).error.code, 'VALIDATION');
+  assert.equal(e.call('checkinCulto', { data: '2099-01-01', culto: 'Culto', membros: [a] }, adm).error.code, 'VALIDATION');
+  assert.equal(e.call('checkinCulto', { data: '2026-10-31', culto: '', membros: [a] }, adm).error.code, 'VALIDATION');
+  const rs = e.call('cultosResumo', {}, adm); assert.ok(rs.ok && rs.data.cultos[0].total === 2 && rs.data.cultos[0].culto === 'Culto de sábado');
+});

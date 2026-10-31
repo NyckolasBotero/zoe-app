@@ -3768,9 +3768,14 @@ function fcLib(){if(FCL)return FCL;FCL=(async()=>{const alt=ZC.faceLib?[[FCU.lib
  throw new Error('Não foi possível carregar o reconhecimento facial ('+((ult&&ult.message)||'sem internet')+'). Verifique a internet e tente de novo.')})().catch(e=>{FCL=null;throw e});return FCL}
 const fcIdx=info=>info.itens.map(x=>({id:x.id,nome:x.nome,d:Float32Array.from(x.d)}));
 const fcDist=(a,b)=>{let s=0;for(let i=0;i<128;i++){const t=a[i]-b[i];s+=t*t}return Math.sqrt(s)};
-async function fcAbre(eid){if(!ONLINE)return toast('A câmera de presença funciona no app online.');const id=(typeof eid==='string'&&eid)||($('#ck_ev')||{}).value;if(!id)return toast('Escolha o evento','err');
- let ev,info;try{ev=await api('eventoPresenca',{eventoId:id});info=await api('listFaces')}catch(e){return toast(e.message,'err')}
- FC={id,titulo:ev.titulo,presentes:new Set(ev.presentes),membros:ev.membros,info,idx:fcIdx(info),cand:new Map(),conf:new Map(),rejD:[],tr:[],tid:0,aprende:new Map(),facing:'environment',run:false,thr:.5,ocup:false};
+async function fcAbre(eid){if(!ONLINE)return toast('A câmera de presença funciona no app online.');const o=eid&&typeof eid==='object'?eid:null,id=o?'':((typeof eid==='string'&&eid)||($('#ck_ev')||{}).value);if(!o&&!id)return toast('Escolha o evento','err');
+ let ev,info,modo=o?o.modo:'evento';try{
+  if(modo==='teste'){if(!RF.itens)RF.itens=(await api('faceRoster')).itens;ev={titulo:'Modo teste: nada é registrado',presentes:[],membros:RF.itens.map(x=>({id:x.id,nome:x.nome}))}}
+  else if(modo==='culto')ev=await api('cultoPresenca',{data:o.data,culto:o.culto});
+  else ev=await api('eventoPresenca',{eventoId:id});
+  info=await api('listFaces')}catch(e){return toast(e.message,'err')}
+ const tit=modo==='culto'?o.culto+' · '+dBR(o.data):ev.titulo;
+ FC={id,modo,cd:o&&o.data,cn:o&&o.culto,titulo:tit,presentes:new Set(ev.presentes),membros:ev.membros,info,idx:fcIdx(info),cand:new Map(),conf:new Map(),rejD:[],tr:[],tid:0,aprende:new Map(),facing:'environment',run:false,thr:.5,ocup:false};
  document.body.classList.add('fcOn');const d=document.createElement('div');d.id='fcov';document.body.appendChild(d);fcDesenha()}
 function fcDesenha(){const o=$('#fcov');if(!o||!FC)return;const i=FC.info,tem=FC.idx.length;
  o.innerHTML=`<div class="fch"><b>Presença por rosto · ${esc(FC.titulo)}</b><button class="btn ghost sm" onclick="fcFecha()">Fechar</button></div>
@@ -3844,7 +3849,7 @@ function fcLista(){const l=$('#fc_l');if(!l||!FC)return;if(l.contains(document.a
  pend.map(c=>c.q?`<div class="fcard" data-id="${esc(c.id)}"><div class="fcp"><img src="${c.thumb}" alt=""></div><div class="fci"><b>${c.u?'Rosto não reconhecido. Quem é?':'Quem é?'}</b><input placeholder="Buscar pelo nome" oninput="fcBusca('${esc(c.id)}',this.value)"><div id="fq_${esc(c.id)}" class="fcq"></div></div><button class="btn ghost sm" onclick="fcIgnora('${esc(c.id)}')">Ignorar</button></div>`:
  `<div class="fcard" data-id="${esc(c.id)}"><div class="fcp"><img src="${c.thumb}" alt="Rosto visto pela câmera"><span>→</span>${av(c.id,c.nome,44)}</div><div class="fci"><b>${esc(c.nome)}</b><span class="muted sm">${pct(c)}% de semelhança${c.prov?' · <b>talvez, confira com atenção</b>':''}</span></div><div class="fcb2"><button class="btn sm" onclick="fcOk('${esc(c.id)}')">Confirmar</button><button class="btn ghost sm" onclick="fcNao('${esc(c.id)}')">Não é</button></div></div>`).join('')
  +`<h3>Confirmados <span class="chip g">${cf.length}</span></h3>`+cf.map(c=>`<div class="fcard ok"><div class="fcp"><img src="${c.thumb}" alt=""></div><div class="fci"><b>${esc(c.nome)}</b></div><button class="btn ghost sm" onclick="fcDesf('${esc(c.id)}')">Desfazer</button></div>`).join('')
- +(cf.length?`<div class="row"><button class="btn" id="fc_reg" onclick="fcSalva()">Registrar ${cf.length} presença(s)</button></div>`:'');if(window.avScan)avScan()}
+ +(cf.length?`<div class="row"><button class="btn" id="fc_reg" onclick="fcSalva()">${FC.modo==='teste'?'Concluir teste (não registra)':'Registrar '+cf.length+' presença(s)'}</button></div>`:'');if(window.avScan)avScan()}
 function fcOk(id){const c=FC.cand.get(id);if(!c)return;FC.cand.delete(id);FC.conf.set(id,c);fcLista()}
 function fcTodos(){[...FC.cand.values()].filter(c=>c.n>=2&&!c.q).forEach(c=>{FC.cand.delete(c.id);FC.conf.set(c.id,c)});fcLista()}
 function fcNao(id){const c=FC.cand.get(id);if(!c)return;if(c.dsc)FC.rejD.push({id,d:Float32Array.from(c.dsc)});c.q=true;fcLista()}
@@ -3852,10 +3857,14 @@ function fcIgnora(id){FC.cand.delete(id);fcLista()}
 function fcBusca(id,q){const el=$('#fq_'+id);if(!el)return;q=q.trim().toLowerCase();el.innerHTML=q.length<2?'':FC.membros.filter(m=>m.nome.toLowerCase().includes(q)&&!FC.presentes.has(m.id)&&!FC.conf.has(m.id)).slice(0,6).map(m=>`<button class="btn ghost sm" onclick="fcEra('${esc(id)}','${esc(m.id)}')">${esc(m.nome)}</button>`).join('')}
 function fcEra(id,mid){const c=FC.cand.get(id),m=FC.membros.find(x=>x.id===mid);if(!c||!m)return;FC.cand.delete(id);FC.conf.set(mid,{id:mid,nome:m.nome,thumb:c.thumb});if(c.dsc&&FC.ap!==0)FC.aprende.set(mid,c.dsc);fcLista()}
 function fcDesf(id){FC.conf.delete(id);fcLista()}
-async function fcSalva(){const ids=[...FC.conf.keys()];if(!ids.length)return;try{const r=await api('checkinEvento',{eventoId:FC.id,membros:ids});ids.forEach(i=>FC.presentes.add(i));FC.conf.clear();toast(r.n+' presença(s) registrada(s)');await fcAprende();fcLista()}catch(e){toast(e.message,'err')}}
+async function fcSalva(){const ids=[...FC.conf.keys()];if(!ids.length)return;
+ if(FC.modo==='teste'){FC.aprende.clear();FC.conf.clear();toast('Teste concluído: nenhuma presença foi gravada');return fcLista()}
+ try{const r=FC.modo==='culto'?await api('checkinCulto',{data:FC.cd,culto:FC.cn,membros:ids}):await api('checkinEvento',{eventoId:FC.id,membros:ids});ids.forEach(i=>FC.presentes.add(i));FC.conf.clear();toast(r.n+' presença(s) registrada(s)');await fcAprende();if(FC.modo==='culto')RF.cultos=null;fcLista()}catch(e){toast(e.message,'err')}}
 async function fcAprende(){if(!FC||!FC.aprende.size)return;const it=[...FC.aprende].map(([id,d])=>({id,d:d.map(n=>Math.round(n*1000)/1000)}));FC.aprende.clear();try{await api('saveFaces',{itens:it});FC.info=await api('listFaces');FC.idx=fcIdx(FC.info)}catch(e){}}
 /* ===== Aba Presença facial: evento, lista de pessoas autorizadas (whitelist) e câmera ===== */
-const RF={itens:null,q:'',f:'todos',ev:'',busy:false,st:'',load:false,evLoad:false};
+const RF={itens:null,q:'',f:'todos',ev:'',busy:false,st:'',load:false,evLoad:false,tipo:'culto',cd:'',cn:'Culto de domingo (manhã)',cnx:'',cultos:null,cLoad:false};
+const CULTOS=['Culto de domingo (manhã)','Culto de domingo (noite)','Culto de sábado','Culto de quarta','Culto de oração','Outro culto'];
+async function rfCultos(){RF.cLoad=true;try{RF.cultos=(await api('cultosResumo')).cultos}catch(e){RF.cultos=[]}RF.cLoad=false;if(R.r==='rostos')renderKeepSuave()}
 async function rfCarrega(){RF.load=true;try{RF.itens=(await api('faceRoster')).itens}catch(e){RF.itens=[];toast(e.message,'err')}RF.load=false;if(R.r==='rostos')renderKeepSuave()}
 function rfStat(x){return !x.aut?'Não autorizado':x.idx?'Autorizado · rosto indexado':x.foto?'Autorizado · falta indexar':'Autorizado · sem foto de perfil (não dá para indexar)'}
 function rfLista(){const q=RF.q.trim().toLowerCase(),F={todos:()=>1,aut:x=>x.aut,nao:x=>!x.aut,semfoto:x=>!x.foto},L=(RF.itens||[]).filter(x=>F[RF.f](x)&&(!q||x.nome.toLowerCase().includes(q))),sh=L.slice(0,120);
@@ -3863,18 +3872,27 @@ function rfLista(){const q=RF.q.trim().toLowerCase(),F={todos:()=>1,aut:x=>x.aut
 function rfFiltra(v){RF.q=v;const l=$('#rf_l');if(l)l.innerHTML=rfLista()}
 function rfFiltro(f){RF.f=f;render()}
 function rostosHTML(){if(!ONLINE)return '<div class="card flat"><h2>Presença facial</h2><p class="muted">Disponível no app online.</p></div>';if(!can('eventos'))return '<div class="card flat"><h2>Presença facial</h2><p class="muted">Peça a um administrador para liberar esta área.</p></div>';
- if(RF.itens===null&&!RF.load)rfCarrega();if(!RF.evLoad){RF.evLoad=true;admCarga('eventos',true).catch(()=>0)}
+ if(RF.itens===null&&!RF.load)rfCarrega();if(!RF.evLoad){RF.evLoad=true;admCarga('eventos',true).catch(()=>0)}if(RF.cultos===null&&!RF.cLoad)rfCultos();
  const it=RF.itens||[],aut=it.filter(x=>x.aut),idx=aut.filter(x=>x.idx),falta=aut.filter(x=>x.foto&&!x.idx),evs=((ADMC.eventos||{}).itens||[]).filter(i=>!i.off).slice().sort((a,b)=>String(b.sub).localeCompare(String(a.sub)));if(!RF.ev&&evs[0])RF.ev=evs[0].id;
  const ch=(k,t,n)=>`<button class="chip ${RF.f===k?'g':''}" onclick="rfFiltro('${k}')" aria-pressed="${RF.f===k}">${t} ${n}</button>`;
  return `<h1>Presença facial</h1><p class="muted">Marque a presença no culto ou em um evento reconhecendo os rostos pela câmera do celular.</p>
- <div class="card flat col"><h3>1. Evento</h3><div class="row"><select id="rf_ev" style="flex:1" onchange="RF.ev=this.value">${evs.length?evs.map(i=>`<option value="${esc(i.id)}" ${i.id===RF.ev?'selected':''}>${esc(i.rotulo)} · ${esc(i.sub||'')}</option>`).join(''):'<option value="">Carregando eventos…</option>'}</select><button class="btn" onclick="rfCamera()">${ic('camera',18)} Abrir câmera</button></div>
- <p class="muted sm">${idx.length?`${idx.length} pessoa(s) autorizada(s) com rosto pronto para reconhecer.`:'Autorize pessoas e indexe os rostos abaixo para liberar a câmera.'}</p></div>
+ <div class="card flat col"><h3>1. O que você vai registrar?</h3>
+ <label class="f">Tipo<select id="rf_tp" onchange="RF.tipo=this.value;renderKeep()"><option value="culto" ${RF.tipo==='culto'?'selected':''}>Culto (qualquer dia, sem cadastrar evento)</option><option value="evento" ${RF.tipo==='evento'?'selected':''}>Evento cadastrado</option><option value="teste" ${RF.tipo==='teste'?'selected':''}>Modo teste (não registra nada)</option></select></label>
+ ${RF.tipo==='culto'?`<div class="row" style="flex-wrap:wrap;gap:10px"><label class="f">Dia do culto<input id="rf_cd" type="date" max="${TODAY}" value="${esc(RF.cd||TODAY)}" onchange="RF.cd=this.value;renderKeep()"></label><label class="f" style="flex:1;min-width:200px">Culto<select id="rf_cn" onchange="RF.cn=this.value;renderKeep()">${CULTOS.map(c=>`<option ${c===RF.cn?'selected':''}>${esc(c)}</option>`).join('')}</select></label>${RF.cn==='Outro culto'?`<label class="f" style="flex:1;min-width:200px">Nome do culto<input id="rf_cx" maxlength="60" value="${esc(RF.cnx)}" placeholder="Ex.: Culto de jovens" oninput="RF.cnx=this.value"></label>`:''}</div><p class="muted sm">${esc(diaSemanaBR(RF.cd||TODAY))}, ${esc(dBR(RF.cd||TODAY))}. Pode ser o dia de hoje ou um dia que já passou.</p>`
+ :RF.tipo==='evento'?`<select id="rf_ev" style="width:100%" onchange="RF.ev=this.value">${evs.length?evs.map(i=>`<option value="${esc(i.id)}" ${i.id===RF.ev?'selected':''}>${esc(i.rotulo)} · ${esc(i.sub||'')}</option>`).join(''):'<option value="">Carregando eventos…</option>'}</select>`
+ :`<p class="muted sm">Use para testar a lista de autorizados e o reconhecimento. A câmera funciona normalmente, mas nenhuma presença é gravada.</p>`}
+ <div class="row"><button class="btn" onclick="rfCamera()">${ic('camera',18)} Abrir câmera</button></div>
+ <p class="muted sm">${idx.length?`${idx.length} pessoa(s) autorizada(s) com rosto pronto para reconhecer.`:'Ninguém está com rosto indexado ainda: a câmera abre, mas mostrará “Desconhecido” até você autorizar e indexar abaixo.'}</p></div>
+ ${RF.tipo==='culto'?cultosCard():''}
  <div class="card flat col"><h3>2. Pessoas autorizadas</h3><p class="muted sm">Só quem está autorizado é reconhecido pela câmera; os demais aparecem como “Desconhecido”. O app usa a foto de perfil, guarda apenas uma assinatura numérica do rosto (nunca a imagem da câmera) e, ao desautorizar, a assinatura é apagada.</p>
  <div class="row" style="flex-wrap:wrap;gap:8px"><button class="btn sm" onclick="rfTodos(true)">Autorizar todos com foto</button><button class="btn sm" id="rf_ix" onclick="rfIndexa()" ${falta.length&&!RF.busy?'':'disabled'}>Indexar rostos pendentes (${falta.length})</button><button class="btn sm ghost" onclick="rfTodos(false)">Desautorizar todos</button></div>
  <div id="rf_st" class="sm" role="status">${esc(RF.st)}</div>
  <div class="row" style="flex-wrap:wrap;gap:6px">${ch('todos','Todos',it.length)}${ch('aut','Autorizados',aut.length)}${ch('nao','Não autorizados',it.length-aut.length)}${ch('semfoto','Sem foto',it.filter(x=>!x.foto).length)}</div>
  <input id="rf_q" placeholder="Buscar pelo nome" value="${esc(RF.q)}" oninput="rfFiltra(this.value)"><div id="rf_l" style="max-height:52vh;overflow:auto">${RF.itens===null?'<p class="muted sm">Carregando…</p>':rfLista()}</div></div>`}
-function rfCamera(){const v=($('#rf_ev')||{}).value||RF.ev;if(!v)return toast('Escolha o evento','err');fcAbre(v)}
+function rfCamera(){if(RF.tipo==='teste')return fcAbre({modo:'teste'});if(RF.tipo==='culto'){const nome=RF.cn==='Outro culto'?(RF.cnx||'').trim():RF.cn;if(nome.length<2)return toast('Escreva o nome do culto','err');return fcAbre({modo:'culto',data:RF.cd||TODAY,culto:nome})}
+ const v=($('#rf_ev')||{}).value||RF.ev;if(!v)return toast('Escolha o evento','err');fcAbre(v)}
+const diaSemanaBR=iso=>SEMANA[new Date(+iso.slice(0,4),+iso.slice(5,7)-1,+iso.slice(8,10)).getDay()];
+function cultosCard(){const c=RF.cultos;return `<div class="card flat col"><h3>Cultos já registrados</h3>${c===null?'<p class="muted sm">Carregando…</p>':c.length?`<div class="tw"><table><tr><th>Dia</th><th>Culto</th><th>Presentes</th></tr>${c.slice(0,10).map(x=>`<tr><td>${esc(dBR(x.data))} · ${esc(diaSemanaBR(x.data))}</td><td>${esc(x.culto)}</td><td>${x.total}</td></tr>`).join('')}</table></div>`:'<p class="muted sm">Nenhum culto registrado ainda.</p>'}</div>`}
 async function rfAut(id,on){const x=(RF.itens||[]).find(i=>i.id===id);if(!x)return;const ant=[x.aut,x.idx];x.aut=on;if(!on)x.idx=false;try{await api('setFaceAuth',{ids:[id],on})}catch(e){x.aut=ant[0];x.idx=ant[1];toast(e.message,'err')}render()}
 async function rfTodos(on){const L=(RF.itens||[]).filter(x=>on?(!x.aut&&x.foto):x.aut);if(!L.length)return toast(on?'Ninguém com foto para autorizar.':'Ninguém autorizado.');
  if(!confirm(on?`Autorizar o reconhecimento facial de ${L.length} pessoa(s) com foto de perfil? Elas precisam estar cientes e de acordo (LGPD).`:`Desautorizar ${L.length} pessoa(s) e apagar as assinaturas de rosto?`))return;

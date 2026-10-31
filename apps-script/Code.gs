@@ -46,6 +46,7 @@ const SHEETS = {
   Oracoes: ['OracaoID', 'CelulaID', 'MembroID', 'Tema', 'Titulo', 'Texto', 'Data'],
   Eventos: ['EventoID', 'Titulo', 'Data', 'Hora', 'Local', 'Descricao', 'Programacao', 'Escopo', 'CelulaID', 'CriadoPor', 'Status', 'Foto', 'Insignia'],
   EventoPresenca: ['EventoID', 'MembroID', 'Data'],
+  Cultos: ['Data', 'Culto', 'MembroID', 'RegistradoPor', 'Hora'],
   Metricas: ['Slot', 'Pagina', 'Acao', 'N', 'Erros', 'RttSoma', 'RttMax', 'SrvSoma', 'SrvMax', 'Lentas', 'Aparelhos', 'Hist', 'LockSoma', 'EsperaSoma'],
   Rostos: ['MembroID', 'Descritor', 'AtualizadoEm', 'Autorizado', 'AutorizadoPor', 'AutorizadoEm'],
   Corridas: ['CorridaID', 'Titulo', 'Ano', 'Inicio', 'Fim', 'CapDia', 'TotalCap', 'Status'],
@@ -1613,6 +1614,36 @@ function clearFaces_(d, u) {
     audit_(u.email, 'ROSTOS_APAGADOS', String(n), 'OK'); return { n: n };
   });
 }
+// ---- Presença em cultos normais (qualquer dia, sem cadastrar evento): uma linha por pessoa, data e nome do culto
+function membrosAtivos_() { return table_('Membros').rows.filter(function (m) { return m.Status !== 'Inativo'; }).map(function (m) { return { id: m.MembroID, nome: m.Nome }; }).sort(function (a, b) { return a.nome < b.nome ? -1 : 1; }); }
+function cultoChave_(d) {
+  const data = clip_(d.data, 10), culto = clip_(d.culto, 60);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data) || isNaN(new Date(data + 'T12:00:00Z').getTime())) throw new ApiError('VALIDATION', 'Data do culto inválida.');
+  if (data > new Date(Date.now() + 86400000).toISOString().slice(0, 10)) throw new ApiError('VALIDATION', 'A data do culto não pode estar no futuro.');
+  if (culto.length < 2) throw new ApiError('VALIDATION', 'Informe o nome do culto.');
+  return { data: data, culto: culto };
+}
+function cultoPresenca_(d, u) {
+  const k = cultoChave_(d), pres = []; table_('Cultos').rows.forEach(function (r) { if (r.Data === k.data && r.Culto === k.culto) pres.push(r.MembroID); });
+  return { titulo: k.culto, data: k.data, presentes: pres, membros: membrosAtivos_() };
+}
+function checkinCulto_(d, u) {
+  return withLock_(function () {
+    const k = cultoChave_(d), ids = (Array.isArray(d.membros) ? d.membros : []).slice(0, 500).map(function (x) { return clip_(x, 30); }).filter(String), t = table_('Cultos'), ja = {}, mem = {};
+    t.rows.forEach(function (r) { if (r.Data === k.data && r.Culto === k.culto) ja[r.MembroID] = 1; }); table_('Membros').rows.forEach(function (m) { mem[m.MembroID] = 1; });
+    let n = 0, hora = now_().slice(11, 16);
+    ids.forEach(function (mid) {
+      if (!mem[mid] || ja[mid]) return; ja[mid] = 1; appendRow_(t, { Data: k.data, Culto: k.culto, MembroID: mid, RegistradoPor: u.email, Hora: hora }); t.rows.push({ Data: k.data, Culto: k.culto, MembroID: mid }); n++;
+      awardXp_(mid, 'culto:' + k.data + ':' + norm_(k.culto), 10, 'Presença no culto');
+    });
+    audit_(u.email, 'CULTO_CHECKIN', k.data + ' ' + k.culto, 'OK'); return { n: n };
+  });
+}
+function cultosResumo_(d, u) { // últimos 90 dias: quantas pessoas por culto
+  const desde = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10), o = {};
+  table_('Cultos').rows.forEach(function (r) { if (r.Data < desde) return; const k = r.Data + '|' + r.Culto; o[k] = (o[k] || 0) + 1; });
+  return { cultos: Object.keys(o).map(function (k) { const p = k.split('|'); return { data: p[0], culto: p.slice(1).join('|'), total: o[k] }; }).sort(function (a, b) { return a.data < b.data ? 1 : a.data > b.data ? -1 : a.culto < b.culto ? -1 : 1; }).slice(0, 40) };
+}
 function eventoPresenca_(d, u) {
   const ev = table_('Eventos').rows.filter(function (e) { return e.EventoID === d.eventoId; })[0]; if (!ev) throw new ApiError('NOT_FOUND', 'Evento não encontrado.');
   const pres = [], ins = []; table_('EventoPresenca').rows.forEach(function (r) { if (r.EventoID === ev.EventoID) pres.push(r.MembroID); }); table_('Inscricoes').rows.forEach(function (r) { if (r.EventoID === ev.EventoID) ins.push(r.MembroID); });
@@ -2729,7 +2760,7 @@ const ROUTES = {
   getPushKey: { auth: 'any', fn: getPushKey_ }, pushDiag: { auth: 'any', fn: pushDiag_ }, savePushSub: { auth: 'any', write: 1, fn: savePushSub_ }, delPushSub: { auth: 'any', write: 1, fn: delPushSub_ },
   sodGet: { auth: 'any', write: 1, fn: sodGet_ }, sodAbrir: { auth: 'any', write: 1, fn: sodAbrir_ }, sodEquipar: { auth: 'any', write: 1, fn: sodEquipar_ }, sodDescartar: { auth: 'any', write: 1, fn: sodDescartar_ }, sodAparencia: { auth: 'any', write: 1, fn: sodAparencia_ }, sodOrar: { auth: 'any', write: 1, fn: sodOrar_ }, sodComprar: { auth: 'any', write: 1, fn: sodComprar_ },
   listMarks: { auth: 'any', fn: listMarks_ }, saveMark: { auth: 'any', write: 1, fn: saveMark_ }, saveNote: { auth: 'any', write: 1, fn: saveNote_ }, listCultoNotes: { auth: 'any', fn: listCultoNotes_ }, getMural: { auth: 'any', fn: getMural_ },
-  listInsigniaDefs: { auth: 'any', fn: listInsigniaDefs_ }, saveInsigniaDef: { auth: 'any', write: 1, fn: saveInsigniaDef_ }, grantBadge: { auth: 'any', write: 1, fn: grantBadge_ }, logServico: { auth: 'any', write: 1, fn: logServico_ }, listServicos: { auth: 'any', fn: listServicos_ }, searchPeople: { auth: 'any', fn: findPeople_ }, sendChat: { auth: 'any', write: 1, fn: sendChat_ }, getChat: { auth: 'any', fn: getChat_ }, chatRead: { auth: 'any', write: 1, fn: chatRead_ }, chatTyping: { auth: 'any', fn: chatTyping_ }, listChats: { auth: 'any', fn: listChats_ }, getCertLayout: { auth: 'any', fn: getCertLayout_ }, saveCertLayout: { auth: 'any', write: 1, fn: saveCertLayout_ }, previewCert: { auth: 'any', fn: previewCert_ }, revokeCert: { auth: 'any', write: 1, fn: revokeCert_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, saveFaces: { auth: 'eventos', write: 1, fn: saveFaces_ }, faceRoster: { auth: 'eventos', fn: faceRoster_ }, setFaceAuth: { auth: 'eventos', write: 1, fn: setFaceAuth_ }, listFaces: { auth: 'eventos', fn: listFaces_ }, clearFaces: { auth: 'eventos', write: 1, fn: clearFaces_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
+  listInsigniaDefs: { auth: 'any', fn: listInsigniaDefs_ }, saveInsigniaDef: { auth: 'any', write: 1, fn: saveInsigniaDef_ }, grantBadge: { auth: 'any', write: 1, fn: grantBadge_ }, logServico: { auth: 'any', write: 1, fn: logServico_ }, listServicos: { auth: 'any', fn: listServicos_ }, searchPeople: { auth: 'any', fn: findPeople_ }, sendChat: { auth: 'any', write: 1, fn: sendChat_ }, getChat: { auth: 'any', fn: getChat_ }, chatRead: { auth: 'any', write: 1, fn: chatRead_ }, chatTyping: { auth: 'any', fn: chatTyping_ }, listChats: { auth: 'any', fn: listChats_ }, getCertLayout: { auth: 'any', fn: getCertLayout_ }, saveCertLayout: { auth: 'any', write: 1, fn: saveCertLayout_ }, previewCert: { auth: 'any', fn: previewCert_ }, revokeCert: { auth: 'any', write: 1, fn: revokeCert_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, saveFaces: { auth: 'eventos', write: 1, fn: saveFaces_ }, faceRoster: { auth: 'eventos', fn: faceRoster_ }, setFaceAuth: { auth: 'eventos', write: 1, fn: setFaceAuth_ }, listFaces: { auth: 'eventos', fn: listFaces_ }, clearFaces: { auth: 'eventos', write: 1, fn: clearFaces_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, cultoPresenca: { auth: 'eventos', fn: cultoPresenca_ }, checkinCulto: { auth: 'eventos', write: 1, fn: checkinCulto_ }, cultosResumo: { auth: 'eventos', fn: cultosResumo_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
   searchCells: { auth: 'any', fn: searchCells_ }, addPrayer: { auth: 'any', write: 1, fn: addPrayer_ }, listPrayers: { auth: 'any', fn: listPrayers_ },
   cellMembers: { auth: 'any', fn: cellMembers_ }, saveCell: { auth: 'any', write: 1, fn: saveCell_ }, saveAttendance: { auth: 'any', write: 1, fn: saveAttendance_ }, history: { auth: 'any', fn: history_ },
   indicators: { auth: 'any', fn: indicators_ }, getPapeis: { auth: 'any', fn: getPapeis_ }, savePapeis: { auth: 'any', write: 1, fn: savePapeis_ }, createCellEvent: { auth: 'any', write: 1, fn: createCellEvent_ },

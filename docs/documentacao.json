@@ -42,7 +42,8 @@
    "Versão do site exibida no menu e no painel; aviso quando há versão nova.",
    "Cada alteração do site entra em Notas de atualização com a versão e as melhorias.",
    "Membros inativos podem ser excluídos permanentemente (Administração › Acessos › Membros), digitando o nome para confirmar.",
-   "Desempenho e capacidade (administrador): mede o tempo de cada requisição ao Apps Script (resposta, tempo no servidor, erros, cadeado de gravação) e mostra gráficos de linha, páginas e ações que mais pesam e uma calculadora de quantas pessoas o modelo atual aguenta. Dados na aba Metricas da planilha (guardados por 45 dias)."
+   "Desempenho e capacidade (administrador): mede o tempo de cada requisição ao Apps Script (resposta, tempo no servidor, erros, cadeado de gravação) e mostra gráficos de linha, páginas e ações que mais pesam e uma calculadora de quantas pessoas o modelo atual aguenta. Dados na aba Metricas da planilha (guardados por 45 dias).",
+   "Presença facial: escolha Culto (qualquer dia, sem evento cadastrado), Evento cadastrado ou Modo teste (não grava). As presenças de culto ficam na aba Cultos da planilha: dia, nome do culto e pessoa."
   ]
  },
  {

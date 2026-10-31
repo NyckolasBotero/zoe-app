@@ -347,3 +347,9 @@ Segure e arraste a Zoe para qualquer posição da tela (mouse ou toque); a posi�
 - Backend: aba `Metricas` (criada por `setup()`; uma linha por intervalo de 5 min com `*|*` e uma por dia, página e ação; limpeza de 45 dias), rotas `metricsReport` (qualquer usuário), `getMetrics` (administrador) e `ping`.
 - Painel: gráficos de linha (resposta, requisições/erros, aparelhos e cadeado), medição ao vivo do aparelho, tabelas de peso por página/ação e calculadora (lei de Little: simultâneas = pessoas × req/s × tempo no servidor; limite de 30 execuções simultâneas por conta dona do script, igual em conta pessoal e Workspace; fila do cadeado das gravações).
 - Testes: `tests/zoe.test.mjs` (relatório/consulta) e `tests/e2e_desempenho.py`.
+
+## Presença facial em cultos normais e modo teste
+
+- Aba Presença facial › "O que você vai registrar?": **Culto** (dia + nome, qualquer dia; sem evento cadastrado), **Evento cadastrado** ou **Modo teste** (nada é gravado).
+- Backend: aba `Cultos` (Data, Culto, MembroID, RegistradoPor, Hora); rotas `cultoPresenca`, `checkinCulto` (não duplica; 10 XP por culto) e `cultosResumo` (últimos 90 dias). Permissão `eventos`.
+- Testes: `tests/zoe.test.mjs` (cultos) e `tests/e2e_face.py` (culto e teste).

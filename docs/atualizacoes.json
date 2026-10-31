@@ -1,5 +1,16 @@
 [
  {
+  "titulo": "Presença facial: cultos normais e modo teste",
+  "melhorias": [
+   "Nova opção Culto: registre a presença de um culto normal em qualquer dia (domingo, sábado, quarta…), escolhendo o dia e o nome do culto, sem precisar cadastrar um evento.",
+   "Nova opção Modo teste: use a câmera e a lista de autorizados sem gravar nenhuma presença.",
+   "Lista dos cultos já registrados (dia, culto e quantidade de presentes) na própria aba.",
+   "Rode setup() no Apps Script para criar a aba Cultos."
+  ],
+  "v": "1.61",
+  "data": "31/10/2026"
+ },
+ {
   "titulo": "Presença facial: reconhecimento mais confiável",
   "melhorias": [
    "O app agora acompanha cada rosto por alguns quadros e só então compara a média das assinaturas com os rostos cadastrados, em vez de decidir quadro a quadro.",

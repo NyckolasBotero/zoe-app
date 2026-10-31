@@ -20,8 +20,9 @@ with sync_playwright() as p:
     b=p.chromium.launch(); a=entra(b,'admin@zoe.com','SenhaForte123')
     a.evaluate("""async()=>{for(const n of ['Ana Souza','Bruno Alvares','Carla Dias'])await api('createUser',{nome:n,email:n.split(' ')[0].toLowerCase()+'@zoe.com',senha:'Temp12345',papel:'membro'});await api('createEvent',{titulo:'Culto de Domingo',data:'2099-01-10',hora:'19:00',local:'Templo'})}""")
     # aba própria na barra de navegação: lista de autorizados (whitelist)
-    a.wait_for_selector('.nv[aria-label="Presença facial"]',state='attached'); a.evaluate("(()=>{const e=document.querySelector('.nv[aria-label=\\'Presença facial\\']');e.scrollIntoView({inline:'center',block:'nearest'});e.click()})()"); a.wait_for_selector('#rf_l .rfrow'); a.wait_for_function("document.querySelector('#rf_ev').value")
-    eid=a.evaluate("document.querySelector('#rf_ev').value"); assert eid
+    a.wait_for_selector('.nv[aria-label="Presença facial"]',state='attached'); a.evaluate("(()=>{const e=document.querySelector('.nv[aria-label=\\'Presença facial\\']');e.scrollIntoView({inline:'center',block:'nearest'});e.click()})()"); a.wait_for_selector('#rf_l .rfrow')
+    assert a.evaluate("RF.tipo")=='culto' and a.is_visible('#rf_cd'),'por padrão registra culto (sem evento)'
+    a.select_option('#rf_tp','evento'); a.wait_for_selector('#rf_ev'); eid=a.evaluate("document.querySelector('#rf_ev').value"); assert eid
     assert not a.is_disabled('button:has-text("Abrir câmera")'),'a câmera abre mesmo sem rostos indexados (modo teste)'
     a.click('button:has-text("Abrir câmera")'); a.wait_for_selector('#fcov #fc_go'); assert not a.is_disabled('#fc_go'); a.click('#fc_go'); a.wait_for_function("FC&&FC.run&&document.querySelector('#fc_cv')"); a.wait_for_function("!document.querySelector('#fc_info').textContent"); fcFecha=a.evaluate("fcFecha()")
     # câmera bloqueada: mensagem clara e volta ao painel
@@ -58,6 +59,18 @@ with sync_playwright() as p:
     pres=a.evaluate("async(e)=>(await api('eventoPresenca',{eventoId:e})).presentes",eid); assert set(pres)=={ids['Ana'],ids['Carla']},pres
     # quem já está presente aparece azul e não vira sugestão de novo
     a.evaluate("__faces=[{seed:1,box:{x:100,y:80,width:120,height:150}}]"); a.wait_for_timeout(1000); assert 'Ana' not in a.inner_text('#fc_l').split('Confirmados')[0]
+    # culto normal (sem evento cadastrado, qualquer dia) e modo teste (não grava nada)
+    a.evaluate("fcFecha()"); a.wait_for_selector('#rf_tp'); a.select_option('#rf_tp','culto'); a.wait_for_selector('#rf_cd'); a.fill('#rf_cd','2026-10-24'); a.select_option('#rf_cn','Culto de sábado')
+    assert 'Sábado' in a.inner_text('#view'),'mostra o dia da semana da data escolhida'
+    a.click('button:has-text("Abrir câmera")'); a.wait_for_selector('#fcov #fc_go'); assert 'Culto de sábado' in a.inner_text('#fcov .fch'); a.click('#fc_go'); a.wait_for_function("FC&&FC.run&&document.querySelector('#fc_cv')")
+    a.evaluate("__faces=[{seed:1,box:{x:100,y:80,width:120,height:150}}]"); a.wait_for_selector('.fcard[data-id] button:has-text("Confirmar")',timeout=10000); a.click('.fcard button:has-text("Confirmar")'); a.wait_for_selector('.fcard.ok:has-text("Ana Souza")')
+    a.click('#fc_reg'); a.wait_for_function("FC.conf.size===0",timeout=8000)
+    cp=a.evaluate("api('cultoPresenca',{data:'2026-10-24',culto:'Culto de sábado'}).then(r=>r.presentes)"); assert cp==[ids['Ana']],cp
+    assert a.evaluate("api('cultoPresenca',{data:'2026-10-25',culto:'Culto de sábado'}).then(r=>r.presentes.length)")==0
+    a.evaluate("fcFecha()"); a.wait_for_selector('#rf_tp'); a.select_option('#rf_tp','teste'); a.click('button:has-text("Abrir câmera")'); a.wait_for_selector('#fcov #fc_go'); assert 'Modo teste' in a.inner_text('#fcov .fch'); a.click('#fc_go'); a.wait_for_function("FC&&FC.run&&document.querySelector('#fc_cv')")
+    a.evaluate("__faces=[{seed:2,box:{x:100,y:80,width:120,height:150}}]"); a.wait_for_selector('.fcard[data-id] button:has-text("Confirmar")',timeout=10000); a.click('.fcard button:has-text("Confirmar")'); assert 'Concluir teste' in a.inner_text('#fc_reg'); a.click('#fc_reg'); a.wait_for_function("FC.conf.size===0",timeout=8000)
+    assert a.evaluate("api('cultosResumo').then(r=>r.cultos.reduce((n,c)=>n+c.total,0))")==1,'o modo teste não grava presença'
+    a.evaluate("fcFecha()"); a.wait_for_selector('#rf_tp'); a.select_option('#rf_tp','evento'); a.click('button:has-text("Abrir câmera")'); a.wait_for_selector('#fcov #fc_go'); a.click('#fc_go'); a.wait_for_function("FC&&FC.run&&document.querySelector('#fc_cv')")
     a.click('button:has-text("Parar")'); a.wait_for_selector('#fc_go'); a.click('button:has-text("Apagar todos")'); a.wait_for_function("document.querySelector('#fc_n').textContent==='0'",timeout=8000)
     a.click('#fcov .fch button'); assert a.query_selector('#fcov') is None
     a.wait_for_selector('#rf_l .rfrow'); a.fill('#rf_q','ana'); a.uncheck('#rf_l .rfrow input'); a.wait_for_function("!RF.itens.find(x=>x.nome.startsWith('Ana')).aut")
