@@ -168,6 +168,12 @@ function tzSheet_() { if (TZ_SHEET_) return TZ_SHEET_; try { TZ_SHEET_ = ss_().g
 function str_(x) { if (x instanceof Date) { if (x.getFullYear() < 1950) return Utilities.formatDate(x, tzSheet_(), 'HH:mm'); return Utilities.formatDate(x, CFG.TZ, 'yyyy-MM-dd'); } return x === null || x === undefined ? '' : String(x); }
 function appendRow_(t, o) { if (TMEMO_ && t.name) delete TMEMO_[t.name]; const vals = t.headers.map(function (h) { return o[h] === undefined ? '' : o[h]; }); const rg = t.sh.getRange(t.sh.getLastRow() + 1, 1, 1, vals.length); rg.setNumberFormat('@'); rg.setValues([vals]); } // formato texto antes de gravar: horas e datas não viram Date
 function writeRow_(t, row, patch) { if (TMEMO_ && t.name) delete TMEMO_[t.name]; Object.keys(patch).forEach(function (k) { const c = t.headers.indexOf(k); if (c >= 0) { const rg = t.sh.getRange(row, c + 1, 1, 1); rg.setNumberFormat('@'); rg.setValues([[patch[k]]]); } }); }
+// Garante que colunas novas existam mesmo se o setup() ainda não rodou depois de uma atualização (evita gravar "no vazio")
+function ensureCols_(name, cols) {
+  const t = table_(name), falta = cols.filter(function (c) { return t.headers.indexOf(c) < 0; }); if (!falta.length) return t;
+  falta.forEach(function (c, i) { t.sh.getRange(1, t.headers.length + 1 + i, 1, 1).setValue(c); });
+  if (TMEMO_) delete TMEMO_[name]; return table_(name);
+}
 function id_(p) { return p + Utilities.getUuid().replace(/-/g, '').slice(0, 10).toUpperCase(); }
 function now_() { return Utilities.formatDate(new Date(), CFG.TZ, 'yyyy-MM-dd HH:mm:ss'); }
 function today_() { return Utilities.formatDate(new Date(), CFG.TZ, 'yyyy-MM-dd'); }
@@ -1771,7 +1777,7 @@ function geoOk_(la, lo) { la = Number(la); lo = Number(lo); return isFinite(la) 
 function supCores_() { const c = cfgMap_(), o = {}; Object.keys(c).forEach(function (k) { if (k.indexOf('SupCor:') === 0 && /^#[0-9a-fA-F]{6}$/.test(String(c[k]))) o[k.slice(7)] = c[k]; }); return o; }
 function saveMySod_(d, u) {
   if (!u.membroId) throw new ApiError('FORBIDDEN', 'Sem cadastro de membro.');
-  return withLock_(function () { const t = table_('Membros'), m = t.rows.filter(function (x) { return x.MembroID === u.membroId; })[0]; if (!m) throw new ApiError('NOT_FOUND', 'Cadastro não encontrado.'); const off = d.on === false || d.on === 0 || d.on === '0'; writeRow_(t, m._row, { SodOff: off ? '1' : '' }); audit_(u.email, off ? 'SOD_OFF' : 'SOD_ON', u.membroId, 'OK'); return { on: !off }; });
+  return withLock_(function () { const t = ensureCols_('Membros', ['SodOff']), m = t.rows.filter(function (x) { return x.MembroID === u.membroId; })[0]; if (!m) throw new ApiError('NOT_FOUND', 'Cadastro não encontrado.'); const off = d.on === false || d.on === 0 || d.on === '0'; writeRow_(t, m._row, { SodOff: off ? '1' : '' }); audit_(u.email, off ? 'SOD_OFF' : 'SOD_ON', u.membroId, 'OK'); return { on: !off }; });
 }
 // ===== Canva Zoe: artes da equipe de Social Mídia, com aprovação do pastor líder =====
 function artesCria_(u) {
@@ -1958,7 +1964,7 @@ function saveSupCor_(d, u) {
 function saveMyGeo_(d, u) {
   if (!geoOk_(d.lat, d.lng)) throw new ApiError('VALIDATION', 'Marque no mapa onde você mora.');
   const alvo = clip_(d.membroId, 30) || u.membroId; if (alvo !== u.membroId && !(can_(u, 'config') || can_(u, 'celulas') || u.papel === 'pastor')) throw new ApiError('FORBIDDEN', 'Só você ou a administração marcam essa casa.');
-  return withLock_(function () { const t = table_('Membros'), m = t.rows.filter(function (x) { return x.MembroID === alvo; })[0]; if (!m) throw new ApiError('NOT_FOUND', 'Pessoa não encontrada.'); writeRow_(t, m._row, { Lat: String(Math.round(Number(d.lat) * 1e6) / 1e6), Lng: String(Math.round(Number(d.lng) * 1e6) / 1e6) }); audit_(u.email, 'CASA_MARCADA', alvo, 'OK'); return { ok: true }; });
+  return withLock_(function () { const t = ensureCols_('Membros', ['Lat', 'Lng']), m = t.rows.filter(function (x) { return x.MembroID === alvo; })[0]; if (!m) throw new ApiError('NOT_FOUND', 'Pessoa não encontrada.'); writeRow_(t, m._row, { Lat: String(Math.round(Number(d.lat) * 1e6) / 1e6), Lng: String(Math.round(Number(d.lng) * 1e6) / 1e6) }); audit_(u.email, 'CASA_MARCADA', alvo, 'OK'); return { ok: true }; });
 }
 function getMapa_(d, u) {
   if (!ehLider_(u)) throw new ApiError('FORBIDDEN', 'O mapa de distribuição é para líderes, supervisores e administração.');

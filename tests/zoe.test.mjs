@@ -1369,3 +1369,9 @@ test('Ficha rápida do membro da célula: líder vê só quem é da sua célula,
   const r = e.call('getMemberCard', { membroId: m }, adm).data; assert.equal(r.lat, -15.78); assert.equal(r.lng, -47.93); assert.ok('end' in r && 'celula' in r && r.temAcesso);
   assert.equal(e.call('getMemberCard', { membroId: m }, M).error.code, 'FORBIDDEN');
 });
+
+test('A casa marcada fica salva e volta no login seguinte', () => {
+  const { e, tok, mk } = boot(); mk('c@zoe.com', 'membro'); const C = tok('c@zoe.com', 'Temp12345');
+  assert.ok(!e.call('me', {}, C).data.membro.Lat); assert.equal(e.call('saveMyGeo', { lat: -15.8, lng: -47.9 }, C).data.ok, true);
+  const C2 = tok('c@zoe.com', 'Temp12345'); const m = e.call('me', {}, C2).data.membro; assert.equal(m.Lat, '-15.8'); assert.equal(m.Lng, '-47.9');
+});
