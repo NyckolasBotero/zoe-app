@@ -1638,7 +1638,6 @@ function faceScan_(d, u) {
   if (vs.length < 5) throw new ApiError('VALIDATION', 'Poucas fotos nítidas e diferentes. Refaça o scanner em um lugar com boa luz.');
   return withLock_(function () {
     const t = table_('Rostos'), r = t.rows.filter(function (x) { return x.MembroID === u.membroId; })[0], hoje = today_();
-    if (r && r.Autorizado === '0' && !r.Revogado && /@/.test(r.AutorizadoPor || '')) throw new ApiError('FORBIDDEN', 'Seu reconhecimento facial foi desativado por um administrador. Fale com a secretaria da igreja.');
     const base = r ? vetor_(r.Descritor) : null, am = (base ? vs : vs.slice(1)).slice(0, AMOSTRAS_MAX_);
     const patch = { Amostras: JSON.stringify(am), AtualizadoEm: hoje, Autorizado: '1', AutorizadoPor: 'autocadastro', AutorizadoEm: hoje, ConsentimentoBio: hoje, ConsentimentoImagem: hoje, TermoVersao: TERMO_FACE_, Revogado: '' };
     if (!base) patch.Descritor = JSON.stringify(vs[0]);

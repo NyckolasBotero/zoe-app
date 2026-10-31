@@ -1228,8 +1228,7 @@ test('cadastro facial do membro: consentimento LGPD obrigatório, scanner guiado
   e.call('clearFaces', {}, adm); me = e.call('faceMe', {}, m).data; assert.equal(me.precisa, true, 'dados apagados pedem novo scanner'); assert.ok(me.consentido, 'o registro do consentimento permanece');
   assert.ok(e.call('faceScan', { consentBio: true, consentImg: true, itens: itens(10) }, m).ok);
   e.call('setFaceAuth', { ids: [a], on: false }, adm);
-  assert.equal(e.call('faceScan', { consentBio: true, consentImg: true, itens: itens(10) }, m).error.code, 'FORBIDDEN', 'administrador desativou');
-  e.call('setFaceAuth', { ids: [a], on: true }, adm); assert.ok(e.call('faceScan', { consentBio: true, consentImg: true, itens: itens(10) }, m).ok);
+  assert.ok(e.call('faceScan', { consentBio: true, consentImg: true, itens: itens(10) }, m).ok, 'quem fez o scanner volta a ser autorizado, mesmo se a autorização estava desligada'); assert.ok(e.call('faceMe', {}, m).data.autorizado);
   assert.ok(e.call('faceRevoke', {}, m).ok); me = e.call('faceMe', {}, m).data; assert.equal(me.precisa, false, 'quem revogou não é obrigado de novo'); assert.ok(me.revogado);
   assert.equal(e.call('listFaces', {}, adm).data.itens.length, 0, 'revogar apaga assinaturas');
   assert.ok(e.call('faceScan', { consentBio: true, consentImg: true, itens: itens(10) }, m).ok, 'pode refazer depois de revogar'); assert.equal(e.call('faceMe', {}, m).data.revogado, '');

@@ -1,5 +1,14 @@
 [
  {
+  "titulo": "Correção: scanner facial recusado por autorização desligada",
+  "melhorias": [
+   "Quem conclui o scanner facial com os termos aceitos passa a ficar autorizado automaticamente, mesmo que a autorização estivesse desligada na lista (antes aparecia a mensagem de reconhecimento desativado).",
+   "Atualize o Code.gs (colar e publicar nova versão)."
+  ],
+  "v": "1.73",
+  "data": "31/10/2026"
+ },
+ {
   "titulo": "Cadastro facial obrigatório com termos LGPD e scanner guiado",
   "melhorias": [
    "Ao entrar no app, quem ainda não fez o cadastro facial vê os termos (biometria para a chamada e uso/divulgação de imagem) e precisa aceitar os dois para continuar.",
