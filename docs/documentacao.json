@@ -99,5 +99,13 @@
    "A cor da supervisão é definida pela administração ou pelo próprio supervisor; cada pin e círculo usa a cor da sua supervisão.",
    "Backend: colunas Lat e Lng em Membros e CelulaProximaID em Visitantes; rodar setup() depois de colar o Code.gs."
   ]
+ },
+ {
+  "t": "Canva Zoe e controle remoto",
+  "itens": [
+   "Canva Zoe (Studio Zoe › Projeção): editor em canvas HTML5 sem dependências (cv*). A arte fica em localStorage (zoe_canva) e é enviada ao telão como JPEG de até 45 KB via saveMidia.",
+   "Controle remoto (tlControle): pílulas SLIDE/ITEM, pausa, área de toque com deslize (#rc_pad) e botão Recolher (TL.padOff).",
+   "Sod por usuário: Membros.SodOff, rota saveMySod, S.sodUser; sodOn() = global e pessoal."
+  ]
  }
 ]

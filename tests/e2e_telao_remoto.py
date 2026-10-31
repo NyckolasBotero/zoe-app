@@ -17,12 +17,12 @@ with sync_playwright() as p:
     ph=entra(b,390,844); ph.evaluate("go('multimidia')"); ph.wait_for_selector('.tabs'); ph.click('.tabs >> text=Controle remoto'); ph.wait_for_selector('.tl-sl',timeout=10000)
     assert 'transmitindo' in ph.inner_text('#tl_box').lower() and 'Santo, Santo' in ph.inner_text('.tl-sl'), ph.inner_text('#tl_box')
     ph.screenshot(path=OUT+'/tl_celular.png')
-    ph.click('.tl-btns >> text=Próximo'); w.wait_for_function("document.body.innerText.includes('Cordeiro')",timeout=8000)
+    ph.click('.rc .tl-next'); w.wait_for_function("document.body.innerText.includes('Cordeiro')",timeout=8000)
     pc.wait_for_function("MM.pj.i===1",timeout=8000)
     ph.click('.tl-chips .chip >> nth=2'); w.wait_for_function("document.body.innerText.includes('digno de louvor')",timeout=8000)
     ph.click('.tl-p'); w.wait_for_function("document.querySelector('.mmpause').style.opacity==='1'",timeout=8000)
     ph.click('.tl-p'); w.wait_for_function("document.querySelector('.mmpause').style.opacity==='0'",timeout=8000)
-    ph.click('.tl-btns >> text=Anterior'); w.wait_for_function("document.body.innerText.includes('Cordeiro')",timeout=8000)
+    ph.click('.rc .tl-prev'); w.wait_for_function("document.body.innerText.includes('Cordeiro')",timeout=8000)
     # o computador também publica: avança no PC e o celular vê
     pc.click('button:has-text("Próximo")'); ph.wait_for_function("document.querySelector('.tl-sl').innerText.includes('digno de louvor')",timeout=8000)
     print('ERRS',errs); assert not errs

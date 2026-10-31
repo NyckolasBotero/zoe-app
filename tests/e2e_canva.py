@@ -1,0 +1,27 @@
+# Canva Zoe: editor de artes nativo (texto, forma, modelo, desfazer, envio ao telão) + Sod por usuário
+from playwright.sync_api import sync_playwright
+exec(open('tests/e2e_agendas.py').read().split('with sync_playwright')[0])
+with sync_playwright() as p:
+    b=p.chromium.launch(); ph=entra(b,390,844)
+    ph.add_style_tag(content='#pushbar{display:none!important}')
+    ph.evaluate("go('multimidia')"); ph.wait_for_selector('.tabs')
+    tabs=ph.inner_text('.tabs')
+    for t in ['Bíblia e letras de músicas','Agendas de músicas','Controle remoto','Tela de pausa','Layout','Canva Zoe']: assert t.lower() in tabs.lower(), t
+    ph.click('.mm-area >> text=Lives'); t2=ph.inner_text('.tabs'); assert 'Estúdio' in t2 and 'Plataformas e conexão' in t2
+    ph.click('.mm-area >> text=Projeção'); ph.click('.tabs >> text=Canva Zoe'); ph.wait_for_selector('#cvc')
+    ph.click('.cv-b:has-text("Texto") >> nth=0'); ph.wait_for_selector('#cvp textarea')
+    ph.fill('#cvp textarea','Culto de Domingo'); assert ph.evaluate("cvEl().text")=='Culto de Domingo'
+    ph.click('.cv-b:has-text("Círculo")'); assert ph.evaluate("CV.els.length")==2
+    ph.click('button[aria-label=Desfazer]'); assert ph.evaluate("CV.els.length")==1
+    ph.click('button[aria-label=Refazer]'); assert ph.evaluate("CV.els.length")==2
+    ph.click('#cvtabs >> text=Modelos'); ph.once('dialog',lambda d:d.accept()); ph.click('.cv-b:has-text("Versículo")'); assert ph.evaluate("CV.els.length")==2
+    px=ph.evaluate("(()=>{const c=document.getElementById('cvc'),d=c.getContext('2d').getImageData(5,5,1,1).data;return d[0]+d[1]+d[2]})()"); assert px>0
+    ph.click('#cvc',position={'x':100,'y':60}); ph.evaluate("CV.sel=CV.els[0].id"); ph.evaluate("cvDel()"); assert ph.evaluate("CV.els.length")==1
+    assert ph.evaluate("(cvJpeg(45000)||'').length")>0
+    ph.click('button:has-text("Enviar ao telão")'); ph.wait_for_function('(AGD.mid||[]).length>=1',timeout=8000)
+    assert ph.evaluate("(AGD.mid||[]).length")>=1
+    # Sod por usuário
+    ph.evaluate("go('perfil','info')"); ph.wait_for_selector('text=Usar o Sod')
+    on=ph.evaluate("sodOn()"); ph.click('input[aria-label="Usar o Sod"]'); assert ph.evaluate("sodOn()")!=on
+    ph.click('input[aria-label="Usar o Sod"]'); assert ph.evaluate("sodOn()")==on
+    print('OK canva+sod'); b.close()

@@ -1,5 +1,17 @@
 [
  {
+  "titulo": "Controle remoto de verdade, Canva Zoe e Sod por pessoa",
+  "v": "1.80",
+  "data": "31/10/2026",
+  "melhorias": [
+   "Controle remoto com layout de controle: pílulas SLIDE (＋ próximo, － anterior) e ITEM (▲ ▼), botão vermelho de pausa, atalhos redondos e área de toque (deslize para os lados troca o slide, para cima ou para baixo troca o item). O botão Recolher esconde a área de toque.",
+   "Studio Zoe reorganizado. Projeção: Bíblia e letras de músicas, Agendas de músicas, Controle remoto, Tela de pausa, Layout e Canva Zoe. Lives: Estúdio e Plataformas e conexão. A aba de músicas ganhou o atalho Bíblia no telão.",
+   "Canva Zoe: editor de artes gratuito dentro do app, sem biblioteca externa. Texto com várias fontes, formas, imagens, fundos em degradê, 6 modelos da igreja, camadas, desfazer e refazer, tamanhos Telão, Quadrado e Story, baixar PNG e enviar direto ao telão.",
+   "Sod por pessoa: no Perfil, em Informações, cada membro liga ou desliga o próprio Sod. O progresso fica guardado. Se a administração desligar o Sod para todos, a opção some.",
+   "Backend: nova coluna SodOff em Membros e rota saveMySod. Cole o Code.gs no Apps Script e rode setup()."
+  ]
+ },
+ {
   "titulo": "Telão ao vivo: músicas, versículos e artes no mesmo lugar",
   "melhorias": [
    "No Controle remoto, abas rápidas (Agenda, Músicas, Versículos, Artes) com o painel do que está no telão sempre visível no topo.",

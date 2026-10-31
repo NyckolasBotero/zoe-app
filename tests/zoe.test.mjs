@@ -1302,3 +1302,9 @@ test('mapas: membro marca a própria casa e cor da supervisão', () => {
   assert.ok(e.call('saveSupCor', { supId: sup, cor: '#AA0000' }, adm).ok); const g = e.call('getMapa', {}, S).data; assert.equal(g.cores[sup], '#AA0000'); assert.equal(g.celulas[0].cor, '#AA0000');
   assert.equal(e.call('searchCells', {}, A).data[0].supCor, '#AA0000');
 });
+
+test('Sod por usuário: cada pessoa liga e desliga o próprio', () => {
+  const { e, tok, mk } = boot(); mk('a@zoe.com', 'membro'); const A = tok('a@zoe.com', 'Temp12345');
+  assert.equal(e.call('me', {}, A).data.membro.SodOff || '', ''); assert.equal(e.call('saveMySod', { on: false }, A).data.on, false); assert.equal(e.call('me', {}, A).data.membro.SodOff, '1');
+  assert.equal(e.call('saveMySod', { on: true }, A).data.on, true); assert.equal(e.call('me', {}, A).data.membro.SodOff || '', ''); assert.equal(e.call('saveMySod', { on: false }).error.code, 'SESSION');
+});
