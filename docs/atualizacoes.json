@@ -1,5 +1,16 @@
 [
  {
+  "titulo": "Zoe voadora: inércia, tontura e fuga",
+  "melhorias": [
+   "Ao soltar a Zoe, ela não para de repente: continua voando com as asinhas batendo e pousa no canto ou borda livre da tela mais perto.",
+   "Ela nunca fica em cima de algo que você precisa tocar (menu lateral, botão de enviar mensagem do chat, abas…): se isso acontecer, ela sai voando sozinha para um lugar livre.",
+   "Segure e gire a Zoe umas 4 a 7 vezes e solte: ela gira 3 piruetas na direção em que você soltou, volta ao normal, voa até o canto padrão e diz “Eita, fiquei tonta!”.",
+   "Chacoalhe a Zoe de um lado para o outro umas 5 a 7 vezes e solte: ela sai voando para fora da tela, volta aos poucos de longe e diz “Meu Deus, fui para longe!”."
+  ],
+  "v": "1.48",
+  "data": "31/10/2026"
+ },
+ {
   "titulo": "Notificações sem servidor externo",
   "melhorias": [
    "As notificações no celular agora são enviadas direto pelo Apps Script, sem precisar do servidor relay: ele assina e criptografa o aviso e entrega ao Google/Apple.",
