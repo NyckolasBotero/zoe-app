@@ -328,6 +328,13 @@ td select{min-width:120px;padding:6px 8px}
   .scrim{position:fixed;inset:0;z-index:45;background:rgba(0,0,0,.4)}
   .hide-m{display:none}.board{height:380px}
 }
+/* celular: abas maiores e fáceis de tocar (alvo de ~48 px) */
+@media (max-width:860px),(pointer:coarse){
+ .tabs{gap:6px;padding:6px;border-radius:20px}.tabs button{min-height:48px;padding:12px 18px;font-size:15px;border-radius:15px;display:inline-flex;align-items:center;gap:8px}
+ .pfnav,.sdnav{padding:6px;gap:6px}.pfnav button,.sdnav button{min-height:50px;padding:12px 14px;font-size:15px;border-radius:15px}
+ .seg{padding:4px;font-size:14px}.seg button{min-height:44px;padding:10px 14px}
+ .mm-area button{min-height:60px}.nv{min-height:50px;padding:12px 14px}.subnav button{min-height:44px}
+}
 @media (min-width:861px){.only-m{display:none}.scrim{display:none}}
 .gate{position:fixed;inset:0;z-index:100;display:flex;padding:24px 16px;background:var(--bg);overflow:auto}.gwrap{margin:auto;width:min(400px,100%);display:flex;flex-direction:column;align-items:center;gap:22px;padding-top:5vh}.gwrap .lg{max-width:min(240px,70vw);height:auto}.gwrap .gbox{width:100%}
 .gbox{width:min(400px,100%);display:flex;flex-direction:column;gap:14px;padding:26px;border-radius:26px;background:var(--glass-2);border:1px solid var(--line);box-shadow:var(--shadow-h)}
