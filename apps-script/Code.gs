@@ -91,6 +91,7 @@ const SHEETS = {
   Produtos: ['ProdutoID', 'Nome', 'Categoria', 'Preco', 'Descricao', 'Foto', 'Opcoes', 'Ativo', 'Ordem', 'Disponivel', 'PromoPreco', 'PromoAte'],
   Pastores: ['PastorID', 'Nome', 'Cargo', 'Foto', 'Ordem', 'Ativo'],
   Agendas: ['AgendaID', 'Data', 'Nome', 'Itens', 'CriadoPor', 'CriadoEm', 'AtualizadoPor', 'AtualizadoEm'],
+  Parentes: ['ParID', 'A', 'B', 'Tipo', 'CriadoPor', 'CriadoEm'],
   Artes: ['ArteID', 'Titulo', 'Formato', 'Largura', 'Altura', 'Projeto', 'Foto', 'Mini', 'Status', 'CriadoPor', 'CriadoEm', 'DecididoPor', 'DecididoEm', 'Motivo', 'MidiaID'],
   MidiasTelao: ['MidiaID', 'Titulo', 'Foto', 'Mini', 'Ativo', 'CriadoPor', 'CriadoEm'],
   MuralFam: ['ItemID', 'Pagina', 'Tipo', 'X', 'Y', 'W', 'R', 'Z', 'Texto', 'Cor', 'Foto', 'Dados', 'CriadoEm'],
@@ -1838,6 +1839,117 @@ function saveArteAprovadores_(d, u) {
   const ids = (Array.isArray(d.ids) ? d.ids : []).map(function (x) { return clip_(x, 30); }).filter(function (x, i, a) { return x && ms[x] && a.indexOf(x) === i; }).slice(0, 10);
   return withLock_(function () { const t = table_('Config'), r0 = t.rows.filter(function (x) { return x.Chave === 'ArtesAprovadores'; })[0]; if (r0) writeRow_(t, r0._row, { Valor: JSON.stringify(ids) }); else appendRow_(t, { Chave: 'ArtesAprovadores', Valor: JSON.stringify(ids) }); audit_(u.email, 'ARTE_APROVADORES', ids.join(','), 'OK'); const nm = nomes_(); return { aprovadores: ids.map(function (id) { return { id: id, nome: nm[id] || id }; }) }; });
 }
+// ===== Árvore Zoe: parentescos entre membros (cônjuge, pai/mãe → filho, irmãos) =====
+const KIN_PART = { de: 1, da: 1, do: 1, das: 1, dos: 1, e: 1 };
+function kinToks_(nome) { return norm_(nome).split(' ').filter(function (t) { return t && !KIN_PART[t]; }); }
+function kinAtivos_() { return table_('Membros').rows.filter(function (m) { return m.Status !== 'Inativo'; }); }
+function kinRows_() { return table_('Parentes').rows.filter(function (r) { return r.A && r.B; }); }
+function kinPode_(u, mid) {
+  if (u.membroId === mid) return true;
+  const m = table_('Membros').rows.filter(function (x) { return x.MembroID === mid; })[0]; if (!m) return false;
+  try { fichaNivel_(u, m); return true; } catch (e) { return false; }
+}
+function kinNo_(m, cel) { return { id: m.MembroID, nome: m.Apelido || m.Simples || m.Nome, completo: m.Nome, sexo: m.Sexo === 'F' ? 'F' : m.Sexo === 'M' ? 'M' : '', foto: m.Foto ? 1 : 0, celula: cel[m.CelulaID] || '', status: m.Status || 'Ativo' }; }
+function kinPais_(rows, id) { return rows.filter(function (r) { return r.Tipo === 'filho' && r.B === id; }).map(function (r) { return r.A; }); }
+function kinFilhos_(rows, id) { return rows.filter(function (r) { return r.Tipo === 'filho' && r.A === id; }).map(function (r) { return r.B; }); }
+function kinConj_(rows, id) { return rows.filter(function (r) { return r.Tipo === 'conjuge' && (r.A === id || r.B === id); }).map(function (r) { return r.A === id ? r.B : r.A; }); }
+function kinIrmaos_(rows, id) {
+  const o = {}; kinPais_(rows, id).forEach(function (p) { kinFilhos_(rows, p).forEach(function (c) { if (c !== id) o[c] = 1; }); });
+  rows.filter(function (r) { return r.Tipo === 'irmao' && (r.A === id || r.B === id); }).forEach(function (r) { o[r.A === id ? r.B : r.A] = 1; });
+  return Object.keys(o);
+}
+function kinAncestral_(rows, de, alvo) { const vis = {}, pilha = [de]; while (pilha.length) { const x = pilha.pop(); if (x === alvo) return true; if (vis[x]) continue; vis[x] = 1; kinPais_(rows, x).forEach(function (p) { pilha.push(p); }); } return false; }
+function kinNaFamilia_(u, id) { const c = kinComponentes_(kinRows_()).filter(function (c2) { return c2.indexOf(u.membroId) >= 0; })[0]; return !!c && c.indexOf(id) >= 0; }
+function suggestKin_(d, u) {
+  const eu = u.membroId, meu = table_('Membros').rows.filter(function (m) { return m.MembroID === eu; })[0] || {};
+  const nome = clip_(d.nome, 120) || meu.Nome || '', tk = kinToks_(nome); if (tk.length < 1) return { iguais: [], familia: [] };
+  const sob = tk.slice(1), cel = {}; table_('Celulas').rows.forEach(function (c) { cel[c.CelulaID] = c.Nome; });
+  const rows = kinRows_(), lig = {}; rows.forEach(function (r) { if (r.A === eu) lig[r.B] = 1; if (r.B === eu) lig[r.A] = 1; });
+  const iguais = [], familia = [];
+  kinAtivos_().forEach(function (m) {
+    if (m.MembroID === eu) return; const t = kinToks_(m.Nome), no = kinNo_(m, cel); no.ligado = lig[m.MembroID] ? 1 : 0;
+    const comuns = sob.filter(function (x) { return t.slice(1).indexOf(x) >= 0; });
+    const todos = tk.length >= 2 && tk.every(function (x) { return t.indexOf(x) >= 0; });
+    if (todos || (tk.length >= 2 && norm_(m.Nome) === norm_(nome))) { iguais.push(no); return; }
+    if (comuns.length) { no.comuns = comuns; no.pontos = comuns.length * 2 + (t[t.length - 1] === tk[tk.length - 1] ? 3 : 0); familia.push(no); }
+  });
+  familia.sort(function (a, b) { return b.pontos - a.pontos || String(a.nome).localeCompare(String(b.nome)); });
+  return { iguais: iguais.slice(0, 5), familia: familia.slice(0, 10) };
+}
+function kinVista_(rows, id, ms, cel) {
+  const ref = function (ids) { return ids.filter(function (x) { return ms[x]; }).map(function (x) { return kinNo_(ms[x], cel); }); };
+  return { pais: ref(kinPais_(rows, id)), filhos: ref(kinFilhos_(rows, id)), conjuges: ref(kinConj_(rows, id)), irmaos: ref(kinIrmaos_(rows, id)) };
+}
+function listKin_(d, u) {
+  const id = clip_(d.membroId, 30) || u.membroId; if (!kinPode_(u, id)) throw new ApiError('FORBIDDEN', 'Sem acesso à família desta pessoa.');
+  const ms = {}; table_('Membros').rows.forEach(function (m) { ms[m.MembroID] = m; }); const cel = {}; table_('Celulas').rows.forEach(function (c) { cel[c.CelulaID] = c.Nome; });
+  const rows = kinRows_(), meus = rows.filter(function (r) { return r.A === id || r.B === id; }).map(function (r) { return { id: r.ParID, tipo: r.Tipo, a: r.A, b: r.B }; });
+  const v = kinVista_(rows, id, ms, cel); v.vinculos = meus; v.texto = ms[id] ? { mae: ms[id].Mae || '', pai: ms[id].Pai || '', conjuge: ms[id].Conjuge || '' } : {}; return v;
+}
+function kinSugestoes_(rows, ms, tipo, a, b) {
+  const out = [], ja = function (t, x, y) { return rows.some(function (r) { return r.Tipo === t && ((r.A === x && r.B === y) || (t !== 'filho' && r.A === y && r.B === x)); }); };
+  const nm = function (x) { return ms[x] ? (ms[x].Apelido || ms[x].Simples || ms[x].Nome) : ''; };
+  if (tipo === 'filho') {
+    kinPais_(rows, b).forEach(function (q) { if (q !== a && !ja('conjuge', a, q) && !kinConj_(rows, a).length && !kinConj_(rows, q).length) out.push({ tipo: 'conjuge', a: a, b: q, texto: nm(a) + ' e ' + nm(q) + ' têm o mesmo filho(a). São casados?' }); });
+    kinConj_(rows, a).forEach(function (s) { if (kinPais_(rows, b).length < 2 && !ja('filho', s, b) && s !== b) out.push({ tipo: 'filho', a: s, b: b, texto: nm(s) + ' (cônjuge de ' + nm(a) + ') também é pai/mãe de ' + nm(b) + '?' }); });
+  } else if (tipo === 'conjuge') {
+    kinFilhos_(rows, a).forEach(function (c) { if (!ja('filho', b, c) && kinPais_(rows, c).length < 2 && c !== b) out.push({ tipo: 'filho', a: b, b: c, texto: nm(c) + ' também é filho(a) de ' + nm(b) + '?' }); });
+    kinFilhos_(rows, b).forEach(function (c) { if (!ja('filho', a, c) && kinPais_(rows, c).length < 2 && c !== a) out.push({ tipo: 'filho', a: a, b: c, texto: nm(c) + ' também é filho(a) de ' + nm(a) + '?' }); });
+  }
+  return out.slice(0, 8);
+}
+function saveKin_(d, u) {
+  const a = clip_(d.a, 30) || u.membroId, b = clip_(d.b, 30), rel = String(d.rel || '');
+  const mapa = { pai: ['filho', b, a], mae: ['filho', b, a], filho: ['filho', a, b], filha: ['filho', a, b], conjuge: ['conjuge', a, b], irmao: ['irmao', a, b], irma: ['irmao', a, b], tipo: null };
+  let tipo, x, y; if (d.tipo && (d.tipo === 'filho' || d.tipo === 'conjuge' || d.tipo === 'irmao')) { tipo = d.tipo; x = a; y = b; } else { const m = mapa[rel]; if (!m) throw new ApiError('VALIDATION', 'Escolha o parentesco.'); tipo = m[0]; x = m[1]; y = m[2]; }
+  if (!b || a === b) throw new ApiError('VALIDATION', 'Escolha outra pessoa.');
+  if (!kinPode_(u, a) && !kinNaFamilia_(u, a)) throw new ApiError('FORBIDDEN', 'Só a própria pessoa, a família já vinculada ou a liderança vincula parentes.');
+  const ms = {}; table_('Membros').rows.forEach(function (m) { ms[m.MembroID] = m; }); if (!ms[a] || !ms[b]) throw new ApiError('NOT_FOUND', 'Pessoa não encontrada.');
+  return withLock_(function () {
+    const t = table_('Parentes'), rows = kinRows_();
+    if (rows.some(function (r) { return r.Tipo === tipo && ((r.A === x && r.B === y) || (tipo !== 'filho' && r.A === y && r.B === x)); })) throw new ApiError('VALIDATION', 'Esse vínculo já existe.');
+    if (tipo === 'filho') {
+      if (kinAncestral_(rows, x, y)) throw new ApiError('VALIDATION', 'Esse vínculo não faz sentido: ' + (ms[y].Apelido || ms[y].Nome) + ' já aparece como antepassado.');
+      if (kinPais_(rows, y).length >= 2) throw new ApiError('VALIDATION', 'Essa pessoa já tem pai e mãe vinculados.');
+    }
+    if (tipo === 'conjuge' && (kinConj_(rows, x).length || kinConj_(rows, y).length)) throw new ApiError('VALIDATION', 'Uma das pessoas já tem cônjuge vinculado. Remova o vínculo antigo antes.');
+    const id = id_('PR'); appendRow_(t, { ParID: id, A: x, B: y, Tipo: tipo, CriadoPor: u.membroId, CriadoEm: now_() }); audit_(u.email, 'PARENTE_ADD', id, 'OK');
+    const novas = rows.concat([{ ParID: id, A: x, B: y, Tipo: tipo }]);
+    return { id: id, sugestoes: kinSugestoes_(novas, ms, tipo, x, y) };
+  });
+}
+function delKin_(d, u) {
+  return withLock_(function () {
+    const t = table_('Parentes'), r = t.rows.filter(function (x) { return x.ParID === clip_(d.id, 30); })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Vínculo não encontrado.');
+    if (!(kinPode_(u, r.A) || kinPode_(u, r.B))) throw new ApiError('FORBIDDEN', 'Sem permissão para remover este vínculo.');
+    writeRow_(t, r._row, { A: '', B: '', Tipo: 'removido' }); audit_(u.email, 'PARENTE_DEL', r.ParID, 'OK'); return { ok: true };
+  });
+}
+function kinComponentes_(rows) {
+  const adj = {}; rows.forEach(function (r) { (adj[r.A] = adj[r.A] || []).push(r.B); (adj[r.B] = adj[r.B] || []).push(r.A); });
+  const vis = {}, comps = []; Object.keys(adj).forEach(function (k) { if (vis[k]) return; const c = [], pilha = [k]; vis[k] = 1; while (pilha.length) { const x = pilha.pop(); c.push(x); adj[x].forEach(function (y) { if (!vis[y]) { vis[y] = 1; pilha.push(y); } }); } comps.push(c); });
+  return comps;
+}
+function getArvore_(d, u) {
+  const ms = {}; table_('Membros').rows.forEach(function (m) { ms[m.MembroID] = m; }); const cel = {}; table_('Celulas').rows.forEach(function (c) { cel[c.CelulaID] = c.Nome; });
+  const rows = kinRows_(), comps = kinComponentes_(rows).map(function (c) { return c.filter(function (x) { return ms[x]; }); }).filter(function (c) { return c.length > 0; });
+  const rotulo = function (c) { const cont = {}; c.forEach(function (x) { const t = kinToks_(ms[x].Nome); const l = t[t.length - 1]; if (l) cont[l] = (cont[l] || 0) + 1; }); const top = Object.keys(cont).sort(function (a, b) { return cont[b] - cont[a]; })[0] || ''; return top ? top.charAt(0).toUpperCase() + top.slice(1) : 'Família'; };
+  if (d.todos) {
+    if (!podeCurar_(u)) throw new ApiError('FORBIDDEN', 'A visão da igreja inteira é da liderança.');
+    const itens = comps.map(function (c) { const cs = {}; c.forEach(function (x) { if (cel[ms[x].CelulaID]) cs[cel[ms[x].CelulaID]] = 1; }); return { ref: c[0], nome: rotulo(c), n: c.length, celulas: Object.keys(cs), pessoas: c.slice(0, 4).map(function (x) { return ms[x].Apelido || ms[x].Simples || ms[x].Nome; }), semCelula: c.filter(function (x) { return !ms[x].CelulaID; }).length }; }).sort(function (a, b) { return b.n - a.n; });
+    return { familias: itens, total: itens.length, pessoas: itens.reduce(function (s2, f) { return s2 + f.n; }, 0) };
+  }
+  const id = clip_(d.membroId, 30) || u.membroId; if (!kinPode_(u, id)) throw new ApiError('FORBIDDEN', 'Sem acesso a esta família.');
+  const comp = comps.filter(function (c) { return c.indexOf(id) >= 0; })[0] || [id]; const set = {}; comp.forEach(function (x) { set[x] = 1; });
+  return { nome: rotulo(comp), eu: id, nos: comp.filter(function (x) { return ms[x]; }).map(function (x) { return kinNo_(ms[x], cel); }), arestas: rows.filter(function (r) { return set[r.A] && set[r.B]; }).map(function (r) { return { id: r.ParID, a: r.A, b: r.B, tipo: r.Tipo }; }) };
+}
+function getMemberCard_(d, u) {
+  const mid = clip_(d.membroId, 30), m = table_('Membros').rows.filter(function (x) { return x.MembroID === mid; })[0]; if (!m) throw new ApiError('NOT_FOUND', 'Pessoa não encontrada.');
+  fichaNivel_(u, m);
+  const c = table_('Celulas').rows.filter(function (x) { return x.CelulaID === m.CelulaID; })[0] || {}, usu = table_('Usuarios').rows.some(function (x) { return x.MembroID === mid && x.Status === 'Ativo'; });
+  return { id: m.MembroID, nome: m.Nome, apelido: m.Apelido || m.Simples || String(m.Nome).split(' ')[0], nasc: m.Nascimento || '', sexo: m.Sexo || '', tel: m.Telefone || '', email: m.Email || '', foto: m.Foto ? 1 : 0, membro: m.EhMembro === '1', celula: c.Nome || '', temAcesso: usu,
+    end: { cep: m.CEP || '', uf: m.UF || '', cidade: m.Cidade || '', bairro: m.Bairro || '', endereco: m.Endereco || '' }, lat: geoOk_(m.Lat, m.Lng) ? Number(m.Lat) : null, lng: geoOk_(m.Lat, m.Lng) ? Number(m.Lng) : null };
+}
 function saveSupCor_(d, u) {
   const sid = clip_(d.supId, 30), cor = String(d.cor || ''); if (!sid) throw new ApiError('VALIDATION', 'Supervisão inválida.'); if (cor && !/^#[0-9a-fA-F]{6}$/.test(cor)) throw new ApiError('VALIDATION', 'Cor inválida.');
   if (!(u.papel === 'admin' || u.papel === 'pastor' || can_(u, 'config') || can_(u, 'celulas') || (u.membroId === sid && (u.supervisiona || []).length > 0))) throw new ApiError('FORBIDDEN', 'Só a administração ou o próprio supervisor muda a cor da supervisão.');
@@ -2031,6 +2143,12 @@ function findPeople_(d, u) {
   const ativos = {}; table_('Usuarios').rows.forEach(function (r) { if (r.Status === 'Ativo' && r.MembroID) ativos[r.MembroID] = 1; });
   return table_('Membros').rows.filter(function (m) { return ativos[m.MembroID] && m.MembroID !== u.membroId && m.Status !== 'Inativo' && semAcento_((m.Nome || '') + ' ' + (m.Simples || '') + ' ' + (m.Apelido || '')).indexOf(q) >= 0; }).slice(0, 15)
     .map(function (m) { const p = presDe_(m.MembroID, d); return { id: m.MembroID, nome: m.Simples || m.Apelido || m.Nome, online: p.online, visto: p.visto }; });
+}
+function listPeople_(d, u) {
+  const ativos = {}; table_('Usuarios').rows.forEach(function (r) { if (r.Status === 'Ativo' && r.MembroID) ativos[r.MembroID] = 1; });
+  const todos = table_('Membros').rows.filter(function (m) { return ativos[m.MembroID] && m.MembroID !== u.membroId && m.Status !== 'Inativo'; }).sort(function (a, b) { return String(a.Simples || a.Apelido || a.Nome).localeCompare(String(b.Simples || b.Apelido || b.Nome)); });
+  const de = Math.max(0, Number(d.de) || 0);
+  return { total: todos.length, itens: todos.slice(de, de + 60).map(function (m) { const p = presDe_(m.MembroID, d); return { id: m.MembroID, nome: m.Simples || m.Apelido || m.Nome, online: p.online, visto: p.visto }; }) };
 }
 const CHAT_MAX = 1000, CHAT_POR_MIN = 20, PRES_MS = 90000, DIG_MS = 6000;
 /* presença (online) e "digitando": ficam só no cache temporário, sem gravar na planilha */
@@ -3099,7 +3217,7 @@ const ROUTES = {
   getPushKey: { auth: 'any', fn: getPushKey_ }, pushDiag: { auth: 'any', fn: pushDiag_ }, savePushSub: { auth: 'any', write: 1, fn: savePushSub_ }, delPushSub: { auth: 'any', write: 1, fn: delPushSub_ },
   sodGet: { auth: 'any', write: 1, fn: sodGet_ }, sodAbrir: { auth: 'any', write: 1, fn: sodAbrir_ }, sodEquipar: { auth: 'any', write: 1, fn: sodEquipar_ }, sodDescartar: { auth: 'any', write: 1, fn: sodDescartar_ }, sodAparencia: { auth: 'any', write: 1, fn: sodAparencia_ }, sodOrar: { auth: 'any', write: 1, fn: sodOrar_ }, sodComprar: { auth: 'any', write: 1, fn: sodComprar_ },
   listMarks: { auth: 'any', fn: listMarks_ }, saveMark: { auth: 'any', write: 1, fn: saveMark_ }, saveNote: { auth: 'any', write: 1, fn: saveNote_ }, listCultoNotes: { auth: 'any', fn: listCultoNotes_ }, getMural: { auth: 'any', fn: getMural_ },
-  listInsigniaDefs: { auth: 'any', fn: listInsigniaDefs_ }, saveInsigniaDef: { auth: 'any', write: 1, fn: saveInsigniaDef_ }, grantBadge: { auth: 'any', write: 1, fn: grantBadge_ }, logServico: { auth: 'any', write: 1, fn: logServico_ }, listServicos: { auth: 'any', fn: listServicos_ }, searchPeople: { auth: 'any', fn: findPeople_ }, sendChat: { auth: 'any', write: 1, fn: sendChat_ }, getChat: { auth: 'any', fn: getChat_ }, chatRead: { auth: 'any', write: 1, fn: chatRead_ }, chatTyping: { auth: 'any', fn: chatTyping_ }, listChats: { auth: 'any', fn: listChats_ }, getCertLayout: { auth: 'any', fn: getCertLayout_ }, saveCertLayout: { auth: 'any', write: 1, fn: saveCertLayout_ }, previewCert: { auth: 'any', fn: previewCert_ }, revokeCert: { auth: 'any', write: 1, fn: revokeCert_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, saveFaces: { auth: 'eventos', write: 1, fn: saveFaces_ }, faceRoster: { auth: 'eventos', fn: faceRoster_ }, setFaceAuth: { auth: 'eventos', write: 1, fn: setFaceAuth_ }, listFaces: { auth: 'eventos', fn: listFaces_ }, clearFaces: { auth: 'eventos', write: 1, fn: clearFaces_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, learnFace: { auth: 'eventos', write: 1, fn: learnFace_ }, clearSamples: { auth: 'eventos', write: 1, fn: clearSamples_ }, listFichas: { auth: 'any', fn: listFichas_ }, getFicha: { auth: 'any', fn: getFicha_ }, routeVisitor: { auth: 'any', write: 1, fn: routeVisitor_ }, getMapa: { auth: 'any', fn: getMapa_ }, listArtes: { auth: 'any', fn: listArtes_ }, getArte: { auth: 'any', fn: getArte_ }, saveArte: { auth: 'any', write: 1, fn: saveArte_ }, decideArte: { auth: 'any', write: 1, fn: decideArte_ }, deleteArte: { auth: 'any', write: 1, fn: deleteArte_ }, saveArteAprovadores: { auth: 'any', write: 1, fn: saveArteAprovadores_ }, saveMySod: { auth: 'any', write: 1, fn: saveMySod_ }, saveSupCor: { auth: 'any', write: 1, fn: saveSupCor_ }, saveMyGeo: { auth: 'any', write: 1, fn: saveMyGeo_ }, saveMapaCfg: { auth: 'config', write: 1, fn: saveMapaCfg_ }, listGeoPendentes: { auth: 'any', fn: listGeoPendentes_ }, saveGeoLote: { auth: 'any', write: 1, fn: saveGeoLote_ }, celFotos: { auth: 'any', fn: celFotos_ }, acceptVisitor: { auth: 'any', write: 1, fn: acceptVisitor_ }, saveFichaEntrada: { auth: 'any', write: 1, fn: saveFichaEntrada_ }, faceMe: { auth: 'any', fn: faceMe_ }, faceScan: { auth: 'any', write: 1, fn: faceScan_ }, faceRevoke: { auth: 'any', write: 1, fn: faceRevoke_ }, faceStat: { auth: 'eventos', write: 1, fn: faceStat_ }, faceStats: { auth: 'eventos', fn: faceStats_ }, cultoPresenca: { auth: 'eventos', fn: cultoPresenca_ }, checkinCulto: { auth: 'eventos', write: 1, fn: checkinCulto_ }, cultosResumo: { auth: 'eventos', fn: cultosResumo_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
+  listInsigniaDefs: { auth: 'any', fn: listInsigniaDefs_ }, saveInsigniaDef: { auth: 'any', write: 1, fn: saveInsigniaDef_ }, grantBadge: { auth: 'any', write: 1, fn: grantBadge_ }, logServico: { auth: 'any', write: 1, fn: logServico_ }, listServicos: { auth: 'any', fn: listServicos_ }, searchPeople: { auth: 'any', fn: findPeople_ }, listPeople: { auth: 'any', fn: listPeople_ }, sendChat: { auth: 'any', write: 1, fn: sendChat_ }, getChat: { auth: 'any', fn: getChat_ }, chatRead: { auth: 'any', write: 1, fn: chatRead_ }, chatTyping: { auth: 'any', fn: chatTyping_ }, listChats: { auth: 'any', fn: listChats_ }, getCertLayout: { auth: 'any', fn: getCertLayout_ }, saveCertLayout: { auth: 'any', write: 1, fn: saveCertLayout_ }, previewCert: { auth: 'any', fn: previewCert_ }, revokeCert: { auth: 'any', write: 1, fn: revokeCert_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, saveFaces: { auth: 'eventos', write: 1, fn: saveFaces_ }, faceRoster: { auth: 'eventos', fn: faceRoster_ }, setFaceAuth: { auth: 'eventos', write: 1, fn: setFaceAuth_ }, listFaces: { auth: 'eventos', fn: listFaces_ }, clearFaces: { auth: 'eventos', write: 1, fn: clearFaces_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, learnFace: { auth: 'eventos', write: 1, fn: learnFace_ }, clearSamples: { auth: 'eventos', write: 1, fn: clearSamples_ }, listFichas: { auth: 'any', fn: listFichas_ }, getFicha: { auth: 'any', fn: getFicha_ }, routeVisitor: { auth: 'any', write: 1, fn: routeVisitor_ }, getMapa: { auth: 'any', fn: getMapa_ }, getMemberCard: { auth: 'any', fn: getMemberCard_ }, suggestKin: { auth: 'any', fn: suggestKin_ }, listKin: { auth: 'any', fn: listKin_ }, saveKin: { auth: 'any', write: 1, fn: saveKin_ }, delKin: { auth: 'any', write: 1, fn: delKin_ }, getArvore: { auth: 'any', fn: getArvore_ }, listArtes: { auth: 'any', fn: listArtes_ }, getArte: { auth: 'any', fn: getArte_ }, saveArte: { auth: 'any', write: 1, fn: saveArte_ }, decideArte: { auth: 'any', write: 1, fn: decideArte_ }, deleteArte: { auth: 'any', write: 1, fn: deleteArte_ }, saveArteAprovadores: { auth: 'any', write: 1, fn: saveArteAprovadores_ }, saveMySod: { auth: 'any', write: 1, fn: saveMySod_ }, saveSupCor: { auth: 'any', write: 1, fn: saveSupCor_ }, saveMyGeo: { auth: 'any', write: 1, fn: saveMyGeo_ }, saveMapaCfg: { auth: 'config', write: 1, fn: saveMapaCfg_ }, listGeoPendentes: { auth: 'any', fn: listGeoPendentes_ }, saveGeoLote: { auth: 'any', write: 1, fn: saveGeoLote_ }, celFotos: { auth: 'any', fn: celFotos_ }, acceptVisitor: { auth: 'any', write: 1, fn: acceptVisitor_ }, saveFichaEntrada: { auth: 'any', write: 1, fn: saveFichaEntrada_ }, faceMe: { auth: 'any', fn: faceMe_ }, faceScan: { auth: 'any', write: 1, fn: faceScan_ }, faceRevoke: { auth: 'any', write: 1, fn: faceRevoke_ }, faceStat: { auth: 'eventos', write: 1, fn: faceStat_ }, faceStats: { auth: 'eventos', fn: faceStats_ }, cultoPresenca: { auth: 'eventos', fn: cultoPresenca_ }, checkinCulto: { auth: 'eventos', write: 1, fn: checkinCulto_ }, cultosResumo: { auth: 'eventos', fn: cultosResumo_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
   searchCells: { auth: 'any', fn: searchCells_ }, addPrayer: { auth: 'any', write: 1, fn: addPrayer_ }, listPrayers: { auth: 'any', fn: listPrayers_ },
   cellMembers: { auth: 'any', fn: cellMembers_ }, saveCell: { auth: 'any', write: 1, fn: saveCell_ }, saveAttendance: { auth: 'any', write: 1, fn: saveAttendance_ }, history: { auth: 'any', fn: history_ },
   indicators: { auth: 'any', fn: indicators_ }, getPapeis: { auth: 'any', fn: getPapeis_ }, savePapeis: { auth: 'any', write: 1, fn: savePapeis_ }, createCellEvent: { auth: 'any', write: 1, fn: createCellEvent_ },

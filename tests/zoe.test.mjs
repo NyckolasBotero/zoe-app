@@ -1330,3 +1330,42 @@ test('Canva Zoe: arte da social mídia vai para aprovação e depois aparece no 
   assert.equal(e.call('saveArte', Object.assign({}, arte, { foto: 'x' }), P).error.code, 'VALIDATION');
   assert.equal(e.call('deleteArte', { id: r.id }, P).data.ok, true);
 });
+
+test('Árvore Zoe: sugere parentes por sobrenome, deduz cônjuge e monta a árvore', () => {
+  const { e, adm, tok, mk } = boot();
+  mk('f@zoe.com', 'membro', { nome: 'Fábio Nyckolas Figueiredo Botero' }); mk('i@zoe.com', 'membro', { nome: 'Isabela Santos Brito Botero' }); mk('a@zoe.com', 'membro', { nome: 'Avana Hadassa Santos Botero' });
+  mk('c@zoe.com', 'membro', { nome: 'Claudio Lucas Nicacio' }); mk('n@zoe.com', 'membro', { nome: 'Ana Nicacio' }); mk('x@zoe.com', 'membro', { nome: 'Pedro Alves' });
+  const T = {}; ['f', 'i', 'a', 'c', 'n', 'x'].forEach(function (k) { T[k] = tok(k + '@zoe.com', 'Temp12345'); T[k + 'Id'] = e.call('me', {}, T[k]).data.membro.MembroID; });
+  const s1 = e.call('suggestKin', {}, T.c).data; assert.deepEqual(s1.familia.map(function (x) { return x.completo; }), ['Ana Nicacio']); assert.deepEqual(s1.familia[0].comuns, ['nicacio']);
+  const s2 = e.call('suggestKin', {}, T.a).data.familia.map(function (x) { return x.id; }); assert.ok(s2.indexOf(T.fId) >= 0 && s2.indexOf(T.iId) >= 0 && s2.indexOf(T.xId) < 0);
+  const s3 = e.call('suggestKin', { nome: 'Isabela Santos Brito Botero' }, T.f).data; assert.equal(s3.iguais[0].id, T.iId);
+  // a filha escolhe a mãe e o pai; o pai e a mãe passam a ser sugeridos como casal
+  assert.equal(e.call('saveKin', { b: T.fId, rel: 'pai' }, T.a).data.sugestoes.length, 0);
+  const r2 = e.call('saveKin', { b: T.iId, rel: 'mae' }, T.a).data; assert.equal(r2.sugestoes.length, 1); assert.equal(r2.sugestoes[0].tipo, 'conjuge');
+  assert.equal(e.call('saveKin', { a: T.fId, b: T.iId, tipo: 'conjuge' }, T.f).data.sugestoes.length, 0);
+  assert.equal(e.call('saveKin', { b: T.iId, rel: 'mae' }, T.a).error.code, 'VALIDATION');
+  assert.equal(e.call('saveKin', { a: T.fId, b: T.aId, rel: 'pai' }, T.f).error.code, 'VALIDATION', 'ciclo');
+  assert.equal(e.call('saveKin', { a: T.fId, b: T.xId, rel: 'filho' }, T.x).error.code, 'FORBIDDEN');
+  assert.equal(e.call('saveKin', { b: T.nId, rel: 'irma' }, T.c).data.id.length > 0, true);
+  const arv = e.call('getArvore', {}, T.a).data; assert.equal(arv.nos.length, 3); assert.equal(arv.arestas.length, 3); assert.equal(arv.nome, 'Botero');
+  const v = e.call('listKin', {}, T.a).data; assert.equal(v.pais.length, 2); assert.equal(e.call('listKin', { membroId: T.fId }, T.x).error.code, 'FORBIDDEN');
+  const todas = e.call('getArvore', { todos: 1 }, adm).data; assert.equal(todas.total, 2); assert.equal(todas.familias[0].n, 3); assert.equal(e.call('getArvore', { todos: 1 }, T.x).error.code, 'FORBIDDEN');
+  const del = v.vinculos[0]; assert.equal(e.call('delKin', { id: del.id }, T.a).data.ok, true); assert.equal(e.call('getArvore', {}, T.i).data.arestas.length, 2);
+});
+
+test('Pessoas: lista todos com acesso ao app, em ordem, sem a própria pessoa', () => {
+  const { e, tok, mk } = boot(); mk('a@zoe.com', 'membro', { nome: 'Ana Souza' }); mk('b@zoe.com', 'membro', { nome: 'Bruno Lima' }); mk('c@zoe.com', 'membro', { nome: 'Carla Dias' });
+  const A = tok('a@zoe.com', 'Temp12345'); const r = e.call('listPeople', {}, A).data;
+  assert.ok(r.total >= 2); assert.ok(!r.itens.some(function (x) { return x.nome === 'Ana'; })); const nomes = r.itens.map(function (x) { return x.nome; }); assert.deepEqual(nomes.slice().sort(function (x, y) { return x.localeCompare(y); }), nomes);
+  assert.ok(nomes.length >= 2, JSON.stringify(nomes));
+});
+
+test('Ficha rápida do membro da célula: líder vê só quem é da sua célula, administração vê endereço e ponto no mapa', () => {
+  const { e, adm, tok, mk } = boot(); const l = mk('l@zoe.com', 'membro'), m = mk('m@zoe.com', 'membro');
+  const cid = e.call('createCell', { nome: 'Norte', liderId: l, dia: 'Quinta', inicio: '20:00', fim: '21:30' }, adm).data.id; assert.ok(cid);
+  const L = tok('l@zoe.com', 'Temp12345'), M = tok('m@zoe.com', 'Temp12345');
+  assert.equal(e.call('getMemberCard', { membroId: m }, L).error.code, 'FORBIDDEN');
+  e.call('saveMyGeo', { lat: -15.78, lng: -47.93 }, M);
+  const r = e.call('getMemberCard', { membroId: m }, adm).data; assert.equal(r.lat, -15.78); assert.equal(r.lng, -47.93); assert.ok('end' in r && 'celula' in r && r.temAcesso);
+  assert.equal(e.call('getMemberCard', { membroId: m }, M).error.code, 'FORBIDDEN');
+});
