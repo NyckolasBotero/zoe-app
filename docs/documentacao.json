@@ -140,5 +140,13 @@
    "Um cartão único em Administração › Definições de Parâmetros: contato, endereço, parâmetros dos mapas e a sede.",
    "A sede é marcada tocando no mapa e aparece em todos os mapas com o símbolo da Zoe num pin maior."
   ]
+ },
+ {
+  "t": "Posts agendados (datas comemorativas)",
+  "itens": [
+   "Admin › Publicações › Posts agendados: título, texto, arte, quanto tempo fica no ar (dias, meses, anos ou intervalo) e onde aparece (Início e/ou Notícias).",
+   "Sazonal: marca \"repetir todo ano\". Controle manual: Automático, Sempre no ar ou Desligado. A janela é calculada na leitura, sem gatilhos.",
+   "Aba Campanhas na planilha é criada sozinha (lazy_). A Zoe fala de cada post e explica datas como Natal, Reforma, Dia do Músico."
+  ]
  }
 ]

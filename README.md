@@ -395,3 +395,6 @@ Botão direito (ou toque longo) numa célula de qualquer mapa abre os dados (`ge
 
 ## Árvore Zoe
 - Parentescos na tabela `Parentes`; telas `kinCard` (vincular, com sugestão por sobrenome e dedução de casal) e `arvoreHTML` (árvore em SVG e visão da igreja). Rotas: `suggestKin`, `listKin`, `saveKin`, `delKin`, `getArvore`. Pessoas: `listPeople`. Células › Membros: `getMemberCard`.
+
+## Posts agendados
+Admin › Publicações › Posts agendados: período por dias/meses/anos ou intervalo, sazonal (todo ano), ligar/desligar manual, arte trocável; aparece no Início e nas Notícias; a Zoe comenta. Aba `Campanhas` criada automaticamente.

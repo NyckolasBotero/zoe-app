@@ -1,5 +1,15 @@
 [
  {
+  "data": "31/10/2026",
+  "titulo": "Posts agendados e Zoe mais esperta",
+  "melhorias": [
+   "Posts agendados: crie um post uma vez e defina quanto tempo fica no ar (dias, meses, anos ou do dia inicial ao final) no Início e nas Notícias.",
+   "Sazonal: repete todo ano na mesma data (Natal, Reforma, Dia do Evangélico, do Professor, do Músico, do Vocalista, do Baterista…). Dá para ligar ou desligar à mão e trocar a arte.",
+   "A Zoe comenta cada post no ar e explica a importância das datas; responde também sobre eventos, agenda da célula, Árvore Zoe, perfil, mapas, consolidação e mais."
+  ],
+  "v": "1.86"
+ },
+ {
   "titulo": "Árvore Zoe: Toda a igreja em organograma",
   "melhorias": [
    "Árvore Zoe › Toda a igreja agora é um organograma: a Zoe no topo, cada família logo abaixo e, dentro de cada uma, a árvore com os vínculos (casal, pais e filhos, irmãos).",

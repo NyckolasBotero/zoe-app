@@ -898,6 +898,7 @@ function zMomList(dt){const hj=dt||TODAY,L=[],y=+hj.slice(0,4),mmdd=hj.slice(5),
  const hoje=(()=>{try{return anivList().hoje||[]}catch(e){return[]}})(),meus=hoje.filter(x=>x.id&&x.id===eu),outros=hoje.filter(x=>!(x.id&&x.id===eu));
  if(meus.length)L.push({key:'aniv:'+hj+':eu',t:'Feliz aniversário! 🎂',x:`Hoje é o **seu** dia, ${S.apelido||''}! A família Zoe celebra a sua vida. 🎉\n${zv('aniv')}`});
  outros.slice(0,4).forEach(x=>L.push({key:'aniv:'+hj+':'+(x.id||x.n),t:'Aniversário hoje! 🎉',x:`Ei! Hoje é aniversário de **${x.n}**! Parabenize! 🎈\n${zv('aniv')}`,btns:x.id&&ONLINE?[['Enviar parabéns',`zParabeniza('${x.id}')`]]:[]}));
+ (S.camps||[]).forEach(c=>L.push({key:'camp:'+c.id+':'+(c.de||hj),t:c.titulo,x:campZoeTxt(c),btns:[['Ver o post',"go('feed')"]]}));
  if(mmdd==='12-25')L.push({key:'natal:'+y,t:'Feliz Natal! 🎄',x:`Hoje é **Natal**! Que alegria celebrar o nascimento de Jesus com você! 🥳\n${zv('natal')}\n${zv('natal2')}`});
  if(hj===zDomJun(y))L.push({key:'pastor:'+y,t:'Dia do Pastor 🙏',x:`Hoje é o **Dia do Pastor**! Ore e agradeça pela vida dos nossos pastores. 💚\n${zv('pastor')}`});
  if(mmdd==='09-07')L.push({key:'indep:'+y,t:'Dia da Independência 🇧🇷',x:`Hoje é **7 de Setembro**! Oremos pela nossa nação. 🙏\n${zv('indep')}`});
@@ -1096,7 +1097,7 @@ const ZI=[
  {id:'video',kw:['video','videos','live','lives','ao vivo','transmissao','youtube','culto online','assistir'],r:'tutoriais'},
  {id:'loja',kw:['loja','comprar','camiseta','bone','produto','produtos','roupa'],r:'loja'},
  {id:'bib',kw:['biblioteca','livro','livros','pdf','ler livro'],r:'biblioteca'},
- {id:'perfil',kw:['perfil','meus dados','foto','apelido','senha','editar dados','cadastro','dados pessoais','trocar senha'],r:'perfil'},
+ {id:'perfil',kw:['perfil','meus dados','apelido','editar dados','cadastro','dados pessoais'],r:'meu',sub:'editar'},
  {id:'aniv',kw:['aniversario','aniversariante','aniversariantes','parabens'],r:'aniversarios'},
  {id:'aprov',kw:['aprovacao','aprovacoes','aprovar','pedido de transferencia','transferencia','solicitacao','decidir'],r:'aprovacoes'},
  {id:'admin',kw:['administracao','admin','publicar','criar evento','novo usuario','permissao','permissoes','cadastrar produto'],r:'admin'},
@@ -1110,13 +1111,133 @@ const ZI=[
  {id:'sair',kw:['sair','logout','deslogar'],sel:'.side-foot button',txt:'O botão **Sair** fica no rodapé do menu. 👋'},
  {id:'guia',kw:['tutorial','guia','como funciona','ensinar','rever','ajuda','nao sei','me ajuda'],guia:1},
  {id:'oi',kw:['oi','ola','bom dia','boa tarde','boa noite','e ai','tudo bem'],oi:1}];
+/* ===== Zoe mais esperta: conhece cada área do site e responde com os dados reais (agenda, eventos, posts no ar) ===== */
+const zLista=a=>a.map(x=>'• '+x).join('\n');
+function zCampLista(){const l=S.camps||[];if(!l.length)return{txt:'Agora não há nenhum post de data comemorativa no ar. 💛 Quando a liderança agendar um (como Natal ou Dia do Músico), eu aviso e comento aqui!'};return{txt:'Está no ar agora:\n'+zLista(l.map(c=>`**${c.titulo}** (${campAte(c)})`))+'\n\nMe pergunte pelo nome de qualquer um para eu contar a história e a importância. ✨',mostrar:{r:'feed'}}}
+function zCampPerg(q){const n=' '+zNorm(q)+' ';const ativo=(S.camps||[]).find(c=>{const t=zNorm(c.titulo);return t.length>=5&&n.includes(' '+t+' ')});if(ativo)return{txt:campZoeTxt(ativo),mostrar:{r:'feed'}};
+ const m=CAMP_MODELOS.find(x=>x.palavras.some(k=>n.includes(' '+k+' ')));if(!m)return null;const c=(S.camps||[]).find(x=>x.preset===m.id);return{txt:c?campZoeTxt(c):m.zoe,mostrar:c?{r:'feed'}:undefined}}
+function zEventos(){const l=EVENTOS.filter(x=>x.d>=TODAY).sort((a,b)=>a.d<b.d?-1:1).slice(0,3);if(!l.length)return{txt:'Ainda não há eventos marcados. 📅 Quando a igreja publicar, eles aparecem em **Eventos** e eu te aviso!',mostrar:{r:'eventos'}};return{txt:'Os próximos eventos:\n'+zLista(l.map(e=>`**${e.t}** — ${fmt(e.d)}${e.h?' às '+e.h:''}${e.loc?' · '+e.loc:''}`))+'\n\nEm **Eventos** você se inscreve. ✨',mostrar:{r:'eventos'}}}
+function zAgCel(){if(!zEmCelula())return{txt:'Você ainda **não está em uma célula**, então não tenho uma agenda de célula para te mostrar. 💛 Em **Buscar células** eu te ajudo a achar a mais perto de casa!',mostrar:{r:'buscar'}};
+ const c=S.cell||{},ag=(S.agenda||[]).filter(x=>x.d>=TODAY).sort((a,b)=>a.d<b.d?-1:1).slice(0,3);
+ return{txt:`A **${c.nome||'sua célula'}** acontece ${c.dia?c.dia+(c.inicio?' às '+c.inicio:''):'em dia ainda não definido'}.${ag.length?'\n\nNa agenda da célula:\n'+zLista(ag.map(e=>`**${e.t}** — ${fmt(e.d)}${e.h?' às '+e.h:''}${e.loc?' · '+e.loc:''}`)):'\n\nNão há compromissos extras agendados. Em **Planejamento** você cria um.'}`,mostrar:{r:'celula',sub:'plan'}}}
+function zHojeFn(){const p=[],an=(()=>{try{return anivList().hoje||[]}catch(e){return[]}})(),ev=EVENTOS.filter(x=>x.d===TODAY),c=S.cell||{};
+ if(zEmCelula()&&c.dia&&mesmoDia(c.dia,diaDe(TODAY)))p.push(`Hoje tem a **${c.nome}**${c.inicio?' às '+c.inicio:''}! 🙌`);ev.forEach(e=>p.push(`Evento hoje: **${e.t}**${e.h?' às '+e.h:''}`));an.slice(0,4).forEach(a=>p.push(`Aniversário de **${a.n}** 🎂`));(S.camps||[]).forEach(x=>p.push(`No ar: **${x.titulo}**`));
+ return{txt:p.length?'Hoje na Zoe:\n'+zLista(p):'Hoje está tranquilo por aqui: sem evento, aniversário ou post de data especial. 😊 Que tal ler a Bíblia ou ver a agenda da célula?',mostrar:{r:'feed'}}}
+const zPerfilSub=(sub,nome)=>()=>({txt:`Isso fica em **Meu perfil › Editar perfil**, na guia **${nome}**. Vem que eu te mostro! ✨`,mostrar:{r:'meu',sub:'editar',perfil:sub}});
+ZI.push(
+ {id:'camp',kw:['o que esta no ar','tem alguma campanha','campanha','campanhas','post agendado','posts agendados','destaque','destaques','datas comemorativas','data comemorativa'],fn:zCampLista,w:1.4},
+ {id:'proxev',kw:['proximo evento','proximos eventos','tem evento','quando e o proximo evento','o que tem de evento','eventos de hoje'],fn:zEventos,w:1.5},
+ {id:'agcel',kw:['agenda da celula','proxima reuniao','quando e minha celula','que dia e minha celula','horario da celula','dia da minha celula','compromissos da celula'],fn:zAgCel,w:1.6},
+ {id:'hoje',kw:['o que tem hoje','que dia e hoje','novidades de hoje','hoje na zoe'],fn:zHojeFn,w:1.5},
+ {id:'arvore',kw:['arvore zoe','arvore genealogica','genealogia','arvore da familia','minha familia','meus parentes','parentes','cadastrar parente','cadastrar filho','cadastrar esposa','cadastrar marido','irmao','irma','conjuge','sobrenome'],r:'arvore',w:1.2},
+ {id:'quem',kw:['quem somos','historia da igreja','sobre a igreja','nossa historia','missao','uma familia para pertencer'],r:'familia',sub:'quem'},
+ {id:'prog',kw:['horario do culto','horarios dos cultos','quando e o culto','programacao dos cultos','programacao da igreja'],r:'familia',sub:'prog'},
+ {id:'fale',kw:['fale com a igreja','mandar mensagem para a igreja','falar com a igreja','contato da igreja'],r:'familia',sub:'fale'},
+ {id:'pessoas',kw:['pessoas','quem tem acesso','lista de pessoas','quem usa o app','diretorio'],r:'pessoas'},
+ {id:'mapas',kw:['mapa','mapas','onde moram','distribuicao de membros','distribuicao','sede da igreja','congregacao','onde fica a sede'],r:'buscar'},
+ {id:'casa',kw:['marcar minha casa','minha casa no mapa','onde eu moro','minha casa','pino da casa'],fn:zPerfilSub('conf','Configurações')},
+ {id:'consol',kw:['consolidacao','visitante','visitantes','novo visitante','pre cadastro','acolher visitante'],r:'consolidacao'},
+ {id:'studio',kw:['studio zoe','projecao','projetar','telao','letra de musica','letras de musicas','controle remoto','slides','passar slide','canva','arte para redes','social midia','redes sociais'],r:'multimidia',w:1.2},
+ {id:'rostos',kw:['presenca facial','reconhecimento facial','rosto','chamada por rosto','cadastrar meu rosto'],r:'rostos'},
+ {id:'insig',kw:['insignia','insignias','conquista','conquistas','medalha','medalhas'],r:'insignias'},
+ {id:'sod',kw:['sod','orbe','pedra','talento','personagem','gamificacao','pontos','nivel','xp','recompensa'],r:'meu',sub:'sod',w:1.1},
+ {id:'pers',kw:['personalizar','personalizar perfil','capa do perfil','moldura','fundo do perfil','tema do perfil'],r:'meu',sub:'custom'},
+ {id:'fotoP',kw:['minha foto','trocar foto','foto do perfil','mudar foto'],fn:zPerfilSub('foto','Foto'),w:1.3},
+ {id:'endP',kw:['meu endereco','cep','mudar endereco'],fn:zPerfilSub('end','Endereço')},
+ {id:'contP',kw:['meu telefone','meu celular','meu email','meu whatsapp'],fn:zPerfilSub('contato','Contato')},
+ {id:'decP',kw:['decisao por cristo','aceitei jesus','batismo','batizado'],fn:zPerfilSub('dec','Decisão por Cristo')},
+ {id:'famP',kw:['meus filhos','filhos','esposa','esposo','estado civil'],fn:zPerfilSub('fam','Família')},
+ {id:'confP',kw:['trocar senha','mudar senha','redefinir senha','desligar sod','ativar sod','idioma'],fn:zPerfilSub('conf','Configurações'),w:1.3},
+ {id:'votar',kw:['presenca de deus','votar','dar nota','nota da celula','como foi a celula'],r:'celula',w:1.3},
+ {id:'visCham',kw:['visitante na chamada','adicionar pessoa na chamada','adicionar visitante','pessoa de outra celula'],r:'celula',sub:'freq',celula:1,w:1.4},
+ {id:'perm',kw:['quem pode ver','privacidade','privacidade da celula','permissoes da celula'],r:'celula',sub:'priv',celula:1}
+);
 const ZCHIPS=['Minha célula','Ler a Bíblia','Falar com os pastores','Eventos','Loja'];
 function zPensa(q){const n=' '+zNorm(q)+' ';let best=null,sc=0;
  ZI.forEach(it=>{let s=0;it.kw.forEach(k=>{if(n.includes(' '+k+' ')||(k.length>=5&&n.includes(k)))s+=k.length*(it.w||1)});if(s>sc){sc=s;best=it}});
  if(!best){ // plano B: nome de uma aba do menu
   const t=n.trim().split(' ').filter(x=>x.length>=4);let hit=null;NAV.forEach(([r,,l])=>{const ln=zNorm(l);if(t.some(w=>ln.includes(w)))hit=hit||{id:'nav',r,rot:l}});if(hit)return hit}
  return best}
-function zResp(q){const it=zPensa(q);if(!it)return{txt:'Hmm, não tenho certeza do que você procura. 🤔 Tente falar de outro jeito, ou escolha uma das opções abaixo.',chips:ZCHIPS};
+/* ===== Posts agendados (campanhas): no ar por período, sazonais, ligados/desligados à mão; a Zoe comenta cada um ===== */
+const CAMP_MODELOS=[
+ {id:'natal',nome:'Natal',mmdd:'12-01',dias:26,palavras:['natal','nascimento de jesus','papai noel'],titulo:'Feliz Natal! 🎄',texto:'Celebramos o nascimento de Jesus, o Emanuel, “Deus conosco”. Venha viver o Natal com a família Zoe.',zoe:'O **Natal** celebra o nascimento de Jesus Cristo, o Emanuel, que significa “Deus conosco”. É a lembrança de que Deus amou o mundo de tal maneira que deu o seu Filho (João 3:16). Mais que presentes e festa, é tempo de gratidão, de perdoar, de visitar quem está sozinho e de dar a Jesus o primeiro lugar. 🎄'},
+ {id:'reforma',nome:'Reforma Protestante',mmdd:'10-25',dias:8,palavras:['reforma','reforma protestante','lutero','martinho lutero','95 teses'],titulo:'Reforma Protestante 🔥',texto:'Em 31 de outubro lembramos a Reforma Protestante: a volta às Escrituras e à graça de Deus.',zoe:'A **Reforma Protestante** lembra o dia 31 de outubro de 1517, quando Martinho Lutero publicou as 95 teses e abriu um movimento de volta à Bíblia. Ela redescobriu que somos salvos pela graça, mediante a fé (Efésios 2:8-9), que as Escrituras são a nossa autoridade e que todo crente pode se achegar a Deus. Também colocou a Bíblia na língua do povo, e é por isso que hoje podemos lê-la no app. 📖'},
+ {id:'evangelico',nome:'Dia do Evangélico',mmdd:'11-30',dias:1,palavras:['dia do evangelico','evangelico','evangelicos'],titulo:'Dia do Evangélico 🙌',texto:'Dia de agradecer a Deus pela vida de cada irmão e irmã que vive e anuncia o evangelho.',zoe:'O **Dia do Evangélico** é lembrado em 30 de novembro. “Evangelho” quer dizer “boa notícia”: o anúncio de que Jesus morreu e ressuscitou para nos reconciliar com Deus. A data é um convite para agradecer pelos irmãos que vivem essa fé, orar pela unidade da igreja e lembrar que ser evangélico é, antes de tudo, seguir a Jesus todos os dias. 🙏'},
+ {id:'musico',nome:'Dia do Músico',mmdd:'11-22',dias:1,palavras:['dia do musico','dia dos musicos'],titulo:'Dia do Músico 🎶',texto:'Obrigado a cada músico que coloca o dom a serviço do louvor na Zoe!',zoe:'O **Dia do Músico** é celebrado no Brasil em 22 de novembro. Na igreja, a música conduz o coração à adoração: o Salmo 150 convoca tudo o que tem fôlego a louvar ao Senhor, com instrumentos e voz. Que tal agradecer hoje a quem serve no louvor e orar por eles? 🎶'},
+ {id:'professor',nome:'Dia do Professor',mmdd:'10-15',dias:1,palavras:['dia do professor','dia dos professores'],titulo:'Dia do Professor 📚',texto:'Gratidão aos professores e líderes que ensinam a Palavra e a vida na Zoe.',zoe:'O **Dia do Professor** é lembrado em 15 de outubro no Brasil. Na igreja, quem ensina semeia a Palavra na vida das pessoas, e o próprio Jesus foi chamado de Mestre. Agradeça hoje a quem ensinou você, na escola, nos cursos e na célula. 📚'},
+ {id:'crianca',nome:'Dia da Criança',mmdd:'10-12',dias:1,palavras:['dia da crianca','dia das criancas'],titulo:'Dia da Criança 🧒',texto:'Que alegria ter as crianças na nossa família! Jesus as ama.',zoe:'O **Dia da Criança** é 12 de outubro. Jesus disse: “Deixai vir a mim os pequeninos” (Marcos 10:14). Elas nos ensinam a confiar de coração aberto. É um bom dia para orar pelas crianças da Zoe e investir tempo com elas. 🧒'},
+ {id:'anonovo',nome:'Ano Novo',mmdd:'12-30',dias:3,palavras:['ano novo','reveillon'],titulo:'Ano Novo ✨',texto:'Agradecemos pelo ano que passou e entregamos o novo nas mãos de Deus.',zoe:'No **Ano Novo** a igreja agradece pelo que Deus fez e entrega o novo ciclo a Ele. Provérbios 16:3 diz: “Confia ao Senhor as tuas obras, e teus desígnios serão estabelecidos.” Boa hora para orar, definir metas e começar o ano na presença de Deus. ✨'},
+ {id:'baterista',nome:'Dia do Baterista',mmdd:null,dias:1,palavras:['dia do baterista'],titulo:'Dia do Baterista 🥁',texto:'Obrigado ao nosso baterista, que sustenta o ritmo da adoração!',zoe:'O **Dia do Baterista** valoriza quem mantém o tempo e o ritmo do louvor, quase sempre longe dos holofotes. O Salmo 150 fala em louvar até com tamborim. Que tal agradecer ao baterista da Zoe hoje? 🥁'},
+ {id:'vocalista',nome:'Dia do Vocalista',mmdd:null,dias:1,palavras:['dia do vocalista'],titulo:'Dia do Vocalista 🎤',texto:'Gratidão a cada voz que conduz a igreja na adoração!',zoe:'O **Dia do Vocalista** é para honrar quem conduz a igreja na adoração com a voz. Cantar é uma das formas mais antigas de louvar: “Cantai ao Senhor um cântico novo” (Salmo 96:1). Ore por quem canta e agradeça pelo cuidado deles. 🎤'},
+ {id:'outro',nome:'Outro (em branco)',mmdd:null,dias:7,palavras:[],titulo:'',texto:'',zoe:''}];
+const campIso=d=>d.toISOString().slice(0,10),campP=s=>{const p=String(s).split('-');return new Date(Date.UTC(+p[0],+p[1]-1,+p[2]))};
+const campDias=(s,n)=>{const d=campP(s);d.setUTCDate(d.getUTCDate()+n);return campIso(d)};
+const campMeses=(s,n)=>{const d=campP(s),dia=d.getUTCDate();d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+n);const u=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate();d.setUTCDate(Math.min(dia,u));return campIso(d)};
+function campFimCalc(modo,ini,qtd,fim){if(!ini)return '';if(modo==='dias')return campDias(ini,qtd-1);if(modo==='meses')return campDias(campMeses(ini,qtd),-1);if(modo==='anos')return campDias(campMeses(ini,12*qtd),-1);return fim}
+function campJan(c,h){if(!c.inicio||!c.fim)return{de:c.inicio,ate:c.fim,ativa:false,futura:false};if(!c.anual)return{de:c.inicio,ate:c.fim,ativa:h>=c.inicio&&h<=c.fim,futura:c.inicio>h};
+ const y0=+c.inicio.slice(0,4),hy=+h.slice(0,4);let prox=null,ult=null;for(let y=hy-1;y<=hy+1;y++){const dy=y-y0,de=campMeses(c.inicio,12*dy),ate=campMeses(c.fim,12*dy);if(h>=de&&h<=ate)return{de,ate,ativa:true,futura:false};if(de>h&&(!prox||de<prox.de))prox={de,ate};if(ate<h)ult={de,ate}}const j=prox||ult;return{de:j.de,ate:j.ate,ativa:false,futura:!!prox}}
+function campRe(c,h){const j=campJan(c,h),est=c.estado==='ligado'||c.estado==='desligado'?c.estado:'auto',no=est==='ligado'||(est==='auto'&&j.ativa);return Object.assign({},c,{estado:est,de:j.de,ate:j.ate,noAr:no,status:est==='desligado'?'desligada':(no?'no_ar':(j.futura?'agendada':'encerrada'))})}
+function campDemo(a,d){const L=S.campsDemo=S.campsDemo||[],h=TODAY;
+ if(a==='listCampanhas')return L.map(c=>campRe(c,h)).filter(c=>c.noAr);
+ if(a==='adminCampanhas')return L.map(c=>campRe(c,h));
+ if(a==='saveCampanha'){if(!String(d.titulo||'').trim())throw new Error('Informe o título.');if(!d.inicio)throw new Error('Informe a data de início.');const modo=d.modo||'intervalo',qtd=Math.round(+d.qtd)||0,fim=campFimCalc(modo,d.inicio,qtd,d.fim);if(!fim||fim<d.inicio)throw new Error('A data final precisa ser depois da inicial.');if(!(d.onde||[]).length)throw new Error('Escolha onde o post aparece.');
+  const ex=d.id&&L.find(x=>x.id===d.id),b={id:ex?ex.id:'cp'+Date.now(),titulo:d.titulo,texto:d.texto||'',arte:d.arte!==undefined?d.arte:(ex?ex.arte:''),zoe:d.zoe||'',preset:d.preset||'',inicio:d.inicio,fim,modo,qtd,anual:!!d.anual,onde:d.onde,estado:d.estado||'auto'};if(ex)Object.assign(ex,b);else L.push(b);save();return{id:b.id}}
+ if(a==='setCampanhaEstado'){const c=L.find(x=>x.id===d.id);if(c)c.estado=d.estado;save();return{ok:true}}
+ if(a==='deleteCampanha'){S.campsDemo=L.filter(x=>x.id!==d.id);save();return{ok:true}}return null}
+const campApi=(a,d)=>ONLINE?api(a,d):Promise.resolve().then(()=>campDemo(a,d||{}));
+async function campRecarrega(){try{S.camps=await campApi('listCampanhas',{})}catch(e){}}
+const campOnde=(c,o)=>(c.onde||[]).includes(o);
+const campAte=c=>{const t=c.estado==='ligado'?'No ar até você desligar':'No ar até '+fmt(c.ate);return t+(c.anual?' · todo ano':'')};
+function campZoeTxt(c){const m=CAMP_MODELOS.find(x=>x.id===c.preset);let t=(c.zoe||'').trim()||(m&&m.zoe)||`**${c.titulo}** está no ar na Zoe. ${c.texto||''}`.trim();return t+`\n\n📌 Esse post fica no ar ${c.estado==='ligado'?'até a liderança desligar':'até '+fmt(c.ate)}.`}
+function campCard(c){return `<article class="card camp" style="padding:0;overflow:hidden">${c.arte?`<img src="${esc(c.arte)}" alt="${esc(c.titulo)}" style="width:100%;display:block;max-height:420px;object-fit:cover">`:''}<div class="col" style="padding:14px 16px;gap:8px"><span class="chip" style="align-self:flex-start">${ic('cal',14)} ${esc(campAte(c))}</span><h3 style="margin:0">${esc(c.titulo)}</h3>${c.texto?`<p style="margin:0">${esc(c.texto)}</p>`:''}<div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn sm" onclick="campZoe('${esc(c.id)}')">✨ Zoe, me conta mais</button></div></div></article>`}
+const campFeed=()=>{const l=(S.camps||[]).filter(c=>campOnde(c,'feed'));return l.length?`<div class="col" style="gap:12px;margin-bottom:14px">${l.map(campCard).join('')}</div>`:''};
+const campNoticias=()=>{const l=(S.camps||[]).filter(c=>campOnde(c,'noticias'));return l.length?`<div class="grid w" style="margin-bottom:12px">${l.map(campCard).join('')}</div>`:''};
+function campZoe(id){const c=(S.camps||[]).find(x=>x.id===id);if(!c)return;zAbreChat();ZE.msgs.push({de:'me',txt:'Zoe, me conta mais sobre: '+c.titulo});ZE.msgs.push({de:'zoe',txt:campZoeTxt(c),chips:['Eventos','Falar com os pastores']});zDesenha(true)}
+/* administração dos posts agendados */
+const CAMPA={l:null,f:null};
+async function campAdmCarrega(){try{CAMPA.l=await campApi('adminCampanhas',{})}catch(e){CAMPA.l=[]}if(R.r==='admin')renderKeepSuave()}
+const CAMP_ST={no_ar:['No ar agora','g'],agendada:['Agendada','' ],encerrada:['Encerrada','r'],desligada:['Desligada','r']};
+function campAdmCard(){if(CAMPA.l===null){CAMPA.l=[];campAdmCarrega()}const l=CAMPA.l||[];
+ return `<div class="card flat col"><h3>Posts agendados</h3><p class="muted sm">Crie um post uma vez e diga por quanto tempo fica no ar no Início e nas Notícias. Dá para repetir todo ano (Natal, Reforma, Dia do Músico…) e ligar ou desligar à mão. A Zoe comenta cada post.</p>
+ ${l.length?l.map(c=>{const s=CAMP_ST[c.status]||['',''];return `<div class="opt" style="flex-wrap:wrap;gap:8px">${c.arte?`<img src="${esc(c.arte)}" alt="" style="width:72px;height:72px;object-fit:cover;border-radius:10px;flex:none">`:`<span class="pph sm">${ic('cal',22)}</span>`}<div style="flex:1;min-width:180px"><b>${esc(c.titulo)}</b> <span class="chip ${s[1]}">${s[0]}</span>${c.anual?' <span class="chip">todo ano</span>':''}<div class="muted sm">${c.estado==='ligado'?'Sempre no ar (manual)':fmt(c.de)+' a '+fmt(c.ate)} · ${(c.onde||[]).map(o=>o==='feed'?'Início':'Notícias').join(' e ')}</div></div>
+  <select onchange="campEstado('${esc(c.id)}',this.value)" aria-label="Controle manual de ${esc(c.titulo)}"><option value="auto" ${c.estado==='auto'?'selected':''}>Automático (pelas datas)</option><option value="ligado" ${c.estado==='ligado'?'selected':''}>Sempre no ar</option><option value="desligado" ${c.estado==='desligado'?'selected':''}>Desligado</option></select>
+  <button class="btn sm ghost" onclick="campForm('${esc(c.id)}')">${ic('pen',14)} Editar</button><button class="heart" onclick="campApaga('${esc(c.id)}')" aria-label="Apagar ${esc(c.titulo)}">${ic('trash',16)}</button></div>`}).join(''):'<p class="muted sm">Nenhum post agendado ainda.</p>'}
+ <div><button class="btn" onclick="campForm('')">${ic('plus',16)} Novo post agendado</button></div></div>`}
+async function campEstado(id,est){try{await campApi('setCampanhaEstado',{id,estado:est});await campAdmCarrega();await campRecarrega();toast(est==='ligado'?'Post sempre no ar':est==='desligado'?'Post desligado':'Post volta a seguir as datas')}catch(e){toast(e.message,'err')}}
+async function campApaga(id){const c=(CAMPA.l||[]).find(x=>x.id===id);if(!c||!confirm('Apagar o post agendado "'+c.titulo+'"?'))return;try{await campApi('deleteCampanha',{id});await campAdmCarrega();await campRecarrega();toast('Post apagado')}catch(e){toast(e.message,'err')}}
+const CAMP_ATALHOS=[['7 dias','dias',7],['15 dias','dias',15],['1 mês','meses',1],['2 meses','meses',2],['3 meses','meses',3],['6 meses','meses',6],['1 ano','anos',1]];
+function campForm(id){const c=id?(CAMPA.l||[]).find(x=>x.id===id):null,v=c||{titulo:'',texto:'',zoe:'',preset:'',inicio:TODAY,modo:'dias',qtd:7,fim:'',anual:false,onde:['feed','noticias'],estado:'auto',arte:''};CAMPA.f={id:id||'',arte:v.arte||'',mudou:false,preset:v.preset||''};
+ modal(`<h2 style="margin:0">${c?'Editar':'Novo'} post agendado</h2><div class="col" style="gap:10px;margin-top:8px">
+ <label class="f">Começar de um modelo<select id="cf_mod" onchange="campModelo(this.value)"><option value="">Em branco</option>${CAMP_MODELOS.filter(m=>m.id!=='outro').map(m=>`<option value="${m.id}" ${v.preset===m.id?'selected':''}>${esc(m.nome)}${m.mmdd?'':' (você escolhe a data)'}</option>`).join('')}</select></label>
+ <label class="f">Título<input id="cf_t" maxlength="120" value="${esc(v.titulo)}" placeholder="Ex.: Período da Reforma"></label>
+ <label class="f">Texto do post<textarea id="cf_x" maxlength="1500" rows="3">${esc(v.texto)}</textarea></label>
+ <div class="f">Arte do post<div id="cf_art">${campArteHTML()}</div><div class="row" style="gap:8px"><label class="btn ghost sm">${ic('image',14)} Escolher arte<input type="file" accept="image/*" hidden onchange="campArte(this)"></label><button type="button" class="btn ghost sm" onclick="campArteTira()">Tirar a arte</button></div><span class="muted sm">A arte pode ser trocada quando quiser, inclusive em posts que se repetem todo ano.</span></div>
+ <label class="f">O que a Zoe fala sobre isso<textarea id="cf_z" maxlength="600" rows="3" placeholder="Deixe em branco para a Zoe usar o texto do modelo">${esc(v.zoe)}</textarea></label>
+ <div class="f">Por quanto tempo fica no ar<div class="row" style="gap:6px;flex-wrap:wrap">${CAMP_ATALHOS.map(([t,m,q])=>`<button type="button" class="chip" style="cursor:pointer" onclick="campAtalho('${m}',${q})">${t}</button>`).join('')}</div></div>
+ <div class="form"><label class="f">Dia inicial<input type="date" id="cf_i" value="${esc(v.inicio)}" oninput="campPrev()"></label>
+ <label class="f">Definir por<select id="cf_m" onchange="campPrev()"><option value="dias" ${v.modo==='dias'?'selected':''}>Quantidade de dias</option><option value="meses" ${v.modo==='meses'?'selected':''}>Quantidade de meses</option><option value="anos" ${v.modo==='anos'?'selected':''}>Quantidade de anos</option><option value="intervalo" ${v.modo==='intervalo'?'selected':''}>Do dia inicial ao dia final</option></select></label>
+ <label class="f" id="cf_qw">Quantidade<input type="number" id="cf_q" min="1" value="${v.qtd||7}" oninput="campPrev()"></label><label class="f" id="cf_fw">Dia final<input type="date" id="cf_f" value="${esc(v.fim||'')}" oninput="campPrev()"></label></div>
+ <div class="chip" id="cf_prev" style="align-self:flex-start"></div>
+ <label class="chip" style="cursor:pointer;align-self:flex-start"><input type="checkbox" id="cf_a" ${v.anual?'checked':''} onchange="campPrev()"> Sazonal: repetir todo ano nesta data</label>
+ <div class="f">Onde aparece<div class="row" style="gap:8px;flex-wrap:wrap"><label class="chip" style="cursor:pointer"><input type="checkbox" id="cf_o1" ${(v.onde||[]).includes('feed')?'checked':''}> Página inicial</label><label class="chip" style="cursor:pointer"><input type="checkbox" id="cf_o2" ${(v.onde||[]).includes('noticias')?'checked':''}> Notícias</label></div></div>
+ <label class="f">Controle manual<select id="cf_e"><option value="auto" ${v.estado==='auto'?'selected':''}>Automático: entra e sai nas datas</option><option value="ligado" ${v.estado==='ligado'?'selected':''}>Sempre no ar (ignora as datas)</option><option value="desligado" ${v.estado==='desligado'?'selected':''}>Desligado (não aparece)</option></select></label>
+ <div class="row" style="gap:8px"><button class="btn" onclick="campSalva()">Salvar</button><button class="btn ghost" onclick="closeL()">Cancelar</button></div></div>`);campPrev()}
+const campArteHTML=()=>CAMPA.f&&CAMPA.f.arte?`<img src="${esc(CAMPA.f.arte)}" alt="Arte do post" style="max-width:100%;max-height:220px;border-radius:12px">`:'<span class="muted sm">Sem arte</span>';
+function campArte(inp){const f=inp.files[0];if(!f)return;redimMax(f,d=>{CAMPA.f.arte=d;CAMPA.f.mudou=true;const e=$('#cf_art');if(e)e.innerHTML=campArteHTML()})}
+function campArteTira(){CAMPA.f.arte='';CAMPA.f.mudou=true;const e=$('#cf_art');if(e)e.innerHTML=campArteHTML()}
+function campAtalho(m,q){$('#cf_m').value=m;$('#cf_q').value=q;campPrev()}
+function campModelo(id){const m=CAMP_MODELOS.find(x=>x.id===id);if(!m)return;CAMPA.f.preset=id;const set=(i,v)=>{const e=$('#'+i);if(e)e.value=v};set('cf_t',m.titulo);set('cf_x',m.texto);set('cf_z','');
+ if(m.mmdd){const y=+TODAY.slice(0,4);let ini=y+'-'+m.mmdd;if(campDias(ini,m.dias-1)<TODAY)ini=(y+1)+'-'+m.mmdd;set('cf_i',ini);set('cf_m','dias');set('cf_q',m.dias);$('#cf_a').checked=true}else{$('#cf_a').checked=true}campPrev()}
+function campLe(){const g=i=>($('#'+i)||{}).value,modo=g('cf_m'),ini=g('cf_i'),qtd=Math.round(+g('cf_q'))||0,fimU=g('cf_f'),fim=campFimCalc(modo,ini,qtd,fimU);return{modo,ini,qtd,fim,anual:!!($('#cf_a')||{}).checked}}
+function campPrev(){const l=campLe(),q=$('#cf_qw'),f=$('#cf_fw');if(q)q.style.display=l.modo==='intervalo'?'none':'';if(f)f.style.display=l.modo==='intervalo'?'':'none';const e=$('#cf_prev');if(!e)return;
+ if(!l.ini||!l.fim){e.textContent='Escolha o dia inicial'+(l.modo==='intervalo'?' e o final':'');e.className='chip r';return}if(l.fim<l.ini){e.textContent='O dia final precisa ser depois do inicial';e.className='chip r';return}
+ const n=Math.round((campP(l.fim)-campP(l.ini))/864e5)+1;e.className='chip g';e.textContent=`No ar de ${fmt(l.ini)} a ${fmt(l.fim)} (${n} ${n===1?'dia':'dias'})${l.anual?' · e todo ano nesta data':''}`}
+async function campSalva(){const l=campLe(),g=i=>($('#'+i)||{}).value,onde=[$('#cf_o1').checked?'feed':'',$('#cf_o2').checked?'noticias':''].filter(Boolean),F=CAMPA.f;
+ const p={id:F.id||undefined,titulo:g('cf_t').trim(),texto:g('cf_x').trim(),zoe:g('cf_z').trim(),preset:F.preset,inicio:l.ini,modo:l.modo,qtd:l.qtd,fim:l.modo==='intervalo'?g('cf_f'):undefined,anual:l.anual,onde,estado:g('cf_e')};if(F.mudou)p.arte=F.arte;
+ try{await campApi('saveCampanha',p);closeL();await campAdmCarrega();await campRecarrega();render();toast('Post agendado salvo')}catch(e){toast(e.message,'err')}}
+
+function zResp(q){const cq=zCampPerg(q);if(cq)return cq;const it=zPensa(q);if(!it)return{txt:'Hmm, não tenho certeza do que você procura. 🤔 Tente falar de outro jeito, ou escolha uma das opções abaixo.',chips:ZCHIPS};
+ if(it.fn)return it.fn();
  if(it.oi)return{txt:'Oi, que bom te ver por aqui! 💛 Em que posso te ajudar?',chips:ZCHIPS};
  if(it.guia)return{txt:'Quer rever o tutorial? Eu te mostro tudo de novo! ✨',acao:['Rever o tutorial','zRever()']};
  if(it.sel)return{txt:it.txt,mostrar:{sel:it.sel}};
@@ -1126,7 +1247,7 @@ function zResp(q){const it=zPensa(q);if(!it)return{txt:'Hmm, não tenho certeza 
  if(it.celula&&!zEmCelula())return{txt:'Essa parte fica dentro de **Células**, e você ainda não está em uma. Em **Buscar células** você encontra a mais perto de casa! 📍',mostrar:{r:'buscar'}};
  if(!zNavEl(r))return{txt:`A área **${rot}** não está liberada para o seu perfil agora. Se precisar dela, fale com a liderança. 🙏`};
  if(it.celula){const T=['freq','plan','papeis','oracao','ind','membros','perfilc','priv','pres','hist','mural','org'];const pc=S.permCel,ok=!ONLINE||!pc||can('celulas')||(pc[sub]&&pc[sub].v);if(!ok)return{txt:`Essa guia de **Células** não está liberada para o seu perfil. Fale com o seu líder. 🙏`}}
- const subt=sub?{freq:'Frequência',plan:'Planejamento',oracao:'Oração',mural:'Mural de fotos',org:'Organograma',feitos:'Cursos que você fez',pastores:'Nossos Pastores',onde:'Onde estamos'}[sub]:'';
+ const subt=sub?{freq:'Frequência',plan:'Planejamento',oracao:'Oração',mural:'Mural de fotos',org:'Organograma',priv:'Privacidade',feitos:'Cursos que você fez',pastores:'Nossos Pastores',onde:'Onde estamos',quem:'Quem somos',prog:'Programação',fale:'Fale com a Igreja',sod:'Sod',custom:'Personalizar',editar:'Editar perfil'}[sub]:'';
  return{txt:`Você encontra isso em **${rot}**${subt?`, na guia **${subt}**`:''}. Vem que eu te mostro! ✨`,mostrar:{r,sub}}}
 function zToggle(){if(Date.now()-(ZE.dragT||0)<400)return;if(ZE.on)return;ZE.chat?zFechaChat():zAbreChat()}
 function zAbreChat(){zMount();ZE.chat=true;const c=$('#zchat');c.hidden=false;$('#zoe').classList.add('chatOn');zReposiciona();zFecha();zIdle();
@@ -1141,7 +1262,7 @@ function zDesenha(animaUltima){const m=$('#zms');if(!m)return;m.innerHTML=ZE.msg
 function zEnvia(e){e.preventDefault();const q=$('#zq'),v=q.value.trim();if(!v)return false;q.value='';zPerg(v);return false}
 function zPerg(v){ZE.msgs.push({de:'me',txt:v});const r=zResp(v);ZE.msgs.push(Object.assign({de:'zoe'},r));zDesenha(true);const q=$('#zq');if(q)q.focus()}
 async function zMostrar(i){const x=ZE.msgs[i];if(!x||!x.mostrar)return;const m=x.mostrar;zFechaChat();
- if(m.r){go(m.r,m.sub);await new Promise(r=>setTimeout(r,S.anim?500:80));if(zMob())menu(true);const el=m.sub?(document.querySelector('.tabs button.on')||zNavEl(m.r)):zNavEl(m.r);zSpot(el,5000);
+ if(m.r){go(m.r,m.sub);if(m.perfil){R.sub.perfil=m.perfil;render()}await new Promise(r=>setTimeout(r,S.anim?500:80));if(zMob())menu(true);const el=m.sub?(document.querySelector('.tabs button.on')||zNavEl(m.r)):zNavEl(m.r);zSpot(el,5000);
   if(m.sub&&el){const t=document.querySelector('.tabs');if(t)zSpot(t,5000)}}
  else if(m.sel){if(zMob()&&m.sel.indexOf('side')>=0)menu(true);zSpot(document.querySelector(m.sel),5000)}
  zFala(m.r?'Chegamos! ✨ Está destacado aí na tela.':'É aqui! ✨',{btns:[['Obrigado!','zFecha()',1]],vel:14});setTimeout(()=>{if(!ZE.on)zFecha()},4200)}
@@ -1222,7 +1343,7 @@ function ondeSobe(inp){const f=inp.files[0];if(!f)return;redimMax(f,async d=>{co
 async function ondeTira(){if(!confirm('Remover a foto da frente da igreja?'))return;if(!ONLINE){S.muralFam=S.muralFam||{};S.muralFam.onde=[];save();MF.d.onde=[];toast('Foto removida');return render()}const r=await push('saveMural',{pagina:'onde',itens:[]},'Foto removida');if(r){MF.d.onde=[];render()}}
 function ondeTela(){return `<div class="card flat col"><h2>Onde estamos</h2><p>${S.local?esc(S.local):'<span class="muted">O endereço ainda não foi definido em Administração.</span>'}</p></div>${ondeHTML(false)}<div><a class="btn ghost" target="_blank" rel="noopener" href="${esc(S.mapa||MAPA_URL)}">${ic('pin',16)} Abrir no app do Google Maps</a></div>`}
 function progHTML(){return `<div class="card flat col"><h2>Programação</h2><div class="chip" style="align-self:flex-start">DOMINGO</div><div class="opt"><div><b>17:30</b> · Mesa de comunhão</div></div><div class="opt"><div><b>18:00</b> · Culto coletivo</div></div></div>`}
-function noticiasHTML(){return NOTICIAS.length?`<div class="grid w">${NOTICIAS.map(n=>`<article class="card"><h3>${esc(n.t)}</h3><p class="muted sm">${esc(n.d)}</p><p style="margin-top:6px">${esc(n.s)}</p></article>`).join('')}</div>`:`<div class="card flat col"><p class="muted sm">Nenhuma notícia por enquanto.</p></div>`}
+function noticiasHTML(){return campNoticias()+(NOTICIAS.length?`<div class="grid w">${NOTICIAS.map(n=>`<article class="card"><h3>${esc(n.t)}</h3><p class="muted sm">${esc(n.d)}</p><p style="margin-top:6px">${esc(n.s)}</p></article>`).join('')}</div>`:`<div class="card flat col"><p class="muted sm">Nenhuma notícia por enquanto.</p></div>`)}
 function faleHTML(){return `<div class="card flat col"><h2>Fale com a Igreja</h2><p class="muted sm">Preencha uma prévia do assunto. Ao enviar, abrimos o WhatsApp da igreja.</p><div class="form"><label class="f">Seu nome<input id="fn" value="${esc(S.perfil.simples)}"></label><label class="f">Assunto<select id="fa"><option>Oração</option><option>Visita pastoral</option><option>Dúvida sobre célula</option><option>Cursos e eventos</option><option>Outro</option></select></label><label class="f full">Mensagem<textarea id="fm" placeholder="Conte em poucas linhas"></textarea></label></div>
   ${S.whats?`<div><a class="btn" id="wa" href="#" onclick="return fale(this)" target="_blank" rel="noopener">${ic('send',16)} Iniciar conversa no WhatsApp</a></div>`:`<p class="chip r" style="align-self:flex-start">O número da igreja ainda não foi definido em Administração.</p>`}</div>`}
 function visaoHTML(){const sec=(id,corpo)=>`<section class="lp-sec" id="lp_${id}">${corpo}</section>`;
@@ -1306,7 +1427,7 @@ async function hydrate(){
  const cel=me.celula;S.celulaId=cel?cel.id:'';
  S.cell=cel?{nome:cel.nome,desc:cel.descricao,foto:cel.foto,dia:cel.dia,inicio:cel.inicio,coord:cel.coordenadas||'',priv:cel.priv||{grupo:false,tel:false,email:false,end:false}}:{nome:'Sem célula',desc:'',foto:'',dia:'',inicio:'',priv:{grupo:false,tel:false,email:false,end:false}};
  vitLog('Carregando eventos, ministérios, notícias e vídeos');const[ev,mi,nw,vd,cu,li,di,an,sc,og,tes]=await Promise.all([B('listEvents'),B('listMinistries'),B('listNews'),B('listVideos'),B('listCourses'),B('listLessons'),B('listDynamics'),B('birthdays'),B('searchCells'),(canOrg()?B('orgTree').catch(()=>null):null),B('listTestimonies')]);
- S.produtos=await B('listProducts').catch(()=>[]);S.fam=await B('listFamilia').catch(()=>({pastores:[],midia:[]}));
+ S.camps=await B('listCampanhas').catch(()=>[]);S.produtos=await B('listProducts').catch(()=>[]);S.fam=await B('listFamilia').catch(()=>({pastores:[],midia:[]}));
  mapEvents(ev);S.ministerios=mi.map(x=>x.nome);S.minIds=mi.map(x=>x.id);S.minFotos=mi.map(x=>x.foto||'');S.minDesc=mi.map(x=>x.descricao||'');mapNews(nw);S.videos=vd.map(mapV);mapCourses(cu);mapLessons(li);mapDyn(di);S.aniv=an;mapCells(sc);setOrg(og);S.testemunhos=tes;S.cultoNotas=(BOOT&&BOOT.listCultoNotes&&!BOOT.listCultoNotes.__erro)?BOOT.listCultoNotes:null;S.livros=[];S.livroCom={};LB.loaded=false;LB.open=null;
  S.membros=[];S.historico=[];S.ind=null;S.papeis={};S.oracoes=[];S.indC=[];S.indE=[];S.transf=[];S.interesses=me.interesses||[];S.membresia=me.membresia||null;S.freqMembro=c.frequenciasParaMembro||4;S.aprov={itens:[],pendentes:0};S.notifs={itens:[],naoLidas:0};S.guiaVisto=!!me.guiaVisto;
  if(cel)vitLog('Carregando a sua célula');if(cel&&S.permCel){const pv=g=>!!(S.permCel[g]&&S.permCel[g].v),tr=p=>p.catch(()=>null);
@@ -1443,7 +1564,7 @@ let S;
 try{S=JSON.parse(localStorage.getItem(ONLINE?'zoe-prefs':'zoe-app')||'null')}catch(e){S=null}
 S=S?Object.assign({},DEF,S):JSON.parse(JSON.stringify(DEF));
 for(const k of Object.keys(DEF)){if(S[k]===undefined)S[k]=DEF[k]}
-const PREF=['zMom','theme','anim','collapsed','notas','fav','favD','mural','muralItems','bib','celId','pos','alertsOff'];
+const PREF=['zMom','theme','anim','collapsed','notas','fav','favD','mural','muralItems','campsDemo','bib','celId','pos','alertsOff'];
 function save(){try{if(ONLINE){const o={};PREF.forEach(k=>o[k]=S[k]);localStorage.setItem('zoe-prefs',JSON.stringify(o))}else localStorage.setItem('zoe-app',JSON.stringify(S))}catch(e){}}
 const CELULAS=[
  {n:'Semeadores',dia:'Quinta',ini:'20:00',fim:'21:30',cat:'Mulheres e Homens',faixa:'Jovens',bairro:'Chácaras Coimbra',cid:'Águas Lindas de Goiás',uf:'GO',lider:'Fábio Botero',x:34,y:42,sup:'Supervisão Norte'},
@@ -1559,7 +1680,7 @@ function bellAuto(){const p=$('#layer .pop');if(!p)return;clearTimeout(BELL.t);B
 
 /* ---------- views ---------- */
 const VIEWS={
-feed(){return casaBanner()+hgridHTML()},
+feed(){return casaBanner()+campFeed()+hgridHTML()},
 
 perfil(){const s=R.sub.perfil;const p=S.perfil;
  const T=[['info','Informações'],['env','Envolvimento'],['foto','Foto'],['contato','Contato'],['end','Endereço'],['dec','Decisão por Cristo'],['fam','Família'],...(ONLINE&&(can('prof')||can('cursos'))?[['assin','Assinatura']]:[]),['conf','Configurações']];
@@ -1697,7 +1818,7 @@ tutoriais(){if(ONLINE&&Date.now()-(S.vTs||0)>20000){S.vTs=Date.now();vidRefresh(
 admin(){const P=S.perm;const rolesN={admin:'Administrador',pastor:'Pastor',professor:'Professor',supervisor:'Supervisor',lider:'Líder de célula',membro:'Membro'};const ps=[['eventos','Lançar eventos'],['transf','Aprovar transferências'],['celulas','Criar e gerir todas as células'],['min','Gerenciar ministérios'],['config','Configurações gerais'],['prof','Dar aulas: criar cursos, aulas e certificados'],['cursos','Supervisão de cursos: aprovar cursos, início e matrículas']];
  const cc=can('config'),cm=can('min'),ce=can('eventos'),cl=can('celulas'),on=ONLINE;
  const G=(t,x)=>x.trim()?`<div class="grp"><h2>${t}</h2></div>`+x:'';
- const gs=[['pub','Publicações',(canMod()?bibAdmCard():'')+(cc?lessonCard()+admBloco('licoes','Lições publicadas'):'')+(ce?eventoCard()+checkinCard()+admBloco('eventos','Eventos publicados')+admBloco('corridas','Maratona Bíblica (programar)')+admBloco('noticias','Notícias publicadas'):'')+(cm?ministeriosCard()+(on?interestsCard():''):'')+(cc?videosCard()+admBloco('videos','Vídeos cadastrados')+admBloco('cursos','Cursos antigos (cadastro simples)')+admBloco('dinamicas','Dinâmicas publicadas'):'')+(cc?admBloco('pastores','Nossos Pastores (Família Zoe)')+admBloco('familia','Quem somos: fotos e vídeos'):'')],
+ const gs=[['pub','Publicações',(canMod()?bibAdmCard():'')+(cc?lessonCard()+admBloco('licoes','Lições publicadas'):'')+(ce?campAdmCard()+eventoCard()+checkinCard()+admBloco('eventos','Eventos publicados')+admBloco('corridas','Maratona Bíblica (programar)')+admBloco('noticias','Notícias publicadas'):'')+(cm?ministeriosCard()+(on?interestsCard():''):'')+(cc?videosCard()+admBloco('videos','Vídeos cadastrados')+admBloco('cursos','Cursos antigos (cadastro simples)')+admBloco('dinamicas','Dinâmicas publicadas'):'')+(cc?admBloco('pastores','Nossos Pastores (Família Zoe)')+admBloco('familia','Quem somos: fotos e vídeos'):'')],
   ['acc','Acessos',(on&&cc?usersNovoCard()+usersCard()+admBloco('membros','Membros cadastrados'):'')+(cc?niveisCard(ps,P,rolesN):'')],
   ['ind','Indicadores',on&&cc?usoCard():''],
   ['des','Desempenho e capacidade',on&&cc?desempenhoCard():''],
@@ -2958,7 +3079,7 @@ function hbDef(){return{
  domingo:{t:'Programação de domingo',w:3,h:13,r:()=>`<div class="card"><div class="row"><span class="chip">${ic('cross',14)} Programação de domingo</span></div><p style="margin-top:10px"><b>17:30</b> Mesa de comunhão<br><b>18:00</b> Culto coletivo</p></div>`},
  cultos:{t:'Anotações dos cultos',w:6,h:14,r:cultosHTML},
  testemunhos:{t:'Testemunhos',w:6,h:14,r:testemunhosHTML},
- noticias:{t:'Notícias e eventos',w:12,h:12,r:()=>`<h2>Notícias e eventos</h2>
+ noticias:{t:'Notícias e eventos',w:12,h:12,r:()=>`<h2>Notícias e eventos</h2>${campNoticias()}
  ${can('eventos')?`<div class="card flat col"><b>Nova postagem</b><input id="npt" placeholder="Título"><textarea id="nps" placeholder="Texto da notícia ou evento"></textarea><div><button class="btn sm" onclick="postar()">Publicar no feed</button></div></div>`:''}
  <div class="grid w">${[...(S.posts||[]),...NOTICIAS].map(n=>`<article class="card"><div class="pic-ph ${n.r?'r':''}">${ic(n.r?'grad':'cross',34)}</div><h3 style="margin:12px 0 2px">${esc(n.t)}</h3><p class="muted sm">${n.d}</p><p style="margin-top:6px">${esc(n.s)}</p></article>`).join('')}</div>`}}}
 function hlLay(){const base=(HL.edit&&HL.draft)||S.homeLayout||[],D=hbDef(),seen={},out=[];base.forEach(b=>{if(D[b.id]&&!seen[b.id]){seen[b.id]=1;out.push({id:b.id,on:b.on!==false,w:Math.max(2,Math.min(12,b.w||D[b.id].w)),h:Math.max(3,Math.min(80,b.h||D[b.id].h)),fh:b.fh>0?Math.max(80,Math.min(700,b.fh)):0,fit:b.fit==='contain'?'contain':'cover'})}});Object.keys(D).forEach(k=>{if(!seen[k])out.push({id:k,on:true,w:D[k].w,h:D[k].h})});return out}
