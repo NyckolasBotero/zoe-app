@@ -1,5 +1,15 @@
 [
  {
+  "titulo": "Senhas visíveis ao admin, instalação e Árvore Zoe em círculo",
+  "melhorias": [
+   "Administração › Usuários: o administrador toca em \"Ver senhas\", confirma a própria senha e vê a senha atual de cada pessoa (com botão de copiar). As senhas ficam cifradas na planilha e cada consulta entra na auditoria. Quem já tinha senha antes desta versão aparece como \"não registrada\" até trocar ou ganhar uma nova.",
+   "O aviso \"Instale o app\" não volta mais para quem já instalou: o app lembra que está instalado, e há o botão \"Já instalei\". \"Agora não\" esconde o aviso por 3 dias.",
+   "Árvore Zoe: Cristo Jesus no centro, as famílias ao redor e as pessoas se espalhando em curvas, sem barras verticais. Vale para \"Minha família\" e \"Toda a igreja\"."
+  ],
+  "v": "1.87",
+  "data": "31/10/2026"
+ },
+ {
   "data": "31/10/2026",
   "titulo": "Posts agendados e Zoe mais esperta",
   "melhorias": [

@@ -1432,3 +1432,16 @@ test('Mural da célula: compartilhado por quem é da célula, visível a todos; 
   assert.equal(e.call('delMuralItem', { itemId: novo.data.id }, A).ok, true); assert.equal(e.call('getCellMural', { celulaId: c }, adm).data.itens.length, 1);
   assert.equal(e.call('getCellMural', { celulaId: 'nada' }, X).error.code, 'NOT_FOUND');
 });
+test('admin vê as senhas (cifradas na planilha), com confirmação e só o admin', () => {
+  const { e, adm, tok, mk } = boot(); mk('joao@zoe.com', 'membro'); mk('lider@zoe.com', 'membro');
+  assert.equal(e.call('viewPasswords', { senhaAdmin: 'errada' }, adm).error.code, 'AUTH');
+  const r = e.call('viewPasswords', { senhaAdmin: 'SenhaForte123' }, adm); assert.ok(r.ok, JSON.stringify(r));
+  assert.equal(r.data.senhas['joao@zoe.com'], 'Temp12345'); assert.equal(r.data.senhas['admin@zoe.com'], 'SenhaForte123');
+  // a planilha não guarda o texto puro
+  const linhas = JSON.stringify(e.run(`table_('Usuarios').rows`)); assert.ok(!linhas.includes('Temp12345') && !linhas.includes('SenhaForte123'));
+  // quem troca a própria senha ou o admin redefine: o valor acompanha
+  const J = tok('joao@zoe.com', 'Temp12345'); assert.ok(e.call('changePassword', { atual: 'Temp12345', nova: 'NovaSenha999' }, J).ok);
+  assert.ok(e.call('setUser', { email: 'lider@zoe.com', senha: 'Outra123456' }, adm).ok);
+  const r2 = e.call('viewPasswords', { senhaAdmin: 'SenhaForte123' }, adm).data.senhas; assert.equal(r2['joao@zoe.com'], 'NovaSenha999'); assert.equal(r2['lider@zoe.com'], 'Outra123456');
+  assert.equal(e.call('viewPasswords', { senhaAdmin: 'x' }, tok('lider@zoe.com', 'Outra123456')).error.code, 'FORBIDDEN');
+});

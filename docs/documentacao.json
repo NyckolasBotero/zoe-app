@@ -148,5 +148,13 @@
    "Sazonal: marca \"repetir todo ano\". Controle manual: Automático, Sempre no ar ou Desligado. A janela é calculada na leitura, sem gatilhos.",
    "Aba Campanhas na planilha é criada sozinha (lazy_). A Zoe fala de cada post e explica datas como Natal, Reforma, Dia do Músico."
   ]
+ },
+ {
+  "t": "Senhas, instalação e Árvore radial",
+  "itens": [
+   "viewPasswords (só admin, exige a senha do admin): devolve as senhas guardadas cifradas na coluna Usuarios.SenhaVis (chave PW_KEY nas Propriedades do script). Senhas antigas só aparecem depois de trocadas.",
+   "PWA: flag localStorage zoe-inst marca o app como instalado; \"Agora não\" dura 3 dias (zoe-pushbar-ate).",
+   "Árvore: avRadial desenha o círculo com Cristo Jesus no centro, hubs das famílias e curvas cúbicas."
+  ]
  }
 ]

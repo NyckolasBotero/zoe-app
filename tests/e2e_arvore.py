@@ -14,10 +14,10 @@ with sync_playwright() as p:
     # Árvore da família da Avana (visão da liderança) e da igreja
     pg.evaluate("go('arvore')"); pg.wait_for_selector('#av_arv'); pg.click('.tabs >> text=Toda a igreja'); pg.wait_for_selector('text=famílias na Árvore Zoe')
     pg.wait_for_selector('#av_orgs .avf',timeout=10000); assert pg.locator('#av_orgs .avf').count()==2, 'uma caixa por família no organograma'
-    assert pg.locator('#av_orgs .avn').count()>=5, 'as pessoas de cada família aparecem com os vínculos'; assert 'Igreja Zoe' in pg.text_content('#av_orgs')
+    assert pg.locator('#av_orgs .avn').count()>=5, 'as pessoas de cada família aparecem com os vínculos'; assert 'Cristo' in pg.text_content('#av_orgs') and 'Jesus' in pg.text_content('#av_orgs')
     pg.screenshot(path=OUT+'/arvore_igreja.png',full_page=True)
     pg.click('button[aria-label="Aumentar"]'); assert pg.inner_text('#av_zp').endswith('%')
-    pg.locator('#av_orgs .avf:has-text("Família Botero")').click(); pg.wait_for_selector('.avn',timeout=10000); assert pg.locator('.avn').count()==3, pg.locator('.avn').count()
+    pg.locator('#av_orgs .avf[aria-label^="Família Botero"]').click(); pg.wait_for_selector('.avn',timeout=10000); assert pg.locator('.avn').count()==3, pg.locator('.avn').count()
     pg.screenshot(path=OUT+'/arvore.png',full_page=True)
     # sugestão por sobrenome ao digitar um nome
     pg.fill('#kin_q','Isabela Santos'); pg.wait_for_selector('#kin_sug:has-text("Parece ser a pessoa")',timeout=8000)

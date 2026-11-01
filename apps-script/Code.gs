@@ -33,7 +33,7 @@ const DEFAULT_PERMS = {
 };
 const PERMS_ZERO = { eventos: 0, transf: 0, celulas: 0, min: 0, config: 0, prof: 0, cursos: 0 };
 const SHEETS = {
-  Usuarios: ['Email', 'SenhaHash', 'Salt', 'Papel', 'Status', 'MembroID', 'TrocarSenha', 'CriadoEm', 'UltimoAcesso', 'GuiaVisto'],
+  Usuarios: ['Email', 'SenhaHash', 'Salt', 'Papel', 'Status', 'MembroID', 'TrocarSenha', 'CriadoEm', 'UltimoAcesso', 'GuiaVisto', 'SenhaVis'],
   Membros: ['MembroID', 'Nome', 'Simples', 'Apelido', 'Sexo', 'Nascimento', 'Nacionalidade', 'Naturalidade', 'Sangue', 'Doador', 'Profissao', 'Telefone', 'Email', 'CEP', 'UF', 'Cidade', 'Endereco', 'Bairro', 'DataDecisao', 'Batizado', 'DataBatismo', 'IgrejaBatismo', 'Mae', 'Pai', 'EstadoCivil', 'Conjuge', 'DataCasamento', 'Filhos', 'Foto', 'CelulaID', 'EhMembro', 'Status', 'DataSaida', 'Extras', 'AceitePrivacidade', 'AceiteTermos', 'CriadoEm', 'DataEntrada', 'Lat', 'Lng', 'SodOff'],
   Celulas: ['CelulaID', 'Nome', 'Descricao', 'Foto', 'LiderID', 'SupervisorID', 'Dia', 'Inicio', 'Fim', 'Categoria', 'Faixa', 'Bairro', 'Cidade', 'UF', 'Endereco', 'TreinamentoID', 'MaeID', 'PrivGrupo', 'PrivTel', 'PrivEmail', 'PrivEnd', 'Status', 'Lat', 'Lng'],
   Reunioes: ['ReuniaoID', 'CelulaID', 'Data', 'Presentes', 'PresencaDeDeus', 'Obs', 'ForaDoDia', 'Elenco', 'Termometro', 'Foto'],
@@ -145,7 +145,7 @@ function criarAdmin(email, senha, nome) {
   const u = table_('Usuarios'); if (u.rows.some(function (r) { return String(r.Email).toLowerCase() === email; })) throw new Error('Usuário já existe.');
   const mid = id_('M'); appendRow_(table_('Membros'), { MembroID: mid, Nome: nome || email, Simples: nome || email, Apelido: String(nome || email).split(' ')[0], Email: email, EhMembro: '1', Status: 'Ativo', CriadoEm: now_() });
   const salt = Utilities.getUuid();
-  appendRow_(u, { Email: email, SenhaHash: hash_(salt, String(senha)), Salt: salt, Papel: 'admin', Status: 'Ativo', GuiaVisto: '0', MembroID: mid, TrocarSenha: '', CriadoEm: now_() });
+  appendRow_(ensureCols_('Usuarios', ['SenhaVis']), { Email: email, SenhaVis: pwEnc_(String(senha), salt), SenhaHash: hash_(salt, String(senha)), Salt: salt, Papel: 'admin', Status: 'Ativo', GuiaVisto: '0', MembroID: mid, TrocarSenha: '', CriadoEm: now_() });
   Logger.log('Administrador criado: ' + email);
 }
 function ensureSheet_(ss, name, headers) {
@@ -188,6 +188,18 @@ function norm_(s) { return String(s || '').toLowerCase().normalize('NFD').replac
 function jparse_(s, d) { try { return s ? JSON.parse(s) : d; } catch (e) { return d; } }
 function json_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
 function audit_(user, action, alvo, res) { try { appendRow_(table_('Auditoria'), { Data: now_(), Usuario: user, Acao: action, Alvo: alvo || '', Resultado: res || 'OK' }); } catch (e) { } }
+// Senha visível ao administrador: guardada CIFRADA (nunca em texto puro na planilha), com chave nas Propriedades do script.
+function pwKey_() { const p = PropertiesService.getScriptProperties(); let k = p.getProperty('PW_KEY'); if (!k) { k = Utilities.getUuid() + Utilities.getUuid(); p.setProperty('PW_KEY', k); } return k; }
+function pwStream_(salt, n) { let out = [], h = pwKey_() + salt; while (out.length < n) { h = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, h)); Utilities.base64Decode(h).forEach(function (b) { out.push(b & 255); }); } return out; }
+function pwEnc_(pw, salt) { const t = unescape(encodeURIComponent(String(pw))), ks = pwStream_(salt, t.length), b = []; for (let i = 0; i < t.length; i++) { const x = (t.charCodeAt(i) ^ ks[i]) & 255; b.push(x > 127 ? x - 256 : x); } return Utilities.base64Encode(b); }
+function pwDec_(enc, salt) { if (!enc) return null; try { const b = Utilities.base64Decode(enc), ks = pwStream_(salt, b.length); let t = ''; for (let i = 0; i < b.length; i++) t += String.fromCharCode(((b[i] & 255) ^ ks[i]) & 255); return decodeURIComponent(escape(t)); } catch (e) { return null; } }
+function viewPasswords_(d, u) {
+  if (u.papel !== 'admin') throw new ApiError('FORBIDDEN', 'Só o administrador vê as senhas.');
+  const t = table_('Usuarios'), eu = t.rows.filter(function (x) { return String(x.Email).toLowerCase() === u.email; })[0];
+  if (!eu || !safeEq_(hash_(eu.Salt, String(d.senhaAdmin || '')), eu.SenhaHash)) throw new ApiError('AUTH', 'Sua senha de administrador não confere.');
+  const out = {}; t.rows.forEach(function (r) { out[String(r.Email).toLowerCase()] = pwDec_(r.SenhaVis, r.Salt); });
+  audit_(u.email, 'SENHAS_VISTAS', String(t.rows.length), 'OK'); return { senhas: out };
+}
 function hash_(salt, pw) { let h = salt + pw; for (let i = 0; i < CFG.HASH_ROUNDS; i++) h = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, salt + h + pw)); return h; }
 function safeEq_(a, b) { let d = a.length ^ b.length; const n = Math.max(a.length, b.length); for (let i = 0; i < n; i++) d |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0); return d === 0; }
 
@@ -2344,7 +2356,7 @@ function createUser_(d, u) {
     if (mid) { const g = getMember_(mid); if (!g.m.Email) writeRow_(g.t, g.m._row, { Email: email }); }
     if (!mid) { mid = id_('M'); novo = true; }
     if (novo) appendRow_(table_('Membros'), { MembroID: mid, Nome: nome || email, Simples: nome || email, Apelido: (nome || email).split(' ')[0], Email: email, CelulaID: clip_(d.celulaId, 30), EhMembro: '1', Status: 'Ativo', CriadoEm: now_() });
-    const salt = Utilities.getUuid(); appendRow_(t, { Email: email, SenhaHash: hash_(salt, pw), Salt: salt, Papel: papel, Status: 'Ativo', GuiaVisto: '0', MembroID: mid, TrocarSenha: '1', CriadoEm: now_() }); audit_(u.email, 'USUARIO_CRIADO', email + ':' + papel, 'OK'); return { ok: true, membroId: mid };
+    const salt = Utilities.getUuid(); appendRow_(ensureCols_('Usuarios', ['SenhaVis']), { Email: email, SenhaVis: pwEnc_(pw, salt), SenhaHash: hash_(salt, pw), Salt: salt, Papel: papel, Status: 'Ativo', GuiaVisto: '0', MembroID: mid, TrocarSenha: '1', CriadoEm: now_() }); audit_(u.email, 'USUARIO_CRIADO', email + ':' + papel, 'OK'); return { ok: true, membroId: mid };
   });
 }
 function setUser_(d, u) {
@@ -2352,15 +2364,15 @@ function setUser_(d, u) {
     const email = clip_(d.email, 120).toLowerCase(), t = table_('Usuarios'), r = t.rows.filter(function (x) { return String(x.Email).toLowerCase() === email; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Usuário não encontrado.');
     const p = {}; if (d.papel) { if (!papelValido_(d.papel)) throw new ApiError('VALIDATION', 'Papel inválido.'); if ((d.papel === 'admin' || r.Papel === 'admin') && u.papel !== 'admin') throw new ApiError('FORBIDDEN', 'Só administrador altera administradores.'); if (email === u.email && d.papel !== 'admin' && u.papel === 'admin') throw new ApiError('VALIDATION', 'Você não pode remover o seu próprio acesso de administrador.'); p.Papel = d.papel; }
     if (d.status) { if (email === u.email) throw new ApiError('VALIDATION', 'Você não pode desativar a si mesmo.'); p.Status = d.status === 'Inativo' ? 'Inativo' : 'Ativo'; }
-    if (d.senha) { if (String(d.senha).length < 8) throw new ApiError('VALIDATION', 'A senha precisa ter 8+ caracteres.'); const salt = Utilities.getUuid(); p.Salt = salt; p.SenhaHash = hash_(salt, String(d.senha)); p.TrocarSenha = '1'; }
-    writeRow_(t, r._row, p); bumpVer_(email); audit_(u.email, 'USUARIO_ALTERADO', email, 'OK'); return { ok: true };
+    if (d.senha) { if (String(d.senha).length < 8) throw new ApiError('VALIDATION', 'A senha precisa ter 8+ caracteres.'); const salt = Utilities.getUuid(); p.Salt = salt; p.SenhaHash = hash_(salt, String(d.senha)); p.SenhaVis = pwEnc_(String(d.senha), salt); p.TrocarSenha = '1'; }
+    writeRow_(p.SenhaVis !== undefined ? ensureCols_('Usuarios', ['SenhaVis']) : t, r._row, p); bumpVer_(email); audit_(u.email, 'USUARIO_ALTERADO', email, 'OK'); return { ok: true };
   });
 }
 function changePassword_(d, u) {
   return withLock_(function () {
     const t = table_('Usuarios'), r = t.rows.filter(function (x) { return String(x.Email).toLowerCase() === u.email; })[0]; const nova = String(d.nova || '');
     if (!safeEq_(hash_(r.Salt, String(d.atual || '')), r.SenhaHash)) throw new ApiError('AUTH', 'A senha atual não confere.'); if (nova.length < 8) throw new ApiError('VALIDATION', 'A nova senha precisa ter 8+ caracteres.');
-    const salt = Utilities.getUuid(); writeRow_(t, r._row, { Salt: salt, SenhaHash: hash_(salt, nova), TrocarSenha: '' }); bumpVer_(u.email); audit_(u.email, 'SENHA_TROCADA', '', 'OK'); return { ok: true, relogin: true };
+    const salt = Utilities.getUuid(); writeRow_(ensureCols_('Usuarios', ['SenhaVis']), r._row, { Salt: salt, SenhaHash: hash_(salt, nova), SenhaVis: pwEnc_(nova, salt), TrocarSenha: '' }); bumpVer_(u.email); audit_(u.email, 'SENHA_TROCADA', '', 'OK'); return { ok: true, relogin: true };
   });
 }
 function savePerms_(d, u) {
@@ -3374,7 +3386,7 @@ const ROUTES = {
   listTestimonies: { auth: 'any', fn: listTestimonies_ }, addTestimony: { auth: 'any', write: 1, fn: addTestimony_ }, deleteTestimony: { auth: 'any', write: 1, fn: deleteTestimony_ }, toggleLike: { auth: 'any', write: 1, fn: toggleLike_ },
   saveMinistry: { auth: 'min', write: 1, fn: saveMinistry_ }, deleteMinistry: { auth: 'min', write: 1, fn: deleteMinistry_ }, listInterests: { auth: 'min', fn: listInterests_ },
   saveConfig: { auth: 'config', write: 1, fn: saveConfig_ }, saveHomeLayout: { auth: 'config', write: 1, fn: saveHomeLayout_ }, saveMural: { auth: 'config', write: 1, fn: saveMural_ }, getTelao: { auth: 'any', fn: getTelao_ }, setTelao: { auth: 'any', write: 1, fn: setTelao_ }, saveTelaoPausa: { auth: 'any', write: 1, fn: saveTelaoPausa_ }, listMidias: { auth: 'any', fn: listMidias_ }, getMidia: { auth: 'any', fn: getMidia_ }, saveMidia: { auth: 'any', write: 1, fn: saveMidia_ }, deleteMidia: { auth: 'any', write: 1, fn: deleteMidia_ }, listAgendas: { auth: 'any', fn: listAgendas_ }, saveAgenda: { auth: 'any', write: 1, fn: saveAgenda_ }, deleteAgenda: { auth: 'any', write: 1, fn: deleteAgenda_ }, addAgendaItem: { auth: 'any', write: 1, fn: addAgendaItem_ }, getAccessRules: { auth: 'config', fn: accessRules_ }, saveAccessRules: { auth: 'config', write: 1, fn: saveAccessRules_ }, saveVideo: { auth: 'config', write: 1, fn: saveVideo_ }, deleteVideo: { auth: 'config', write: 1, fn: deleteVideo_ }, updateVideo: { auth: 'config', write: 1, fn: updateVideo_ },
-  listUsers: { auth: 'config', fn: listUsers_ }, createUser: { auth: 'config', write: 1, fn: createUser_ }, setUser: { auth: 'config', write: 1, fn: setUser_ }, savePerms: { auth: 'config', write: 1, fn: savePerms_ },
+  listUsers: { auth: 'config', fn: listUsers_ }, createUser: { auth: 'config', write: 1, fn: createUser_ }, setUser: { auth: 'config', write: 1, fn: setUser_ }, viewPasswords: { auth: 'config', fn: viewPasswords_ }, savePerms: { auth: 'config', write: 1, fn: savePerms_ },
   saveLesson: { auth: 'config', write: 1, fn: saveLesson_ }, getPerms: { auth: 'config', fn: function () { return permMatrix_(); } },
   createCell: { auth: 'celulas', write: 1, fn: createCell_ },
   adminList: { auth: 'any', fn: adminList_ }, adminSave: { auth: 'any', write: 1, fn: adminSave_ }, adminRemove: { auth: 'any', write: 1, fn: adminRemove_ }
