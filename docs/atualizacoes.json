@@ -1,5 +1,14 @@
 [
  {
+  "titulo": "Botão para testar o sino e o chat",
+  "melhorias": [
+   "Meu perfil › Editar perfil › Configurações: botões \"Testar o sino\" e \"Testar o chat\" mostram o som e o efeito na hora.",
+   "O sino agora salta mais alto e balança de um lado para o outro por cerca de 2 segundos."
+  ],
+  "v": "1.90",
+  "data": "01/11/2026"
+ },
+ {
   "titulo": "Sons e animações no chat e no sino",
   "melhorias": [
    "Chegou mensagem no chat: toca o som do chat e o ícone do chat dá um pulo com uma onda verde.",
