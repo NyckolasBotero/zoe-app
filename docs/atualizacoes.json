@@ -1,5 +1,16 @@
 [
  {
+  "titulo": "Árvore Zoe na Família Zoe e Presença facial mais firme",
+  "melhorias": [
+   "A Árvore Zoe agora fica dentro de Família Zoe, em uma guia própria.",
+   "Presença facial: a câmera abre direto, já no toque em \"Abrir câmera\", sem segundo botão e sem tela branca. Se outro app estiver usando a câmera, o app da Zoe tenta assumir o controle várias vezes antes de avisar.",
+   "Os rostos vão aparecendo para você confirmar e salvar como \"Presença avulsa\", sem precisar registrar culto ou evento.",
+   "Reconhecimento mais rigoroso: só diz quem é quando o rosto é muito parecido e claramente melhor que o segundo mais próximo. Caso contrário, mostra \"Rosto não cadastrado\"."
+  ],
+  "v": "1.88",
+  "data": "31/10/2026"
+ },
+ {
   "titulo": "Senhas visíveis ao admin, instalação e Árvore Zoe em círculo",
   "melhorias": [
    "Administração › Usuários: o administrador toca em \"Ver senhas\", confirma a própria senha e vê a senha atual de cada pessoa (com botão de copiar). As senhas ficam cifradas na planilha e cada consulta entra na auditoria. Quem já tinha senha antes desta versão aparece como \"não registrada\" até trocar ou ganhar uma nova.",

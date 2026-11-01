@@ -21,12 +21,12 @@ with sync_playwright() as p:
     a.evaluate("""async()=>{for(const n of ['Ana Souza','Bruno Alvares','Carla Dias'])await api('createUser',{nome:n,email:n.split(' ')[0].toLowerCase()+'@zoe.com',senha:'Temp12345',papel:'membro'});await api('createEvent',{titulo:'Culto de Domingo',data:'2099-01-10',hora:'19:00',local:'Templo'})}""")
     # aba própria na barra de navegação: lista de autorizados (whitelist)
     a.wait_for_selector('.nv[aria-label="Presença facial"]',state='attached'); a.evaluate("(()=>{const e=document.querySelector('.nv[aria-label=\\'Presença facial\\']');e.scrollIntoView({inline:'center',block:'nearest'});e.click()})()"); a.wait_for_selector('#rf_l .rfrow')
-    assert a.evaluate("RF.tipo")=='culto' and a.is_visible('#rf_cd'),'por padrão registra culto (sem evento)'
+    assert a.evaluate("RF.tipo")=='avulsa' and not a.is_visible('#rf_cd'),'por padrão só confirma rostos da sessão (sem culto nem evento)'
     a.select_option('#rf_tp','evento'); a.wait_for_selector('#rf_ev'); eid=a.evaluate("document.querySelector('#rf_ev').value"); assert eid
     assert not a.is_disabled('button:has-text("Abrir câmera")'),'a câmera abre mesmo sem rostos indexados (modo teste)'
-    a.click('button:has-text("Abrir câmera")'); a.wait_for_selector('#fcov #fc_go'); assert not a.is_disabled('#fc_go'); a.click('#fc_go'); a.wait_for_function("FC&&FC.run&&document.querySelector('#fc_cv')"); a.wait_for_function("!document.querySelector('#fc_info').textContent.includes('Carregando')"); fcFecha=a.evaluate("fcFecha()")
+    a.click('button:has-text("Abrir câmera")'); a.wait_for_function("FC&&FC.run&&document.querySelector('#fc_cv')"); a.wait_for_function("!document.querySelector('#fc_info').textContent.includes('Carregando')"); fcFecha=a.evaluate("fcFecha()")
     # câmera bloqueada: mensagem clara e volta ao painel
-    a.click('button:has-text("Abrir câmera")'); a.wait_for_selector('#fcov #fc_go'); a.evaluate("(()=>{window.__gum=navigator.mediaDevices.getUserMedia;navigator.mediaDevices.getUserMedia=async()=>{const e=new Error('x');e.name='NotAllowedError';throw e}})()"); a.click('#fc_go'); a.wait_for_function("document.querySelector('#fc_st')&&document.querySelector('#fc_st').textContent.includes('bloqueada')"); a.evaluate("(()=>{navigator.mediaDevices.getUserMedia=window.__gum;fcFecha()})()")
+    a.evaluate("(()=>{window.__gum=navigator.mediaDevices.getUserMedia;navigator.mediaDevices.getUserMedia=async()=>{const e=new Error('x');e.name='NotAllowedError';throw e}})()"); a.click('button:has-text("Abrir câmera")'); a.wait_for_function("document.querySelector('#fc_st')&&document.querySelector('#fc_st').textContent.includes('bloqueada')"); a.evaluate("(()=>{navigator.mediaDevices.getUserMedia=window.__gum;fcFecha()})()")
     assert a.evaluate("document.querySelectorAll('#rf_l input:checked').length")==0
     ids=a.evaluate("async(e)=>{const r=await api('eventoPresenca',{eventoId:e});const o={};r.membros.forEach(m=>o[m.nome.split(' ')[0]]=m.id);return o}",eid)
     a.fill('#rf_q','ana'); a.wait_for_function("document.querySelectorAll('#rf_l .rfrow').length===1"); a.check('#rf_l .rfrow input'); a.wait_for_function("RF.itens.find(x=>x.nome.startsWith('Ana')).aut")
@@ -59,7 +59,7 @@ with sync_playwright() as p:
     assert a.evaluate("api('listFaces').then(r=>r.itens.find(x=>x.nome.startsWith('Ana')).s.length)")==0
     a.evaluate("__faces=[]"); a.fill('#rf_q','carl'); a.wait_for_function("document.querySelectorAll('#rf_l .rfrow').length===1"); assert a.locator('#rf_l .rfrow button:has-text("Enviar fotos")').count()==0,'só quem está autorizado tem o botão'
     a.fill('#rf_q','')
-    a.click('button:has-text("Abrir câmera")'); a.wait_for_selector('#fcov #fc_go'); assert a.inner_text('#fc_n')=='2'
+    a.click('button:has-text("Abrir câmera")'); a.wait_for_function("FC&&FC.run"); assert a.evaluate("FC.idx.length")==2; a.evaluate("FC.auto=0;fcPara()")
     # indexação: sem foto de perfil nenhuma é indexada, mas o fluxo termina sem erro
     a.evaluate("FC.info.falta=['x_inexistente']; fcDesenha()"); a.click('#fc_ix'); a.wait_for_function("document.querySelector('#fc_st').textContent.includes('sem rosto')",timeout=10000)
     a.click('#fc_go'); a.wait_for_selector('#fc_cv'); a.wait_for_function("FC&&FC.run")
@@ -67,7 +67,7 @@ with sync_playwright() as p:
     # Ana (reconhecida) e uma pessoa desconhecida na imagem
     a.evaluate("__faces=[{seed:1,box:{x:100,y:80,width:120,height:150}},{seed:77,box:{x:380,y:120,width:100,height:130}}]")
     a.wait_for_selector('.fcard[data-id] button:has-text("Confirmar")',timeout=10000)
-    assert 'Ana Souza' in a.inner_text('#fc_l'); assert 'Carla' not in a.inner_text('#fc_l'); a.wait_for_function("document.querySelector('#fc_l').textContent.includes('não reconhecido')",timeout=10000)
+    assert 'Ana Souza' in a.inner_text('#fc_l'); assert 'Carla' not in a.inner_text('#fc_l'); a.wait_for_function("document.querySelector('#fc_l').textContent.includes('não cadastrado')",timeout=10000)
     assert a.inner_text('#fc_info').startswith('2 rosto')
     px=a.evaluate("(()=>{const c=document.querySelector('#fc_cv'),d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let n=0;for(let i=3;i<d.length;i+=4)if(d[i]>0)n++;return n})()"); assert px>500,px   # caixas desenhadas
     a.screenshot(path=OUT+'/face_lista.png')
@@ -84,16 +84,16 @@ with sync_playwright() as p:
     # culto normal (sem evento cadastrado, qualquer dia) e modo teste (não grava nada)
     a.evaluate("fcFecha()"); a.wait_for_selector('#rf_tp'); a.select_option('#rf_tp','culto'); a.wait_for_selector('#rf_cd'); a.fill('#rf_cd','2026-10-24'); a.select_option('#rf_cn','Culto de sábado')
     assert 'Sábado' in a.inner_text('#view'),'mostra o dia da semana da data escolhida'
-    a.click('button:has-text("Abrir câmera")'); a.wait_for_selector('#fcov #fc_go'); assert 'Culto de sábado' in a.inner_text('#fcov .fch'); a.click('#fc_go'); a.wait_for_function("FC&&FC.run&&document.querySelector('#fc_cv')")
+    a.click('button:has-text("Abrir câmera")'); a.wait_for_function("FC&&FC.run&&document.querySelector('#fc_cv')"); assert 'Culto de sábado' in a.inner_text('#fcov .fch')
     a.evaluate("__faces=[{seed:1,box:{x:100,y:80,width:120,height:150}}]"); a.wait_for_selector('.fcard[data-id] button:has-text("Confirmar")',timeout=10000); a.click('.fcard button:has-text("Confirmar")'); a.wait_for_selector('.fcard.ok:has-text("Ana Souza")')
     a.click('#fc_reg'); a.wait_for_function("FC.conf.size===0",timeout=8000)
     st=a.evaluate("api('faceStats')"); assert st['geral']['ok']>=1 and st['sessoes'][0]['ctx'].startswith('Culto'),st
     cp=a.evaluate("api('cultoPresenca',{data:'2026-10-24',culto:'Culto de sábado'}).then(r=>r.presentes)"); assert cp==[ids['Ana']],cp
     assert a.evaluate("api('cultoPresenca',{data:'2026-10-25',culto:'Culto de sábado'}).then(r=>r.presentes.length)")==0
-    a.evaluate("fcFecha()"); a.wait_for_selector('#rf_tp'); a.select_option('#rf_tp','teste'); a.click('button:has-text("Abrir câmera")'); a.wait_for_selector('#fcov #fc_go'); assert 'Modo teste' in a.inner_text('#fcov .fch'); a.click('#fc_go'); a.wait_for_function("FC&&FC.run&&document.querySelector('#fc_cv')")
+    a.evaluate("fcFecha()"); a.wait_for_selector('#rf_tp'); a.select_option('#rf_tp','teste'); a.click('button:has-text("Abrir câmera")'); a.wait_for_function("FC&&FC.run&&document.querySelector('#fc_cv')"); assert 'Modo teste' in a.inner_text('#fcov .fch')
     a.evaluate("__faces=[{seed:2,box:{x:100,y:80,width:120,height:150}}]"); a.wait_for_selector('.fcard[data-id] button:has-text("Confirmar")',timeout=10000); a.click('.fcard button:has-text("Confirmar")'); assert 'Concluir teste' in a.inner_text('#fc_reg'); a.click('#fc_reg'); a.wait_for_function("FC.conf.size===0",timeout=8000)
     assert a.evaluate("api('cultosResumo').then(r=>r.cultos.reduce((n,c)=>n+c.total,0))")==1,'o modo teste não grava presença'
-    a.evaluate("fcFecha()"); a.wait_for_selector('#rf_tp'); a.select_option('#rf_tp','evento'); a.click('button:has-text("Abrir câmera")'); a.wait_for_selector('#fcov #fc_go'); a.click('#fc_go'); a.wait_for_function("FC&&FC.run&&document.querySelector('#fc_cv')")
+    a.evaluate("fcFecha()"); a.wait_for_selector('#rf_tp'); a.select_option('#rf_tp','evento'); a.click('button:has-text("Abrir câmera")'); a.wait_for_selector('#fcov');  a.wait_for_function("FC&&FC.run&&document.querySelector('#fc_cv')")
     a.click('button:has-text("Parar")'); a.wait_for_selector('#fc_go'); a.click('button:has-text("Apagar todos")'); a.wait_for_function("document.querySelector('#fc_n').textContent==='0'",timeout=8000)
     a.click('#fcov .fch button'); assert a.query_selector('#fcov') is None
     a.wait_for_selector('#rf_l .rfrow'); a.fill('#rf_q','ana'); a.uncheck('#rf_l .rfrow input'); a.wait_for_function("!RF.itens.find(x=>x.nome.startsWith('Ana')).aut")
