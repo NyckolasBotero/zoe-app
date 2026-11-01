@@ -18,5 +18,12 @@ with sync_playwright() as p:
     assert pg.evaluate("window.__tocou.length")>=1
     # mesma contagem: não toca de novo
     pg.evaluate("window.__tocou=[];CH.tot=5;window.__nl=4"); pg.evaluate("chTick()"); pg.wait_for_timeout(800); assert pg.evaluate("window.__tocou.length")==0
+    # mensagem de teste chegando: som + pulo + selo + conversa na lista, tudo junto
+    pg.reload(); pg.wait_for_selector('#view h1'); pg.wait_for_selector('#splash',state='detached',timeout=15000); pg.evaluate("window.__tocou=[];const o=HTMLMediaElement.prototype.play;HTMLMediaElement.prototype.play=function(){window.__tocou.push(1);return Promise.resolve()}")
+    pg.add_style_tag(content='#pushbar{display:none!important}'); pg.evaluate("chTick()"); pg.wait_for_timeout(800)
+    pg.evaluate("testaMsg()"); pg.wait_for_function("document.getElementById('bch').classList.contains('ping')",timeout=8000)
+    assert pg.evaluate("window.__tocou.length")>=1; assert pg.inner_text('#bch .dot').strip()=='1'; assert pg.evaluate("CH.simDt")<1500,pg.evaluate("CH.simDt")
+    pg.click('#bch'); pg.wait_for_selector('.chr:has-text("Teste da Zoe")'); pg.click('.chr:has-text("Teste da Zoe")'); pg.wait_for_selector('text=mensagem de teste da Zoe'); pg.wait_for_timeout(600)
+    pg.evaluate("chTick()"); pg.wait_for_timeout(600); assert not pg.query_selector('#bch .dot'),'depois de lida o selo some'
     print('ERRS',errs); assert not errs
 print('OK sons')

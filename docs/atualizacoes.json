@@ -1,5 +1,13 @@
 [
  {
+  "titulo": "Mensagem de teste no chat",
+  "melhorias": [
+   "Meu perfil › Editar perfil › Configurações: \"Receber uma mensagem de teste\". Em 3 segundos chega uma mensagem de um contato fictício pelo mesmo caminho das mensagens reais: toca o som, o chat pula, aparece o selo e a conversa na lista. O app mostra em quantos ms o aviso saiu."
+  ],
+  "v": "1.91",
+  "data": "01/11/2026"
+ },
+ {
   "titulo": "Botão para testar o sino e o chat",
   "melhorias": [
    "Meu perfil › Editar perfil › Configurações: botões \"Testar o sino\" e \"Testar o chat\" mostram o som e o efeito na hora.",
