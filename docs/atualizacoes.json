@@ -1,5 +1,15 @@
 [
  {
+  "titulo": "Sons e animações no chat e no sino",
+  "melhorias": [
+   "Chegou mensagem no chat: toca o som do chat e o ícone do chat dá um pulo com uma onda verde.",
+   "Chegou notificação no sino: toca o som do sino e o sino salta e balança.",
+   "Em alguns aparelhos o som só toca depois do primeiro toque na tela (regra do navegador)."
+  ],
+  "v": "1.89",
+  "data": "01/11/2026"
+ },
+ {
   "titulo": "Árvore Zoe na Família Zoe e Presença facial mais firme",
   "melhorias": [
    "A Árvore Zoe agora fica dentro de Família Zoe, em uma guia própria.",
