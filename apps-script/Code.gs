@@ -171,7 +171,7 @@ function tzSheet_() { if (TZ_SHEET_) return TZ_SHEET_; try { TZ_SHEET_ = ss_().g
 // O Google Sheets converte "20:00" em hora (ano 1899) quando a célula não é texto. Aqui devolvemos sempre texto legível.
 function str_(x) { if (x instanceof Date) { if (x.getFullYear() < 1950) return Utilities.formatDate(x, tzSheet_(), 'HH:mm'); return Utilities.formatDate(x, CFG.TZ, 'yyyy-MM-dd'); } return x === null || x === undefined ? '' : String(x); }
 function appendRow_(t, o) { if (TMEMO_ && t.name) delete TMEMO_[t.name]; const vals = t.headers.map(function (h) { return o[h] === undefined ? '' : o[h]; }); const rg = t.sh.getRange(t.sh.getLastRow() + 1, 1, 1, vals.length); rg.setNumberFormat('@'); rg.setValues([vals]); } // formato texto antes de gravar: horas e datas não viram Date
-function writeRow_(t, row, patch) { if (TMEMO_ && t.name) delete TMEMO_[t.name]; Object.keys(patch).forEach(function (k) { const c = t.headers.indexOf(k); if (c >= 0) { const rg = t.sh.getRange(row, c + 1, 1, 1); rg.setNumberFormat('@'); rg.setValues([[patch[k]]]); } }); }
+function writeRow_(t, row, patch) { if (TMEMO_ && t.name) delete TMEMO_[t.name]; if (t.name === 'Membros' && patch.Foto !== undefined) { const fm = t.rows.filter(function (x) { return x._row === row; })[0]; if (fm) { try { CacheService.getScriptCache().remove('f:' + fm.MembroID); } catch (e) { /* ok */ } } } Object.keys(patch).forEach(function (k) { const c = t.headers.indexOf(k); if (c >= 0) { const rg = t.sh.getRange(row, c + 1, 1, 1); rg.setNumberFormat('@'); rg.setValues([[patch[k]]]); } }); }
 // Garante que colunas novas existam mesmo se o setup() ainda não rodou depois de uma atualização (evita gravar "no vazio")
 function ensureCols_(name, cols) {
   const t = table_(name), falta = cols.filter(function (c) { return t.headers.indexOf(c) < 0; }); if (!falta.length) return t;
@@ -853,9 +853,17 @@ function rateBook_(d, u) {
   });
 }
 // fotos de perfil sob demanda (evita repetir a imagem em cada comentário ou lista)
+/* Fotos de perfil: cada foto fica no cache temporário (1 h). Só quem não está no cache obriga a ler a aba Membros inteira (as fotos pesam). Gravar a foto limpa o cache dela (writeRow_). */
 function fotos_(d, u) {
-  const ids = (Array.isArray(d.ids) ? d.ids : []).slice(0, 25).map(function (x) { return clip_(x, 30); }), o = {}; ids.forEach(function (i) { o[i] = ''; });
-  table_('Membros').rows.forEach(function (m) { if (Object.prototype.hasOwnProperty.call(o, m.MembroID)) o[m.MembroID] = m.Foto || ''; });
+  const ids = (Array.isArray(d.ids) ? d.ids : []).slice(0, 40).map(function (x) { return clip_(x, 30); }), o = {}; ids.forEach(function (i) { o[i] = ''; });
+  const c = CacheService.getScriptCache(); let hit = {}; try { hit = c.getAll(ids.map(function (i) { return 'f:' + i; })) || {}; } catch (e) { hit = {}; }
+  const falta = []; ids.forEach(function (i) { const v = hit['f:' + i]; if (v === undefined || v === null) falta.push(i); else o[i] = v === '-' ? '' : v; });
+  if (falta.length) {
+    const quer = {}; falta.forEach(function (i) { quer[i] = 1; });
+    table_('Membros').rows.forEach(function (m) { if (quer[m.MembroID]) o[m.MembroID] = m.Foto || ''; });
+    const pend = falta.filter(function (i) { return o[i].length < 90000; }); // o cache aceita até 100 KB por item
+    for (let k = 0; k < pend.length; k += 10) { const lote = {}; pend.slice(k, k + 10).forEach(function (i) { lote['f:' + i] = o[i] || '-'; }); try { c.putAll(lote, 3600); } catch (e) { /* sem cache: segue */ } }
+  }
   return o;
 }
 function deleteBook_(d, u) {
@@ -2302,8 +2310,9 @@ function findPeople_(d, u) {
 function listPeople_(d, u) {
   const ativos = {}; table_('Usuarios').rows.forEach(function (r) { if (r.Status === 'Ativo' && r.MembroID) ativos[r.MembroID] = 1; });
   const todos = table_('Membros').rows.filter(function (m) { return ativos[m.MembroID] && m.MembroID !== u.membroId && m.Status !== 'Inativo'; }).sort(function (a, b) { return String(a.Simples || a.Apelido || a.Nome).localeCompare(String(b.Simples || b.Apelido || b.Nome)); });
-  const de = Math.max(0, Number(d.de) || 0);
-  return { total: todos.length, itens: todos.slice(de, de + 60).map(function (m) { const p = presDe_(m.MembroID, d); return { id: m.MembroID, nome: m.Simples || m.Apelido || m.Nome, online: p.online, visto: p.visto }; }) };
+  const de = Math.max(0, Number(d.de) || 0), pag = todos.slice(de, de + 60);
+  let pv = {}; if (!(d && d.inv)) { try { pv = CacheService.getScriptCache().getAll(pag.map(function (m) { return 'p:' + m.MembroID; })) || {}; } catch (e) { pv = {}; } } // uma consulta só, em vez de uma por pessoa
+  return { total: todos.length, itens: pag.map(function (m) { const v = (d && d.inv) ? 0 : Number(pv['p:' + m.MembroID] || 0); return { id: m.MembroID, nome: m.Simples || m.Apelido || m.Nome, online: v > 0 && Date.now() - v < PRES_MS, visto: v }; }) };
 }
 const CHAT_MAX = 1000, CHAT_POR_MIN = 20, PRES_MS = 90000, DIG_MS = 6000;
 /* presença (online) e "digitando": ficam só no cache temporário, sem gravar na planilha */

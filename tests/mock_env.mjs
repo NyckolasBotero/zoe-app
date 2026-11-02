@@ -15,7 +15,7 @@ export function makeEnv() {
   const ss = { getSheetByName: n => sheets[n] || null, insertSheet: n => mk(n), getId: () => 'SSID' };
   const ctx = { Logger: { log() {} }, console: { error(...a) { if (process.env.ZDEBUG) process.stderr.write(a.join(" ") + "\n"); }, log() {} }, Date, Math, JSON, Number, String, Object, Array, isFinite, isNaN, RegExp, Error,
     SpreadsheetApp: { create: () => ss, openById: () => ss },
-    CacheService: { getScriptCache: () => ({ get: k => store[k] ?? null, put: (k, v) => { store[k] = v; }, remove: k => { delete store[k]; } }) },
+    CacheService: { getScriptCache: () => ({ get: k => store[k] ?? null, put: (k, v) => { store[k] = v; }, remove: k => { delete store[k]; }, getAll: ks => { const o = {}; ks.forEach(k => { if (store[k] !== undefined && store[k] !== null) o[k] = store[k]; }); return o; }, putAll: (o) => { Object.keys(o).forEach(k => { store[k] = o[k]; }); } }) },
     LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
     PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k] ?? null, setProperty: (k, v) => { props[k] = v; } }) },
     Utilities: { newBlob: (bytes, type, name) => ({ bytes, type, name, getBytes: () => typeof bytes === 'string' ? [...Buffer.from(bytes)].map(x => x > 127 ? x - 256 : x) : bytes }), computeHmacSha256Signature: (v, k) => [...crypto.createHmac('sha256', Buffer.from(k.map(x => x & 255))).update(Buffer.from(v.map(x => x & 255))).digest()].map(x => x > 127 ? x - 256 : x), base64Decode: s => [...Buffer.from(s, 'base64')], getUuid: () => crypto.randomUUID(), base64Encode: b => Buffer.from(b).toString('base64'), DigestAlgorithm: { SHA_256: 'sha256' },

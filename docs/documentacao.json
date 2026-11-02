@@ -156,5 +156,14 @@
    "PWA: flag localStorage zoe-inst marca o app como instalado; \"Agora não\" dura 3 dias (zoe-pushbar-ate).",
    "Árvore: avRadial desenha o círculo com Cristo Jesus no centro, hubs das famílias e curvas cúbicas."
   ]
+ },
+ {
+  "t": "Carregamento rápido (fotos, Pessoas, Meu perfil)",
+  "itens": [
+   "O aparelho guarda fotos, a lista de Pessoas e o perfil em um banco local (IndexedDB, \"zoe-kv\"). As telas abrem com esses dados e o app atualiza por trás; só redesenha se algo mudou. Tudo é apagado ao sair.",
+   "Logo depois de entrar o app pré-carrega Meu perfil, Pessoas e as fotos (pulado com a economia de dados ligada).",
+   "Servidor: a rota fotos usa o cache temporário (1 h) e atende até 40 pessoas por pedido; listPeople lê a presença online de todos em uma consulta. Trocar a foto limpa o cache dela.",
+   "Teste: tests/e2e_carregamento.py (abre Pessoas e Meu perfil com a rede bloqueada)."
+  ]
  }
 ]

@@ -1445,3 +1445,20 @@ test('admin vê as senhas (cifradas na planilha), com confirmação e só o admi
   const r2 = e.call('viewPasswords', { senhaAdmin: 'SenhaForte123' }, adm).data.senhas; assert.equal(r2['joao@zoe.com'], 'NovaSenha999'); assert.equal(r2['lider@zoe.com'], 'Outra123456');
   assert.equal(e.call('viewPasswords', { senhaAdmin: 'x' }, tok('lider@zoe.com', 'Outra123456')).error.code, 'FORBIDDEN');
 });
+
+test('fotos de perfil vêm do cache, trocar a foto atualiza o cache e Pessoas traz quem está online', () => {
+  const { e, tok, mk } = boot(); mk('ana@zoe.com', 'membro'); mk('beto@zoe.com', 'membro');
+  const A = tok('ana@zoe.com', 'Temp12345'), B = tok('beto@zoe.com', 'Temp12345'), ana = e.call('me', {}, A).data.membro.MembroID;
+  const grava = v => e.run(`writeRow_(table_('Membros'), table_('Membros').rows.filter(function(x){return x.MembroID==='${ana}'})[0]._row, {Foto:'${v}'})`);
+  grava('data:image/jpeg;base64,AAAA');
+  assert.equal(e.call('fotos', { ids: [ana] }, B).data[ana], 'data:image/jpeg;base64,AAAA');
+  assert.equal(e.run(`CacheService.getScriptCache().get('f:${ana}')`), 'data:image/jpeg;base64,AAAA', 'a foto ficou no cache');
+  assert.equal(e.call('fotos', { ids: [ana] }, B).data[ana], 'data:image/jpeg;base64,AAAA', 'segunda leitura (do cache)');
+  grava('data:image/jpeg;base64,BBBB');
+  assert.equal(e.run(`CacheService.getScriptCache().get('f:${ana}')`), null, 'trocar a foto limpa o cache');
+  assert.equal(e.call('fotos', { ids: [ana] }, B).data[ana], 'data:image/jpeg;base64,BBBB');
+  const sem = e.call('fotos', { ids: Array.from({ length: 60 }, (_, i) => 'x' + i) }, B).data; assert.equal(Object.keys(sem).length, 40, 'até 40 por pedido');
+  e.run(`presTouch_({membroId:'${ana}'}, {})`);
+  const p = e.call('listPeople', {}, B).data.itens.find(x => x.id === ana); assert.equal(p.online, true);
+  assert.equal(e.call('listPeople', { inv: true }, B).data.itens.find(x => x.id === ana).online, false, 'modo oculto não mostra online');
+});

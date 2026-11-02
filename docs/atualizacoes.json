@@ -1,5 +1,19 @@
 [
  {
+  "titulo": "Telas mais rápidas: fotos, Pessoas e Meu perfil",
+  "melhorias": [
+   "Fotos das pessoas ficam guardadas no aparelho: na segunda vez que você abre o app elas já aparecem junto com a lista, sem esperar. As fotos com mais de 24 horas são conferidas por trás.",
+   "Pessoas e Meu perfil também ficam guardados: a tela abre na hora com o que você viu da última vez e se atualiza sozinha por trás, sem tela de \"Carregando\". Poucos segundos depois de entrar, o app já deixa a lista de Pessoas, as fotos e o seu perfil prontos.",
+   "Perfil de outra pessoa que você já abriu nesta visita abre na hora e é atualizado por trás.",
+   "Fotos chegam mais depressa: os pedidos de fotos agora vão ao servidor ao mesmo tempo (antes esperavam um pelo outro) e o servidor guarda cada foto no cache por 1 hora, em vez de ler a planilha de membros inteira a cada pedido. Trocar a foto limpa esse cache.",
+   "Lista de Pessoas: o servidor confere quem está online com uma consulta só, em vez de uma por pessoa.",
+   "Ao sair do app, tudo o que ficou guardado no aparelho é apagado. Com a economia de dados do celular ligada, o app não adianta essas buscas.",
+   "Backend: cole o novo Code.gs e publique uma nova versão da implantação. Não precisa rodar setup()."
+  ],
+  "v": "1.92",
+  "data": "02/11/2026"
+ },
+ {
   "titulo": "Mensagem de teste no chat",
   "melhorias": [
    "Meu perfil › Editar perfil › Configurações: \"Receber uma mensagem de teste\". Em 3 segundos chega uma mensagem de um contato fictício pelo mesmo caminho das mensagens reais: toca o som, o chat pula, aparece o selo e a conversa na lista. O app mostra em quantos ms o aviso saiu."

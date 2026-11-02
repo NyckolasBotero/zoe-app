@@ -398,3 +398,11 @@ Botão direito (ou toque longo) numa célula de qualquer mapa abre os dados (`ge
 
 ## Posts agendados
 Admin › Publicações › Posts agendados: período por dias/meses/anos ou intervalo, sazonal (todo ano), ligar/desligar manual, arte trocável; aparece no Início e nas Notícias; a Zoe comenta. Aba `Campanhas` criada automaticamente.
+
+## Carregamento rápido: fotos, Pessoas e Meu perfil
+- **Guardado no aparelho** (IndexedDB `zoe-kv`, funções `KV`, `kvCarrega`, `kvAplica` no `app.html`): fotos de perfil (`fotos`), lista de Pessoas (`pessoas`) e Meu perfil (`meu`). A tela abre com isso e se atualiza por trás (`meuRefresh`, `psCarrega`, `pedeFotos`); só redesenha se algo mudou. Foto com mais de 24 h é conferida de novo (`FSTALE`). Tudo é apagado em `sair()`; o dado só vale para o mesmo `membroId`.
+- **Pré-carga:** 2,5 s depois de entrar, `preCarrega()` busca Meu perfil, Pessoas e as fotos (pula se a economia de dados do navegador estiver ligada).
+- **Perfil de outra pessoa:** `PCACHE` guarda na sessão; reabrir é instantâneo e atualiza por trás.
+- **Fotos em paralelo:** `pedeFotos` manda lotes de 40 ao mesmo tempo. Servidor (`fotos_`): cada foto vai ao cache temporário por 1 h (`f:<id>`, até 90 mil caracteres) e só quem não está no cache obriga a ler a aba Membros; `writeRow_` limpa o cache quando a foto muda.
+- **Pessoas:** `listPeople_` lê a presença online com `getAll` (uma consulta).
+- Ao atualizar: cole o novo `Code.gs` e publique nova versão (não precisa de `setup()`). Teste: `tests/e2e_carregamento.py` (com `node tests/devserver.mjs` rodando).
