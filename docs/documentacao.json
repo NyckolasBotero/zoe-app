@@ -156,5 +156,14 @@
    "PWA: flag localStorage zoe-inst marca o app como instalado; \"Agora não\" dura 3 dias (zoe-pushbar-ate).",
    "Árvore: avRadial desenha o círculo com Cristo Jesus no centro, hubs das famílias e curvas cúbicas."
   ]
+ },
+ {
+  "t": "Eventos que passaram e feed único",
+  "itens": [
+   "rescheduleEvent (eventos): remarca; saveEventoFotos (Mídia ou eventos): cria o post tipo \"evento\" e avisa os supervisores; listEventoFotos, delEventoFoto.",
+   "Aviso à Mídia: gerado ao listar eventos (no máx. a cada 15 min), uma vez por evento passado sem post; remarcar reinicia.",
+   "Config FeedFontes (getFeedFontes/saveFeedFontes): decisao, evento, testemunho, noticia, campanha, anotacao, proxevento, aniv.",
+   "Aba EventoFotos é criada sozinha (lazy_)."
+  ]
  }
 ]

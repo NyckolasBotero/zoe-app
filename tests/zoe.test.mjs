@@ -1445,3 +1445,25 @@ test('admin vê as senhas (cifradas na planilha), com confirmação e só o admi
   const r2 = e.call('viewPasswords', { senhaAdmin: 'SenhaForte123' }, adm).data.senhas; assert.equal(r2['joao@zoe.com'], 'NovaSenha999'); assert.equal(r2['lider@zoe.com'], 'Outra123456');
   assert.equal(e.call('viewPasswords', { senhaAdmin: 'x' }, tok('lider@zoe.com', 'Outra123456')).error.code, 'FORBIDDEN');
 });
+test('evento que passou: aviso à Mídia, remarcar, fotos viram post "Como foi" e supervisor é avisado', () => {
+  const { e, adm, tok, mk } = boot();
+  const m1 = mk('foto@zoe.com', 'membro'), m2 = mk('outro@zoe.com', 'membro'), A = tok('foto@zoe.com', 'Temp12345'), O = tok('outro@zoe.com', 'Temp12345');
+  const mid = e.call('listMinistries', {}, adm).data.find(x => /m.dia/i.test(x.nome)).id; e.run(`appendRow_(table_('Interesses'), { InteresseID: 'IM', MinisterioID: '${mid}', MembroID: '${m1}', Data: now_(), Status: 'autorizado' })`);
+  const ontem = e.run(`Utilities.formatDate(new Date(Date.now() - 3 * 86400000), CFG.TZ, 'yyyy-MM-dd')`), fut = e.run(`Utilities.formatDate(new Date(Date.now() + 20 * 86400000), CFG.TZ, 'yyyy-MM-dd')`);
+  e.run(`appendRow_(table_('Eventos'), { EventoID: 'E_P', Titulo: 'Aniversário Zoe', Data: '${ontem}', Escopo: 'igreja', Status: 'Ativo', Descricao: 'Festa da igreja' })`);
+  e.call('listEvents', {}, adm);
+  const nt = (tk) => e.call('listNotifications', {}, tk).data.itens.map(x => x.tipo); assert.ok(nt(A).includes('evento_fotos'), 'a Mídia recebe o alerta'); assert.ok(!nt(O).includes('evento_fotos'), 'quem não é da Mídia não recebe');
+  assert.equal(e.call('saveEventoFotos', { eventoId: 'E_P', fotos: ['data:image/jpeg;base64,AAAA'] }, O).error.code, 'FORBIDDEN');
+  const r = e.call('saveEventoFotos', { eventoId: 'E_P', fotos: ['data:image/jpeg;base64,AAAA', 'data:image/jpeg;base64,BBBB'] }, A); assert.ok(r.ok, JSON.stringify(r)); assert.equal(r.data.total, 2);
+  const feed = e.call('listFeed', {}, O).data.itens, p = feed.find(x => x.tipo === 'evento'); assert.ok(p && p.titulo === 'Como foi o nosso Aniversário Zoe?' && p.meta.fotos === 2 && p.texto === 'Festa da igreja');
+  assert.ok(nt(adm).includes('evento_fotos_subidas'), 'o supervisor é avisado de quem subiu');
+  assert.equal(e.call('listEventoFotos', { eventoId: 'E_P' }, O).data.itens.length, 2);
+  assert.ok(e.call('likePost', { id: p.id }, O).ok); assert.ok(e.call('commentPost', { id: p.id, texto: 'Que lindo!' }, O).ok);
+  // remarcar: precisa de data futura; o evento volta a ser futuro e o aviso é reiniciado
+  assert.equal(e.call('rescheduleEvent', { id: 'E_P', data: ontem }, adm).error.code, 'VALIDATION'); assert.equal(e.call('rescheduleEvent', { id: 'E_P', data: fut }, O).error.code, 'FORBIDDEN');
+  assert.ok(e.call('rescheduleEvent', { id: 'E_P', data: fut, motivo: 'Chuva' }, adm).ok); const ev = e.call('listEvents', {}, adm).data.find(x => x.id === 'E_P'); assert.equal(ev.data, fut); assert.equal(ev.remarcado, true); assert.equal(ev.dataOriginal, ontem);
+  assert.equal(e.call('saveEventoFotos', { eventoId: 'E_P', fotos: ['data:image/jpeg;base64,AAAA'] }, A).error.code, 'VALIDATION', 'ainda não aconteceu');
+  // feed: administração escolhe as fontes
+  assert.equal(e.call('getFeedFontes', {}, O).data.testemunho, true); assert.equal(e.call('saveFeedFontes', { fontes: { testemunho: false } }, O).error.code, 'FORBIDDEN');
+  assert.equal(e.call('saveFeedFontes', { fontes: { testemunho: false } }, adm).data.testemunho, false); assert.equal(e.call('getFeedFontes', {}, O).data.testemunho, false); assert.equal(e.call('getFeedFontes', {}, O).data.decisao, true);
+});

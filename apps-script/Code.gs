@@ -44,7 +44,7 @@ const SHEETS = {
   Presencas: ['ReuniaoID', 'CelulaID', 'Data', 'MembroID'],
   Papeis: ['CelulaID', 'MembroID', 'Papel'],
   Oracoes: ['OracaoID', 'CelulaID', 'MembroID', 'Tema', 'Titulo', 'Texto', 'Data'],
-  Eventos: ['EventoID', 'Titulo', 'Data', 'Hora', 'Local', 'Descricao', 'Programacao', 'Escopo', 'CelulaID', 'CriadoPor', 'Status', 'Foto', 'Insignia'],
+  Eventos: ['EventoID', 'Titulo', 'Data', 'Hora', 'Local', 'Descricao', 'Programacao', 'Escopo', 'CelulaID', 'CriadoPor', 'Status', 'Foto', 'Insignia', 'DataOriginal', 'Remarcado', 'MotivoRemarca', 'FotosAvisoEm', 'PostID'],
   EventoPresenca: ['EventoID', 'MembroID', 'Data'],
   Cultos: ['Data', 'Culto', 'MembroID', 'RegistradoPor', 'Hora'],
   Metricas: ['Slot', 'Pagina', 'Acao', 'N', 'Erros', 'RttSoma', 'RttMax', 'SrvSoma', 'SrvMax', 'Lentas', 'Aparelhos', 'Hist', 'LockSoma', 'EsperaSoma'],
@@ -85,6 +85,7 @@ const SHEETS = {
   ChatMsgs: ['MsgID', 'ConvID', 'De', 'Para', 'Texto', 'Ts', 'Lida'],
   PerfilFotos: ['MembroID', 'FotoID', 'Foto', 'Legenda', 'Ordem'],
   Assinaturas: ['MembroID', 'Tipo', 'Dado', 'Cargo', 'Atualizado', 'Fonte'],
+  EventoFotos: ['FotoID', 'EventoID', 'Foto', 'Por', 'Data'],
   Noticias: ['NoticiaID', 'Titulo', 'Texto', 'Data', 'CriadoPor', 'Status'],
   Licoes: ['LicaoID', 'Titulo', 'Resumo', 'Categoria', 'Url', 'Status'],
   Dinamicas: ['DinamicaID', 'Titulo', 'Descricao', 'Minutos', 'MembroID', 'Data'],
@@ -987,9 +988,82 @@ function addNewMember_(d, u) {
 
 /* ============================== EVENTOS / FEED ============================== */
 function listEvents_(d, u) {
+  try { avisosEventosPassados_(); } catch (e) { }
   const ins = {}; table_('Inscricoes').rows.forEach(function (r) { if (r.MembroID === u.membroId) ins[r.EventoID] = 1; }); const lim = Utilities.formatDate(new Date(Date.now() - 30 * 86400000), CFG.TZ, 'yyyy-MM-dd');
   return table_('Eventos').rows.filter(function (e) { return e.Status !== 'Cancelado' && e.Data >= lim && (e.Escopo !== 'celula' || e.CelulaID === u.celulaId || can_(u, 'celulas')); }).sort(function (a, b) { return a.Data < b.Data ? -1 : 1; })
-    .map(function (e) { return { id: e.EventoID, titulo: e.Titulo, data: e.Data, hora: e.Hora, local: e.Local, descricao: e.Descricao, programacao: jparse_(e.Programacao, []), escopo: e.Escopo, celulaId: e.CelulaID, foto: e.Foto || '', insignia: e.Insignia || '', inscrito: !!ins[e.EventoID], adm: e.Escopo !== 'celula' }; });
+    .map(function (e) { return { id: e.EventoID, titulo: e.Titulo, data: e.Data, hora: e.Hora, local: e.Local, descricao: e.Descricao, programacao: jparse_(e.Programacao, []), escopo: e.Escopo, celulaId: e.CelulaID, foto: e.Foto || '', insignia: e.Insignia || '', inscrito: !!ins[e.EventoID], adm: e.Escopo !== 'celula', remarcado: e.Remarcado === '1', dataOriginal: e.DataOriginal || '', motivo: e.MotivoRemarca || '', postId: e.PostID || '' }; });
+}
+
+/* ===== Eventos que passaram: remarcar, avisar a Mídia, fotos do evento e post "Como foi…" ===== */
+function midiaEquipe_() {
+  const mins = table_('Ministerios').rows.filter(function (m) { const n = norm_(m.Nome); return m.Ativo !== '0' && (n === 'midia' || n.indexOf('social') >= 0 || n.indexOf('redes') >= 0); }).map(function (m) { return m.MinisterioID; }), o = {};
+  table_('Interesses').rows.forEach(function (i) { if (stN_(i.Status) === 'autorizado' && mins.indexOf(i.MinisterioID) >= 0 && i.MembroID) o[i.MembroID] = 1; }); return Object.keys(o);
+}
+function midiaSupervisores_() {
+  let a = artesAprovadores_(); if (!a.length) a = table_('Usuarios').rows.filter(function (r) { return (r.Papel === 'pastor' || r.Papel === 'admin') && r.Status !== 'Inativo' && r.MembroID; }).map(function (r) { return r.MembroID; });
+  return a;
+}
+function avisosEventosPassados_() {
+  const c = CacheService.getScriptCache(); if (c.get('evav')) return; c.put('evav', '1', 900);
+  const hoje = today_(), lim = Utilities.formatDate(new Date(Date.now() - 30 * 86400000), CFG.TZ, 'yyyy-MM-dd'), cand = function (e) { return e.Escopo !== 'celula' && e.Status !== 'Cancelado' && e.Data < hoje && e.Data >= lim && !e.FotosAvisoEm && !e.PostID; };
+  if (!table_('Eventos').rows.some(cand)) return;
+  withLock_(function () {
+    const t = ensureCols_('Eventos', ['DataOriginal', 'Remarcado', 'MotivoRemarca', 'FotosAvisoEm', 'PostID']), pend = t.rows.filter(cand); if (!pend.length) return;
+    const eq = midiaEquipe_(); pend.forEach(function (e) {
+      eq.forEach(function (mid) { notify_(mid, 'evento_fotos', 'Suba as fotos: ' + e.Titulo, 'O evento já aconteceu (' + e.Data.split('-').reverse().join('/') + '). Suba as fotos para a igreja ver "Como foi".', 'evento:' + e.EventoID); });
+      writeRow_(t, e._row, { FotosAvisoEm: now_() });
+    });
+  });
+}
+function rescheduleEvent_(d, u) {
+  return withLock_(function () {
+    const t = ensureCols_('Eventos', ['DataOriginal', 'Remarcado', 'MotivoRemarca', 'FotosAvisoEm', 'PostID']), e = t.rows.filter(function (r) { return r.EventoID === clip_(d.id, 30); })[0];
+    if (!e || e.Status === 'Cancelado') throw new ApiError('NOT_FOUND', 'Evento não encontrado.'); if (e.Escopo === 'celula') throw new ApiError('VALIDATION', 'Só eventos da igreja podem ser remarcados aqui.');
+    const data = clip_(d.data, 10); if (!data || !dateOk_(data)) throw new ApiError('VALIDATION', 'Informe a nova data.'); if (data < today_()) throw new ApiError('VALIDATION', 'A nova data não pode ser no passado.');
+    const hora = d.hora === undefined ? e.Hora : clip_(d.hora, 5), mot = clip_(d.motivo, 200);
+    writeRow_(t, e._row, { Data: data, Hora: hora, DataOriginal: e.DataOriginal || e.Data, Remarcado: '1', MotivoRemarca: mot, FotosAvisoEm: '' });
+    table_('Inscricoes').rows.forEach(function (r) { if (r.EventoID === e.EventoID && r.MembroID !== u.membroId) notify_(r.MembroID, 'evento_remarcado', e.Titulo + ' foi remarcado', 'Nova data: ' + data.split('-').reverse().join('/') + (hora ? ' às ' + hora : '') + (mot ? '. ' + mot : ''), 'evento:' + e.EventoID); });
+    audit_(u.email, 'EVENTO_REMARCADO', e.Titulo + ' ' + (e.DataOriginal || e.Data) + '→' + data, 'OK'); return { ok: true, data: data };
+  });
+}
+function eventoFotosPode_(u) { return artesCria_(u) || can_(u, 'eventos'); }
+function saveEventoFotos_(d, u) {
+  if (!eventoFotosPode_(u)) throw new ApiError('FORBIDDEN', 'Só a equipe de Mídia sobe as fotos do evento.');
+  const fotos = (Array.isArray(d.fotos) ? d.fotos : []).slice(0, 12).map(fotoOk_).filter(Boolean); if (!fotos.length) throw new ApiError('VALIDATION', 'Escolha ao menos uma foto.');
+  return withLock_(function () {
+    const te = ensureCols_('Eventos', ['DataOriginal', 'Remarcado', 'MotivoRemarca', 'FotosAvisoEm', 'PostID']), e = te.rows.filter(function (r) { return r.EventoID === clip_(d.eventoId, 30) && r.Status !== 'Cancelado'; })[0];
+    if (!e || e.Escopo === 'celula') throw new ApiError('NOT_FOUND', 'Evento não encontrado.'); if (e.Data > today_()) throw new ApiError('VALIDATION', 'O evento ainda não aconteceu.');
+    const tf = lazy_('EventoFotos'), ja = tf.rows.filter(function (r) { return r.EventoID === e.EventoID; }).length; if (ja + fotos.length > 80) throw new ApiError('VALIDATION', 'Limite de 80 fotos por evento.');
+    fotos.forEach(function (f) { appendRow_(tf, { FotoID: id_('EF'), EventoID: e.EventoID, Foto: f, Por: u.membroId, Data: now_() }); });
+    const titulo = clip_(d.titulo, 140) || ('Como foi o nosso ' + e.Titulo + '?'), texto = clip_(d.texto, 600) || clip_(e.Descricao, 600), total = ja + fotos.length, tp = table_('Posts'); let pid = e.PostID, p = pid && tp.rows.filter(function (x) { return x.PostID === pid; })[0], criado = false;
+    if (!p || p.Status === 'removido') { pid = novoPost_({ tipo: 'evento', escopo: 'igreja', autorId: u.membroId, titulo: titulo, texto: texto, foto: fotos[0], meta: { eventoId: e.EventoID, data: e.Data, fotos: total } }); writeRow_(te, e._row, { PostID: pid }); criado = true; }
+    else { const m = jparse_(p.Meta, {}); m.fotos = total; const patch = { Meta: JSON.stringify(m) }; if (!p.Foto) patch.Foto = fotos[0]; if (d.titulo) patch.Titulo = titulo; if (d.texto) patch.Texto = texto; writeRow_(tp, p._row, patch); }
+    const quem = nomes_()[u.membroId] || 'Alguém', quando = Utilities.formatDate(new Date(), CFG.TZ, "dd/MM 'às' HH:mm");
+    midiaSupervisores_().forEach(function (mid) { if (mid !== u.membroId) notify_(mid, 'evento_fotos_subidas', quem + ' subiu ' + fotos.length + ' foto(s) de ' + e.Titulo, (criado ? 'Postagem "' + titulo + '" criada no feed' : 'Fotos adicionadas à postagem do feed') + ' em ' + quando + '.', 'evento:' + e.EventoID); });
+    audit_(u.email, 'EVENTO_FOTOS', e.Titulo + ' +' + fotos.length, 'OK'); return { ok: true, postId: pid, total: total, criado: criado };
+  });
+}
+function listEventoFotos_(d, u) {
+  const nm = nomes_(); return { itens: lazy_('EventoFotos').rows.filter(function (r) { return r.EventoID === clip_(d.eventoId, 30); }).slice(0, 80).map(function (r) { return { id: r.FotoID, foto: r.Foto, por: nm[r.Por] || '', data: r.Data, meu: r.Por === u.membroId }; }) };
+}
+function delEventoFoto_(d, u) {
+  return withLock_(function () {
+    const t = lazy_('EventoFotos'), r = t.rows.filter(function (x) { return x.FotoID === clip_(d.id, 30); })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Foto não encontrada.');
+    if (r.Por !== u.membroId && !can_(u, 'eventos') && u.papel !== 'admin') throw new ApiError('FORBIDDEN', 'Só quem subiu (ou a administração) apaga.');
+    t.sh.deleteRow(r._row); const e = table_('Eventos').rows.filter(function (x) { return x.EventoID === r.EventoID; })[0];
+    if (e && e.PostID) { const tp = table_('Posts'), p = tp.rows.filter(function (x) { return x.PostID === e.PostID; })[0]; if (p) { const m = jparse_(p.Meta, {}); m.fotos = Math.max(0, (m.fotos || 1) - 1); writeRow_(tp, p._row, { Meta: JSON.stringify(m) }); } }
+    return { ok: true };
+  });
+}
+/* ===== Feed único: o que aparece é escolhido pela administração ===== */
+const FEED_FONTES_ = ['decisao', 'evento', 'testemunho', 'noticia', 'campanha', 'anotacao', 'proxevento', 'aniv'];
+function getFeedFontes_() { const o = jparse_(cfgMap_().FeedFontes, {}), r = {}; FEED_FONTES_.forEach(function (k) { r[k] = o[k] !== false && o[k] !== 0; }); return r; }
+function saveFeedFontes_(d, u) {
+  return withLock_(function () {
+    const o = {}; FEED_FONTES_.forEach(function (k) { o[k] = !(d.fontes && (d.fontes[k] === false || d.fontes[k] === 0)); });
+    const t = table_('Config'), r = t.rows.filter(function (x) { return x.Chave === 'FeedFontes'; })[0], v = JSON.stringify(o); if (r) writeRow_(t, r._row, { Valor: v }); else appendRow_(t, { Chave: 'FeedFontes', Valor: v });
+    audit_(u.email, 'FEED_FONTES', v, 'OK'); return o;
+  });
 }
 function fotoOk_(v) { v = String(v || ''); if (v && (!/^data:image\/(jpeg|png|webp);base64,/.test(v) || v.length > 45000)) throw new ApiError('VALIDATION', 'Foto inválida ou muito grande.'); return v; }
 function createEvent_(d, u) {
@@ -3335,7 +3409,7 @@ function boot_(d, u) {
   const out = {}; let cid = clip_(d.celulaId, 30);
   const run = function (k, action, data) { try { const r = ROUTES[action]; if (r.auth && r.auth !== 'any' && !can_(u, r.auth)) throw new ApiError('FORBIDDEN', ''); out[k] = r.fn(data || {}, u); } catch (e) { if (k === 'me' && e instanceof ApiError && cid) { cid = ''; return run(k, action, {}); } out[k] = { __erro: e instanceof ApiError ? e.code : 'ERROR' }; } };
   run('me', 'me', cid ? { celulaId: cid } : {}); const me = out.me && !out.me.__erro ? out.me : null; if (!me) throw new ApiError('ERROR', 'Falha ao carregar.');
-  ['listEvents', 'listMinistries', 'listNews', 'listVideos', 'listCourses', 'listLessons', 'listDynamics', 'birthdays', 'searchCells', 'listTestimonies', 'listCultoNotes', 'listProducts', 'listFamilia', 'listNotifications', 'listCampanhas'].forEach(function (a) { run(a, a, {}); });
+  ['listEvents', 'listMinistries', 'listNews', 'listVideos', 'listCourses', 'listLessons', 'listDynamics', 'birthdays', 'searchCells', 'listTestimonies', 'listCultoNotes', 'listProducts', 'listFamilia', 'listNotifications', 'listCampanhas', 'getFeedFontes'].forEach(function (a) { run(a, a, {}); });
   const cg = me.cargos || {}, pc = me.permCelula || {}, pv = function (g) { return !!(pc[g] && pc[g].v); }, cd = cid ? { celulaId: cid } : {};
   if (can_(u, 'celulas') || cg.supervisor || pv('org')) run('orgTree', 'orgTree', {});
   if (me.celula && me.permCelula) {
@@ -3359,6 +3433,7 @@ const ROUTES = {
   logout: { auth: 'any', fn: function (d, u) { bumpVer_(u.email); return { ok: true }; } },
   me: { auth: 'any', fn: me_ }, changePassword: { auth: 'any', write: 1, fn: changePassword_ },
   saveMember: { auth: 'any', write: 1, fn: saveMember_ }, acceptLegal: { auth: 'any', write: 1, fn: acceptLegal_ }, birthdays: { auth: 'any', fn: birthdays_ },
+  rescheduleEvent: { auth: 'eventos', write: 1, fn: rescheduleEvent_ }, saveEventoFotos: { auth: 'any', write: 1, fn: saveEventoFotos_ }, listEventoFotos: { auth: 'any', fn: listEventoFotos_ }, delEventoFoto: { auth: 'any', write: 1, fn: delEventoFoto_ }, getFeedFontes: { auth: 'any', fn: getFeedFontes_ }, saveFeedFontes: { auth: 'config', write: 1, fn: saveFeedFontes_ },
   listEvents: { auth: 'any', fn: listEvents_ }, enroll: { auth: 'any', write: 1, fn: enroll_ }, listNews: { auth: 'any', fn: listNews_ },
   listMinistries: { auth: 'any', fn: listMin_ }, interest: { auth: 'any', write: 1, fn: interest_ },
   listCourses: { auth: 'any', fn: listCourses_ }, enrollCourse: { auth: 'any', write: 1, fn: enrollCourse_ }, saveCourse: { auth: 'any', write: 1, fn: saveCourse_ }, courseDetail: { auth: 'any', fn: courseDetail_ }, saveAula: { auth: 'any', write: 1, fn: saveAula_ }, deleteAula: { auth: 'any', write: 1, fn: deleteAula_ }, getAulaPdf: { auth: 'any', fn: getAulaPdf_ },

@@ -1,5 +1,16 @@
 [
  {
+  "titulo": "Feed único, eventos que passaram e fotos \"Como foi\"",
+  "melhorias": [
+   "Remarcar ou adiar evento: administração escolhe a nova data e hora (e o motivo); quem está inscrito é avisado e o evento mostra \"Remarcado · era dd/mm\".",
+   "Evento que passou e não foi remarcado: a equipe da Mídia recebe um alerta para subir as fotos. As fotos viram a postagem \"Como foi o nosso [evento]?\" no feed, com a descrição do evento, para todos curtirem e comentarem.",
+   "O supervisor da Mídia é avisado de quem subiu as fotos, de qual postagem e quando.",
+   "Feed único no Início, como numa rede social: testemunhos, notícias, quem aceitou Jesus, \"Como foi o evento\", campanhas, próximo evento e aniversariantes. Em Administração › Publicações, \"Feed da igreja: o que aparece\" liga ou desliga cada fonte."
+  ],
+  "v": "1.92",
+  "data": "02/11/2026"
+ },
+ {
   "titulo": "Mensagem de teste no chat",
   "melhorias": [
    "Meu perfil › Editar perfil › Configurações: \"Receber uma mensagem de teste\". Em 3 segundos chega uma mensagem de um contato fictício pelo mesmo caminho das mensagens reais: toca o som, o chat pula, aparece o selo e a conversa na lista. O app mostra em quantos ms o aviso saiu."
