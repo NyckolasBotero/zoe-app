@@ -1,5 +1,16 @@
 [
  {
+  "titulo": "Aba Insígnias e todos os níveis ao tocar na insígnia",
+  "melhorias": [
+   "A guia “Criar insígnias” agora se chama “Insígnias”.",
+   "O registro de serviço por escala saiu de dentro de Insígnias e foi para Escalas › Registro de serviço (supervisores).",
+   "Ao tocar numa insígnia (no perfil, conquistada ou não), aparecem todos os níveis dela, cada um com o visual, o nome e a regra, marcando o que já foi conquistado e o que falta.",
+   "Backend: a lista de níveis passa a vir junto das insígnias. Cole o novo Code.gs e publique nova versão; não precisa rodar setup()."
+  ],
+  "data": "02/11/2026",
+  "v": "1.96"
+ },
+ {
   "titulo": "Lote de 44 insígnias com níveis, de Retiros ao Sod, abas, livros, vídeos, chat e elogios",
   "melhorias": [
    "44 insígnias novas em 14 categorias (Eventos, Retiros, Encontros, Eventos de Célula, Células, Sod, Abas do App, Biblioteca, Vídeos e Transmissões, Chat, Perfis e Elogios, Bíblia, Serviço e Cursos, Fidelidade), a maioria com 5 a 9 níveis. Os níveis começam no bordado e terminam no Celeste; as mais difíceis têm os dois últimos níveis em Celeste.",
@@ -12,7 +23,7 @@
    "Vídeos e transmissões: Espectador, Ao Vivo na Presença e Horas de Edificação. O tempo só conta com o player aberto e a aba visível.",
    "Chat: Amigo da Igreja (1, 5, 10, 25, 50 e 100 pessoas diferentes; a conversa precisa ter resposta) e Palavra Amiga (mensagens enviadas).",
    "Perfis: botão Elogiar no perfil de outra pessoa (6 frases prontas ou texto livre de até 140 letras, sem links, 1 elogio por pessoa por dia e até 10 por dia). A pessoa recebe uma notificação. Insígnias Bom Vizinho (perfis visitados), Palavras de Vida (elogios dados), Amado pela Família (elogios recebidos) e Coração Generoso (curtidas).",
-   "Em Criar insígnias: 30 regras novas, campo Categoria e lista agrupada por categoria; o limite de N subiu para 100 mil. O cartão da insígnia mostra a categoria.",
+   "Em Insígnias: 30 regras novas, campo Categoria e lista agrupada por categoria; o limite de N subiu para 100 mil. O cartão da insígnia mostra a categoria.",
    "Atualize o Code.gs, rode setup() (cria as colunas e abas novas e as 44 insígnias; ao rodar de novo, só cria o que falta e não desfaz o que você editou) e publique nova versão."
   ],
   "v": "1.95",

@@ -1803,7 +1803,7 @@ function defOut_(r) {
   const c = jparse_(r.Criterio, { tipo: 'manual' }), ex = jparse_(r.Niveis, []), nvs = defNiveis_(r), cc = Object.assign({}, c);
   if (ex.length && c.tipo !== 'manual') { if (c.tipo === 'servico') cc.meses = nvs[0].n; else cc.n = nvs[0].n; }
   const o = { id: r.DefID, codigo: 'cust:' + r.DefID, titulo: r.Nome, categoria: r.Categoria || '', descricao: r.Descricao || '', criterio: c, regra: critTexto_(cc) + (ex.length > 1 ? ' (' + ex.length + ' níveis)' : ''), xp: Number(r.XP) || 100, ativo: r.Ativo !== '0', visual: { estilo: r.Estilo || 'bordado', forma: r.Forma || 'circ', cor1: r.Cor1 || '#2f6b3a', cor2: r.Cor2 || '#efe3b0', icone: r.Icone || 'estrela', texto: r.Texto || '', som: r.Som || '' } };
-  if (ex.length) o.niveis = nvs.map(function (x) { return { k: x.k, nome: x.nome, n: x.n, xp: x.xp, visual: x.visual }; });
+  if (ex.length) o.niveis = nvs.map(function (x) { return { k: x.k, nome: x.nome, n: x.n, xp: x.xp, visual: x.visual, regra: critTexto_(Object.assign({}, c, c.tipo === 'servico' ? { meses: x.n } : { n: x.n })) }; });
   return o;
 }
 function defsAtivas_() { return table_('InsigniaDefs').rows.filter(function (r) { return r.Ativo !== '0'; }); }
@@ -1949,7 +1949,7 @@ function listInsignias_(mid) {
   rows.forEach(function (r) { const p = parte(r.Codigo); if (p && defs[p.id] && jparse_(defs[p.id].Niveis, []).length) melhor[p.id] = Math.max(melhor[p.id] || 0, p.k); });
   return rows.filter(function (r) { const p = parte(r.Codigo); return !(p && melhor[p.id] && p.k < melhor[p.id]); }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).map(function (r) {
     const o = { codigo: r.Codigo, titulo: r.Titulo, ano: r.Ano || '', data: r.Data }, p = parte(r.Codigo);
-    if (p && defs[p.id]) { const x = defOut_(defs[p.id]); o.categoria = x.categoria; o.visual = x.visual; o.descricao = x.descricao; o.regra = x.regra; if (x.niveis) { const nv = x.niveis[p.k - 1]; if (nv) { o.visual = nv.visual; o.nivel = p.k; o.niveis = x.niveis.length; o.regra = critTexto_(Object.assign({}, x.criterio, x.criterio.tipo === 'servico' ? { meses: nv.n } : { n: nv.n })); } } }
+    if (p && defs[p.id]) { const x = defOut_(defs[p.id]); o.categoria = x.categoria; o.visual = x.visual; o.descricao = x.descricao; o.regra = x.regra; if (x.niveis) { o.lista = x.niveis; const nv = x.niveis[p.k - 1]; if (nv) { o.visual = nv.visual; o.nivel = p.k; o.niveis = x.niveis.length; o.regra = critTexto_(Object.assign({}, x.criterio, x.criterio.tipo === 'servico' ? { meses: nv.n } : { n: nv.n })); } } }
     return o;
   });
 }
@@ -1963,7 +1963,7 @@ function bloqueadas_(mid, meu, ganhas) {
   defsAtivas_().forEach(function (r) {
     const nvs = defNiveis_(r), prox = nvs.filter(function (nv) { return !tem[nivelCod_(r.DefID, nv.k)]; })[0]; if (!prox) return;
     const x = defOut_(r), explicito = !!x.niveis, o = { codigo: nivelCod_(r.DefID, prox.k), titulo: nivelTitulo_(r, prox, nvs.length), categoria: x.categoria, descricao: x.descricao, regra: explicito ? critTexto_(Object.assign({}, x.criterio, x.criterio.tipo === 'servico' ? { meses: prox.n } : { n: prox.n })) : x.regra, visual: explicito ? prox.visual : x.visual, ano: '' };
-    if (explicito) { o.nivel = prox.k; o.niveis = nvs.length; }
+    if (explicito) { o.nivel = prox.k; o.niveis = nvs.length; o.lista = x.niveis; }
     if (meu) { const p = critProgMemo_(x.criterio, mid, memoB); const meta = explicito ? prox.n : p.meta; o.progresso = { atual: Math.min(p.atual, meta), meta: meta }; } out.push(o);
   });
   return out;
