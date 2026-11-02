@@ -138,6 +138,7 @@ function setup() {
     writeRow_(table_('Config'), cf._row, { Valor: '1' });
   }
   semeiaLote_(); // lote de insígnias (só cria as que ainda não existem)
+  migraEstilosLote_(); // v1.96: acabamento em pedras preciosas (uma vez)
   instalaGatilhos_();
   pastaLivros_(); // pede a autorização do Google Drive (PDFs da biblioteca)
   Logger.log('Setup concluído. Planilha: https://docs.google.com/spreadsheets/d/' + id + '  (mantenha o compartilhamento RESTRITO)');
@@ -1645,7 +1646,7 @@ function conquistasMembro_(m) {
 const ICONES_BD = ['estrela', 'user', 'flame', 'gota', 'livro', 'coroa', 'cruz', 'coracao', 'pomba', 'trigo', 'chave', 'escudo', 'sino', 'maos', 'arado', 'ancora', 'vela', 'raio', 'caneta', 'pergaminho', 'biblia', 'microfone', 'violao', 'nota', 'camera', 'casa', 'mundo', 'presente', 'taca', 'peixe', 'arvore', 'folha', 'sol', 'lua', 'montanha', 'olho', 'relogio', 'medalha', 'trofeu', 'megafone', 'asa', 'tenda', 'barco', 'cordeiro', 'leao', 'calendario', 'balao', 'pegada', 'bandeira', 'diamante', 'semente', 'foguete', 'alvo', 'bussola', 'lanterna', 'harpa', 'trombeta', 'candelabro', 'tabuas', 'sorriso', 'joia', 'pao', 'fogueira', 'carta', 'convite', 'abraco', 'cafe'];
 const FORMAS_BD = ['circ', 'esc', 'hex', 'oct', 'losango'];
 const SONS_BD = ['', 'sino', 'moeda', 'harpa', 'fanfarra', 'celestial', 'magico', 'epico', 'coral'];
-const ESTILOS_BD = ['bordado', 'bronze', 'prata', 'ouro', 'celeste'];
+const ESTILOS_BD = ['bordado', 'bronze', 'prata', 'ouro', 'celeste', 'jaspe', 'ametista', 'topazio', 'esmeralda', 'safira', 'rubi', 'diamante'];
 function podeCurar_(u) { return can_(u, 'config') || can_(u, 'eventos') || can_(u, 'celulas') || (u.supervisiona && u.supervisiona.length > 0) || u.papel === 'pastor' || u.papel === 'admin'; }
 function exigeCurar_(u) { if (!podeCurar_(u)) throw new ApiError('FORBIDDEN', 'Só supervisores e a administração criam insígnias.'); }
 function ehLider_(u) { return can_(u, 'celulas') || (u.lidera && u.lidera.length > 0) || (u.supervisiona && u.supervisiona.length > 0) || u.papel === 'pastor' || u.papel === 'admin'; }
@@ -1821,14 +1822,27 @@ function avaliaDefs_(mid) {
 /* ============================== LOTE DE INSÍGNIAS (v1.95) ==============================
    Catálogo semeado pelo setup(): cada insígnia tem níveis (parâmetro N), do bordado ao Celeste. Só cria o que ainda não existe
    (pelo DefID), então depois de criada pode ser editada em Criar insígnias sem o setup() desfazer nada. */
-const LOTE_PAL_ = { bronze: ['#a5602c', '#f8e1c9'], prata: ['#8b97a5', '#f3f6fa'], ouro: ['#d6a21d', '#fff1b8'], celeste: ['#7b6fd6', '#f4efff'] };
+const LOTE_PAL_ = { bronze: ['#a5602c', '#f8e1c9'], prata: ['#8b97a5', '#f3f6fa'], ouro: ['#d6a21d', '#fff1b8'], celeste: ['#7b6fd6', '#f4efff'], jaspe: ['#b5432a', '#ffe9dc'], ametista: ['#9a5fd0', '#f6ebff'], topazio: ['#f0b429', '#6b3f00'], esmeralda: ['#1fa65a', '#e8fff0'], safira: ['#2f6fd6', '#eaf3ff'], rubi: ['#d4203f', '#fff0f3'], diamante: ['#bfe9ff', '#2f6a8c'] };
 const LOTE_XP_ = [15, 25, 40, 65, 100, 150, 220, 320, 460, 650];
 // acabamento de cada nível: começa no bordado ou bronze e termina no Celeste (cel: 2 = os dois últimos são Celeste)
 function loteEstilos_(k, cel) {
-  let o;
-  if (k <= 1) o = ['ouro']; else if (k === 2) o = ['bronze', 'ouro']; else if (k === 3) o = ['bronze', 'prata', 'ouro']; else if (k === 4) o = ['bronze', 'prata', 'ouro', 'celeste'];
-  else { const mid = ['bronze', 'prata', 'ouro'], m = k - 2; o = ['bordado']; for (let j = 0; j < m; j++) o.push(mid[Math.floor(j * 3 / m)]); o.push('celeste'); }
-  if (cel === 2 && k >= 4) o[k - 2] = 'celeste'; return o;
+  // nível 1 = bordado, 2 = bronze, 3 = prata, 4 = ouro e do 5 em diante as pedras preciosas da Bíblia, da menos à mais valiosa
+  const seq = ['bordado', 'bronze', 'prata', 'ouro', 'jaspe', 'ametista', 'topazio', 'esmeralda', 'safira', 'diamante'];
+  if (k <= 1) return ['ouro'];
+  const o = []; for (let i = 0; i < k; i++) o.push(seq[Math.min(i, seq.length - 1)]); return o;
+}
+// v1.96: troca o acabamento dos níveis das insígnias do lote (bordado, bronze, prata, ouro e depois as pedras). Roda uma só vez, para não desfazer edições futuras.
+function migraEstilosLote_() {
+  const pr = PropertiesService.getScriptProperties(); if (pr.getProperty('LOTE_GEMAS') === '1') return 0;
+  const t = table_('InsigniaDefs'); let n = 0;
+  LOTE_BD.forEach(function (a) {
+    const id = 'IBL_' + a[0], r = t.rows.filter(function (x) { return x.DefID === id; })[0]; if (!r) return;
+    const ex = jparse_(r.Niveis, []); if (ex.length < 2) return;
+    const x = { forma: a[5], ic: a[4], c: LOTE_COR_[a[1]] }, est = loteEstilos_(ex.length, 0);
+    const nv = ex.map(function (v, i) { const e = est[i], cor = e === 'bordado' ? x.c : LOTE_PAL_[e], vis = Object.assign({}, v.visual || {}); vis.estilo = e; vis.cor1 = cor[0]; vis.cor2 = cor[1]; return Object.assign({}, v, { visual: vis }); });
+    writeRow_(t, r._row, { Niveis: JSON.stringify(nv), Estilo: nv[0].visual.estilo, Cor1: nv[0].visual.cor1, Cor2: nv[0].visual.cor2 }); n++;
+  });
+  pr.setProperty('LOTE_GEMAS', '1'); return n;
 }
 const loteTexto_ = function (n) { return n >= 10000 ? Math.floor(n / 1000) + 'k' : String(n); };
 function loteNiveis_(x) {

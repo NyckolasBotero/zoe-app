@@ -1564,7 +1564,7 @@ test('fotos de perfil no Drive (piloto): desligado por padrão, liga, sobe, troc
 });
 
 /* ===== v1.95: lote de insígnias ===== */
-test('lote de insígnias: catálogo semeado pelo setup, sem duplicar, níveis em ordem e Celeste no topo', () => {
+test('lote de insígnias: catálogo semeado pelo setup, sem duplicar, níveis em ordem e pedras preciosas a partir do nível 5', () => {
   const { e, adm } = boot();
   const lote = e.call('listInsigniaDefs', {}, adm).data.defs.filter(d => d.id.startsWith('IBL_'));
   assert.equal(lote.length, 44);
@@ -1572,9 +1572,9 @@ test('lote de insígnias: catálogo semeado pelo setup, sem duplicar, níveis em
   for (const c of ['Eventos', 'Retiros', 'Encontros', 'Eventos de Célula', 'Células', 'Sod', 'Abas do App', 'Biblioteca', 'Vídeos e Transmissões', 'Chat', 'Perfis e Elogios', 'Bíblia']) assert.ok(cats.has(c), c);
   for (const d of lote) {
     assert.ok(d.regra && !/Concedida/.test(d.regra), d.id + ': ' + d.regra);
-    if (d.niveis) { const ns = d.niveis.map(n => n.n); assert.deepEqual(ns, [...ns].sort((a, b) => a - b), d.id); assert.equal(new Set(ns).size, ns.length, d.id); if (d.niveis.length >= 4) assert.equal(d.niveis[d.niveis.length - 1].visual.estilo, 'celeste', d.id); }
+    if (d.niveis) { const ns = d.niveis.map(n => n.n); assert.deepEqual(ns, [...ns].sort((a, b) => a - b), d.id); assert.equal(new Set(ns).size, ns.length, d.id); { const seq = ['bordado', 'bronze', 'prata', 'ouro', 'jaspe', 'ametista', 'topazio', 'esmeralda', 'safira', 'diamante']; d.niveis.forEach((n, k) => assert.equal(n.visual.estilo, seq[k], d.id + ' nível ' + (k + 1))); } }
   }
-  const bib = lote.find(d => d.id === 'IBL_BB_SEQ'); assert.equal(bib.niveis[bib.niveis.length - 1].n, 1095); assert.equal(bib.niveis[bib.niveis.length - 2].visual.estilo, 'celeste');
+  const bib = lote.find(d => d.id === 'IBL_BB_SEQ'); assert.equal(bib.niveis[bib.niveis.length - 1].n, 1095); assert.equal(bib.niveis[0].visual.estilo, 'bordado');
   const ab = lote.find(d => d.id === 'IBL_AB_ABR'); assert.equal(ab.niveis[0].n, 100);
   assert.equal(lote.find(d => d.id === 'IBL_RT_U5').criterio.n, 5);
   assert.equal(e.run(`semeiaLote_()`), 0);

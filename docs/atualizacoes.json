@@ -1,5 +1,17 @@
 [
  {
+  "titulo": "Símbolos bordados e níveis com pedras preciosas da Bíblia",
+  "melhorias": [
+   "O símbolo no meio de toda insígnia agora parece bordado: preenchimento em fios diagonais, contorno em pontos e relevo.",
+   "Novos acabamentos de pedras preciosas da Bíblia, da menos à mais valiosa: Jaspe, Ametista, Topázio, Esmeralda, Safira e Diamante (o Rubi também está disponível ao escolher o acabamento). Elas têm facetas, brilho e engaste dourado.",
+   "Ordem dos níveis: 1 Bordado, 2 Bronze, 3 Prata, 4 Ouro e do 5 em diante as pedras (5 Jaspe, 6 Ametista, 7 Topázio, 8 Esmeralda, 9 Safira, 10 Diamante). Vale para as 44 insígnias do lote e para as novas que você criar com vários níveis.",
+   "O acabamento Celeste continua disponível para escolher manualmente.",
+   "Atualize o Code.gs, rode setup() uma vez (ele troca os acabamentos das insígnias do lote já criadas; depois não mexe mais, então suas edições ficam) e publique nova versão."
+  ],
+  "data": "02/11/2026",
+  "v": "1.97"
+ },
+ {
   "titulo": "Aba Insígnias e todos os níveis ao tocar na insígnia",
   "melhorias": [
    "A guia “Criar insígnias” agora se chama “Insígnias”.",
