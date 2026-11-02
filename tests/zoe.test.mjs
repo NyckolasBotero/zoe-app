@@ -1467,3 +1467,98 @@ test('evento que passou: aviso à Mídia, remarcar, fotos viram post "Como foi" 
   assert.equal(e.call('getFeedFontes', {}, O).data.testemunho, true); assert.equal(e.call('saveFeedFontes', { fontes: { testemunho: false } }, O).error.code, 'FORBIDDEN');
   assert.equal(e.call('saveFeedFontes', { fontes: { testemunho: false } }, adm).data.testemunho, false); assert.equal(e.call('getFeedFontes', {}, O).data.testemunho, false); assert.equal(e.call('getFeedFontes', {}, O).data.decisao, true);
 });
+
+test('fotos de perfil vêm do cache, trocar a foto atualiza o cache e Pessoas traz quem está online', () => {
+  const { e, tok, mk } = boot(); mk('ana@zoe.com', 'membro'); mk('beto@zoe.com', 'membro');
+  const A = tok('ana@zoe.com', 'Temp12345'), B = tok('beto@zoe.com', 'Temp12345'), ana = e.call('me', {}, A).data.membro.MembroID;
+  const grava = v => e.run(`writeRow_(table_('Membros'), table_('Membros').rows.filter(function(x){return x.MembroID==='${ana}'})[0]._row, {Foto:'${v}'})`);
+  grava('data:image/jpeg;base64,AAAA');
+  assert.equal(e.call('fotos', { ids: [ana] }, B).data[ana], 'data:image/jpeg;base64,AAAA');
+  assert.equal(e.run(`CacheService.getScriptCache().get('f:${ana}')`), 'data:image/jpeg;base64,AAAA', 'a foto ficou no cache');
+  assert.equal(e.call('fotos', { ids: [ana] }, B).data[ana], 'data:image/jpeg;base64,AAAA', 'segunda leitura (do cache)');
+  grava('data:image/jpeg;base64,BBBB');
+  assert.equal(e.run(`CacheService.getScriptCache().get('f:${ana}')`), null, 'trocar a foto limpa o cache');
+  assert.equal(e.call('fotos', { ids: [ana] }, B).data[ana], 'data:image/jpeg;base64,BBBB');
+  const sem = e.call('fotos', { ids: Array.from({ length: 60 }, (_, i) => 'x' + i) }, B).data; assert.equal(Object.keys(sem).length, 40, 'até 40 por pedido');
+  e.run(`presTouch_({membroId:'${ana}'}, {})`);
+  const p = e.call('listPeople', {}, B).data.itens.find(x => x.id === ana); assert.equal(p.online, true);
+  assert.equal(e.call('listPeople', { inv: true }, B).data.itens.find(x => x.id === ana).online, false, 'modo oculto não mostra online');
+});
+
+test('identificação do usuário guardada: não relê Membros a cada pedido e uma gravação em Usuarios vale na hora', () => {
+  const { e, adm, tok, mk } = boot(); mk('ana@zoe.com', 'membro'); const A = tok('ana@zoe.com', 'Temp12345');
+  let lidas = 0; const sh = e.sheets['Membros'], orig = sh.getDataRange; sh.getDataRange = () => { lidas++; return orig(); };
+  assert.ok(e.call('getTelao', {}, adm).ok); const primeira = lidas; assert.ok(primeira >= 1, 'o primeiro pedido lê Membros para identificar');
+  lidas = 0; assert.ok(e.call('getTelao', {}, adm).ok); assert.equal(lidas, 0, 'o segundo pedido não lê Membros de novo');
+  // desativar direto na planilha (sem passar por setUser) também derruba o acesso: a marca de Usuarios mudou
+  assert.ok(e.call('listNotifications', {}, A).ok);
+  e.run(`writeRow_(table_('Usuarios'), table_('Usuarios').rows.filter(function(r){return String(r.Email).toLowerCase()==='ana@zoe.com'})[0]._row, {Status:'Inativo'}); tvFlush_()`);
+  assert.equal(e.call('listNotifications', {}, A).error.code, 'SESSION', 'acesso desativado vale na hora');
+  // pelo app: setUser encerra a sessão
+  mk('beto@zoe.com', 'membro'); const B = tok('beto@zoe.com', 'Temp12345'); assert.ok(e.call('listNotifications', {}, B).ok);
+  assert.ok(e.call('setUser', { email: 'beto@zoe.com', status: 'Inativo' }, adm).ok); assert.equal(e.call('listNotifications', {}, B).error.code, 'SESSION');
+});
+
+test('marca de versão da aba muda ao gravar, atualizar e apagar linha', () => {
+  const { e } = boot(); const marca = () => e.run(`tvStamp_(['Posts'])`);
+  const m0 = marca(); assert.equal(marca(), m0, 'sem gravação a marca é a mesma');
+  e.run(`appendRow_(table_('Posts'), { PostID: 'X1', Tipo: 't' }); tvFlush_()`); const m1 = marca(); assert.notEqual(m1, m0, 'appendRow_ troca a marca');
+  e.run(`writeRow_(table_('Posts'), table_('Posts').rows.filter(function(r){return r.PostID==='X1'})[0]._row, { Titulo: 'novo' }); tvFlush_()`); const m2 = marca(); assert.notEqual(m2, m1, 'writeRow_ troca a marca');
+  e.run(`delRow_(table_('Posts'), table_('Posts').rows.filter(function(r){return r.PostID==='X1'})[0]._row); tvFlush_()`); assert.notEqual(marca(), m2, 'delRow_ troca a marca');
+  assert.equal(e.run(`table_('Posts').rows.some(function(r){return r.PostID==='X1'})`), false, 'a linha foi apagada');
+  // a marca só troca no flush (depois de gravar de verdade)
+  const m3 = marca(); e.run(`appendRow_(table_('Posts'), { PostID: 'X2' })`); assert.equal(marca(), m3, 'antes do flush a marca ainda é a antiga'); e.run(`tvFlush_()`); assert.notEqual(marca(), m3);
+});
+
+test('rota "sem mudança": telão e notificações só respondem sem dados quando a versão é a mesma e nunca mostram dado velho', () => {
+  const { e, adm, tok, mk } = boot();
+  const r1 = e.call('getTelao', {}, adm); assert.ok(r1.ok); assert.equal(r1.ver, undefined, 'na primeira vez ainda aprende as abas');
+  const r2 = e.call('getTelao', {}, adm); assert.equal(typeof r2.ver, 'string'); assert.equal(r2.data.item, '');
+  const r3 = e.call('getTelao', {}, adm, { ver: r2.ver }); assert.equal(r3.sem, true); assert.equal(r3.data, undefined, 'sem mudança não manda dados');
+  assert.ok(e.call('setTelao', { item: 'v:AL_43_3_16-17' }, adm).ok);
+  const r4 = e.call('getTelao', {}, adm, { ver: r2.ver }); assert.equal(r4.sem, undefined, 'mudou: manda tudo de novo'); assert.equal(r4.data.item, 'v:AL_43_3_16-17'); assert.notEqual(r4.ver, r2.ver);
+  assert.equal(e.call('getTelao', {}, adm, { ver: r4.ver }).sem, true);
+  assert.equal(e.call('getTelao', {}, adm, { ver: 'lixo' }).data.item, 'v:AL_43_3_16-17', 'versão inválida: resposta completa');
+  // a versão vale só para quem pediu: outro usuário com a mesma versão não ganha "sem mudança" e sem permissão continua barrado
+  mk('ana@zoe.com', 'membro'); const A = tok('ana@zoe.com', 'Temp12345'); assert.ok(e.call('getTelao', {}, A, { ver: r4.ver }).error, 'sem permissão do telão continua barrado');
+  // notificações: chega uma nova => a versão antiga não vale
+  const n1 = e.call('listNotifications', {}, A), n2 = e.call('listNotifications', {}, A); assert.equal(typeof n2.ver, 'string');
+  assert.equal(e.call('listNotifications', {}, A, { ver: n2.ver }).sem, true);
+  const mid = e.call('me', {}, A).data.membro.MembroID;
+  e.run(`appendRow_(table_('Notificacoes'), { NotifID: 'N1', MembroID: '${mid}', Tipo: 'teste', Titulo: 'Oi', Texto: 'x', Data: now_(), Lida: '0' }); tvFlush_()`);
+  const n3 = e.call('listNotifications', {}, A, { ver: n2.ver }); assert.equal(n3.sem, undefined); assert.equal(n3.data.itens.length, 1); assert.equal(n3.data.naoLidas, 1);
+});
+
+test('fotos de perfil no Drive (piloto): desligado por padrão, liga, sobe, troca, migra nos dois sentidos e cai para a planilha se o Drive falhar', () => {
+  const { e, adm, tok, mk } = boot();
+  const F1 = 'data:image/png;base64,' + Buffer.from('foto-um').toString('base64'), F2 = 'data:image/png;base64,' + Buffer.from('foto-dois').toString('base64');
+  const files = () => Object.values(e.run('DriveApp._files'));
+  mk('ana@zoe.com', 'membro'); const A = tok('ana@zoe.com', 'Temp12345');
+  const fotoDe = () => e.run(`table_('Membros').rows.filter(function(m){return m.Email==='ana@zoe.com'})[0].Foto`);
+  // desligado: continua na planilha, nada vai ao Drive
+  assert.equal(e.call('fotosDriveStatus', {}, adm).data.ligado, false);
+  assert.ok(e.call('saveMember', { membro: { Foto: F1 } }, A).ok); assert.equal(fotoDe(), F1); assert.equal(files().length, 0);
+  // só quem tem permissão de configuração mexe no piloto
+  assert.ok(e.call('fotosDriveSet', { ligado: true }, A).error); assert.ok(e.call('fotosDriveMigra', { sentido: 'drive' }, A).error);
+  assert.ok(e.call('fotosDriveMigra', { sentido: 'drive' }, adm).error, 'migrar com o piloto desligado é recusado');
+  // ligado: a próxima foto vai ao Drive e a planilha guarda só o link
+  const st = e.call('fotosDriveSet', { ligado: true }, adm).data; assert.equal(st.ligado, true); assert.equal(st.planilha, 1);
+  assert.ok(e.call('saveMember', { membro: { Foto: F2 } }, A).ok);
+  const link = fotoDe(); assert.match(link, /^https:\/\/lh3\.googleusercontent\.com\/d\/[\w-]+=s256$/); assert.equal(files().length, 1); assert.equal(files()[0].sharing, 'LINK/VIEW');
+  const ana = e.run(`table_('Membros').rows.filter(function(m){return m.Email==='ana@zoe.com'})[0].MembroID`);
+  assert.equal(e.call('fotos', { ids: [ana] }, adm).data[ana], link, 'o app recebe o link no lugar da foto');
+  // trocar a foto apaga o arquivo antigo
+  assert.ok(e.call('saveMember', { membro: { Foto: F1 } }, A).ok); assert.equal(files().filter(f => !f.trashed).length, 1); assert.equal(files()[0].trashed, true);
+  // remover a foto apaga o arquivo e esvazia a célula
+  assert.ok(e.call('saveMember', { membro: { Foto: '' } }, A).ok); assert.equal(fotoDe(), ''); assert.equal(files().filter(f => !f.trashed).length, 0);
+  // migração planilha → Drive e volta
+  e.run(`writeRow_(table_('Membros'), table_('Membros').rows.filter(function(m){return m.MembroID==='${ana}'})[0]._row, { Foto: ${JSON.stringify(F1)} })`);
+  const m1 = e.call('fotosDriveMigra', { sentido: 'drive' }, adm).data; assert.equal(m1.feitas, 1); assert.equal(m1.planilha, 0); assert.equal(m1.drive, 1); assert.match(fotoDe(), /^https:\/\/lh3/);
+  const m2 = e.call('fotosDriveMigra', { sentido: 'planilha' }, adm).data; assert.equal(m2.feitas, 1); assert.equal(m2.drive, 0); assert.equal(fotoDe(), F1, 'voltou idêntica para a planilha');
+  // o Drive recusa o compartilhamento: a foto fica na planilha, o arquivo não sobra e o erro é auditado
+  e.flags.semCompartilhar = true; const antes = files().length;
+  assert.ok(e.call('saveMember', { membro: { Foto: F2 } }, A).ok); assert.equal(fotoDe(), F2); assert.ok(files().slice(antes).every(f => f.trashed));
+  assert.ok(e.run(`table_('Auditoria').rows.some(function(r){return r.Acao==='FOTO_DRIVE_FALHOU'})`));
+  // desligar não mexe nas fotos que já estão no Drive
+  e.flags.semCompartilhar = false; assert.equal(e.call('fotosDriveSet', { ligado: false }, adm).data.ligado, false);
+});

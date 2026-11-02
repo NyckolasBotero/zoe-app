@@ -7,6 +7,31 @@
    "O supervisor da Mídia é avisado de quem subiu as fotos, de qual postagem e quando.",
    "Feed único no Início, como numa rede social: testemunhos, notícias, quem aceitou Jesus, \"Como foi o evento\", campanhas, próximo evento e aniversariantes. Em Administração › Publicações, \"Feed da igreja: o que aparece\" liga ou desliga cada fonte."
   ],
+  "data": "02/11/2026",
+  "v": "1.94"
+ },
+ {
+  "titulo": "Servidor mais rápido e fotos no Drive (piloto)",
+  "melhorias": [
+   "O servidor passou a anotar quando cada aba da planilha foi alterada. Quando nada mudou, ele pula a leitura: a identificação de quem está logado fica guardada por até 1 minuto e telão e notificações respondem \"sem mudança\" sem reler a planilha. Mudanças feitas pelo app aparecem na hora.",
+   "Piloto de fotos de perfil no Google Drive (desligado por padrão): Administração › Definições de Parâmetros › Fotos de perfil no Drive. Ligado, as novas fotos viram arquivos numa pasta do Drive e a planilha guarda só o link; dá para mover as fotos existentes e voltar tudo para a planilha quando quiser.",
+   "Atenção: as fotos no Drive ficam com \"qualquer pessoa com o link pode ver\". Por isso o piloto só deve ser ligado depois de decidir sobre privacidade (crianças e adolescentes). A planilha continua com compartilhamento restrito.",
+   "Para conferir o ganho: Administração › Desempenho, coluna \"tempo no servidor\"."
+  ],
+  "v": "1.93",
+  "data": "02/11/2026"
+ },
+ {
+  "titulo": "Telas mais rápidas: fotos, Pessoas e Meu perfil",
+  "melhorias": [
+   "Fotos das pessoas ficam guardadas no aparelho: na segunda vez que você abre o app elas já aparecem junto com a lista, sem esperar. As fotos com mais de 24 horas são conferidas por trás.",
+   "Pessoas e Meu perfil também ficam guardados: a tela abre na hora com o que você viu da última vez e se atualiza sozinha por trás, sem tela de \"Carregando\". Poucos segundos depois de entrar, o app já deixa a lista de Pessoas, as fotos e o seu perfil prontos.",
+   "Perfil de outra pessoa que você já abriu nesta visita abre na hora e é atualizado por trás.",
+   "Fotos chegam mais depressa: os pedidos de fotos agora vão ao servidor ao mesmo tempo (antes esperavam um pelo outro) e o servidor guarda cada foto no cache por 1 hora, em vez de ler a planilha de membros inteira a cada pedido. Trocar a foto limpa esse cache.",
+   "Lista de Pessoas: o servidor confere quem está online com uma consulta só, em vez de uma por pessoa.",
+   "Ao sair do app, tudo o que ficou guardado no aparelho é apagado. Com a economia de dados do celular ligada, o app não adianta essas buscas.",
+   "Backend: cole o novo Code.gs e publique uma nova versão da implantação. Não precisa rodar setup()."
+  ],
   "v": "1.92",
   "data": "02/11/2026"
  },

@@ -160,31 +160,53 @@ function ensureSheet_(ss, name, headers) {
 /* ============================== BASE ============================== */
 let SS_ = null, TMEMO_ = null;
 function ss_() { if (SS_) return SS_; const id = PropertiesService.getScriptProperties().getProperty('SHEET_ID'); if (!id) throw new ApiError('SETUP', 'Rode setup() no Apps Script.'); SS_ = SpreadsheetApp.openById(id); return SS_; }
+let DEPREC_ = null; // durante uma rota "sem mudança", anota as abas que ela lê
 function table_(name) {
+  if (DEPREC_) DEPREC_[name] = 1;
   if (TMEMO_ && TMEMO_[name]) return TMEMO_[name];
   const sh = ss_().getSheetByName(name); if (!sh) throw new ApiError('SETUP', 'Aba ausente: ' + name + '. Rode setup().');
   const v = sh.getDataRange().getValues(), headers = (v[0] || []).map(String);
   const rows = v.slice(1).map(function (r, i) { const o = { _row: i + 2 }; headers.forEach(function (h, j) { o[h] = str_(r[j]); }); return o; }).filter(function (o) { return headers.some(function (h) { return o[h] !== ''; }); });
   const t = { name: name, sh: sh, headers: headers, rows: rows }; if (TMEMO_) TMEMO_[name] = t; return t;
 }
+/* ===== Marcas de versão por aba (cache temporário) =====
+   Cada aba tem uma "marca" (código aleatório) que muda quando alguém grava nela. Quem guardou uma cópia (a identificação do usuário, a resposta de uma rota)
+   só a reaproveita se a marca continuar igual. Se a marca sumir do cache, nasce uma nova e tudo é relido: o erro possível é sempre "reler à toa", nunca "mostrar velho".
+   A marca só é trocada DEPOIS de gravar de verdade na planilha (SpreadsheetApp.flush), para outra execução nunca ler dado antigo com marca nova. */
+const TV_TTL_ = 21600; let TVDIRTY_ = {};
+function tvToken_() { return Utilities.getUuid().replace(/-/g, '').slice(0, 8); }
+function tvTouch_(name) { if (name) TVDIRTY_[name] = 1; }
+function tvFlush_() {
+  const nomes = Object.keys(TVDIRTY_); if (!nomes.length) return; TVDIRTY_ = {};
+  try { SpreadsheetApp.flush(); } catch (e) { /* ok */ }
+  const o = {}; nomes.forEach(function (n) { o['tv:' + n] = tvToken_(); }); try { CacheService.getScriptCache().putAll(o, TV_TTL_); } catch (e) { /* ok */ }
+}
+function tvStamp_(nomes) {
+  const c = CacheService.getScriptCache(), ks = nomes.map(function (n) { return 'tv:' + n; }); let got = {}; try { got = c.getAll(ks) || {}; } catch (e) { got = {}; }
+  const novos = {}, partes = ks.map(function (k) { let v = got[k]; if (!v) { v = tvToken_(); novos[k] = v; } return v; });
+  if (Object.keys(novos).length) { try { c.putAll(novos, TV_TTL_); } catch (e) { /* ok */ } }
+  return partes.join('.');
+}
+// apagar linha: sempre por aqui, para a aba ser marcada como alterada
+function delRow_(t, row) { t.sh.deleteRow(row); if (TMEMO_ && t.name) delete TMEMO_[t.name]; tvTouch_(t.name); }
 let TZ_SHEET_ = null;
 function tzSheet_() { if (TZ_SHEET_) return TZ_SHEET_; try { TZ_SHEET_ = ss_().getSpreadsheetTimeZone() || CFG.TZ; } catch (e) { TZ_SHEET_ = CFG.TZ; } return TZ_SHEET_; }
 // O Google Sheets converte "20:00" em hora (ano 1899) quando a célula não é texto. Aqui devolvemos sempre texto legível.
 function str_(x) { if (x instanceof Date) { if (x.getFullYear() < 1950) return Utilities.formatDate(x, tzSheet_(), 'HH:mm'); return Utilities.formatDate(x, CFG.TZ, 'yyyy-MM-dd'); } return x === null || x === undefined ? '' : String(x); }
-function appendRow_(t, o) { if (TMEMO_ && t.name) delete TMEMO_[t.name]; const vals = t.headers.map(function (h) { return o[h] === undefined ? '' : o[h]; }); const rg = t.sh.getRange(t.sh.getLastRow() + 1, 1, 1, vals.length); rg.setNumberFormat('@'); rg.setValues([vals]); } // formato texto antes de gravar: horas e datas não viram Date
-function writeRow_(t, row, patch) { if (TMEMO_ && t.name) delete TMEMO_[t.name]; Object.keys(patch).forEach(function (k) { const c = t.headers.indexOf(k); if (c >= 0) { const rg = t.sh.getRange(row, c + 1, 1, 1); rg.setNumberFormat('@'); rg.setValues([[patch[k]]]); } }); }
+function appendRow_(t, o) { if (TMEMO_ && t.name) delete TMEMO_[t.name]; tvTouch_(t.name); const vals = t.headers.map(function (h) { return o[h] === undefined ? '' : o[h]; }); const rg = t.sh.getRange(t.sh.getLastRow() + 1, 1, 1, vals.length); rg.setNumberFormat('@'); rg.setValues([vals]); } // formato texto antes de gravar: horas e datas não viram Date
+function writeRow_(t, row, patch) { if (TMEMO_ && t.name) delete TMEMO_[t.name]; tvTouch_(t.name); if (t.name === 'Membros' && patch.Foto !== undefined) { const fm = t.rows.filter(function (x) { return x._row === row; })[0]; if (fm) { try { CacheService.getScriptCache().remove('f:' + fm.MembroID); } catch (e) { /* ok */ } } } Object.keys(patch).forEach(function (k) { const c = t.headers.indexOf(k); if (c >= 0) { const rg = t.sh.getRange(row, c + 1, 1, 1); rg.setNumberFormat('@'); rg.setValues([[patch[k]]]); } }); }
 // Garante que colunas novas existam mesmo se o setup() ainda não rodou depois de uma atualização (evita gravar "no vazio")
 function ensureCols_(name, cols) {
   const t = table_(name), falta = cols.filter(function (c) { return t.headers.indexOf(c) < 0; }); if (!falta.length) return t;
   falta.forEach(function (c, i) { t.sh.getRange(1, t.headers.length + 1 + i, 1, 1).setValue(c); });
-  if (TMEMO_) delete TMEMO_[name]; return table_(name);
+  if (TMEMO_) delete TMEMO_[name]; tvTouch_(name); return table_(name);
 }
 function id_(p) { return p + Utilities.getUuid().replace(/-/g, '').slice(0, 10).toUpperCase(); }
 function now_() { return Utilities.formatDate(new Date(), CFG.TZ, 'yyyy-MM-dd HH:mm:ss'); }
 function today_() { return Utilities.formatDate(new Date(), CFG.TZ, 'yyyy-MM-dd'); }
 function clip_(s, n) { return String(s === undefined || s === null ? '' : s).trim().slice(0, n || 200); }
 let LOCKMS_ = 0, WAITMS_ = 0; // tempo segurando / esperando o cadeado nesta execução (painel de desempenho)
-function withLock_(fn) { const l = LockService.getScriptLock(), a = Date.now(); l.waitLock(20000); const b = Date.now(); WAITMS_ += b - a; try { return fn(); } finally { l.releaseLock(); LOCKMS_ += Date.now() - b; } }
+function withLock_(fn) { const l = LockService.getScriptLock(), a = Date.now(); l.waitLock(20000); const b = Date.now(); WAITMS_ += b - a; try { return fn(); } finally { try { tvFlush_(); } catch (e) { /* ok */ } l.releaseLock(); LOCKMS_ += Date.now() - b; } } // grava de verdade e troca as marcas antes de soltar a trava
 function norm_(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim(); }
 function jparse_(s, d) { try { return s ? JSON.parse(s) : d; } catch (e) { return d; } }
 function json_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
@@ -222,13 +244,19 @@ function login_(d) {
   return { token: token, trocarSenha: u.TrocarSenha === '1' };
 }
 function auth_(token) {
-  const raw = token && CacheService.getScriptCache().get('s:' + token); if (!raw) throw new ApiError('SESSION', 'Sessão expirada. Entre novamente.');
+  const cc = CacheService.getScriptCache(), raw = token && cc.get('s:' + token); if (!raw) throw new ApiError('SESSION', 'Sessão expirada. Entre novamente.');
   const s = JSON.parse(raw); if (s.v !== ver_(s.e)) throw new ApiError('SESSION', 'Sessão encerrada. Entre novamente.');
+  /* A identificação (papel, célula, cargos) fica guardada por até 60 s e só vale enquanto as marcas de Usuarios, Membros, Celulas e Config forem as mesmas.
+     Antes, TODA requisição lia essas abas inteiras (com as fotos) só para saber quem você é. Desativar alguém pelo app vale na hora (a marca muda). */
+  const st = tvStamp_(['Usuarios', 'Membros', 'Celulas', 'Config']) + '|' + s.e; let hit = null; try { hit = cc.get('au:' + token); } catch (e) { hit = null; }
+  if (hit) { try { const h = JSON.parse(hit); if (h && h.st === st && h.u) { h.u.token = token; return h.u; } } catch (e) { /* relê */ } }
   const u = table_('Usuarios').rows.filter(function (r) { return String(r.Email).toLowerCase() === s.e; })[0];
   if (!u || u.Status === 'Inativo') throw new ApiError('SESSION', 'Acesso desativado.');
   const m = table_('Membros').rows.filter(function (r) { return r.MembroID === u.MembroID; })[0] || {};
   const cg = cargos_(u.MembroID);
-  return { email: s.e, papel: papelValido_(u.Papel) ? u.Papel : 'membro', membroId: u.MembroID, celulaId: m.CelulaID || '', lidera: cg.lidera, treina: cg.treina, supervisiona: cg.supervisiona, token: token };
+  const out = { email: s.e, papel: papelValido_(u.Papel) ? u.Papel : 'membro', membroId: u.MembroID, celulaId: m.CelulaID || '', lidera: cg.lidera, treina: cg.treina, supervisiona: cg.supervisiona, token: token };
+  try { cc.put('au:' + token, JSON.stringify({ st: st, u: out }), 60); } catch (e) { /* ok */ }
+  return out;
 }
 function cargos_(membroId) {
   const o = { lidera: [], treina: [], supervisiona: [] }; if (!membroId) return o;
@@ -312,7 +340,7 @@ function me_(d, u) {
 function saveMember_(d, u) {
   return withLock_(function () {
     const g = getMember_(u.membroId), p = {}, src = d.membro || {};
-    MEMBER_EDIT.forEach(function (k) { if (src[k] !== undefined) p[k] = k === 'Foto' ? String(src[k]).slice(0, 45000) : clip_(src[k], 200); });
+    MEMBER_EDIT.forEach(function (k) { if (src[k] !== undefined) p[k] = k === 'Foto' ? fotoParaGravar_(src[k], g.m.Foto, u.membroId) : clip_(src[k], 200); });
     if (p.Nome !== undefined && !p.Nome) throw new ApiError('VALIDATION', 'O nome completo não pode ficar vazio.');
     ['Nascimento', 'DataDecisao', 'DataBatismo', 'DataCasamento'].forEach(function (k) { if (p[k] !== undefined && !dateOk_(p[k])) throw new ApiError('VALIDATION', 'Data inválida em ' + k + '.'); });
     if (p.DataBatismo) p.Batizado = 'sim';
@@ -455,7 +483,7 @@ function saveAttendance_(d, u) {
     if (fora && !d.confirmaDia) throw new ApiError('DIA_DIFERENTE', 'A célula acontece na ' + cel.Dia + ', mas a data escolhida cai em ' + dia + '. Confirme se a reunião foi mesmo nesse dia ou corrija a data.');
     const mem = ativosDaCelula_(id).map(function (m) { return m.MembroID; });
     const pres = (d.presentes || []).filter(function (x) { return mem.indexOf(x) >= 0; });
-    const pt = table_('Presencas'); for (let i = pt.rows.length - 1; i >= 0; i--) if (pt.rows[i].CelulaID === id && pt.rows[i].Data === data) pt.sh.deleteRow(pt.rows[i]._row);
+    const pt = table_('Presencas'); for (let i = pt.rows.length - 1; i >= 0; i--) if (pt.rows[i].CelulaID === id && pt.rows[i].Data === data) delRow_(pt, pt.rows[i]._row);
     const rt = table_('Reunioes'), ex = rt.rows.filter(function (r) { return r.CelulaID === id && r.Data === data; })[0], rid = ex ? ex.ReuniaoID : id_('R');
     const elenco = (ex && ex.Elenco) ? String(ex.Elenco).split(',').filter(String) : mem.slice(); pres.forEach(function (m) { if (elenco.indexOf(m) < 0) elenco.push(m); });
     // Termômetro da presença de Deus: 0 (frio) a 100 (forte manifestação). "PresencaDeDeus" continua marcado a partir de 50 para os indicadores antigos.
@@ -465,7 +493,7 @@ function saveAttendance_(d, u) {
     const pt2 = table_('Presencas'); pres.forEach(function (m) { appendRow_(pt2, { ReuniaoID: rid, CelulaID: id, Data: data, MembroID: m }); awardXp_(m, 'celula:' + id + ':' + data, 10, 'Presença na célula'); });
     membresiaCheck_(id, pres); const novas = [];
     // visitantes da reunião: membro de outra célula (só visita, não muda de célula) ou pessoa nova (pré-cadastro)
-    const pv = lazy_('PresVisitas'); for (let i = pv.rows.length - 1; i >= 0; i--) if (pv.rows[i].CelulaID === id && pv.rows[i].Data === data) pv.sh.deleteRow(pv.rows[i]._row);
+    const pv = lazy_('PresVisitas'); for (let i = pv.rows.length - 1; i >= 0; i--) if (pv.rows[i].CelulaID === id && pv.rows[i].Data === data) delRow_(pv, pv.rows[i]._row);
     const mt2 = table_('Membros'), vt = table_('Visitantes'), pv2 = lazy_('PresVisitas'), vistos = {}; let nVis = 0;
     (Array.isArray(d.visitas) ? d.visitas : []).slice(0, 30).forEach(function (x) {
       const mid = clip_(x && x.membroId, 30);
@@ -515,7 +543,7 @@ function indicators_(d, u) {
 function getPapeis_(d, u) { const id = cellOf_(u, d, 'ver', 'papeis', 'ver'); return table_('Papeis').rows.filter(function (r) { return r.CelulaID === id; }).map(function (r) { return { membroId: r.MembroID, papel: r.Papel }; }); }
 function savePapeis_(d, u) {
   return withLock_(function () {
-    const id = cellOf_(u, d, 'gerir', 'papeis', 'editar'), t = table_('Papeis'); for (let i = t.rows.length - 1; i >= 0; i--) if (t.rows[i].CelulaID === id) t.sh.deleteRow(t.rows[i]._row);
+    const id = cellOf_(u, d, 'gerir', 'papeis', 'editar'), t = table_('Papeis'); for (let i = t.rows.length - 1; i >= 0; i--) if (t.rows[i].CelulaID === id) delRow_(t, t.rows[i]._row);
     const mem = table_('Membros').rows.filter(function (m) { return m.CelulaID === id; }).map(function (m) { return m.MembroID; }), t2 = table_('Papeis');
     (d.itens || []).slice(0, 200).forEach(function (x) { if (mem.indexOf(x.membroId) >= 0) appendRow_(t2, { CelulaID: id, MembroID: x.membroId, Papel: clip_(x.papel, 60) }); }); return { ok: true };
   });
@@ -675,7 +703,7 @@ function readNotifications_(d, u) {
 function clearNotifications_(d, u) {
   return withLock_(function () {
     const t = table_('Notificacoes'), ids = Array.isArray(d.ids) ? d.ids : null;
-    for (let i = t.rows.length - 1; i >= 0; i--) { const n = t.rows[i]; if (n.MembroID === u.membroId && (!ids || ids.indexOf(n.NotifID) >= 0)) t.sh.deleteRow(n._row); }
+    for (let i = t.rows.length - 1; i >= 0; i--) { const n = t.rows[i]; if (n.MembroID === u.membroId && (!ids || ids.indexOf(n.NotifID) >= 0)) delRow_(t, n._row); }
     return listNotifications_({}, u);
   });
 }
@@ -774,7 +802,7 @@ function metricsReport_(d, u) {
 }
 function metLimpa_(t) { // mantém só os últimos 45 dias (apaga de baixo para cima para não deslocar as linhas)
   const lim = Utilities.formatDate(new Date(Date.now() - 45 * 86400000), CFG.TZ, 'yyyy-MM-dd');
-  t.rows.filter(function (r) { return String(r.Slot).slice(0, 10) < lim; }).map(function (r) { return r._row; }).sort(function (a, b) { return b - a; }).forEach(function (rw) { t.sh.deleteRow(rw); });
+  t.rows.filter(function (r) { return String(r.Slot).slice(0, 10) < lim; }).map(function (r) { return r._row; }).sort(function (a, b) { return b - a; }).forEach(function (rw) { delRow_(t, rw); });
 }
 function getMetrics_(d, u) {
   const horas = Math.max(1, Math.min(72, metNum_(d.horas) || 24)), dias = Math.max(1, Math.min(30, metNum_(d.dias) || 7));
@@ -815,6 +843,69 @@ function pastaLivros_() {
   if (fid) { try { return DriveApp.getFolderById(fid); } catch (e) { /* recria */ } }
   const f = DriveApp.createFolder('Zoe - Biblioteca Virtual (PDFs)'); p.setProperty('LIVROS_FOLDER', f.getId()); return f;
 }
+/* ===== Fotos de perfil no Drive (piloto, desligado por padrão: Config FotosDrive = 1) =====
+   A foto vira um arquivo numa pasta do Drive e a planilha guarda só o link curto (…/d/<id>=s256).
+   ATENÇÃO: o link é "qualquer pessoa com o link pode ver" (necessário para o <img> do app carregar). */
+const FOTO_URL_ = 'https://lh3.googleusercontent.com/d/';
+const FOTO_MAX_B64_ = 3000000;
+function fotosDriveOn_() { return cfgMap_().FotosDrive === '1'; }
+function fotoDriveId_(v) { const m = /^https:\/\/lh3\.googleusercontent\.com\/d\/([\w-]+)=s256$/.exec(String(v || '')); return m ? m[1] : ''; }
+function pastaFotos_() {
+  const p = PropertiesService.getScriptProperties(), fid = p.getProperty('FOTOS_FOLDER');
+  if (fid) { try { return DriveApp.getFolderById(fid); } catch (e) { /* recria */ } }
+  const f = DriveApp.createFolder('Zoe - Fotos de perfil'); p.setProperty('FOTOS_FOLDER', f.getId()); return f;
+}
+function fotoLixo_(v) { const id = fotoDriveId_(v); if (!id) return; try { DriveApp.getFileById(id).setTrashed(true); } catch (e) { /* já não existe */ } }
+/* Sobe uma foto (data URI) para o Drive; devolve o link, ou lança erro se o Drive/compartilhamento falhar. */
+function fotoSobe_(dataUri, nome) {
+  const m = /^data:image\/(jpeg|png|webp);base64,(.+)$/.exec(String(dataUri || ''));
+  if (!m || m[2].length > FOTO_MAX_B64_) throw new ApiError('VALIDATION', 'Foto inválida ou muito grande.');
+  const blob = Utilities.newBlob(Utilities.base64Decode(m[2]), 'image/' + m[1], 'foto-' + nome + '.' + (m[1] === 'jpeg' ? 'jpg' : m[1]));
+  const f = pastaFotos_().createFile(blob);
+  try { f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (e) { try { f.setTrashed(true); } catch (e2) { } throw e; }
+  return FOTO_URL_ + f.getId() + '=s256';
+}
+/* Valor que vai para Membros.Foto: com o piloto ligado e foto nova, sobe ao Drive (e apaga a antiga); se o Drive falhar, guarda na planilha como antes. */
+function fotoParaGravar_(nova, antiga, membroId) {
+  nova = String(nova || '');
+  if (!nova) { fotoLixo_(antiga); return ''; }
+  if (!/^data:image\//.test(nova) || !fotosDriveOn_()) return nova.slice(0, 45000);
+  try { const url = fotoSobe_(nova, membroId); if (antiga !== url) fotoLixo_(antiga); return url; }
+  catch (e) { audit_('sistema', 'FOTO_DRIVE_FALHOU', membroId, String(e && e.message || e).slice(0, 120)); return nova.slice(0, 45000); }
+}
+function fotosDriveStatus_() {
+  let drive = 0, planilha = 0, vazias = 0;
+  table_('Membros').rows.forEach(function (m) { if (!m.Foto) vazias++; else if (fotoDriveId_(m.Foto)) drive++; else if (/^data:image\//.test(m.Foto)) planilha++; });
+  return { ligado: fotosDriveOn_(), drive: drive, planilha: planilha, vazias: vazias };
+}
+function fotosDriveSet_(d, u) {
+  return withLock_(function () {
+    const t = table_('Config'), v = d.ligado ? '1' : '0', r = t.rows.filter(function (x) { return x.Chave === 'FotosDrive'; })[0];
+    if (v === '1') pastaFotos_(); // falha logo se o Drive não está autorizado (rode setup())
+    if (r) writeRow_(t, r._row, { Valor: v }); else appendRow_(t, { Chave: 'FotosDrive', Valor: v });
+    audit_(u.email, 'FOTOS_DRIVE', v, 'OK'); return fotosDriveStatus_();
+  });
+}
+/* Migra em lotes (até 15 por chamada). sentido 'drive': planilha → Drive; 'planilha': Drive → planilha (volta ao jeito antigo). */
+function fotosDriveMigra_(d, u) {
+  const sentido = d.sentido === 'planilha' ? 'planilha' : 'drive'; let feitas = 0, falhas = 0;
+  if (sentido === 'drive' && !fotosDriveOn_()) throw new ApiError('VALIDATION', 'Ligue o piloto antes de migrar.');
+  withLock_(function () {
+    const t = table_('Membros'); let n = 0;
+    t.rows.forEach(function (m) {
+      if (n >= 15 || !m.Foto) return;
+      if (sentido === 'drive') {
+        if (!/^data:image\//.test(m.Foto)) return; n++;
+        try { const url = fotoSobe_(m.Foto, m.MembroID); writeRow_(t, m._row, { Foto: url }); feitas++; } catch (e) { falhas++; audit_(u.email, 'FOTO_DRIVE_FALHOU', m.MembroID, String(e && e.message || e).slice(0, 120)); }
+      } else {
+        const id = fotoDriveId_(m.Foto); if (!id) return; n++;
+        try { const b = DriveApp.getFileById(id).getBlob(), data = 'data:' + (b.getContentType ? b.getContentType() : 'image/jpeg') + ';base64,' + Utilities.base64Encode(b.getBytes()); if (data.length > 45000) { falhas++; return; } writeRow_(t, m._row, { Foto: data }); try { DriveApp.getFileById(id).setTrashed(true); } catch (e2) { } feitas++; } catch (e) { falhas++; }
+      }
+    });
+    audit_(u.email, 'FOTOS_DRIVE_MIGRA', sentido + ':' + feitas + '/' + falhas, 'OK');
+  });
+  const st = fotosDriveStatus_(); st.feitas = feitas; st.falhas = falhas; return st;
+}
 function nomes_() { const o = {}; table_('Membros').rows.forEach(function (m) { o[m.MembroID] = m.Apelido || m.Simples || m.Nome; }); return o; }
 function curtidas_(tipo, u) { const n = {}, eu = {}; table_('Curtidas').rows.forEach(function (c) { if (c.Tipo !== tipo) return; n[c.AlvoID] = (n[c.AlvoID] || 0) + 1; if (c.MembroID === u.membroId) eu[c.AlvoID] = 1; }); return { n: n, eu: eu }; }
 function listBooks_(d, u) {
@@ -854,9 +945,17 @@ function rateBook_(d, u) {
   });
 }
 // fotos de perfil sob demanda (evita repetir a imagem em cada comentário ou lista)
+/* Fotos de perfil: cada foto fica no cache temporário (1 h). Só quem não está no cache obriga a ler a aba Membros inteira (as fotos pesam). Gravar a foto limpa o cache dela (writeRow_). */
 function fotos_(d, u) {
-  const ids = (Array.isArray(d.ids) ? d.ids : []).slice(0, 25).map(function (x) { return clip_(x, 30); }), o = {}; ids.forEach(function (i) { o[i] = ''; });
-  table_('Membros').rows.forEach(function (m) { if (Object.prototype.hasOwnProperty.call(o, m.MembroID)) o[m.MembroID] = m.Foto || ''; });
+  const ids = (Array.isArray(d.ids) ? d.ids : []).slice(0, 40).map(function (x) { return clip_(x, 30); }), o = {}; ids.forEach(function (i) { o[i] = ''; });
+  const c = CacheService.getScriptCache(); let hit = {}; try { hit = c.getAll(ids.map(function (i) { return 'f:' + i; })) || {}; } catch (e) { hit = {}; }
+  const falta = []; ids.forEach(function (i) { const v = hit['f:' + i]; if (v === undefined || v === null) falta.push(i); else o[i] = v === '-' ? '' : v; });
+  if (falta.length) {
+    const quer = {}; falta.forEach(function (i) { quer[i] = 1; });
+    table_('Membros').rows.forEach(function (m) { if (quer[m.MembroID]) o[m.MembroID] = m.Foto || ''; });
+    const pend = falta.filter(function (i) { return o[i].length < 90000; }); // o cache aceita até 100 KB por item
+    for (let k = 0; k < pend.length; k += 10) { const lote = {}; pend.slice(k, k + 10).forEach(function (i) { lote['f:' + i] = o[i] || '-'; }); try { c.putAll(lote, 3600); } catch (e) { /* sem cache: segue */ } }
+  }
   return o;
 }
 function deleteBook_(d, u) {
@@ -916,7 +1015,7 @@ function toggleLike_(d, u) {
   return withLock_(function () {
     const tipo = d.tipo === 'testemunho' ? 'testemunho' : d.tipo === 'comentario' ? 'comentario' : ''; if (!tipo) throw new ApiError('VALIDATION', 'Tipo inválido.');
     const alvo = clip_(d.alvoId, 30), t = table_('Curtidas'), ex = t.rows.filter(function (c) { return c.Tipo === tipo && c.AlvoID === alvo && c.MembroID === u.membroId; })[0];
-    if (ex) { t.sh.deleteRow(ex._row); } else appendRow_(t, { Tipo: tipo, AlvoID: alvo, MembroID: u.membroId, Data: now_() });
+    if (ex) { delRow_(t, ex._row); } else appendRow_(t, { Tipo: tipo, AlvoID: alvo, MembroID: u.membroId, Data: now_() });
     return { curti: !ex };
   });
 }
@@ -1083,7 +1182,7 @@ function enroll_(d, u) {
   return withLock_(function () {
     const e = table_('Eventos').rows.filter(function (r) { return r.EventoID === d.eventoId && r.Status !== 'Cancelado'; })[0]; if (!e) throw new ApiError('NOT_FOUND', 'Evento não encontrado.');
     const t = table_('Inscricoes'), ex = t.rows.filter(function (r) { return r.EventoID === e.EventoID && r.MembroID === u.membroId; })[0];
-    if (d.on && !ex) appendRow_(t, { EventoID: e.EventoID, MembroID: u.membroId, Data: now_() }); if (!d.on && ex) t.sh.deleteRow(ex._row); return { inscrito: !!d.on };
+    if (d.on && !ex) appendRow_(t, { EventoID: e.EventoID, MembroID: u.membroId, Data: now_() }); if (!d.on && ex) delRow_(t, ex._row); return { inscrito: !!d.on };
   });
 }
 function postNews_(d, u) { const t = clip_(d.titulo, 120); if (!t) throw new ApiError('VALIDATION', 'Informe o título.'); appendRow_(table_('Noticias'), { NoticiaID: id_('N'), Titulo: t, Texto: clip_(d.texto, 1500), Data: now_(), CriadoPor: u.membroId, Status: 'Ativo' }); audit_(u.email, 'NOTICIA', t, 'OK'); return { ok: true }; }
@@ -1415,8 +1514,8 @@ function revokeCert_(d, u) {
     const ano = String(r.CertData || '').slice(0, 4), ref = 'curso:' + c.CursoID + ':' + ano;
     writeRow_(t, r._row, { Cert: 'pendente', CertCodigo: '', CertData: '', CertPor: '', Status: 'autorizado' });
     const ti = table_('Insignias'), tx = table_('XpLog');
-    ti.rows.filter(function (x) { return x.MembroID === r.MembroID && x.Ref === ref; }).sort(function (a, b) { return b._row - a._row; }).forEach(function (x) { ti.sh.deleteRow(x._row); });
-    tx.rows.filter(function (x) { return x.MembroID === r.MembroID && x.Ref === 'insignia:' + ref; }).sort(function (a, b) { return b._row - a._row; }).forEach(function (x) { tx.sh.deleteRow(x._row); });
+    ti.rows.filter(function (x) { return x.MembroID === r.MembroID && x.Ref === ref; }).sort(function (a, b) { return b._row - a._row; }).forEach(function (x) { delRow_(ti, x._row); });
+    tx.rows.filter(function (x) { return x.MembroID === r.MembroID && x.Ref === 'insignia:' + ref; }).sort(function (a, b) { return b._row - a._row; }).forEach(function (x) { delRow_(tx, x._row); });
     notify_(r.MembroID, 'curso', 'Certificado removido', 'O certificado de ' + c.Nome + ' foi retirado pelo professor. Ele pode ser emitido de novo depois.', 'curso:' + c.CursoID);
     audit_(u.email, 'CERTIFICADO_REVOGADO', c.CursoID + ':' + r.MatriculaID, 'OK'); return { ok: true };
   });
@@ -1671,7 +1770,7 @@ function saveHighlight_(d, u) {
     const id = id_('PF'); appendRow_(t, { MembroID: u.membroId, FotoID: id, Foto: foto, Legenda: clip_(d.legenda, 80), Ordem: String(meus.length + 1) }); return { id: id };
   });
 }
-function deleteHighlight_(d, u) { return withLock_(function () { const t = table_('PerfilFotos'), r = t.rows.filter(function (x) { return x.FotoID === d.id && x.MembroID === u.membroId; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Foto não encontrada.'); t.sh.deleteRow(r._row); return { ok: true }; }); }
+function deleteHighlight_(d, u) { return withLock_(function () { const t = table_('PerfilFotos'), r = t.rows.filter(function (x) { return x.FotoID === d.id && x.MembroID === u.membroId; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Foto não encontrada.'); delRow_(t, r._row); return { ok: true }; }); }
 
 /* ============================== EVENTOS (BOTONS) E CORRIDA DA BÍBLIA ============================== */
 function presencaTotal_(mid, ano) {
@@ -2132,7 +2231,7 @@ function saveMuralItem_(d, u) {
 function delMuralItem_(d, u) {
   return withLock_(function () {
     const id = muralCelId_(d, u); if (!muralPode_(u, id)) throw new ApiError('FORBIDDEN', 'Só quem é da célula mexe no mural.');
-    const t = lazy_('MuralCelula'), r = t.rows.filter(function (x) { return x.ItemID === String(d.itemId) && x.CelulaID === id; })[0]; if (!r) return { ok: true }; t.sh.deleteRow(r._row); audit_(u.email, 'MURAL_CEL', id + ' -' + r.Tipo, 'OK'); return { ok: true };
+    const t = lazy_('MuralCelula'), r = t.rows.filter(function (x) { return x.ItemID === String(d.itemId) && x.CelulaID === id; })[0]; if (!r) return { ok: true }; delRow_(t, r._row); audit_(u.email, 'MURAL_CEL', id + ' -' + r.Tipo, 'OK'); return { ok: true };
   });
 }
 /* ===== Posts agendados (campanhas): no ar por período, sazonais todo ano, ligados/desligados à mão; aparecem no Início e em Notícias ===== */
@@ -2177,7 +2276,7 @@ function setCampanhaEstado_(d, u) {
   return withLock_(function () { const t = lazy_('Campanhas'), r = t.rows.filter(function (x) { return x.CampID === clip_(d.id, 30); })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Post agendado não encontrado.'); const est = d.estado === 'ligado' || d.estado === 'desligado' ? d.estado : 'auto'; writeRow_(t, r._row, { Estado: est, AtualizadoEm: now_() }); audit_(u.email, 'CAMPANHA', est + ' ' + r.Titulo, 'OK'); return { ok: true }; });
 }
 function deleteCampanha_(d, u) {
-  return withLock_(function () { const t = lazy_('Campanhas'), r = t.rows.filter(function (x) { return x.CampID === clip_(d.id, 30); })[0]; if (!r) return { ok: true }; t.sh.deleteRow(r._row); audit_(u.email, 'CAMPANHA', 'apaga ' + r.Titulo, 'OK'); return { ok: true }; });
+  return withLock_(function () { const t = lazy_('Campanhas'), r = t.rows.filter(function (x) { return x.CampID === clip_(d.id, 30); })[0]; if (!r) return { ok: true }; delRow_(t, r._row); audit_(u.email, 'CAMPANHA', 'apaga ' + r.Titulo, 'OK'); return { ok: true }; });
 }
 function saveSupCor_(d, u) {
   const sid = clip_(d.supId, 30), cor = String(d.cor || ''); if (!sid) throw new ApiError('VALIDATION', 'Supervisão inválida.'); if (cor && !/^#[0-9a-fA-F]{6}$/.test(cor)) throw new ApiError('VALIDATION', 'Cor inválida.');
@@ -2250,7 +2349,7 @@ function clearFaces_(d, u) { // apaga assinaturas e autorizações; o registro d
   return withLock_(function () {
     const t = table_('Rostos'), n = t.rows.length, tem = function (r) { return r.ConsentimentoBio || r.ConsentimentoImagem; };
     t.rows.filter(tem).forEach(function (r) { writeRow_(t, r._row, { Descritor: '', Amostras: '', Autorizado: '0', AutorizadoPor: 'limpeza' }); });
-    t.rows.filter(function (r) { return !tem(r); }).map(function (r) { return r._row; }).sort(function (a, b) { return b - a; }).forEach(function (rw) { t.sh.deleteRow(rw); });
+    t.rows.filter(function (r) { return !tem(r); }).map(function (r) { return r._row; }).sort(function (a, b) { return b - a; }).forEach(function (rw) { delRow_(t, rw); });
     audit_(u.email, 'ROSTOS_APAGADOS', String(n), 'OK'); return { n: n };
   });
 }
@@ -2376,8 +2475,9 @@ function findPeople_(d, u) {
 function listPeople_(d, u) {
   const ativos = {}; table_('Usuarios').rows.forEach(function (r) { if (r.Status === 'Ativo' && r.MembroID) ativos[r.MembroID] = 1; });
   const todos = table_('Membros').rows.filter(function (m) { return ativos[m.MembroID] && m.MembroID !== u.membroId && m.Status !== 'Inativo'; }).sort(function (a, b) { return String(a.Simples || a.Apelido || a.Nome).localeCompare(String(b.Simples || b.Apelido || b.Nome)); });
-  const de = Math.max(0, Number(d.de) || 0);
-  return { total: todos.length, itens: todos.slice(de, de + 60).map(function (m) { const p = presDe_(m.MembroID, d); return { id: m.MembroID, nome: m.Simples || m.Apelido || m.Nome, online: p.online, visto: p.visto }; }) };
+  const de = Math.max(0, Number(d.de) || 0), pag = todos.slice(de, de + 60);
+  let pv = {}; if (!(d && d.inv)) { try { pv = CacheService.getScriptCache().getAll(pag.map(function (m) { return 'p:' + m.MembroID; })) || {}; } catch (e) { pv = {}; } } // uma consulta só, em vez de uma por pessoa
+  return { total: todos.length, itens: pag.map(function (m) { const v = (d && d.inv) ? 0 : Number(pv['p:' + m.MembroID] || 0); return { id: m.MembroID, nome: m.Simples || m.Apelido || m.Nome, online: v > 0 && Date.now() - v < PRES_MS, visto: v }; }) };
 }
 const CHAT_MAX = 1000, CHAT_POR_MIN = 20, PRES_MS = 90000, DIG_MS = 6000;
 /* presença (online) e "digitando": ficam só no cache temporário, sem gravar na planilha */
@@ -2579,7 +2679,7 @@ function adminSave_(d, u) {
 function adminRemove_(d, u) {
   return withLock_(function () {
     const e = ent_(d, u), t = table_(e.aba), row = t.rows.filter(function (r) { return r[e.id] === d.id; })[0]; if (!row) throw new ApiError('NOT_FOUND', 'Item não encontrado.');
-    if (e.apagar) t.sh.deleteRow(row._row); else { const p = {}; p[e.status.col] = d.reativar ? e.status.ativo : e.status.off; writeRow_(t, row._row, p); }
+    if (e.apagar) delRow_(t, row._row); else { const p = {}; p[e.status.col] = d.reativar ? e.status.ativo : e.status.off; writeRow_(t, row._row, p); }
     audit_(u.email, (d.reativar ? 'ADMIN_REATIVAR:' : 'ADMIN_REMOVER:') + d.tipo, d.id, 'OK'); return { ok: true };
   });
 }
@@ -2595,10 +2695,10 @@ function purgePessoa_(d, u) {
     const conf = String(d.confirmar || '').trim().toLowerCase(); if (conf !== String(m.Nome || '').trim().toLowerCase()) throw new ApiError('VALIDATION', 'Digite o nome completo da pessoa para confirmar.');
     const nome = m.Nome, tc = table_('Celulas');
     tc.rows.forEach(function (c) { const p = {}; if (c.LiderID === id) p.LiderID = ''; if (c.SupervisorID === id) p.SupervisorID = ''; if (c.TreinamentoID === id) p.TreinamentoID = ''; if (Object.keys(p).length) writeRow_(tc, c._row, p); });
-    const apaga = function (aba, col) { const t = table_(aba); t.rows.filter(function (r) { return r[col] === id; }).map(function (r) { return r._row; }).sort(function (a, b) { return b - a; }).forEach(function (rw) { t.sh.deleteRow(rw); }); };
-    us.map(function (r) { return r._row; }).sort(function (a, b) { return b - a; }).forEach(function (rw) { tu.sh.deleteRow(rw); });
+    const apaga = function (aba, col) { const t = table_(aba); t.rows.filter(function (r) { return r[col] === id; }).map(function (r) { return r._row; }).sort(function (a, b) { return b - a; }).forEach(function (rw) { delRow_(t, rw); }); };
+    us.map(function (r) { return r._row; }).sort(function (a, b) { return b - a; }).forEach(function (rw) { delRow_(tu, rw); });
     apaga('Notificacoes', 'MembroID'); apaga('Rostos', 'MembroID');
-    tm.sh.deleteRow(m._row);
+    delRow_(tm, m._row);
     audit_(u.email, 'PESSOA_EXCLUIDA', id + ' ' + nome, 'OK'); return { ok: true };
   });
 }
@@ -2685,7 +2785,7 @@ function acharPost_(id, u) { const p = table_('Posts').rows.filter(function (x) 
 function likePost_(d, u) {
   return withLock_(function () {
     const p = acharPost_(d.id, u), t = table_('Curtidas'), ex = t.rows.filter(function (r) { return r.Tipo === 'post' && r.AlvoID === p.PostID && r.MembroID === u.membroId; })[0], on = d.on !== false;
-    if (ex && !on) t.sh.deleteRow(ex._row); else if (!ex && on) appendRow_(t, { Tipo: 'post', AlvoID: p.PostID, MembroID: u.membroId, Data: now_() });
+    if (ex && !on) delRow_(t, ex._row); else if (!ex && on) appendRow_(t, { Tipo: 'post', AlvoID: p.PostID, MembroID: u.membroId, Data: now_() });
     return { curtidas: table_('Curtidas').rows.filter(function (r) { return r.Tipo === 'post' && r.AlvoID === p.PostID; }).length, curti: on };
   });
 }
@@ -2710,7 +2810,7 @@ function deletePost_(d, u) {
 function deleteComment_(d, u) {
   return withLock_(function () {
     const t = table_('Comentarios'), r = t.rows.filter(function (x) { return x.ComentID === clip_(d.id, 30); })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Comentário não encontrado.');
-    if (r.MembroID !== u.membroId && !can_(u, 'config') && u.papel !== 'admin') throw new ApiError('FORBIDDEN', 'Só quem comentou pode apagar.'); t.sh.deleteRow(r._row); return { ok: true };
+    if (r.MembroID !== u.membroId && !can_(u, 'config') && u.papel !== 'admin') throw new ApiError('FORBIDDEN', 'Só quem comentou pode apagar.'); delRow_(t, r._row); return { ok: true };
   });
 }
 function novoPost_(o) { const id = id_('PO'); appendRow_(table_('Posts'), { PostID: id, Tipo: o.tipo, Escopo: o.escopo, CelulaID: o.celulaId || '', AutorID: o.autorId || '', Titulo: clip_(o.titulo, 140), Texto: clip_(o.texto, 1000), Foto: o.foto || '', Meta: JSON.stringify(o.meta || {}), Data: now_(), Status: 'ok' }); return id; }
@@ -2827,7 +2927,7 @@ function saveMark_(d, u) {
     const ref = clip_(d.ref, 20); if (!/^\d{1,3}:\d{1,3}:\d{1,3}$/.test(ref)) throw new ApiError('VALIDATION', 'Versículo inválido.');
     const cores = ['amarelo', 'verde', 'azul', 'rosa', 'laranja', 'roxo'], cor = d.cor ? String(d.cor) : '', tipo = d.tipo === 'sublinhado' ? 'sublinhado' : 'marca', com = clip_(d.coment, 500); if (cor && cores.indexOf(cor) < 0) throw new ApiError('VALIDATION', 'Cor inválida.');
     const t = table_('BibMarcas'), ex = t.rows.filter(function (r) { return r.MembroID === u.membroId && r.Ref === ref; })[0];
-    if (!cor && !com) { if (ex) t.sh.deleteRow(ex._row); return { removida: true }; }
+    if (!cor && !com) { if (ex) delRow_(t, ex._row); return { removida: true }; }
     const row = { Cor: cor, Tipo: tipo, Comentario: com, Publico: d.publico && com ? '1' : '0', Data: today_() };
     if (ex) writeRow_(t, ex._row, row); else appendRow_(t, Object.assign({ MembroID: u.membroId, Ref: ref }, row)); return { ok: true };
   });
@@ -2882,7 +2982,7 @@ function saveMural_(d, u) {
       else { if (++outros > 300) return; const pts = (Array.isArray(i.p) ? i.p : []).slice(0, 4000).map(function (n) { return Math.round(Number(n)) || 0; }); if (pts.length < 2) return; const dd = JSON.stringify({ tl: ['pincel', 'giz', 'borracha'].indexOf(i.tl) >= 0 ? i.tl : 'pincel', s: num(i.s, 1, 80, 5), p: pts }); if (dd.length > 45000) throw new ApiError('VALIDATION', 'Um traço ficou grande demais; faça traços menores.'); row.Dados = dd; }
       out.push(row);
     });
-    t.rows.filter(function (r) { return r.Pagina === pg; }).sort(function (a, b) { return b._row - a._row; }).forEach(function (r) { t.sh.deleteRow(r._row); });
+    t.rows.filter(function (r) { return r.Pagina === pg; }).sort(function (a, b) { return b._row - a._row; }).forEach(function (r) { delRow_(t, r._row); });
     out.forEach(function (r) { appendRow_(t, r); });
     audit_(u.email, 'MURAL_FAM:' + pg, out.length + ' itens', 'OK'); return { ok: true, itens: out.map(muralOut_) };
   });
@@ -3169,7 +3269,7 @@ function saveAgenda_(d, u) {
     audit_(u.email, 'AGENDA', id + ' ' + data + ' ' + itens.length, 'OK'); return { id: id, n: itens.length };
   });
 }
-function deleteAgenda_(d, u) { multiExige_(u); return withLock_(function () { const t = table_('Agendas'), r = t.rows.filter(function (x) { return x.AgendaID === d.id; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Agenda não encontrada.'); t.sh.deleteRow(r._row); audit_(u.email, 'AGENDA_DEL', r.AgendaID, 'OK'); return { ok: true }; }); }
+function deleteAgenda_(d, u) { multiExige_(u); return withLock_(function () { const t = table_('Agendas'), r = t.rows.filter(function (x) { return x.AgendaID === d.id; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Agenda não encontrada.'); delRow_(t, r._row); audit_(u.email, 'AGENDA_DEL', r.AgendaID, 'OK'); return { ok: true }; }); }
 // transmitir uma imagem/evento na hora: entra na agenda do dia (cria se preciso) e fica salvo lá
 function addAgendaItem_(d, u) {
   multiExige_(u);
@@ -3454,13 +3554,13 @@ const ROUTES = {
   lookup: { auth: 'any', fn: lookup_ }, requestTransfer: { auth: 'any', write: 1, fn: requestTransfer_ }, requestExit: { auth: 'any', write: 1, fn: requestExit_ }, decideExit: { auth: 'any', write: 1, fn: decideExit_ }, addNewMember: { auth: 'any', write: 1, fn: addNewMember_ }, orgTree: { auth: 'any', fn: orgTree_ },
   listTransfers: { auth: 'any', fn: listTransfers_ }, decideTransfer: { auth: 'any', write: 1, fn: decideTransfer_ },
   createEvent: { auth: 'eventos', write: 1, fn: createEvent_ }, postNews: { auth: 'eventos', write: 1, fn: postNews_ },
-  listApprovals: { auth: 'any', fn: listApprovals_ }, guideDone: { auth: 'any', write: 1, fn: guideDone_ }, listNotifications: { auth: 'any', fn: listNotifications_ }, clearNotifications: { auth: 'any', write: 1, fn: clearNotifications_ }, readNotifications: { auth: 'any', write: 1, fn: readNotifications_ }, decideApproval: { auth: 'any', fn: decideApproval_ }, undoApproval: { auth: 'any', fn: undoApproval_ }, track: { auth: 'any', fn: track_ }, usageReport: { auth: 'config', fn: usageReport_ }, metricsReport: { auth: 'any', fn: metricsReport_ }, getMetrics: { auth: 'config', fn: getMetrics_ }, ping: { auth: 'any', fn: ping_ },
+  listApprovals: { auth: 'any', fn: listApprovals_ }, guideDone: { auth: 'any', write: 1, fn: guideDone_ }, listNotifications: { auth: 'any', cond: 60000, fn: listNotifications_ }, clearNotifications: { auth: 'any', write: 1, fn: clearNotifications_ }, readNotifications: { auth: 'any', write: 1, fn: readNotifications_ }, decideApproval: { auth: 'any', fn: decideApproval_ }, undoApproval: { auth: 'any', fn: undoApproval_ }, track: { auth: 'any', fn: track_ }, usageReport: { auth: 'config', fn: usageReport_ }, metricsReport: { auth: 'any', fn: metricsReport_ }, getMetrics: { auth: 'config', fn: getMetrics_ }, ping: { auth: 'any', fn: ping_ },
   orgMove: { auth: 'any', write: 1, fn: orgMove_ }, saveOrgLayout: { auth: 'any', write: 1, fn: saveOrgLayout_ }, rateBook: { auth: 'any', write: 1, fn: rateBook_ }, fotos: { auth: 'any', fn: fotos_ },
   listBooks: { auth: 'any', fn: listBooks_ }, saveBook: { auth: 'any', write: 1, fn: saveBook_ }, deleteBook: { auth: 'any', write: 1, fn: deleteBook_ }, getBookFile: { auth: 'any', fn: getBookFile_ },
   listBookComments: { auth: 'any', fn: listBookComments_ }, addBookComment: { auth: 'any', write: 1, fn: addBookComment_ }, deleteBookComment: { auth: 'any', write: 1, fn: deleteBookComment_ },
   listTestimonies: { auth: 'any', fn: listTestimonies_ }, addTestimony: { auth: 'any', write: 1, fn: addTestimony_ }, deleteTestimony: { auth: 'any', write: 1, fn: deleteTestimony_ }, toggleLike: { auth: 'any', write: 1, fn: toggleLike_ },
   saveMinistry: { auth: 'min', write: 1, fn: saveMinistry_ }, deleteMinistry: { auth: 'min', write: 1, fn: deleteMinistry_ }, listInterests: { auth: 'min', fn: listInterests_ },
-  saveConfig: { auth: 'config', write: 1, fn: saveConfig_ }, saveHomeLayout: { auth: 'config', write: 1, fn: saveHomeLayout_ }, saveMural: { auth: 'config', write: 1, fn: saveMural_ }, getTelao: { auth: 'any', fn: getTelao_ }, setTelao: { auth: 'any', write: 1, fn: setTelao_ }, saveTelaoPausa: { auth: 'any', write: 1, fn: saveTelaoPausa_ }, listMidias: { auth: 'any', fn: listMidias_ }, getMidia: { auth: 'any', fn: getMidia_ }, saveMidia: { auth: 'any', write: 1, fn: saveMidia_ }, deleteMidia: { auth: 'any', write: 1, fn: deleteMidia_ }, listAgendas: { auth: 'any', fn: listAgendas_ }, saveAgenda: { auth: 'any', write: 1, fn: saveAgenda_ }, deleteAgenda: { auth: 'any', write: 1, fn: deleteAgenda_ }, addAgendaItem: { auth: 'any', write: 1, fn: addAgendaItem_ }, getAccessRules: { auth: 'config', fn: accessRules_ }, saveAccessRules: { auth: 'config', write: 1, fn: saveAccessRules_ }, saveVideo: { auth: 'config', write: 1, fn: saveVideo_ }, deleteVideo: { auth: 'config', write: 1, fn: deleteVideo_ }, updateVideo: { auth: 'config', write: 1, fn: updateVideo_ },
+  saveConfig: { auth: 'config', write: 1, fn: saveConfig_ }, fotosDriveStatus: { auth: 'config', fn: fotosDriveStatus_ }, fotosDriveSet: { auth: 'config', write: 1, fn: fotosDriveSet_ }, fotosDriveMigra: { auth: 'config', write: 1, fn: fotosDriveMigra_ }, saveHomeLayout: { auth: 'config', write: 1, fn: saveHomeLayout_ }, saveMural: { auth: 'config', write: 1, fn: saveMural_ }, getTelao: { auth: 'any', cond: 60000, fn: getTelao_ }, setTelao: { auth: 'any', write: 1, fn: setTelao_ }, saveTelaoPausa: { auth: 'any', write: 1, fn: saveTelaoPausa_ }, listMidias: { auth: 'any', fn: listMidias_ }, getMidia: { auth: 'any', fn: getMidia_ }, saveMidia: { auth: 'any', write: 1, fn: saveMidia_ }, deleteMidia: { auth: 'any', write: 1, fn: deleteMidia_ }, listAgendas: { auth: 'any', fn: listAgendas_ }, saveAgenda: { auth: 'any', write: 1, fn: saveAgenda_ }, deleteAgenda: { auth: 'any', write: 1, fn: deleteAgenda_ }, addAgendaItem: { auth: 'any', write: 1, fn: addAgendaItem_ }, getAccessRules: { auth: 'config', fn: accessRules_ }, saveAccessRules: { auth: 'config', write: 1, fn: saveAccessRules_ }, saveVideo: { auth: 'config', write: 1, fn: saveVideo_ }, deleteVideo: { auth: 'config', write: 1, fn: deleteVideo_ }, updateVideo: { auth: 'config', write: 1, fn: updateVideo_ },
   listUsers: { auth: 'config', fn: listUsers_ }, createUser: { auth: 'config', write: 1, fn: createUser_ }, setUser: { auth: 'config', write: 1, fn: setUser_ }, viewPasswords: { auth: 'config', fn: viewPasswords_ }, savePerms: { auth: 'config', write: 1, fn: savePerms_ },
   saveLesson: { auth: 'config', write: 1, fn: saveLesson_ }, getPerms: { auth: 'config', fn: function () { return permMatrix_(); } },
   createCell: { auth: 'celulas', write: 1, fn: createCell_ },
@@ -3468,19 +3568,40 @@ const ROUTES = {
 };
 function doGet() { return json_({ ok: true, data: { servico: 'Zoe API', status: 'online' } }); }
 function doPost(e) {
-  let out, user = null, route = null, action = ''; const t0_ = Date.now(); LOCKMS_ = 0; WAITMS_ = 0;
+  let out, user = null, route = null, action = ''; const t0_ = Date.now(); LOCKMS_ = 0; WAITMS_ = 0; DEPREC_ = null;
   try {
     const raw = e && e.postData && e.postData.contents; if (!raw || raw.length > 16000000) throw new ApiError('BAD_REQUEST', 'Requisição inválida.');
     const req = JSON.parse(raw); action = String(req.action || '');
     if (raw.length > 1500000 && action !== 'saveBook') throw new ApiError('BAD_REQUEST', 'Requisição grande demais.'); route = Object.prototype.hasOwnProperty.call(ROUTES, action) ? ROUTES[action] : null; if (!route) throw new ApiError('NOT_FOUND', 'Ação desconhecida.');
-    if (route.auth) { user = auth_(req.token); if (route.auth !== 'any' && !can_(user, route.auth)) { audit_(user.email, 'NEGADO:' + action, '', 'NEGADO'); throw new ApiError('FORBIDDEN', 'Você não tem permissão para esta operação.'); } }
+    // as abas lidas na identificação do usuário já servem para a rota (antes eram lidas duas vezes)
     TMEMO_ = /^(list|get|search|boot|me$|birthdays|orgTree|cellMembers|history|indicators|profileView|lookup|track|usageReport|fotos|certData|courseDetail|aulaFeedback)/.test(action) ? {} : null;
-    out = { ok: true, data: route.fn(req.data || {}, user) };
+    if (route.auth) { user = auth_(req.token); if (route.auth !== 'any' && !can_(user, route.auth)) { audit_(user.email, 'NEGADO:' + action, '', 'NEGADO'); throw new ApiError('FORBIDDEN', 'Você não tem permissão para esta operação.'); } }
+    /* Rota "sem mudança": se a versão que o aparelho já tem (req.ver) for a mesma de agora, nem executa a rota; responde só "sem mudança" (nunca revela dados).
+       A versão junta as marcas das abas que a rota leu da última vez, quem está pedindo, o dia e uma janela de tempo (segurança contra edição manual na planilha). */
+    const cond = route.cond ? Number(route.cond) || 300000 : 0; let ver = '', dep = null, pronto = false; const cc = CacheService.getScriptCache();
+    if (cond && user) {
+      try { dep = JSON.parse(cc.get('dp:' + action) || 'null'); } catch (e2) { dep = null; }
+      if (dep && dep.length) {
+        ver = tvStamp_(dep.concat(['Usuarios', 'Membros', 'Celulas', 'Config'])) + '|' + user.membroId + '|' + today_() + '|' + Math.floor(Date.now() / cond);
+        if (req.ver && String(req.ver) === ver) { out = { ok: true, sem: true, ver: ver }; pronto = true; }
+      }
+    }
+    if (!pronto) {
+      if (cond) DEPREC_ = {};
+      const data = route.fn(req.data || {}, user); out = { ok: true, data: data };
+      if (cond) {
+        const lidas = Object.keys(DEPREC_ || {}); DEPREC_ = null; const ant = dep || [], novas = lidas.filter(function (n) { return ant.indexOf(n) < 0; });
+        if (novas.length || !dep) { try { cc.put('dp:' + action, JSON.stringify(ant.concat(novas)), 21600); } catch (e3) { /* ok */ } ver = ''; } // aprendeu abas novas: a versão desta resposta não cobre tudo, vale a da próxima
+        if (ver) out.ver = ver;
+      }
+    }
   } catch (err) {
+    DEPREC_ = null;
     if (err instanceof ApiError) out = { ok: false, error: { code: err.code, message: err.message } };
     else { console.error(err && err.stack || err); out = { ok: false, error: { code: 'ERROR', message: 'Erro inesperado. Tente novamente.' } }; }
   }
   TMEMO_ = null;
+  try { tvFlush_(); } catch (err1) { console.error(err1 && err1.stack || err1); } // gravações fora de trava também trocam a marca da aba
   try { pushFlush_(); } catch (err2) { console.error(err2 && err2.stack || err2); }
   out.k = LOCKMS_; out.w = WAITMS_; out.s = Date.now() - t0_; // tempo gasto no servidor (ms), para o painel de desempenho
   return json_(out);

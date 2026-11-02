@@ -158,6 +158,26 @@
   ]
  },
  {
+  "t": "Carregamento rápido (fotos, Pessoas, Meu perfil)",
+  "itens": [
+   "O aparelho guarda fotos, a lista de Pessoas e o perfil em um banco local (IndexedDB, \"zoe-kv\"). As telas abrem com esses dados e o app atualiza por trás; só redesenha se algo mudou. Tudo é apagado ao sair.",
+   "Logo depois de entrar o app pré-carrega Meu perfil, Pessoas e as fotos (pulado com a economia de dados ligada).",
+   "Servidor: a rota fotos usa o cache temporário (1 h) e atende até 40 pessoas por pedido; listPeople lê a presença online de todos em uma consulta. Trocar a foto limpa o cache dela.",
+   "Teste: tests/e2e_carregamento.py (abre Pessoas e Meu perfil com a rede bloqueada)."
+  ]
+ },
+ {
+  "t": "Servidor avisa se algo mudou e fotos no Drive (piloto)",
+  "itens": [
+   "Marcas de versão: cada aba tem uma marca (CacheService, chave tv:<Aba>) que só muda depois que uma gravação de verdade termina (appendRow_, writeRow_, delRow_, ensureCols_ + flush no fim de withLock_). Quem lê pode comparar marcas em vez de reler a planilha.",
+   "auth_ guarda a identidade da sessão por até 60 s, validada pelas marcas de Usuarios, Membros, Celulas e Config. Rotas com cond (getTelao, listNotifications) devolvem {sem:true} quando a versão enviada pelo app (ver) ainda vale; o app (apiRaw/CVC) reaproveita a resposta anterior. O servidor aprende de quais abas cada rota depende (dp:<rota>).",
+   "Falha segura: no pior caso relê a planilha à toa; nunca entrega dado velho com marca nova. Edição manual direto na planilha aparece em até 60 s.",
+   "Fotos no Drive (Config FotosDrive=1, desligado por padrão): fotoParaGravar_ sobe a foto para a pasta \"Zoe - Fotos de perfil\" (propriedade FOTOS_FOLDER), compartilha como link e grava https://lh3.googleusercontent.com/d/<id>=s256 em Membros.Foto, assim as ~27 rotas e telas que mostram foto continuam iguais. Se o Drive ou o compartilhamento falhar, a foto fica na planilha como antes (auditoria FOTO_DRIVE_FALHOU).",
+   "Rotas (permissão config): fotosDriveStatus, fotosDriveSet, fotosDriveMigra (sentido drive ou planilha, 15 por chamada). Trocar ou remover a foto apaga o arquivo antigo. Só fotos de perfil de membros; fotos de células, eventos e outras continuam na planilha.",
+   "Teste: tests/zoe.test.mjs (marcas, sem mudança e piloto do Drive) e tests/e2e_carregamento.py."
+  ]
+ },
+ {
   "t": "Eventos que passaram e feed único",
   "itens": [
    "rescheduleEvent (eventos): remarca; saveEventoFotos (Mídia ou eventos): cria o post tipo \"evento\" e avisa os supervisores; listEventoFotos, delEventoFoto.",

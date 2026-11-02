@@ -210,6 +210,8 @@ Administração › **Maratona Bíblica (programar)**: início (1º de janeiro),
 ## Desempenho do carregamento
 - A carga inicial agora é **uma única requisição** (`boot`) em vez de ~20; o servidor lê cada aba da planilha uma vez por requisição de leitura (cache só em rotas de leitura, invalidado ao gravar) e reutiliza a planilha aberta.
 - Fontes extras (assinaturas cursivas e Multimídia) carregam depois do app, fora do caminho crítico.
+- **v1.93 – servidor avisa se algo mudou:** cada aba tem uma marca de versão (`tv:<Aba>`, CacheService) trocada só depois de uma gravação concluída. `auth_` guarda a identidade por até 60 s e as rotas `getTelao` e `listNotifications` respondem `{sem:true}` quando nada mudou (o app reaproveita a resposta anterior). Falha segura: no pior caso relê a planilha.
+- **Fotos de perfil no Drive (piloto, desligado):** Administração › Definições de Parâmetros › *Fotos de perfil no Drive*. Config `FotosDrive`, pasta `Zoe - Fotos de perfil`, link `lh3.googleusercontent.com/d/<id>=s256` em `Membros.Foto`; rotas `fotosDriveStatus`, `fotosDriveSet`, `fotosDriveMigra` (nos dois sentidos). As fotos ficam com "qualquer pessoa com o link pode ver": decidir sobre privacidade (LGPD, menores) antes de ligar. A planilha continua restrita.
 
 ## Insígnias com níveis, sequência e ícones
 - **Níveis**: ao criar uma insígnia você escolhe quantos níveis ela tem (até 10); cada nível tem nome, meta (parâmetro), XP e visual próprios (acabamento, forma, ícone, cores, texto). A pessoa mostra o nível mais alto alcançado e vê o próximo com o progresso.
@@ -398,3 +400,11 @@ Botão direito (ou toque longo) numa célula de qualquer mapa abre os dados (`ge
 
 ## Posts agendados
 Admin › Publicações › Posts agendados: período por dias/meses/anos ou intervalo, sazonal (todo ano), ligar/desligar manual, arte trocável; aparece no Início e nas Notícias; a Zoe comenta. Aba `Campanhas` criada automaticamente.
+
+## Carregamento rápido: fotos, Pessoas e Meu perfil
+- **Guardado no aparelho** (IndexedDB `zoe-kv`, funções `KV`, `kvCarrega`, `kvAplica` no `app.html`): fotos de perfil (`fotos`), lista de Pessoas (`pessoas`) e Meu perfil (`meu`). A tela abre com isso e se atualiza por trás (`meuRefresh`, `psCarrega`, `pedeFotos`); só redesenha se algo mudou. Foto com mais de 24 h é conferida de novo (`FSTALE`). Tudo é apagado em `sair()`; o dado só vale para o mesmo `membroId`.
+- **Pré-carga:** 2,5 s depois de entrar, `preCarrega()` busca Meu perfil, Pessoas e as fotos (pula se a economia de dados do navegador estiver ligada).
+- **Perfil de outra pessoa:** `PCACHE` guarda na sessão; reabrir é instantâneo e atualiza por trás.
+- **Fotos em paralelo:** `pedeFotos` manda lotes de 40 ao mesmo tempo. Servidor (`fotos_`): cada foto vai ao cache temporário por 1 h (`f:<id>`, até 90 mil caracteres) e só quem não está no cache obriga a ler a aba Membros; `writeRow_` limpa o cache quando a foto muda.
+- **Pessoas:** `listPeople_` lê a presença online com `getAll` (uma consulta).
+- Ao atualizar: cole o novo `Code.gs` e publique nova versão (não precisa de `setup()`). Teste: `tests/e2e_carregamento.py` (com `node tests/devserver.mjs` rodando).
