@@ -56,6 +56,11 @@ with sync_playwright() as p:
     print('Meu perfil abriu sem rede')
     adm.screenshot(path=OUT + '/carregamento_meu.png')
 
+    # 2b) "sem mudança": chamadas repetidas ao telão voltam sem dados e o app entrega a mesma resposta
+    r = adm.evaluate("""async()=>{const orig=window.fetch;let sem=0,tot=0;window.fetch=async(...a)=>{const r=await orig(...a);try{const j=await r.clone().json();tot++;if(j.sem)sem++}catch(e){}return r};
+      let ult=null;for(let i=0;i<6;i++)ult=await api('getTelao',{});window.fetch=orig;return {sem,tot,ok:!!ult&&typeof ult.item==='string'}}""")
+    print('telão: respostas "sem mudança":', r['sem'], 'de', r['tot']); assert r['ok'] and r['sem'] >= 1, r
+
     # 3) ao sair, o que ficou guardado é apagado
     adm.unroute('**/api*'); adm.evaluate("sair()"); adm.wait_for_selector('#lg_e', timeout=15000)
     sobrou = adm.evaluate("""()=>new Promise(r=>{const q=indexedDB.open('zoe-kv',1);q.onsuccess=()=>{const d=q.result;if(!d.objectStoreNames.contains('kv'))return r(-1);const c=d.transaction('kv').objectStore('kv').count();c.onsuccess=()=>r(c.result);c.onerror=()=>r(-2)};q.onerror=()=>r(-3)})""")
