@@ -1,6 +1,6 @@
 # Ministério Zoe — Página de Membros e App da Igreja
 
-App web para iPhone, Android e computador, com níveis de permissão e dimensionamento de acessos. Plataforma geral da igreja. Versão atual: **1.91** (a "2.0" só será anunciada quando estiver em produção rodando na igreja).
+App web para iPhone, Android e computador, com níveis de permissão e dimensionamento de acessos. Plataforma geral da igreja. Versão atual: **1.95** (a "2.0" só será anunciada quando estiver em produção rodando na igreja).
 
 ## Onde está tudo
 - Código: repositório privado GitHub `NyckolasBotero/zoe-app` (branch `main`, publicado via GitHub Pages).
@@ -9,6 +9,11 @@ App web para iPhone, Android e computador, com níveis de permissão e dimension
 - Backend: `apps-script/Code.gs` (Google Apps Script, ES2017) com Google Sheets como banco. Sheets criadas sozinhas (`lazy_`) quando faltam.
 - Documentos: `README.md`, `docs/atualizacoes.json` (notas por versão), `docs/documentacao.json`.
 - Testes: `node --test tests/zoe.test.mjs` (81 de backend) e e2e Playwright em `tests/e2e_*.py` (um por vez, servidor novo em `tests/devserver.mjs`).
+
+## Fonte única da verdade (vários chats)
+- Vários chats trabalham neste app. O ramo `main` do GitHub é a única fonte: **antes de mexer, `git pull`; antes de publicar, conferir se há versão nova no `origin/main`** (e mesclar sem perder nada).
+- Há **um só `Code.gs`**: o de `main` (apps-script/Code.gs). Nunca usar um `Code.gs` enviado por chat anterior se o chat tiver posterior.
+- A versão exibida é a última nota de `docs/atualizacoes.json`; cada chat acrescenta a sua nota no topo, sem renumerar as dos outros.
 
 ## Regras de trabalho combinadas
 1. Sempre enviar o `Code.gs` ao usuário quando mudar, dizendo se precisa rodar `setup()`.
@@ -26,6 +31,8 @@ App web para iPhone, Android e computador, com níveis de permissão e dimension
 - **Zoe (assistente) e Sod (gamificação):** Zoe conhece as áreas do site, eventos, agenda da célula e posts no ar.
 - **Chat e notificações:** som e animação (sino salta e balança; chat pula), botões de teste em Meu perfil › Configurações, mensagem de teste.
 - **PWA:** instalável; o aviso de instalar não repete para quem já instalou.
+- **Eventos que passaram:** remarcar/adiar, alerta à Mídia para subir fotos, post "Como foi…", feed único modular (Administração › Publicações).
+- **Insígnias:** lote de 44 insígnias com níveis e botão Elogiar (v1.95). Desempenho: marcas de versão por aba e fotos de perfil no Drive em piloto (v1.92/1.93).
 - Biblioteca virtual, Bíblia e anotações, Studio/Projeção, Consolidação, Fichas, Aniversariantes, Loja Zoe, Aprovações, cursos e aulas.
 
 ## Pendências e ideias
