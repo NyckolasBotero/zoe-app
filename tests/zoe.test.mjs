@@ -1645,3 +1645,38 @@ test('lote de insígnias: chat com resposta, Bíblia em sequência, semanas de c
   assert.equal(prog('sod_soltos', ida), 2); assert.equal(prog('sod_golpes', ida), 600); assert.equal(prog('sod_caixas', ida), 3); assert.equal(prog('sod_missoes', ida), 2);
   assert.equal(prog('sod_soltos', idb), 0);
 });
+test('v1.98: excluir insígnia estorna o XP, tira do perfil e dos destaques; editar a regra atualiza quem já ganhou', () => {
+  const { e, adm, tok, mk } = boot(); const a = mk('ana@zoe.com', 'membro'), ta = tok('ana@zoe.com', 'Temp12345');
+  const xp0 = e.call('profileView', {}, ta).data.xp.xp;
+  const m = e.call('saveInsigniaDef', { titulo: 'Provisória', criterio: { tipo: 'manual' }, xp: 200 }, adm).data.id;
+  assert.equal(e.call('grantBadge', { defId: m, membros: [a] }, adm).data.n, 1);
+  let p = e.call('profileView', {}, ta).data; assert.equal(p.xp.xp, xp0 + 200); const ref = p.insignias.find(i => i.titulo === 'Provisória').codigo;
+  e.run(`awardXp_('${a}','nivel',2000,'t')`); p = e.call('profileView', {}, ta).data; assert.ok(p.xp.nivel >= 5);
+  assert.ok(e.call('saveProfile', { insigniasTop: [{ r: ref }] }, ta).ok); assert.equal(e.call('profileView', {}, ta).data.top.length, 1);
+  assert.equal(e.call('deleteInsigniaDef', { id: m }, ta).error.code, 'FORBIDDEN');
+  const r = e.call('deleteInsigniaDef', { id: m }, adm); assert.equal(r.data.pessoas, 1); assert.equal(r.data.xp, 200);
+  p = e.call('profileView', {}, ta).data; assert.ok(!p.insignias.some(i => i.titulo === 'Provisória')); assert.equal(p.top.length, 0); assert.equal(p.xp.xp, xp0 + 2000);
+  assert.ok(!e.call('listInsigniaDefs', {}, adm).data.defs.some(d => d.id === m));
+  // excluída do lote: o setup() não recria
+  e.call('deleteInsigniaDef', { id: 'IBL_RT_U5' }, adm); e.run('setup()'); assert.ok(!e.call('listInsigniaDefs', {}, adm).data.defs.some(d => d.id === 'IBL_RT_U5'));
+  // editar: nível que sumiu e XP novo
+  const n2 = e.call('saveInsigniaDef', { titulo: 'Dois', criterio: { tipo: 'manual' }, niveis: [{ n: 1, nome: 'A', xp: 50 }, { n: 2, nome: 'B', xp: 80 }] }, adm).data.id;
+  e.call('grantBadge', { defId: n2, membros: [a], nivel: 2 }, adm); const x1 = e.call('profileView', {}, ta).data.xp.xp;
+  e.call('saveInsigniaDef', { id: n2, titulo: 'Dois', criterio: { tipo: 'manual' }, niveis: [{ n: 1, nome: 'A', xp: 50 }, { n: 2, nome: 'B', xp: 120 }] }, adm);
+  assert.equal(e.call('profileView', {}, ta).data.xp.xp, x1 + 40);
+  e.call('saveInsigniaDef', { id: n2, titulo: 'Dois', criterio: { tipo: 'manual' }, niveis: [] , xp: 50 }, adm);
+  assert.ok(!e.call('profileView', {}, ta).data.insignias.some(i => /Dois/.test(i.titulo) && /B/.test(i.titulo)));
+});
+test('v1.98: destaques por nível (1 a cada 5, até 5) e efeitos de brilho a partir do nível 30', () => {
+  const { e, adm, tok, mk } = boot(); const a = mk('bia@zoe.com', 'membro'), ta = tok('bia@zoe.com', 'Temp12345');
+  for (let i = 0; i < 6; i++) { const id = e.call('saveInsigniaDef', { titulo: 'Dest' + i, criterio: { tipo: 'manual' }, xp: 10 }, adm).data.id; e.call('grantBadge', { defId: id, membros: [a] }, adm); }
+  const refs = () => e.call('profileView', {}, ta).data.insignias.filter(i => /^Dest/.test(i.titulo)).map(i => i.codigo);
+  let p = e.call('profileView', {}, ta).data; assert.equal(p.libera.topSlots, 0);
+  assert.equal(e.call('saveProfile', { insigniasTop: refs().map(r => ({ r })) }, ta).ok, true); assert.equal(e.call('profileView', {}, ta).data.top.length, 0);
+  e.run(`awardXp_('${a}','n1',${e.run('xpNivel_(12)') },'t')`); p = e.call('profileView', {}, ta).data; assert.equal(p.libera.topSlots, 2);
+  e.call('saveProfile', { insigniasTop: refs().map(r => ({ r })) }, ta); assert.equal(e.call('profileView', {}, ta).data.top.length, 2);
+  assert.equal(e.call('saveProfile', { insigniasTop: [{ r: refs()[0], fx: 'aura' }] }, ta).error.code, 'FORBIDDEN');
+  e.run(`awardXp_('${a}','n2',${e.run('xpNivel_(60)')},'t')`); p = e.call('profileView', {}, ta).data; assert.equal(p.libera.topSlots, 5); assert.equal(p.libera.fx.aura, 35);
+  assert.ok(e.call('saveProfile', { insigniasTop: refs().map((r, i) => ({ r, fx: i === 0 ? 'aura' : '' })) }, ta).ok);
+  p = e.call('profileView', {}, ta).data; assert.equal(p.top.length, 5); assert.equal(p.top[0].fx, 'aura');
+});

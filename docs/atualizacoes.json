@@ -1,5 +1,18 @@
 [
  {
+  "titulo": "Excluir insígnia, destaques por nível e efeitos de brilho",
+  "melhorias": [
+   "Insígnias › Excluir (na lista e dentro da edição): pede confirmação, retira a insígnia de todo mundo que ganhou, estorna o XP, tira dos destaques do perfil e avisa cada pessoa. As insígnias do lote que você excluir não voltam com o setup().",
+   "Ao editar uma insígnia: a aparência já vale para todos os perfis; se você mudar a regra (tipo ou meta), quem não cumpre mais perde a insígnia e o XP, quem passou a cumprir recebe; níveis removidos são retirados; nome e XP de quem já ganhou são acertados.",
+   "Insígnias em destaque agora ficam numa faixa própria no perfil, bem maiores, e passam de 3 para 5. Os espaços dependem do nível: 1 espaço a cada 5 níveis (5, 10, 15, 20 e 25).",
+   "Depois dos 5 espaços, cada 5 níveis libera um efeito de brilho de contorno, que você escolhe para cada insígnia em destaque: Brilho (30), Aura (35), Pulso (40), Chamas (45), Faíscas (50), Arco-íris (55) e Halo giratório (60).",
+   "Esmeralda (nível 8), Safira (9) e Diamante (10) já têm brilho de fábrica na cor da própria pedra, irradiando luz no perfil (nos destaques, na lista de conquistadas e ao abrir a insígnia). Um efeito escolhido substitui o de fábrica.",
+   "Backend: nova rota de exclusão, ajustes automáticos ao editar e destaques com efeito. Cole o novo Code.gs e publique nova versão; não precisa rodar setup()."
+  ],
+  "data": "02/11/2026",
+  "v": "1.98"
+ },
+ {
   "titulo": "Símbolos bordados e níveis com pedras preciosas da Bíblia",
   "melhorias": [
    "O símbolo no meio de toda insígnia agora parece bordado: preenchimento em fios diagonais, contorno em pontos e relevo.",
