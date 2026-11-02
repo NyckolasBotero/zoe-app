@@ -1650,7 +1650,7 @@ function conquistasMembro_(m) {
 /* ---- insígnias criadas pelos supervisores: o que precisa ser feito (critério) e o visual ---- */
 const ICONES_BD = ['estrela', 'user', 'flame', 'gota', 'livro', 'coroa', 'cruz', 'coracao', 'pomba', 'trigo', 'chave', 'escudo', 'sino', 'maos', 'arado', 'ancora', 'vela', 'raio', 'caneta', 'pergaminho', 'biblia', 'microfone', 'violao', 'nota', 'camera', 'casa', 'mundo', 'presente', 'taca', 'peixe', 'arvore', 'folha', 'sol', 'lua', 'montanha', 'olho', 'relogio', 'medalha', 'trofeu', 'megafone', 'asa', 'tenda', 'barco', 'cordeiro', 'leao', 'calendario', 'balao', 'pegada', 'bandeira', 'diamante', 'semente', 'foguete', 'alvo', 'bussola', 'lanterna', 'harpa', 'trombeta', 'candelabro', 'tabuas', 'sorriso', 'joia', 'pao', 'fogueira', 'carta', 'convite', 'abraco', 'cafe'];
 const FORMAS_BD = ['circ', 'esc', 'hex', 'oct', 'losango'];
-const SONS_BD = ['', 'sino', 'moeda', 'harpa', 'fanfarra', 'celestial', 'magico', 'epico', 'coral'];
+const SONS_BD = ['', 'sino', 'moeda', 'harpa', 'fanfarra', 'celestial', 'magico', 'epico', 'coral', 'carrilhao', 'gloria', 'aleluia', 'trombetas', 'hosana', 'coroceleste', 'suprema'];
 const ESTILOS_BD = ['bordado', 'bronze', 'prata', 'ouro', 'celeste', 'jaspe', 'ametista', 'topazio', 'esmeralda', 'safira', 'rubi', 'diamante'];
 function podeCurar_(u) { return can_(u, 'config') || can_(u, 'eventos') || can_(u, 'celulas') || (u.supervisiona && u.supervisiona.length > 0) || u.papel === 'pastor' || u.papel === 'admin'; }
 function exigeCurar_(u) { if (!podeCurar_(u)) throw new ApiError('FORBIDDEN', 'Só supervisores e a administração criam insígnias.'); }

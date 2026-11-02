@@ -1,5 +1,17 @@
 [
  {
+  "titulo": "Pop-up de conquista mais empolgante e um som para cada nível",
+  "melhorias": [
+   "O botão de ouvir o som de novo saiu do pop-up da insígnia.",
+   "Pop-up renovado: título que muda conforme o nível (de “Nova insígnia!” a “Obra-prima divina!”), raios e brilho na cor da insígnia, canhões de confete pelas laterais, fogos de artifício, estrelinhas brilhando, tremor no impacto, selo com o acabamento e o nível, XP que sobe contando e vibração mais forte nos níveis altos. Quanto maior o nível, mais intensa a festa.",
+   "Sons: ficam só os três aprovados (Sino de cristal, Coral de louvor e Celestial/brilho de pérola) e entram sete novos, com sinos, coro, harpa, metais, tímpanos e reverberação. Cada nível toca um som diferente e cada vez mais emocionante: 1 Sino de cristal, 2 Carrilhão, 3 Coral de louvor, 4 Glória (harpa e coro), 5 Aleluia, 6 Celestial, 7 Trombetas de glória, 8 Hosana, 9 Coro celestial e 10 Glória suprema.",
+   "Os sons antigos (moeda, harpa, fanfarra, varinha e épico) foram retirados; insígnias que usavam algum deles passam a tocar o equivalente novo. Na edição da insígnia dá para fixar um som; deixando “Padrão do acabamento”, o som muda a cada nível.",
+   "Backend: novos nomes de som aceitos. Cole o novo Code.gs e publique nova versão; não precisa rodar setup()."
+  ],
+  "data": "02/11/2026",
+  "v": "1.99"
+ },
+ {
   "titulo": "Excluir insígnia, destaques por nível e efeitos de brilho",
   "melhorias": [
    "Insígnias › Excluir (na lista e dentro da edição): pede confirmação, retira a insígnia de todo mundo que ganhou, estorna o XP, tira dos destaques do perfil e avisa cada pessoa. As insígnias do lote que você excluir não voltam com o setup().",
