@@ -8,7 +8,7 @@ def entra(b,email,senha,nova=None):
     if pg.query_selector('#fp_n'):
         pg.fill('#fp_a',senha); pg.fill('#fp_n',nova); pg.fill('#fp_r',nova); pg.click("text=Salvar nova senha"); pg.wait_for_selector('#lg_e')
         pg.fill('#lg_e',email); pg.fill('#lg_s',nova); pg.click('#lg_b'); pg.wait_for_selector('#view h1')
-    pg.wait_for_selector('#splash',state='detached',timeout=15000); pg.evaluate("api('guideDone')"); return pg
+    pg.wait_for_selector('#splash',state='detached',timeout=15000); pg.evaluate("api('guideDone')"); pg.add_style_tag(content='#pushbar{display:none!important}'); return pg  # o aviso de instalar cobre os cliques
 with sync_playwright() as p:
     b=p.chromium.launch(); adm=entra(b,'admin@zoe.com','SenhaForte123')
     adm.evaluate("""async()=>{await api('createUser',{nome:'Ana Souza',email:'ana@zoe.com',senha:'Temp12345',papel:'membro'})}""")
@@ -21,7 +21,7 @@ with sync_playwright() as p:
     adm.screenshot(path=OUT+'/criar_insignia.png')
     adm.click('button:has-text("Salvar insígnia")'); adm.wait_for_selector('.opt:has-text("Mão no arado")'); assert 'Servir em “Limpeza” por 2 meses seguidos' in adm.inner_text('#view')
     # Ana vê a insígnia escura
-    ana.click('.nv[aria-label="Meu perfil"]'); ana.wait_for_selector('.fx-g .bd.lock:has-text("Mão no arado")')
+    ana.evaluate("MEU=null;go('meu')"); ana.wait_for_selector('.fx-g .bd.lock:has-text("Mão no arado")')  # o perfil agora abre do aparelho (v1.92): força buscar o novo
     # escala: dois meses seguidos
     adm.click('.tabs button:has-text("Escalas e serviço")'); adm.wait_for_selector('#sv_a')
     for mes in ['2026-09','2026-10']:

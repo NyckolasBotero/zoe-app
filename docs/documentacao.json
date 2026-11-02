@@ -185,5 +185,17 @@
    "Config FeedFontes (getFeedFontes/saveFeedFontes): decisao, evento, testemunho, noticia, campanha, anotacao, proxevento, aniv.",
    "Aba EventoFotos é criada sozinha (lazy_)."
   ]
+ },
+ {
+  "t": "Lote de insígnias, rastreios e elogios",
+  "itens": [
+   "Catálogo no Code.gs (LOTE_BD): cada linha é [id, categoria, nome, descrição, ícone, forma, regra, níveis, fator de XP, acabamento]. semeiaLote_() roda no setup() e só cria o DefID (IBL_...) que ainda não existe; depois de criada, a insígnia é editável em Criar insígnias.",
+   "Níveis: loteEstilos_ define o acabamento (bordado, bronze, prata, ouro, celeste) e o último nível é sempre Celeste a partir de 4 níveis (cel: 2 deixa os dois últimos Celeste). XP por nível = LOTE_XP_ x fator, entre 10 e 1000.",
+   "Regras novas em CRIT_CONT e CRIT_EXTRA_ (uma função por regra, que devolve quanto a pessoa já fez) mais eventos_palavra. critProgMemo_ evita repetir a mesma conta quando vários níveis usam a mesma regra. O limite de N é CRIT_MAX (100 mil).",
+   "Tabelas novas (criadas sozinhas): AbasVistas (um mapa {aba: vezes} por pessoa, enviado pelo track), LivroLeitura (faixas de páginas lidas e Concluido), VideosVistos (segundos, com limite pelo tempo real entre avisos), PerfilVisitas e Elogios. InsigniaDefs ganhou a coluna Categoria.",
+   "Rotas novas: bookProgress, videoWatched, profileSeen e praiseProfile (todas para qualquer pessoa logada). profileView devolve elogios {n, hoje}. track aceita abas: [{aba, n}].",
+   "Sod: ao cumprir as missões do dia o servidor grava uma linha em XpLog com Ref sodm:AAAA-MM-DD (0 ponto) para contar os dias de missão (regra sod_missoes); dias anteriores a esta versão não entram na conta.",
+   "Testes: tests/zoe.test.mjs (catálogo, editor, rastreios, anti-fraude do tempo de vídeo, chat com resposta, sequências de Bíblia e de semanas, eventos, Sod)."
+  ]
  }
 ]

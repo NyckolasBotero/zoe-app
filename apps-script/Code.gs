@@ -80,7 +80,12 @@ const SHEETS = {
   Insignias: ['MembroID', 'Codigo', 'Titulo', 'Ano', 'Data', 'Ref'],
   XpLog: ['MembroID', 'Ref', 'Pontos', 'Motivo', 'Data'],
   Perfis: ['MembroID', 'Bio', 'Capa', 'Fundo', 'Moldura', 'Versiculo', 'Oculto', 'Contorno', 'Quadro', 'Top'],
-  InsigniaDefs: ['DefID', 'Nome', 'Descricao', 'Estilo', 'Forma', 'Cor1', 'Cor2', 'Icone', 'Texto', 'XP', 'Criterio', 'Ativo', 'CriadoPor', 'Niveis', 'Som'],
+  InsigniaDefs: ['DefID', 'Nome', 'Descricao', 'Estilo', 'Forma', 'Cor1', 'Cor2', 'Icone', 'Texto', 'XP', 'Criterio', 'Ativo', 'CriadoPor', 'Niveis', 'Som', 'Categoria'],
+  AbasVistas: ['MembroID', 'Mapa', 'Total'],
+  LivroLeitura: ['LivroID', 'MembroID', 'Pags', 'Total', 'Concluido', 'Data'],
+  VideosVistos: ['MembroID', 'VideoID', 'Tipo', 'Seg', 'Data', 'Ultimo'],
+  PerfilVisitas: ['MembroID', 'AlvoID', 'Visitas', 'Data'],
+  Elogios: ['ElogioID', 'De', 'Para', 'Texto', 'Data'],
   Servicos: ['Atividade', 'MembroID', 'Mes', 'RegistradoPor'],
   ChatMsgs: ['MsgID', 'ConvID', 'De', 'Para', 'Texto', 'Ts', 'Lida'],
   PerfilFotos: ['MembroID', 'FotoID', 'Foto', 'Legenda', 'Ordem'],
@@ -132,6 +137,7 @@ function setup() {
     appendRow_(table_('InsigniaDefs'), { DefID: 'IBFIEL', Nome: 'Usuário Fiel', Descricao: 'Entre no aplicativo todos os dias, sem faltar.', Estilo: 'bordado', Forma: 'esc', Cor1: '#a5602c', Cor2: '#f8e1c9', Icone: 'flame', Texto: '', XP: '50', Criterio: JSON.stringify({ tipo: 'sequencia', n: 1 }), Niveis: JSON.stringify(nv), Ativo: '1', CriadoPor: 'sistema' });
     writeRow_(table_('Config'), cf._row, { Valor: '1' });
   }
+  semeiaLote_(); // lote de insígnias (só cria as que ainda não existem)
   instalaGatilhos_();
   pastaLivros_(); // pede a autorização do Google Drive (PDFs da biblioteca)
   Logger.log('Setup concluído. Planilha: https://docs.google.com/spreadsheets/d/' + id + '  (mantenha o compartilhamento RESTRITO)');
@@ -773,7 +779,72 @@ function track_(d, u) {
       const seg = Math.max(0, Math.min(900, Math.round(Number(x.seg) || 0))), vis = x.visita ? Math.min(20, Math.round(Number(x.visita)) || 1) : 0; if (!seg && !vis) return;
       upsertUso_(mes, u.membroId, tela, seg, vis); n++;
     });
-    if (awardXp_(u.membroId, 'dia:' + today_(), 5, 'Acesso diário')) avaliaDefs_(u.membroId); return { ok: true, n: n };
+    let avalia = awardXp_(u.membroId, 'dia:' + today_(), 5, 'Acesso diário');
+    if (abasMarca_(u.membroId, d.abas)) avalia = true;
+    if (avalia) avaliaDefs_(u.membroId); return { ok: true, n: n };
+  });
+}
+// abas do app que a pessoa abriu: um mapa {aba: vezes} por pessoa (alimenta as insígnias de explorador). Devolve true quando vale conferir insígnias.
+function abasMarca_(mid, abas) {
+  abas = (Array.isArray(abas) ? abas : []).slice(0, 40); if (!abas.length) return false;
+  const t = lazy_('AbasVistas'), r = t.rows.filter(function (x) { return x.MembroID === mid; })[0], mapa = r ? jparse_(r.Mapa, {}) : {}; let tot = r ? Number(r.Total) || 0 : 0, novo = false; const antes = tot;
+  abas.forEach(function (x) {
+    const k = clip_(x && x.aba, 40); if (!/^[a-z0-9_:-]+$/i.test(k)) return; const q = Math.max(1, Math.min(50, Math.round(Number(x.n)) || 1));
+    if (!(k in mapa)) { if (Object.keys(mapa).length >= 400) return; novo = true; mapa[k] = 0; } mapa[k] += q; tot += q;
+  });
+  const js = JSON.stringify(mapa); if (js.length > 40000) return false;
+  if (r) writeRow_(t, r._row, { Mapa: js, Total: String(tot) }); else appendRow_(t, { MembroID: mid, Mapa: js, Total: String(tot) });
+  return novo || Math.floor(tot / 100) > Math.floor(antes / 100);
+}
+/* ===== rastreios das insígnias do lote (v1.95): livros lidos, vídeos assistidos, perfis visitados e elogios ===== */
+function rangesParse_(str, max) { // "1-5,9,12-20" -> [[1,5],[9,9],[12,20]] (limitado a 1..max, já unido e ordenado)
+  const out = []; String(str || '').split(',').forEach(function (p) { const m = /^\s*(\d{1,5})(?:-(\d{1,5}))?\s*$/.exec(p); if (!m) return; let a = Number(m[1]), b = m[2] ? Number(m[2]) : a; if (a > b) { const x = a; a = b; b = x; } a = Math.max(1, a); b = Math.min(max, b); if (a <= b) out.push([a, b]); });
+  out.sort(function (x, y) { return x[0] - y[0]; }); const mer = []; out.forEach(function (r) { const l = mer[mer.length - 1]; if (l && r[0] <= l[1] + 1) l[1] = Math.max(l[1], r[1]); else mer.push([r[0], r[1]]); }); return mer;
+}
+function rangesStr_(a) { return a.map(function (r) { return r[0] === r[1] ? String(r[0]) : r[0] + '-' + r[1]; }).join(','); }
+function rangesCount_(a) { return a.reduce(function (n, r) { return n + (r[1] - r[0] + 1); }, 0); }
+function bookProgress_(d, u) {
+  const id = clip_(d.livroId, 30), total = Math.floor(Number(d.total) || 0); if (!id || total < 1 || total > 5000) throw new ApiError('VALIDATION', 'Informe o livro e o total de páginas.');
+  if (!table_('Livros').rows.some(function (l) { return l.LivroID === id && l.Status !== 'Removido'; })) throw new ApiError('NOT_FOUND', 'Livro não encontrado.');
+  return withLock_(function () {
+    const t = lazy_('LivroLeitura'), ex = t.rows.filter(function (r) { return r.LivroID === id && r.MembroID === u.membroId; })[0];
+    const mer = rangesParse_(rangesStr_(rangesParse_(ex ? ex.Pags : '', total).concat(rangesParse_(d.pags, total))), total), lidas = rangesCount_(mer), fim = ex && ex.Concluido === '1' ? true : lidas >= total;
+    const row = { Pags: rangesStr_(mer), Total: String(total), Concluido: fim ? '1' : '0', Data: today_() };
+    if (ex) writeRow_(t, ex._row, row); else appendRow_(t, Object.assign({ LivroID: id, MembroID: u.membroId }, row));
+    if (fim && !(ex && ex.Concluido === '1')) avaliaDefs_(u.membroId); return { lidas: lidas, total: total, concluido: fim };
+  });
+}
+function videoWatched_(d, u) {
+  const id = clip_(d.videoId, 30); let seg = Math.max(0, Math.min(120, Math.round(Number(d.seg) || 0))); if (!id || !seg) return { ok: true };
+  const v = table_('Videos').rows.filter(function (x) { return x.VideoID === id && x.Status !== 'Removido'; })[0]; if (!v) throw new ApiError('NOT_FOUND', 'Vídeo não encontrado.');
+  return withLock_(function () {
+    const t = lazy_('VideosVistos'), ex = t.rows.filter(function (r) { return r.VideoID === id && r.MembroID === u.membroId; })[0], agora = Date.now(), tipo = v.Tipo === 'live' || v.AoVivo === '1' ? 'live' : 'video';
+    const max = ex && Number(ex.Ultimo) ? Math.min(120, (agora - Number(ex.Ultimo)) / 1000 + 2) : 40; seg = Math.min(seg, Math.floor(max)); if (seg < 1) return { ok: true }; // contagem não passa do tempo que realmente se passou
+    const antes = ex ? Number(ex.Seg) || 0 : 0, tot = Math.min(86400, antes + seg);
+    if (ex) writeRow_(t, ex._row, { Seg: String(tot), Tipo: ex.Tipo === 'live' ? 'live' : tipo, Data: today_(), Ultimo: String(agora) }); else appendRow_(t, { MembroID: u.membroId, VideoID: id, Tipo: tipo, Seg: String(tot), Data: today_(), Ultimo: String(agora) });
+    if (antes < 60 && tot >= 60) avaliaDefs_(u.membroId); return { ok: true, seg: tot };
+  });
+}
+function profileSeen_(d, u) {
+  const alvo = clip_(d.alvoId, 30); if (!alvo || alvo === u.membroId) return { ok: true };
+  if (!table_('Membros').rows.some(function (m) { return m.MembroID === alvo && m.Status !== 'Inativo'; })) return { ok: true };
+  return withLock_(function () {
+    const t = lazy_('PerfilVisitas'), ex = t.rows.filter(function (r) { return r.MembroID === u.membroId && r.AlvoID === alvo; })[0];
+    if (ex) { writeRow_(t, ex._row, { Visitas: String((Number(ex.Visitas) || 0) + 1), Data: today_() }); return { ok: true }; }
+    appendRow_(t, { MembroID: u.membroId, AlvoID: alvo, Visitas: '1', Data: today_() }); avaliaDefs_(u.membroId); return { ok: true, novo: true };
+  });
+}
+function praiseProfile_(d, u) {
+  const alvo = clip_(d.alvoId, 30), texto = clip_(d.texto, 140).trim(); if (!alvo || alvo === u.membroId) throw new ApiError('VALIDATION', 'Escolha outra pessoa para elogiar.');
+  if (texto.length < 3 || /https?:|www\./i.test(texto)) throw new ApiError('VALIDATION', 'Escreva um elogio com pelo menos 3 letras, sem links.');
+  if (!table_('Membros').rows.some(function (m) { return m.MembroID === alvo && m.Status !== 'Inativo'; })) throw new ApiError('NOT_FOUND', 'Pessoa não encontrada.');
+  return withLock_(function () {
+    const t = lazy_('Elogios'), hj = today_(), meus = t.rows.filter(function (r) { return r.De === u.membroId && r.Data === hj; });
+    if (meus.some(function (r) { return r.Para === alvo; })) throw new ApiError('VALIDATION', 'Você já elogiou essa pessoa hoje. Volte amanhã!');
+    if (meus.length >= 10) throw new ApiError('VALIDATION', 'Limite de 10 elogios por dia.');
+    appendRow_(t, { ElogioID: id_('EL'), De: u.membroId, Para: alvo, Texto: texto, Data: hj });
+    notify_(alvo, 'elogio', (nomes_()[u.membroId] || 'Alguém') + ' elogiou o seu perfil', texto, 'perfil:' + u.membroId);
+    avaliaDefs_(u.membroId); avaliaDefs_(alvo); return { ok: true };
   });
 }
 /* ===== Desempenho e capacidade: o app mede cada requisição e envia somas agregadas (a cada 5 min, por aparelho) ===== */
@@ -1578,13 +1649,19 @@ const ESTILOS_BD = ['bordado', 'bronze', 'prata', 'ouro', 'celeste'];
 function podeCurar_(u) { return can_(u, 'config') || can_(u, 'eventos') || can_(u, 'celulas') || (u.supervisiona && u.supervisiona.length > 0) || u.papel === 'pastor' || u.papel === 'admin'; }
 function exigeCurar_(u) { if (!podeCurar_(u)) throw new ApiError('FORBIDDEN', 'Só supervisores e a administração criam insígnias.'); }
 function ehLider_(u) { return can_(u, 'celulas') || (u.lidera && u.lidera.length > 0) || (u.supervisiona && u.supervisiona.length > 0) || u.papel === 'pastor' || u.papel === 'admin'; }
-const CRIT_CONT = ['eventos_total', 'reunioes', 'cursos', 'acessos', 'sequencia', 'devocionais', 'capitulos', 'posts', 'anotacoes', 'oracoes', 'escalas'];
+// regras de contagem simples (só precisam do número N); as da segunda linha vieram com o lote de insígnias (v1.95)
+const CRIT_CONT = ['eventos_total', 'reunioes', 'cursos', 'acessos', 'sequencia', 'devocionais', 'capitulos', 'posts', 'anotacoes', 'oracoes', 'escalas',
+  'cultos', 'eventos_celula', 'reunioes_seq', 'lider_reunioes', 'celula_votos', 'celula_mural', 'celula_visitantes', 'celula_multiplicou', 'biblia_dias', 'biblia_seq',
+  'sod_soltos', 'sod_golpes', 'sod_caixas', 'sod_missoes', 'sod_roupas', 'sod_lendarios', 'abas_distintas', 'abas_abertas', 'livros_lidos', 'livros_opinioes',
+  'videos_vistos', 'lives_vistas', 'videos_min', 'chat_amigos', 'chat_msgs', 'perfis_visitados', 'elogios_dados', 'elogios_recebidos', 'curtidas'];
+const CRIT_MAX = 100000;
 function criterioLimpo_(c, comNiveis) {
   c = c || {}; const t = String(c.tipo || 'manual'), n = comNiveis ? 1 : Math.floor(Number(c.n)), o = { tipo: t };
   if (['manual'].indexOf(t) >= 0) return o;
+  if (t === 'eventos_palavra') { o.palavra = clip_(c.palavra, 40); o.n = n; if (!o.palavra || !(n >= 1 && n <= CRIT_MAX)) throw new ApiError('VALIDATION', 'Informe a palavra do título do evento (ex.: retiro) e a quantidade.'); return o; }
   if (t === 'eventos_ultimos') { o.palavra = clip_(c.palavra, 40); o.n = n; if (!o.palavra || !(n >= 1 && n <= 50)) throw new ApiError('VALIDATION', 'Informe a palavra do evento (ex.: retiro) e quantos dos últimos.'); return o; }
   if (t === 'servico') { o.atividade = clip_(c.atividade, 60); o.meses = comNiveis ? 1 : Math.floor(Number(c.meses)); o.consecutivos = c.consecutivos ? 1 : 0; if (!o.atividade || !(o.meses >= 1 && o.meses <= 120)) throw new ApiError('VALIDATION', 'Informe a atividade/escala e quantos meses.'); return o; }
-  if (CRIT_CONT.indexOf(t) >= 0) { if (!(n >= 1 && n <= 5000)) throw new ApiError('VALIDATION', 'Informe a quantidade necessária.'); o.n = n; return o; }
+  if (CRIT_CONT.indexOf(t) >= 0) { if (!(n >= 1 && n <= CRIT_MAX)) throw new ApiError('VALIDATION', 'Informe a quantidade necessária.'); o.n = n; return o; }
   throw new ApiError('VALIDATION', 'Tipo de critério inválido.');
 }
 function critTexto_(c) {
@@ -1592,9 +1669,20 @@ function critTexto_(c) {
     case 'eventos_ultimos': return 'Ir aos ' + c.n + ' últimos eventos de “' + c.palavra + '”';
     case 'servico': return 'Servir em “' + c.atividade + '” por ' + c.meses + ' ' + (c.consecutivos ? 'meses seguidos' : 'meses');
     case 'eventos_total': return 'Ir a ' + c.n + ' eventos da igreja'; case 'reunioes': return 'Estar em ' + c.n + ' reuniões de célula';
-    case 'cursos': return 'Concluir ' + c.n + ' curso(s)'; case 'acessos': return 'Acessar o app em ' + c.n + ' dias'; case 'sequencia': return 'Entrar ' + c.n + ' dias consecutivos no aplicativo'; case 'devocionais': return 'Postar ' + c.n + ' devocionais'; case 'capitulos': return 'Ler ' + c.n + ' capítulos da Bíblia'; case 'posts': return 'Publicar ' + c.n + ' vezes no feed'; case 'anotacoes': return 'Fazer ' + c.n + ' anotações na Bíblia'; case 'oracoes': return 'Postar ' + c.n + ' pedidos de oração'; case 'escalas': return 'Servir em ' + c.n + ' escalas'; default: return 'Concedida pelos líderes';
+    case 'cursos': return 'Concluir ' + c.n + ' curso(s)'; case 'acessos': return 'Acessar o app em ' + c.n + ' dias'; case 'sequencia': return 'Entrar ' + c.n + ' dias consecutivos no aplicativo'; case 'devocionais': return 'Postar ' + c.n + ' devocionais'; case 'capitulos': return 'Ler ' + c.n + ' capítulos da Bíblia'; case 'posts': return 'Publicar ' + c.n + ' vezes no feed'; case 'anotacoes': return 'Fazer ' + c.n + ' anotações na Bíblia'; case 'oracoes': return 'Postar ' + c.n + ' pedidos de oração'; case 'escalas': return 'Servir em ' + c.n + ' escalas';
+    case 'eventos_palavra': return 'Ir a ' + c.n + ' evento(s) de “' + c.palavra + '”';
+    default: return CRIT_TXT[c.tipo] ? CRIT_TXT[c.tipo].replace('{n}', c.n) : 'Concedida pelos líderes';
   }
 }
+const CRIT_TXT = {
+  cultos: 'Estar presente em {n} cultos', eventos_celula: 'Ir a {n} eventos da sua célula', reunioes_seq: 'Ir à célula {n} semanas seguidas', lider_reunioes: 'Dirigir {n} reuniões como líder de célula',
+  celula_votos: 'Dar a nota da presença de Deus em {n} reuniões', celula_mural: 'Colocar {n} itens no mural da célula', celula_visitantes: 'Cadastrar {n} visitantes novos', celula_multiplicou: 'Multiplicar a célula {n} vez(es)',
+  biblia_dias: 'Ler a Bíblia em {n} dias', biblia_seq: 'Ler a Bíblia {n} dias seguidos', sod_soltos: 'Libertar o Sod {n} vez(es)', sod_golpes: 'Dar {n} golpes nas pedras do Sod', sod_caixas: 'Abrir {n} caixas do Sod',
+  sod_missoes: 'Cumprir as missões do Sod em {n} dias', sod_roupas: 'Juntar {n} roupas para o personagem do Sod', sod_lendarios: 'Ter {n} item(ns) lendário(s) no Sod', abas_distintas: 'Visitar {n} abas diferentes do app',
+  abas_abertas: 'Abrir abas do app {n} vezes', livros_lidos: 'Ler {n} livro(s) da biblioteca até a última página', livros_opinioes: 'Dar {n} notas ou comentários em livros', videos_vistos: 'Assistir a {n} vídeo(s) no app',
+  lives_vistas: 'Assistir a {n} transmissão(ões) no app', videos_min: 'Assistir {n} minutos de vídeos e transmissões', chat_amigos: 'Conversar com {n} pessoa(s) diferentes no chat', chat_msgs: 'Enviar {n} mensagens no chat',
+  perfis_visitados: 'Visitar o perfil de {n} pessoa(s)', elogios_dados: 'Elogiar {n} pessoa(s) diferentes', elogios_recebidos: 'Receber elogios de {n} pessoa(s) diferentes', curtidas: 'Curtir {n} publicações'
+};
 function seqMeses_(meses) { const s = {}; meses.forEach(function (m) { s[m] = 1; }); let melhor = 0; meses.slice().sort().forEach(function (m) { let n = 0, y = Number(m.slice(0, 4)), mo = Number(m.slice(5, 7)); while (s[y + '-' + ('0' + mo).slice(-2)]) { n++; mo--; if (mo < 1) { mo = 12; y--; } } if (n > melhor) melhor = n; }); return melhor; }
 function diaNum_(s) { const p = s.split('-'); return Math.round(Date.UTC(Number(p[0]), Number(p[1]) - 1, Number(p[2])) / 86400000); }
 function streakDe_(mid) {
@@ -1603,6 +1691,64 @@ function streakDe_(mid) {
   ns.forEach(function (n) { run = prev !== null && n === prev + 1 ? run + 1 : 1; if (run > melhor) melhor = run; prev = n; });
   const hj = diaNum_(today_()); let atual = 0, x = dias[hj] ? hj : hj - 1; while (dias[x]) { atual++; x--; }
   return { atual: atual, melhor: melhor, total: ns.length };
+}
+/* ---- regras do lote de insígnias (v1.95): cada uma devolve o quanto a pessoa já fez ---- */
+function seqDias_(dias) { // maior sequência de dias seguidos num conjunto {'AAAA-MM-DD': 1}
+  const ns = Object.keys(dias).map(diaNum_).sort(function (a, b) { return a - b; }); let melhor = 0, run = 0, prev = null;
+  ns.forEach(function (n) { run = prev !== null && n === prev + 1 ? run + 1 : 1; if (run > melhor) melhor = run; prev = n; });
+  const hj = diaNum_(today_()), set = {}; ns.forEach(function (n) { set[n] = 1; }); let atual = 0, x = set[hj] ? hj : hj - 1; while (set[x]) { atual++; x--; }
+  return { melhor: melhor, atual: atual, total: ns.length };
+}
+function diasBiblia_(mid) { // dias em que a pessoa leu a Bíblia no app (marcou versículo ou registrou leitura da Maratona)
+  const s = {}, add = function (x) { const d = String(x || '').slice(0, 10); if (/^\d{4}-\d{2}-\d{2}$/.test(d)) s[d] = 1; };
+  table_('BibMarcas').rows.forEach(function (r) { if (r.MembroID === mid) add(r.Data); });
+  table_('CorridaLeitura').rows.forEach(function (r) { if (r.MembroID === mid && r.Status !== 'Recusado') add(r.Data); });
+  return s;
+}
+function semanasSeguidas_(datas) { // maior número de semanas (segunda a domingo) seguidas com pelo menos uma data
+  const w = {}; datas.forEach(function (d) { d = String(d || '').slice(0, 10); if (/^\d{4}-\d{2}-\d{2}$/.test(d)) w[Math.floor((diaNum_(d) + 3) / 7)] = 1; });
+  const ns = Object.keys(w).map(Number).sort(function (a, b) { return a - b; }); let melhor = 0, run = 0, prev = null; ns.forEach(function (n) { run = prev !== null && n === prev + 1 ? run + 1 : 1; if (run > melhor) melhor = run; prev = n; }); return melhor;
+}
+function minhasCelulas_(mid) { const o = {}; table_('Celulas').rows.forEach(function (c) { if (c.LiderID === mid) o[c.CelulaID] = 1; }); return o; }
+function sodLinha_(mid) { const r = sodTab_().rows.filter(function (x) { return x.MembroID === mid; })[0]; return r ? sodEst_(r) : null; }
+const CRIT_EXTRA_ = {
+  cultos: function (c, mid) { return lazy_('Cultos').rows.filter(function (r) { return r.MembroID === mid; }).length; },
+  eventos_celula: function (c, mid) {
+    const hj = today_(), ev = {}; table_('Eventos').rows.forEach(function (e) { if (e.Escopo === 'celula' && e.Status !== 'Cancelado' && e.Data <= hj) ev[e.EventoID] = 1; }); const meus = {};
+    table_('Inscricoes').rows.forEach(function (r) { if (r.MembroID === mid && ev[r.EventoID]) meus[r.EventoID] = 1; }); table_('EventoPresenca').rows.forEach(function (r) { if (r.MembroID === mid && ev[r.EventoID]) meus[r.EventoID] = 1; }); return Object.keys(meus).length;
+  },
+  reunioes_seq: function (c, mid) { return semanasSeguidas_(table_('Presencas').rows.filter(function (r) { return r.MembroID === mid; }).map(function (r) { return r.Data; })); },
+  lider_reunioes: function (c, mid) { const cs = minhasCelulas_(mid); return table_('Reunioes').rows.filter(function (r) { return cs[r.CelulaID]; }).length; },
+  celula_votos: function (c, mid) { return lazy_('VotosDeus').rows.filter(function (r) { return r.MembroID === mid; }).length; },
+  celula_mural: function (c, mid) { return lazy_('MuralCelula').rows.filter(function (r) { return r.AutorID === mid; }).length; },
+  celula_visitantes: function (c, mid) { return table_('Visitantes').rows.filter(function (r) { return r.RegistradoPor === mid; }).length; },
+  celula_multiplicou: function (c, mid) { const cs = minhasCelulas_(mid); return table_('Celulas').rows.filter(function (r) { return r.MaeID && cs[r.MaeID]; }).length; },
+  biblia_dias: function (c, mid) { return Object.keys(diasBiblia_(mid)).length; },
+  biblia_seq: function (c, mid) { const q = seqDias_(diasBiblia_(mid)); return Math.max(q.atual, q.melhor); },
+  sod_soltos: function (c, mid) { const e = sodLinha_(mid); return e ? e.Soltos : 0; },
+  sod_golpes: function (c, mid) { const e = sodLinha_(mid); return e ? Math.round(e.Golpes) : 0; },
+  sod_caixas: function (c, mid) { const e = sodLinha_(mid); return e ? e.Abertas : 0; },
+  sod_missoes: function (c, mid) { return table_('XpLog').rows.filter(function (r) { return r.MembroID === mid && String(r.Ref).indexOf('sodm:') === 0; }).length; },
+  sod_roupas: function (c, mid) { const e = sodLinha_(mid); return e ? e.itens.filter(function (x) { return x.k === 'rou'; }).length : 0; },
+  sod_lendarios: function (c, mid) { const e = sodLinha_(mid); return e ? e.itens.filter(function (x) { return x.r === 'lendario'; }).length : 0; },
+  abas_distintas: function (c, mid) { const r = lazy_('AbasVistas').rows.filter(function (x) { return x.MembroID === mid; })[0]; return r ? Object.keys(jparse_(r.Mapa, {})).length : 0; },
+  abas_abertas: function (c, mid) { const r = lazy_('AbasVistas').rows.filter(function (x) { return x.MembroID === mid; })[0]; return r ? Number(r.Total) || 0 : 0; },
+  livros_lidos: function (c, mid) { return lazy_('LivroLeitura').rows.filter(function (r) { return r.MembroID === mid && r.Concluido === '1'; }).length; },
+  livros_opinioes: function (c, mid) { return table_('LivroNotas').rows.filter(function (r) { return r.MembroID === mid; }).length + table_('LivroComentarios').rows.filter(function (r) { return r.MembroID === mid && r.Status !== 'Removido' && r.Status !== 'removido'; }).length; },
+  videos_vistos: function (c, mid) { return lazy_('VideosVistos').rows.filter(function (r) { return r.MembroID === mid && Number(r.Seg) >= 60; }).length; },
+  lives_vistas: function (c, mid) { return lazy_('VideosVistos').rows.filter(function (r) { return r.MembroID === mid && r.Tipo === 'live' && Number(r.Seg) >= 60; }).length; },
+  videos_min: function (c, mid) { let s = 0; lazy_('VideosVistos').rows.forEach(function (r) { if (r.MembroID === mid) s += Number(r.Seg) || 0; }); return Math.floor(s / 60); },
+  chat_amigos: function (c, mid) { const env = {}, rec = {}; table_('ChatMsgs').rows.forEach(function (r) { if (r.De === mid) env[r.Para] = 1; else if (r.Para === mid) rec[r.De] = 1; }); return Object.keys(env).filter(function (k) { return rec[k]; }).length; },
+  chat_msgs: function (c, mid) { return table_('ChatMsgs').rows.filter(function (r) { return r.De === mid; }).length; },
+  perfis_visitados: function (c, mid) { return lazy_('PerfilVisitas').rows.filter(function (r) { return r.MembroID === mid; }).length; },
+  elogios_dados: function (c, mid) { const s = {}; lazy_('Elogios').rows.forEach(function (r) { if (r.De === mid) s[r.Para] = 1; }); return Object.keys(s).length; },
+  elogios_recebidos: function (c, mid) { const s = {}; lazy_('Elogios').rows.forEach(function (r) { if (r.Para === mid) s[r.De] = 1; }); return Object.keys(s).length; },
+  curtidas: function (c, mid) { return table_('Curtidas').rows.filter(function (r) { return r.MembroID === mid; }).length; }
+};
+// guarda o resultado de cada regra enquanto confere várias insígnias de uma vez (muitas usam a mesma regra, só muda o N)
+function critProgMemo_(c, mid, memo) {
+  const k = [c.tipo, c.palavra || '', c.atividade || '', c.consecutivos || '', c.n || '', c.meses || ''].join('|');
+  if (memo && memo[k]) return memo[k]; const r = critProg_(c, mid); if (memo) memo[k] = r; return r;
 }
 function critProg_(c, mid) {
   const meta = c.tipo === 'servico' ? c.meses : (c.tipo === 'manual' ? 1 : c.n);
@@ -1625,6 +1771,11 @@ function critProg_(c, mid) {
   if (c.tipo === 'oracoes') return { atual: table_('Oracoes').rows.filter(function (r) { return r.MembroID === mid; }).length, meta: meta };
   if (c.tipo === 'escalas') return { atual: table_('Escalas').rows.filter(function (r) { return r.MembroID === mid && r.Presente === '1'; }).length, meta: meta };
   if (c.tipo === 'acessos') return { atual: table_('XpLog').rows.filter(function (r) { return r.MembroID === mid && String(r.Ref).indexOf('dia:') === 0; }).length, meta: meta };
+  if (c.tipo === 'eventos_palavra') {
+    const q = norm_(c.palavra), hj = today_(), ev = {}; table_('Eventos').rows.forEach(function (e) { if (e.Status !== 'Cancelado' && e.Data <= hj && norm_(e.Titulo).indexOf(q) >= 0) ev[e.EventoID] = 1; });
+    const s = {}; table_('EventoPresenca').rows.forEach(function (r) { if (r.MembroID === mid && ev[r.EventoID]) s[r.EventoID] = 1; }); return { atual: Object.keys(s).length, meta: meta };
+  }
+  if (CRIT_EXTRA_[c.tipo]) return { atual: CRIT_EXTRA_[c.tipo](c, mid), meta: meta };
   return { atual: 0, meta: meta };
 }
 function visualLimpo_(v, base) {
@@ -1636,7 +1787,7 @@ function visualLimpo_(v, base) {
 function niveisLimpo_(arr, base, xpBase) {
   if (!Array.isArray(arr) || !arr.length) return [];
   if (arr.length > 10) throw new ApiError('VALIDATION', 'No máximo 10 níveis.');
-  const out = arr.map(function (x, i) { const n = Math.floor(Number(x.n)); if (!(n >= 1 && n <= 5000)) throw new ApiError('VALIDATION', 'Nível ' + (i + 1) + ': informe o parâmetro (quantidade) de 1 a 5000.'); return { nome: clip_(x.nome, 30), n: n, xp: Math.max(10, Math.min(1000, Math.floor(Number(x.xp) || xpBase || 100))), visual: visualLimpo_(x.visual, base) }; });
+  const out = arr.map(function (x, i) { const n = Math.floor(Number(x.n)); if (!(n >= 1 && n <= CRIT_MAX)) throw new ApiError('VALIDATION', 'Nível ' + (i + 1) + ': informe o parâmetro (quantidade) de 1 a ' + CRIT_MAX + '.'); return { nome: clip_(x.nome, 30), n: n, xp: Math.max(10, Math.min(1000, Math.floor(Number(x.xp) || xpBase || 100))), visual: visualLimpo_(x.visual, base) }; });
   out.sort(function (a, b) { return a.n - b.n; });
   for (let i = 1; i < out.length; i++) if (out[i].n === out[i - 1].n) throw new ApiError('VALIDATION', 'Dois níveis não podem ter o mesmo parâmetro.');
   return out;
@@ -1651,19 +1802,101 @@ const nivelTitulo_ = function (r, nv, total) { return total > 1 || nv.nome ? r.N
 function defOut_(r) {
   const c = jparse_(r.Criterio, { tipo: 'manual' }), ex = jparse_(r.Niveis, []), nvs = defNiveis_(r), cc = Object.assign({}, c);
   if (ex.length && c.tipo !== 'manual') { if (c.tipo === 'servico') cc.meses = nvs[0].n; else cc.n = nvs[0].n; }
-  const o = { id: r.DefID, codigo: 'cust:' + r.DefID, titulo: r.Nome, descricao: r.Descricao || '', criterio: c, regra: critTexto_(cc) + (ex.length > 1 ? ' (' + ex.length + ' níveis)' : ''), xp: Number(r.XP) || 100, ativo: r.Ativo !== '0', visual: { estilo: r.Estilo || 'bordado', forma: r.Forma || 'circ', cor1: r.Cor1 || '#2f6b3a', cor2: r.Cor2 || '#efe3b0', icone: r.Icone || 'estrela', texto: r.Texto || '', som: r.Som || '' } };
+  const o = { id: r.DefID, codigo: 'cust:' + r.DefID, titulo: r.Nome, categoria: r.Categoria || '', descricao: r.Descricao || '', criterio: c, regra: critTexto_(cc) + (ex.length > 1 ? ' (' + ex.length + ' níveis)' : ''), xp: Number(r.XP) || 100, ativo: r.Ativo !== '0', visual: { estilo: r.Estilo || 'bordado', forma: r.Forma || 'circ', cor1: r.Cor1 || '#2f6b3a', cor2: r.Cor2 || '#efe3b0', icone: r.Icone || 'estrela', texto: r.Texto || '', som: r.Som || '' } };
   if (ex.length) o.niveis = nvs.map(function (x) { return { k: x.k, nome: x.nome, n: x.n, xp: x.xp, visual: x.visual }; });
   return o;
 }
 function defsAtivas_() { return table_('InsigniaDefs').rows.filter(function (r) { return r.Ativo !== '0'; }); }
 // confere as insígnias criadas pelos supervisores e entrega as que a pessoa já alcançou (chamada dentro dos pontos em que algo muda)
 function avaliaDefs_(mid) {
-  if (!mid) return 0; let n = 0; const meus = {}; table_('Insignias').rows.forEach(function (r) { if (r.MembroID === mid) meus[r.Ref] = 1; });
+  if (!mid) return 0; let n = 0; const meus = {}, memo = {}; table_('Insignias').rows.forEach(function (r) { if (r.MembroID === mid) meus[r.Ref] = 1; });
   defsAtivas_().forEach(function (r) {
     const c = jparse_(r.Criterio, { tipo: 'manual' }); if (c.tipo === 'manual') return;
     const nvs = defNiveis_(r); if (nvs.every(function (nv) { return meus[nivelCod_(r.DefID, nv.k)]; })) return;
-    const atual = critProg_(c, mid).atual;
+    const atual = critProgMemo_(c, mid, memo).atual;
     nvs.forEach(function (nv) { const cod = nivelCod_(r.DefID, nv.k); if (!meus[cod] && atual >= nv.n && awardBadge_(mid, cod, nivelTitulo_(r, nv, nvs.length), '', nv.xp)) n++; });
+  });
+  return n;
+}
+/* ============================== LOTE DE INSÍGNIAS (v1.95) ==============================
+   Catálogo semeado pelo setup(): cada insígnia tem níveis (parâmetro N), do bordado ao Celeste. Só cria o que ainda não existe
+   (pelo DefID), então depois de criada pode ser editada em Criar insígnias sem o setup() desfazer nada. */
+const LOTE_PAL_ = { bronze: ['#a5602c', '#f8e1c9'], prata: ['#8b97a5', '#f3f6fa'], ouro: ['#d6a21d', '#fff1b8'], celeste: ['#7b6fd6', '#f4efff'] };
+const LOTE_XP_ = [15, 25, 40, 65, 100, 150, 220, 320, 460, 650];
+// acabamento de cada nível: começa no bordado ou bronze e termina no Celeste (cel: 2 = os dois últimos são Celeste)
+function loteEstilos_(k, cel) {
+  let o;
+  if (k <= 1) o = ['ouro']; else if (k === 2) o = ['bronze', 'ouro']; else if (k === 3) o = ['bronze', 'prata', 'ouro']; else if (k === 4) o = ['bronze', 'prata', 'ouro', 'celeste'];
+  else { const mid = ['bronze', 'prata', 'ouro'], m = k - 2; o = ['bordado']; for (let j = 0; j < m; j++) o.push(mid[Math.floor(j * 3 / m)]); o.push('celeste'); }
+  if (cel === 2 && k >= 4) o[k - 2] = 'celeste'; return o;
+}
+const loteTexto_ = function (n) { return n >= 10000 ? Math.floor(n / 1000) + 'k' : String(n); };
+function loteNiveis_(x) {
+  const k = x.n.length, est = loteEstilos_(k, x.cel), f = x.f || 1;
+  return x.n.map(function (p, i) {
+    const e = est[i], cor = e === 'bordado' ? x.c : LOTE_PAL_[e], xp = Math.max(10, Math.min(1000, Math.round((k === 1 ? 60 : LOTE_XP_[Math.round(i * 9 / (k - 1))]) * f)));
+    return { nome: p[1], n: p[0], xp: xp, visual: { estilo: e, forma: x.forma, icone: x.ic, cor1: cor[0], cor2: cor[1], texto: loteTexto_(p[0]), som: '' } };
+  });
+}
+const LOTE_CAT_ = { ev: 'Eventos', rt: 'Retiros', en: 'Encontros', ec: 'Eventos de Célula', ce: 'Células', sd: 'Sod', ab: 'Abas do App', bi: 'Biblioteca', vd: 'Vídeos e Transmissões', ch: 'Chat', pf: 'Perfis e Elogios', bb: 'Bíblia', sv: 'Serviço e Cursos', fd: 'Fidelidade' };
+const LOTE_COR_ = { ev: ['#2f6b3a', '#efe3b0'], rt: ['#5b3a8c', '#efe6ff'], en: ['#b5513a', '#ffe6dc'], ec: ['#1f7a8c', '#dff3f6'], ce: ['#3a7d44', '#e3f4e2'], sd: ['#4b5d9e', '#e7ecff'], ab: ['#c56a1b', '#ffe9cf'], bi: ['#7a4e2d', '#f5e6d3'], vd: ['#b02a37', '#fde2e4'], ch: ['#00796b', '#d8f3ef'], pf: ['#d6336c', '#ffe3ee'], bb: ['#b8860b', '#fff4cc'], sv: ['#8d5524', '#f6e3d3'], fd: ['#2f6b3a', '#efe3b0'] };
+// [id, categoria, nome, descrição, ícone, forma, regra, níveis [N, nome] (vazio = nível único), fator de XP, acabamentos Celeste no fim]
+const LOTE_BD = [
+  ['EV_PRES', 'ev', 'Casa Cheia', 'Compareça aos eventos da igreja e faça parte de cada momento.', 'casa', 'esc', { tipo: 'eventos_total' }, [[1, 'Chegou'], [3, 'Voltou'], [5, 'Constante'], [10, 'Fiel'], [25, 'Pilar'], [50, 'Coluna'], [100, 'Celestial']], 1],
+  ['EV_CULTO', 'ev', 'Adorador', 'Esteja presente nos cultos da igreja (presença registrada pela câmera ou pelos líderes).', 'harpa', 'circ', { tipo: 'cultos' }, [[1, 'Primeiro Culto'], [5, 'Constante'], [10, 'Fiel'], [25, 'Perseverante'], [50, 'Firme'], [100, 'Incansável'], [250, 'Adorador de Verdade'], [500, 'Celestial']], 1.2],
+  ['RT_PART', 'rt', 'Retirante', 'Participe dos retiros da igreja e suba o monte com a família.', 'montanha', 'hex', { tipo: 'eventos_palavra', palavra: 'retiro' }, [[1, 'Primeiro Retiro'], [2, 'Repetiu'], [3, 'No Monte'], [5, 'Peregrino'], [7, 'Veterano'], [10, 'Celestial']], 1.3],
+  ['RT_U3', 'rt', 'Retiro Sem Falta', 'Esteve nos 3 últimos retiros da igreja.', 'fogueira', 'oct', { tipo: 'eventos_ultimos', palavra: 'retiro', n: 3 }, [], 1.2, 'ouro'],
+  ['RT_U5', 'rt', 'Inseparável do Retiro', 'Esteve nos 5 últimos retiros da igreja. Não perdeu nenhum!', 'tenda', 'oct', { tipo: 'eventos_ultimos', palavra: 'retiro', n: 5 }, [], 2, 'celeste'],
+  ['EN_PART', 'en', 'Encontrado', 'Participe dos encontros da igreja e deixe Deus falar ao seu coração.', 'abraco', 'circ', { tipo: 'eventos_palavra', palavra: 'encontro' }, [[1, 'Primeiro Encontro'], [3, 'Aberto'], [5, 'Reconciliado'], [10, 'Transformado'], [20, 'Celestial']], 1.2],
+  ['EN_U3', 'en', 'Encontros em Sequência', 'Esteve nos 3 últimos encontros da igreja.', 'coracao', 'losango', { tipo: 'eventos_ultimos', palavra: 'encontro', n: 3 }, [], 1.2, 'ouro'],
+  ['EC_PART', 'ec', 'Em Família', 'Participe dos eventos da sua célula (confirmando presença).', 'convite', 'esc', { tipo: 'eventos_celula' }, [[1, 'Chegou'], [3, 'Amigo da Célula'], [5, 'Parceiro'], [10, 'Inseparável'], [25, 'Alma da Célula'], [50, 'Celestial']], 1],
+  ['CE_REU', 'ce', 'Pé na Célula', 'Esteja presente nas reuniões da sua célula.', 'pegada', 'circ', { tipo: 'reunioes' }, [[1, 'Primeira Reunião'], [4, 'Um Mês'], [8, 'Constante'], [12, 'Fiel'], [26, 'Meio Ano'], [52, 'Um Ano'], [104, 'Dois Anos'], [200, 'Raiz'], [400, 'Celestial']], 1.4],
+  ['CE_SEM', 'ce', 'Semanas Fiéis', 'Vá à célula semana após semana, sem falhar.', 'calendario', 'hex', { tipo: 'reunioes_seq' }, [[2, 'Duas Semanas'], [4, 'Um Mês'], [8, 'Dois Meses'], [12, 'Trimestre'], [26, 'Semestre'], [52, 'Um Ano'], [104, 'Celestial']], 1.5],
+  ['CE_VOTO', 'ce', 'Termômetro Vivo', 'Dê a sua nota de presença de Deus depois das reuniões da célula.', 'flame', 'circ', { tipo: 'celula_votos' }, [[1, 'Primeira Nota'], [5, 'Atento'], [10, 'Sensível'], [25, 'Discernidor'], [50, 'Profeta'], [100, 'Celestial']], 1],
+  ['CE_MURAL', 'ce', 'Memória da Célula', 'Deixe fotos, recados e desenhos no mural da sua célula.', 'camera', 'losango', { tipo: 'celula_mural' }, [[1, 'Primeiro Registro'], [5, 'Cronista'], [10, 'Fotógrafo'], [25, 'Memorialista'], [50, 'Celestial']], 1],
+  ['CE_VIS', 'ce', 'Pescador de Gente', 'Cadastre visitantes novos e ajude a igreja a acolher quem chega.', 'peixe', 'hex', { tipo: 'celula_visitantes' }, [[1, 'Primeira Rede'], [3, 'Pescador'], [5, 'Convidador'], [10, 'Barco Cheio'], [25, 'Multiplicador'], [50, 'Celestial']], 1.2],
+  ['CE_MULT', 'ce', 'Multiplicação', 'Lidere uma célula que gerou novas células.', 'semente', 'oct', { tipo: 'celula_multiplicou' }, [[1, 'Semente'], [2, 'Broto'], [3, 'Árvore'], [5, 'Bosque'], [10, 'Celestial']], 1.5],
+  ['CE_LID', 'ce', 'Pastor de Célula', 'Dirija as reuniões como líder de célula.', 'maos', 'esc', { tipo: 'lider_reunioes' }, [[4, 'Um Mês'], [12, 'Trimestre'], [26, 'Semestre'], [52, 'Um Ano'], [104, 'Dois Anos'], [208, 'Celestial']], 1.4],
+  ['CE_ORA', 'ce', 'Intercessor', 'Poste pedidos de oração e interceda pela família da célula.', 'vela', 'circ', { tipo: 'oracoes' }, [[1, 'Primeiro Pedido'], [5, 'Clamor'], [10, 'Vigia'], [25, 'Intercessor'], [50, 'Sacerdote'], [100, 'Celestial']], 1],
+  ['SD_SOLT', 'sd', 'Libertador de Luz', 'Liberte o Sod das pedras com 7 dias firmes com Deus.', 'sol', 'circ', { tipo: 'sod_soltos' }, [[1, 'Luz Livre'], [3, 'Libertador'], [5, 'Guardião'], [10, 'Mestre da Luz'], [25, 'Celestial']], 1.3],
+  ['SD_MISS', 'sd', 'Dias com Deus', 'Cumpra as missões diárias do Sod: entrar, ler a Bíblia e orar.', 'estrela', 'esc', { tipo: 'sod_missoes' }, [[1, 'Primeiro Dia'], [7, 'Uma Semana'], [30, 'Um Mês'], [60, 'Dois Meses'], [100, 'Cem Dias'], [200, 'Firme'], [365, 'Um Ano'], [730, 'Celestial']], 1.4],
+  ['SD_GOLP', 'sd', 'Mineiro de Pedras', 'Quebre as pedras que cobrem o Sod.', 'raio', 'hex', { tipo: 'sod_golpes' }, [[500, 'Aprendiz'], [2500, 'Mineiro'], [10000, 'Quebra-Pedra'], [25000, 'Britador'], [50000, 'Mestre'], [100000, 'Celestial']], 1.2],
+  ['SD_CAIX', 'sd', 'Caçador de Caixas', 'Abra as caixas do Sod e descubra ferramentas e roupas.', 'presente', 'oct', { tipo: 'sod_caixas' }, [[1, 'Primeira Caixa'], [5, 'Curioso'], [10, 'Colecionador'], [25, 'Caçador'], [50, 'Tesoureiro'], [100, 'Celestial']], 1],
+  ['SD_ROUP', 'sd', 'Guarda-roupa do Reino', 'Junte roupas para o seu personagem do Sod.', 'coroa', 'losango', { tipo: 'sod_roupas' }, [[3, 'Vestido'], [8, 'Estiloso'], [15, 'Elegante'], [25, 'Alfaiate'], [40, 'Celestial']], 1],
+  ['SD_LEND', 'sd', 'Tesouro Lendário', 'Encontre itens lendários nas caixas do Sod.', 'diamante', 'hex', { tipo: 'sod_lendarios' }, [[1, 'Lendário'], [2, 'Dois Lendários'], [3, 'Colecionador'], [5, 'Dono do Tesouro'], [10, 'Celestial']], 1.4],
+  ['AB_DIST', 'ab', 'Explorador do App', 'Descubra as abas e telas diferentes do aplicativo da igreja.', 'bussola', 'circ', { tipo: 'abas_distintas' }, [[5, 'Curioso'], [10, 'Explorador'], [20, 'Desbravador'], [35, 'Navegador'], [50, 'Conhecedor'], [75, 'Mestre do App'], [100, 'Celestial']], 1.2],
+  ['AB_ABR', 'ab', 'Cem Abas e Além', 'Cada vez que você abre uma aba do app, conta. Chegue a 100, 500, 1000 abas abertas e muito mais.', 'raio', 'esc', { tipo: 'abas_abertas' }, [[100, 'Cem Abas'], [500, 'Navegante'], [1000, 'Mil Abas'], [2500, 'Morador do App'], [5000, 'Incansável'], [10000, 'Celestial']], 1.2],
+  ['BI_LIDO', 'bi', 'Leitor Voraz', 'Leia um livro da biblioteca do começo ao fim: 100% das páginas abertas no leitor.', 'livro', 'esc', { tipo: 'livros_lidos' }, [[1, 'Primeiro Livro'], [3, 'Leitor'], [5, 'Estudioso'], [10, 'Bibliófilo'], [25, 'Sábio'], [50, 'Celestial']], 1.2],
+  ['BI_RES', 'bi', 'Resenhista', 'Dê notas e comentários nos livros da biblioteca.', 'caneta', 'losango', { tipo: 'livros_opinioes' }, [[1, 'Primeira Opinião'], [5, 'Crítico'], [10, 'Resenhista'], [25, 'Mestre'], [50, 'Celestial']], 1],
+  ['VD_VID', 'vd', 'Espectador', 'Assista a vídeos no app da igreja (pelo menos 1 minuto cada).', 'camera', 'circ', { tipo: 'videos_vistos' }, [[1, 'Primeiro Vídeo'], [5, 'Curioso'], [10, 'Espectador'], [25, 'Fã'], [50, 'Maratonista'], [100, 'Celestial']], 1],
+  ['VD_LIVE', 'vd', 'Ao Vivo na Presença', 'Assista às transmissões da igreja pelo app.', 'megafone', 'hex', { tipo: 'lives_vistas' }, [[1, 'Primeira Live'], [3, 'Conectado'], [5, 'Frequente'], [10, 'Fiel das Lives'], [25, 'Imperdível'], [50, 'Celestial']], 1.1],
+  ['VD_MIN', 'vd', 'Horas de Edificação', 'Some minutos assistindo a vídeos e transmissões no app.', 'relogio', 'oct', { tipo: 'videos_min' }, [[30, 'Meia Hora'], [120, 'Duas Horas'], [600, 'Dez Horas'], [1800, 'Trinta Horas'], [6000, 'Cem Horas'], [12000, 'Celestial']], 1.2],
+  ['CH_AMIGOS', 'ch', 'Amigo da Igreja', 'Converse com pessoas diferentes no chat da igreja (a conversa precisa ter resposta).', 'coracao', 'circ', { tipo: 'chat_amigos' }, [[1, 'Primeira Conversa'], [5, 'Roda de Amigos'], [10, 'Sociável'], [25, 'Conectador'], [50, 'Pontes'], [100, 'Celestial']], 1.1],
+  ['CH_MSG', 'ch', 'Palavra Amiga', 'Envie mensagens de encorajamento no chat.', 'carta', 'esc', { tipo: 'chat_msgs' }, [[10, 'Primeiras Palavras'], [100, 'Conversador'], [500, 'Encorajador'], [2000, 'Consolador'], [5000, 'Celestial']], 1],
+  ['PF_VIS', 'pf', 'Bom Vizinho', 'Visite o perfil de outras pessoas e conheça a família da igreja.', 'olho', 'circ', { tipo: 'perfis_visitados' }, [[1, 'Olá!'], [5, 'Curioso'], [10, 'Sociável'], [25, 'Conhecedor'], [50, 'Familiar'], [100, 'Celestial']], 1],
+  ['PF_ELOGIO', 'pf', 'Palavras de Vida', 'Elogie o perfil de pessoas diferentes e edifique a igreja.', 'sorriso', 'hex', { tipo: 'elogios_dados' }, [[1, 'Primeiro Elogio'], [5, 'Encorajador'], [10, 'Edificador'], [25, 'Barnabé'], [50, 'Mestre do Elogio'], [100, 'Celestial']], 1.1],
+  ['PF_REC', 'pf', 'Amado pela Família', 'Receba elogios de pessoas diferentes da igreja.', 'abraco', 'losango', { tipo: 'elogios_recebidos' }, [[1, 'Notado'], [5, 'Querido'], [10, 'Estimado'], [25, 'Referência'], [50, 'Exemplo'], [100, 'Celestial']], 1.1],
+  ['PF_CURT', 'pf', 'Coração Generoso', 'Curta as publicações da igreja.', 'coracao', 'oct', { tipo: 'curtidas' }, [[1, 'Primeira Curtida'], [10, 'Simpático'], [50, 'Animador'], [100, 'Torcida'], [500, 'Celestial']], 0.8],
+  ['BB_SEQ', 'bb', 'Palavra Todos os Dias', 'Leia a Bíblia no app todos os dias, sem faltar. O nível mais alto exige três anos seguidos.', 'biblia', 'circ', { tipo: 'biblia_seq' }, [[3, 'Três Dias'], [7, 'Uma Semana'], [14, 'Duas Semanas'], [30, 'Um Mês'], [90, 'Um Trimestre'], [180, 'Meio Ano'], [365, 'Um Ano'], [730, 'Dois Anos'], [1095, 'Três Anos na Palavra']], 1.5, 2],
+  ['BB_DIAS', 'bb', 'Amigo da Palavra', 'Some dias de leitura da Bíblia no app (não precisam ser seguidos).', 'pergaminho', 'esc', { tipo: 'biblia_dias' }, [[10, 'Dez Dias'], [30, 'Um Mês'], [100, 'Cem Dias'], [200, 'Fiel'], [365, 'Um Ano'], [730, 'Dois Anos'], [1095, 'Celestial']], 1.3],
+  ['BB_CAP', 'bb', 'Maratonista da Bíblia', 'Leia capítulos da Bíblia pela Maratona Bíblica. O último nível é a Bíblia inteira: 1189 capítulos.', 'tabuas', 'hex', { tipo: 'capitulos' }, [[1, 'Primeiro Capítulo'], [10, 'Aquecimento'], [50, 'Corredor'], [150, 'Fôlego'], [300, 'Mil Passos'], [600, 'Meio Caminho'], [1189, 'Bíblia Inteira']], 1.5],
+  ['BB_NOTA', 'bb', 'Anotador da Palavra', 'Escreva comentários nos versículos da Bíblia.', 'caneta', 'losango', { tipo: 'anotacoes' }, [[1, 'Primeira Anotação'], [5, 'Atento'], [10, 'Estudante'], [25, 'Meditador'], [50, 'Escriba'], [100, 'Celestial']], 1],
+  ['BB_DEV', 'bb', 'Devocional Diário', 'Poste devocionais da Maratona Bíblica.', 'lanterna', 'oct', { tipo: 'devocionais' }, [[1, 'Primeiro Devocional'], [7, 'Uma Semana'], [30, 'Um Mês'], [100, 'Cem Devocionais'], [365, 'Um Ano'], [1000, 'Celestial']], 1.3],
+  ['SV_ESC', 'sv', 'Servo Fiel', 'Sirva nas escalas dos ministérios (com presença marcada).', 'arado', 'esc', { tipo: 'escalas' }, [[1, 'Primeiro Serviço'], [3, 'Disposto'], [5, 'Servo'], [10, 'Fiel'], [25, 'Dedicado'], [50, 'Incansável'], [100, 'Celestial']], 1.1],
+  ['SV_CUR', 'sv', 'Aluno do Reino', 'Conclua cursos da igreja e receba o certificado.', 'livro', 'circ', { tipo: 'cursos' }, [[1, 'Primeiro Curso'], [2, 'Dois Cursos'], [3, 'Estudante'], [5, 'Discípulo'], [10, 'Celestial']], 1.2],
+  ['SV_POST', 'sv', 'Voz da Igreja', 'Publique notas no feed da igreja.', 'megafone', 'hex', { tipo: 'posts' }, [[1, 'Primeira Nota'], [5, 'Participativo'], [10, 'Comunicador'], [25, 'Pregador'], [50, 'Celestial']], 1],
+  ['FD_ACE', 'fd', 'Morador do App', 'Some dias de acesso ao aplicativo (não precisam ser seguidos).', 'casa', 'circ', { tipo: 'acessos' }, [[10, 'Visitante'], [30, 'Morador'], [100, 'Fiel'], [200, 'Presença Fixa'], [365, 'Um Ano'], [730, 'Dois Anos'], [1000, 'Celestial']], 1.2]
+];
+function semeiaLote_() {
+  const t = table_('InsigniaDefs'), tem = {}; t.rows.forEach(function (r) { tem[r.DefID] = 1; }); let n = 0;
+  LOTE_BD.forEach(function (a) {
+    const id = 'IBL_' + a[0]; if (tem[id]) return;
+    const x = { id: id, cat: a[1], nome: a[2], desc: a[3], ic: a[4], forma: a[5], crit: a[6], n: a[7], f: a[8] || 1, cel: typeof a[9] === 'number' ? a[9] : 0, c: LOTE_COR_[a[1]] }, unico = !x.n.length;
+    let visual, nv = '', xp;
+    if (unico) { const est = a[9] || 'ouro', cor = est === 'bordado' ? x.c : LOTE_PAL_[est]; xp = Math.max(10, Math.min(1000, Math.round(60 * x.f))); visual = { estilo: est, forma: x.forma, icone: x.ic, cor1: cor[0], cor2: cor[1], texto: '' }; }
+    else { const lv = loteNiveis_(x); nv = JSON.stringify(lv); xp = lv[0].xp; visual = lv[0].visual; }
+    appendRow_(t, { DefID: id, Nome: x.nome, Descricao: x.desc, Estilo: visual.estilo, Forma: visual.forma, Cor1: visual.cor1, Cor2: visual.cor2, Icone: visual.icone, Texto: visual.texto || '', Som: '', XP: String(xp), Criterio: JSON.stringify(criterioLimpo_(x.crit, !unico)), Niveis: nv, Ativo: '1', CriadoPor: 'sistema', Categoria: LOTE_CAT_[x.cat] });
+    n++;
   });
   return n;
 }
@@ -1681,7 +1914,7 @@ function saveInsigniaDef_(d, u) {
     const crit0 = d.criterio || {}, vb = { estilo: estilo, forma: forma, icone: icone, cor1: cor(v.cor1, '#2f6b3a'), cor2: cor(v.cor2, '#efe3b0'), texto: clip_(v.texto, 4), som: SONS_BD.indexOf(String(v.som || '')) >= 0 ? String(v.som || '') : '' };
     const niv = niveisLimpo_(d.niveis, vb, Number(d.xp)); if (niv.length && String(crit0.tipo || 'manual') === 'eventos_ultimos') throw new ApiError('VALIDATION', 'Esta regra não tem níveis.');
     const xp = Math.max(10, Math.min(1000, Math.floor(Number(d.xp) || 100))), t = table_('InsigniaDefs'), ex = d.id ? t.rows.filter(function (r) { return r.DefID === d.id; })[0] : null; if (d.id && !ex) throw new ApiError('NOT_FOUND', 'Insígnia não encontrada.');
-    const row = { Nome: nome, Descricao: clip_(d.descricao, 200), Estilo: estilo, Forma: forma, Cor1: cor(v.cor1, '#2f6b3a'), Cor2: cor(v.cor2, '#efe3b0'), Icone: icone, Texto: clip_(v.texto, 4), Som: vb.som, XP: String(xp), Criterio: JSON.stringify(criterioLimpo_(d.criterio, niv.length > 0)), Niveis: niv.length ? JSON.stringify(niv) : '', Ativo: d.ativo === false ? '0' : '1' };
+    const row = { Nome: nome, Categoria: clip_(d.categoria, 30), Descricao: clip_(d.descricao, 200), Estilo: estilo, Forma: forma, Cor1: cor(v.cor1, '#2f6b3a'), Cor2: cor(v.cor2, '#efe3b0'), Icone: icone, Texto: clip_(v.texto, 4), Som: vb.som, XP: String(xp), Criterio: JSON.stringify(criterioLimpo_(d.criterio, niv.length > 0)), Niveis: niv.length ? JSON.stringify(niv) : '', Ativo: d.ativo === false ? '0' : '1' };
     let id; if (ex) { writeRow_(t, ex._row, row); id = ex.DefID; } else { id = id_('IB'); appendRow_(t, Object.assign({ DefID: id, CriadoPor: u.membroId }, row)); }
     audit_(u.email, 'INSIGNIA_DEF', id + ' ' + nome, 'OK'); return { id: id };
   });
@@ -1716,32 +1949,35 @@ function listInsignias_(mid) {
   rows.forEach(function (r) { const p = parte(r.Codigo); if (p && defs[p.id] && jparse_(defs[p.id].Niveis, []).length) melhor[p.id] = Math.max(melhor[p.id] || 0, p.k); });
   return rows.filter(function (r) { const p = parte(r.Codigo); return !(p && melhor[p.id] && p.k < melhor[p.id]); }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).map(function (r) {
     const o = { codigo: r.Codigo, titulo: r.Titulo, ano: r.Ano || '', data: r.Data }, p = parte(r.Codigo);
-    if (p && defs[p.id]) { const x = defOut_(defs[p.id]); o.visual = x.visual; o.descricao = x.descricao; o.regra = x.regra; if (x.niveis) { const nv = x.niveis[p.k - 1]; if (nv) { o.visual = nv.visual; o.nivel = p.k; o.niveis = x.niveis.length; o.regra = critTexto_(Object.assign({}, x.criterio, x.criterio.tipo === 'servico' ? { meses: nv.n } : { n: nv.n })); } } }
+    if (p && defs[p.id]) { const x = defOut_(defs[p.id]); o.categoria = x.categoria; o.visual = x.visual; o.descricao = x.descricao; o.regra = x.regra; if (x.niveis) { const nv = x.niveis[p.k - 1]; if (nv) { o.visual = nv.visual; o.nivel = p.k; o.niveis = x.niveis.length; o.regra = critTexto_(Object.assign({}, x.criterio, x.criterio.tipo === 'servico' ? { meses: nv.n } : { n: nv.n })); } } }
     return o;
   });
 }
 // as que ainda não foram conquistadas aparecem escuras no perfil
 function bloqueadas_(mid, meu, ganhas) {
-  const tem = {}; ganhas.forEach(function (g) { tem[g.codigo + (g.ano ? ':' + g.ano : '')] = 1; tem[g.codigo] = 1; }); table_('Insignias').rows.forEach(function (r) { if (r.MembroID === mid) { tem[r.Codigo] = 1; tem[r.Ref] = 1; } }); const out = [], ano = today_().slice(0, 4);
+  const memoB = {}, tem = {}; ganhas.forEach(function (g) { tem[g.codigo + (g.ano ? ':' + g.ano : '')] = 1; tem[g.codigo] = 1; }); table_('Insignias').rows.forEach(function (r) { if (r.MembroID === mid) { tem[r.Codigo] = 1; tem[r.Ref] = 1; } }); const out = [], ano = today_().slice(0, 4);
   [['perfil', 'Perfil completo', 'Preencha todos os dados em Editar perfil.', ''], ['decisao', 'Decisão por Cristo', 'Registre a sua decisão por Cristo.', ''], ['batismo', 'Batizado', 'Registre a data do seu batismo.', ''], ['presenca', 'Presença total', 'Compareça a todos os eventos do ano.', ano]].forEach(function (b) {
     if (!ganhas.some(function (g) { return g.codigo === b[0] && (b[0] !== 'presenca' || g.ano === ano); })) out.push({ codigo: b[0], titulo: b[1], descricao: b[2], ano: b[3] });
   });
   table_('Eventos').rows.forEach(function (e) { if (!e.Insignia || e.Status === 'Cancelado' || String(e.Data).slice(0, 4) !== ano) return; if (!ganhas.some(function (g) { return g.codigo === 'evento:' + e.EventoID; })) out.push({ codigo: 'evento:' + e.EventoID, titulo: e.Insignia, descricao: 'Compareça a ' + e.Titulo + '.', ano: ano }); });
   defsAtivas_().forEach(function (r) {
     const nvs = defNiveis_(r), prox = nvs.filter(function (nv) { return !tem[nivelCod_(r.DefID, nv.k)]; })[0]; if (!prox) return;
-    const x = defOut_(r), explicito = !!x.niveis, o = { codigo: nivelCod_(r.DefID, prox.k), titulo: nivelTitulo_(r, prox, nvs.length), descricao: x.descricao, regra: explicito ? critTexto_(Object.assign({}, x.criterio, x.criterio.tipo === 'servico' ? { meses: prox.n } : { n: prox.n })) : x.regra, visual: explicito ? prox.visual : x.visual, ano: '' };
+    const x = defOut_(r), explicito = !!x.niveis, o = { codigo: nivelCod_(r.DefID, prox.k), titulo: nivelTitulo_(r, prox, nvs.length), categoria: x.categoria, descricao: x.descricao, regra: explicito ? critTexto_(Object.assign({}, x.criterio, x.criterio.tipo === 'servico' ? { meses: prox.n } : { n: prox.n })) : x.regra, visual: explicito ? prox.visual : x.visual, ano: '' };
     if (explicito) { o.nivel = prox.k; o.niveis = nvs.length; }
-    if (meu) { const p = critProg_(x.criterio, mid); const meta = explicito ? prox.n : p.meta; o.progresso = { atual: Math.min(p.atual, meta), meta: meta }; } out.push(o);
+    if (meu) { const p = critProgMemo_(x.criterio, mid, memoB); const meta = explicito ? prox.n : p.meta; o.progresso = { atual: Math.min(p.atual, meta), meta: meta }; } out.push(o);
   });
   return out;
 }
 function perfilRow_(mid) { return table_('Perfis').rows.filter(function (r) { return r.MembroID === mid; })[0]; }
+function elogiosDe_(mid, eu) { // quantas pessoas já elogiaram este perfil e se eu já elogiei hoje
+  const hj = today_(), de = {}; let hoje = false; lazy_('Elogios').rows.forEach(function (r) { if (r.Para !== mid) return; de[r.De] = 1; if (r.De === eu && r.Data === hj) hoje = true; }); return { n: Object.keys(de).length, hoje: hoje };
+}
 function profileView_(d, u) {
   const mid = clip_(d.membroId, 30) || u.membroId, m = table_('Membros').rows.filter(function (x) { return x.MembroID === mid && x.Status !== 'Inativo'; })[0]; if (!m) throw new ApiError('NOT_FOUND', 'Perfil não encontrado.');
   const meu = mid === u.membroId; if (meu) withLock_(function () { avaliaDefs_(mid); });
   const p = perfilRow_(mid) || {}, rs = xpResumo_(mid), ganhas = listInsignias_(mid);
   const contorno = CONTORNOS.indexOf(p.Contorno) >= 0 ? p.Contorno : (CONTORNOS.indexOf(p.Moldura) >= 0 ? p.Moldura : 'simples');
-  const out = { id: mid, meu: meu, nome: m.Simples || m.Nome, apelido: m.Apelido || '', foto: m.Foto || '', bio: p.Bio || '', capa: p.Capa || '', fundo: FUNDOS.indexOf(p.Fundo) >= 0 ? p.Fundo : 'zoe', contorno: contorno, moldura: MOLDURAS.indexOf(p.Quadro) >= 0 ? p.Quadro : 'nenhuma', versiculo: p.Versiculo || '', xp: rs, insignias: ganhas, top: jparse_(p.Top, []).map(function (r) { return ganhas.filter(function (g) { return g.codigo + (g.ano ? ':' + g.ano : '') === r; })[0]; }).filter(Boolean).slice(0, 3), bloqueadas: bloqueadas_(mid, meu, ganhas), oculto: p.Oculto === '1', envolvimento: (p.Oculto === '1' && !meu) ? null : envolvimento_(m),
+  const out = { id: mid, meu: meu, nome: m.Simples || m.Nome, apelido: m.Apelido || '', foto: m.Foto || '', bio: p.Bio || '', capa: p.Capa || '', fundo: FUNDOS.indexOf(p.Fundo) >= 0 ? p.Fundo : 'zoe', contorno: contorno, moldura: MOLDURAS.indexOf(p.Quadro) >= 0 ? p.Quadro : 'nenhuma', versiculo: p.Versiculo || '', xp: rs, insignias: ganhas, top: jparse_(p.Top, []).map(function (r) { return ganhas.filter(function (g) { return g.codigo + (g.ano ? ':' + g.ano : '') === r; })[0]; }).filter(Boolean).slice(0, 3), bloqueadas: bloqueadas_(mid, meu, ganhas), elogios: elogiosDe_(mid, u.membroId), oculto: p.Oculto === '1', envolvimento: (p.Oculto === '1' && !meu) ? null : envolvimento_(m),
     destaques: table_('PerfilFotos').rows.filter(function (r) { return r.MembroID === mid; }).sort(function (a, b) { return Number(a.Ordem) - Number(b.Ordem); }).map(function (r) { return { id: r.FotoID, foto: r.Foto, legenda: r.Legenda || '' }; }) };
   if (meu) out.libera = { fundos: reqMap_(FUNDOS), contornos: reqMap_(CONTORNOS), molduras: reqMap_(MOLDURAS), capa: NV_CAPA, versiculo: NV_VERSICULO, mural: NV_MURAL, slots: slotsMural_(rs.nivel), tiers: TIER_NOMES };
   return out;
@@ -3434,7 +3670,7 @@ function sodSync_(mid, salvar) {
   }
   e.MinAte = agora;
   const mis = sodMiss_(mid, hoje, e.Orou);
-  if (mis.completo && e.CaixaBonus !== hoje) { e.CaixaBonus = hoje; e.Caixas++; e.Talentos += 10; aviso.push('bonus'); }
+  if (mis.completo && e.CaixaBonus !== hoje) { e.CaixaBonus = hoje; e.Caixas++; e.Talentos += 10; aviso.push('bonus'); awardXp_(mid, 'sodm:' + hoje, 0, 'Missões do Sod completas'); }
   if (!e.Livre && e.Pedra <= 0 && e.Seq + (mis.completo ? 1 : 0) >= SOD_SEMANA) {
     e.Livre = true; e.LivreDesde = hoje; e.Soltos++; e.Talentos += 50; awardXp_(mid, 'sod:livre:' + hoje, 50, 'Sod libertado'); notify_(mid, 'sod_livre', 'O Sod está livre! ✨', 'Sete dias firmes com Deus: a luz saiu das pedras e agora brinca com o seu personagem. Domingo ele pode ser preso de novo, continue entrando!', 'sod:' + hoje); aviso.push('livre');
   }
@@ -3502,7 +3738,7 @@ function sodComprar_(d, u) {
     sodSalva_(s.t, s.r, e); const v = sodView_(u.membroId, s); v.comprado = it || 'caixa'; return v;
   });
 }
-function sodOrar_(d, u) { return withLock_(function () { const s = sodSync_(u.membroId, false), e = s.e; e.Orou = today_(); const m = sodMiss_(u.membroId, today_(), e.Orou); s.mis = m; if (m.completo && e.CaixaBonus !== today_()) { e.CaixaBonus = today_(); e.Caixas++; e.Talentos += 10; s.aviso.push('bonus'); } sodSalva_(s.t, s.r, e); return sodView_(u.membroId, s); }); }
+function sodOrar_(d, u) { return withLock_(function () { const s = sodSync_(u.membroId, false), e = s.e; e.Orou = today_(); const m = sodMiss_(u.membroId, today_(), e.Orou); s.mis = m; if (m.completo && e.CaixaBonus !== today_()) { e.CaixaBonus = today_(); e.Caixas++; e.Talentos += 10; s.aviso.push('bonus'); awardXp_(u.membroId, 'sodm:' + today_(), 0, 'Missões do Sod completas'); } sodSalva_(s.t, s.r, e); return sodView_(u.membroId, s); }); }
 
 /* Carga inicial em UMA requisição (antes eram ~20 idas e voltas ao Apps Script) */
 function boot_(d, u) {
@@ -3547,7 +3783,7 @@ const ROUTES = {
   getPushKey: { auth: 'any', fn: getPushKey_ }, pushDiag: { auth: 'any', fn: pushDiag_ }, savePushSub: { auth: 'any', write: 1, fn: savePushSub_ }, delPushSub: { auth: 'any', write: 1, fn: delPushSub_ },
   sodGet: { auth: 'any', write: 1, fn: sodGet_ }, sodAbrir: { auth: 'any', write: 1, fn: sodAbrir_ }, sodEquipar: { auth: 'any', write: 1, fn: sodEquipar_ }, sodDescartar: { auth: 'any', write: 1, fn: sodDescartar_ }, sodAparencia: { auth: 'any', write: 1, fn: sodAparencia_ }, sodOrar: { auth: 'any', write: 1, fn: sodOrar_ }, sodComprar: { auth: 'any', write: 1, fn: sodComprar_ },
   listMarks: { auth: 'any', fn: listMarks_ }, saveMark: { auth: 'any', write: 1, fn: saveMark_ }, saveNote: { auth: 'any', write: 1, fn: saveNote_ }, listCultoNotes: { auth: 'any', fn: listCultoNotes_ }, getMural: { auth: 'any', fn: getMural_ },
-  listInsigniaDefs: { auth: 'any', fn: listInsigniaDefs_ }, saveInsigniaDef: { auth: 'any', write: 1, fn: saveInsigniaDef_ }, grantBadge: { auth: 'any', write: 1, fn: grantBadge_ }, logServico: { auth: 'any', write: 1, fn: logServico_ }, listServicos: { auth: 'any', fn: listServicos_ }, searchPeople: { auth: 'any', fn: findPeople_ }, listPeople: { auth: 'any', fn: listPeople_ }, sendChat: { auth: 'any', write: 1, fn: sendChat_ }, getChat: { auth: 'any', fn: getChat_ }, chatRead: { auth: 'any', write: 1, fn: chatRead_ }, chatTyping: { auth: 'any', fn: chatTyping_ }, listChats: { auth: 'any', fn: listChats_ }, getCertLayout: { auth: 'any', fn: getCertLayout_ }, saveCertLayout: { auth: 'any', write: 1, fn: saveCertLayout_ }, previewCert: { auth: 'any', fn: previewCert_ }, revokeCert: { auth: 'any', write: 1, fn: revokeCert_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, saveFaces: { auth: 'eventos', write: 1, fn: saveFaces_ }, faceRoster: { auth: 'eventos', fn: faceRoster_ }, setFaceAuth: { auth: 'eventos', write: 1, fn: setFaceAuth_ }, listFaces: { auth: 'eventos', fn: listFaces_ }, clearFaces: { auth: 'eventos', write: 1, fn: clearFaces_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, learnFace: { auth: 'eventos', write: 1, fn: learnFace_ }, clearSamples: { auth: 'eventos', write: 1, fn: clearSamples_ }, listFichas: { auth: 'any', fn: listFichas_ }, getFicha: { auth: 'any', fn: getFicha_ }, routeVisitor: { auth: 'any', write: 1, fn: routeVisitor_ }, getMapa: { auth: 'any', fn: getMapa_ }, getCellCard: { auth: 'any', fn: getCellCard_ }, getVoteInfo: { auth: 'any', fn: getVoteInfo_ }, listCampanhas: { auth: 'any', fn: listCampanhas_ }, adminCampanhas: { auth: 'eventos', fn: adminCampanhas_ }, saveCampanha: { auth: 'eventos', write: 1, fn: saveCampanha_ }, setCampanhaEstado: { auth: 'eventos', write: 1, fn: setCampanhaEstado_ }, deleteCampanha: { auth: 'eventos', write: 1, fn: deleteCampanha_ }, getCellMural: { auth: 'any', fn: getCellMural_ }, saveMuralItem: { auth: 'any', write: 1, fn: saveMuralItem_ }, delMuralItem: { auth: 'any', write: 1, fn: delMuralItem_ }, voteGod: { auth: 'any', write: 1, fn: voteGod_ }, getMemberCard: { auth: 'any', fn: getMemberCard_ }, suggestKin: { auth: 'any', fn: suggestKin_ }, listKin: { auth: 'any', fn: listKin_ }, saveKin: { auth: 'any', write: 1, fn: saveKin_ }, delKin: { auth: 'any', write: 1, fn: delKin_ }, getArvore: { auth: 'any', fn: getArvore_ }, listArtes: { auth: 'any', fn: listArtes_ }, getArte: { auth: 'any', fn: getArte_ }, saveArte: { auth: 'any', write: 1, fn: saveArte_ }, decideArte: { auth: 'any', write: 1, fn: decideArte_ }, deleteArte: { auth: 'any', write: 1, fn: deleteArte_ }, saveArteAprovadores: { auth: 'any', write: 1, fn: saveArteAprovadores_ }, saveMySod: { auth: 'any', write: 1, fn: saveMySod_ }, saveSupCor: { auth: 'any', write: 1, fn: saveSupCor_ }, saveMyGeo: { auth: 'any', write: 1, fn: saveMyGeo_ }, saveMapaCfg: { auth: 'config', write: 1, fn: saveMapaCfg_ }, listGeoPendentes: { auth: 'any', fn: listGeoPendentes_ }, saveGeoLote: { auth: 'any', write: 1, fn: saveGeoLote_ }, celFotos: { auth: 'any', fn: celFotos_ }, acceptVisitor: { auth: 'any', write: 1, fn: acceptVisitor_ }, saveFichaEntrada: { auth: 'any', write: 1, fn: saveFichaEntrada_ }, faceMe: { auth: 'any', fn: faceMe_ }, faceScan: { auth: 'any', write: 1, fn: faceScan_ }, faceRevoke: { auth: 'any', write: 1, fn: faceRevoke_ }, faceStat: { auth: 'eventos', write: 1, fn: faceStat_ }, faceStats: { auth: 'eventos', fn: faceStats_ }, cultoPresenca: { auth: 'eventos', fn: cultoPresenca_ }, checkinCulto: { auth: 'eventos', write: 1, fn: checkinCulto_ }, cultosResumo: { auth: 'eventos', fn: cultosResumo_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
+  listInsigniaDefs: { auth: 'any', fn: listInsigniaDefs_ }, bookProgress: { auth: 'any', write: 1, fn: bookProgress_ }, videoWatched: { auth: 'any', write: 1, fn: videoWatched_ }, profileSeen: { auth: 'any', write: 1, fn: profileSeen_ }, praiseProfile: { auth: 'any', write: 1, fn: praiseProfile_ }, saveInsigniaDef: { auth: 'any', write: 1, fn: saveInsigniaDef_ }, grantBadge: { auth: 'any', write: 1, fn: grantBadge_ }, logServico: { auth: 'any', write: 1, fn: logServico_ }, listServicos: { auth: 'any', fn: listServicos_ }, searchPeople: { auth: 'any', fn: findPeople_ }, listPeople: { auth: 'any', fn: listPeople_ }, sendChat: { auth: 'any', write: 1, fn: sendChat_ }, getChat: { auth: 'any', fn: getChat_ }, chatRead: { auth: 'any', write: 1, fn: chatRead_ }, chatTyping: { auth: 'any', fn: chatTyping_ }, listChats: { auth: 'any', fn: listChats_ }, getCertLayout: { auth: 'any', fn: getCertLayout_ }, saveCertLayout: { auth: 'any', write: 1, fn: saveCertLayout_ }, previewCert: { auth: 'any', fn: previewCert_ }, revokeCert: { auth: 'any', write: 1, fn: revokeCert_ }, getCorrida: { auth: 'any', fn: getCorrida_ }, corridaLer: { auth: 'any', write: 1, fn: corridaLer_ }, listCorridaValidar: { auth: 'any', fn: listCorridaValidar_ }, decideLeitura: { auth: 'any', write: 1, fn: decideLeitura_ }, checkinEvento: { auth: 'eventos', write: 1, fn: checkinEvento_ }, saveFaces: { auth: 'eventos', write: 1, fn: saveFaces_ }, faceRoster: { auth: 'eventos', fn: faceRoster_ }, setFaceAuth: { auth: 'eventos', write: 1, fn: setFaceAuth_ }, listFaces: { auth: 'eventos', fn: listFaces_ }, clearFaces: { auth: 'eventos', write: 1, fn: clearFaces_ }, eventoPresenca: { auth: 'eventos', fn: eventoPresenca_ }, learnFace: { auth: 'eventos', write: 1, fn: learnFace_ }, clearSamples: { auth: 'eventos', write: 1, fn: clearSamples_ }, listFichas: { auth: 'any', fn: listFichas_ }, getFicha: { auth: 'any', fn: getFicha_ }, routeVisitor: { auth: 'any', write: 1, fn: routeVisitor_ }, getMapa: { auth: 'any', fn: getMapa_ }, getCellCard: { auth: 'any', fn: getCellCard_ }, getVoteInfo: { auth: 'any', fn: getVoteInfo_ }, listCampanhas: { auth: 'any', fn: listCampanhas_ }, adminCampanhas: { auth: 'eventos', fn: adminCampanhas_ }, saveCampanha: { auth: 'eventos', write: 1, fn: saveCampanha_ }, setCampanhaEstado: { auth: 'eventos', write: 1, fn: setCampanhaEstado_ }, deleteCampanha: { auth: 'eventos', write: 1, fn: deleteCampanha_ }, getCellMural: { auth: 'any', fn: getCellMural_ }, saveMuralItem: { auth: 'any', write: 1, fn: saveMuralItem_ }, delMuralItem: { auth: 'any', write: 1, fn: delMuralItem_ }, voteGod: { auth: 'any', write: 1, fn: voteGod_ }, getMemberCard: { auth: 'any', fn: getMemberCard_ }, suggestKin: { auth: 'any', fn: suggestKin_ }, listKin: { auth: 'any', fn: listKin_ }, saveKin: { auth: 'any', write: 1, fn: saveKin_ }, delKin: { auth: 'any', write: 1, fn: delKin_ }, getArvore: { auth: 'any', fn: getArvore_ }, listArtes: { auth: 'any', fn: listArtes_ }, getArte: { auth: 'any', fn: getArte_ }, saveArte: { auth: 'any', write: 1, fn: saveArte_ }, decideArte: { auth: 'any', write: 1, fn: decideArte_ }, deleteArte: { auth: 'any', write: 1, fn: deleteArte_ }, saveArteAprovadores: { auth: 'any', write: 1, fn: saveArteAprovadores_ }, saveMySod: { auth: 'any', write: 1, fn: saveMySod_ }, saveSupCor: { auth: 'any', write: 1, fn: saveSupCor_ }, saveMyGeo: { auth: 'any', write: 1, fn: saveMyGeo_ }, saveMapaCfg: { auth: 'config', write: 1, fn: saveMapaCfg_ }, listGeoPendentes: { auth: 'any', fn: listGeoPendentes_ }, saveGeoLote: { auth: 'any', write: 1, fn: saveGeoLote_ }, celFotos: { auth: 'any', fn: celFotos_ }, acceptVisitor: { auth: 'any', write: 1, fn: acceptVisitor_ }, saveFichaEntrada: { auth: 'any', write: 1, fn: saveFichaEntrada_ }, faceMe: { auth: 'any', fn: faceMe_ }, faceScan: { auth: 'any', write: 1, fn: faceScan_ }, faceRevoke: { auth: 'any', write: 1, fn: faceRevoke_ }, faceStat: { auth: 'eventos', write: 1, fn: faceStat_ }, faceStats: { auth: 'eventos', fn: faceStats_ }, cultoPresenca: { auth: 'eventos', fn: cultoPresenca_ }, checkinCulto: { auth: 'eventos', write: 1, fn: checkinCulto_ }, cultosResumo: { auth: 'eventos', fn: cultosResumo_ }, saveProfile: { auth: 'any', write: 1, fn: saveProfile_ }, saveHighlight: { auth: 'any', write: 1, fn: saveHighlight_ }, deleteHighlight: { auth: 'any', write: 1, fn: deleteHighlight_ }, greet: { auth: 'any', write: 1, fn: greet_ }, saveProduct: { auth: 'config', write: 1, fn: saveProduct_ }, setPromo: { auth: 'config', write: 1, fn: setPromo_ }, deleteProduct: { auth: 'config', write: 1, fn: deleteProduct_ },
   searchCells: { auth: 'any', fn: searchCells_ }, addPrayer: { auth: 'any', write: 1, fn: addPrayer_ }, listPrayers: { auth: 'any', fn: listPrayers_ },
   cellMembers: { auth: 'any', fn: cellMembers_ }, saveCell: { auth: 'any', write: 1, fn: saveCell_ }, saveAttendance: { auth: 'any', write: 1, fn: saveAttendance_ }, history: { auth: 'any', fn: history_ },
   indicators: { auth: 'any', fn: indicators_ }, getPapeis: { auth: 'any', fn: getPapeis_ }, savePapeis: { auth: 'any', write: 1, fn: savePapeis_ }, createCellEvent: { auth: 'any', write: 1, fn: createCellEvent_ },

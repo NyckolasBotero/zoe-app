@@ -1562,3 +1562,86 @@ test('fotos de perfil no Drive (piloto): desligado por padrão, liga, sobe, troc
   // desligar não mexe nas fotos que já estão no Drive
   e.flags.semCompartilhar = false; assert.equal(e.call('fotosDriveSet', { ligado: false }, adm).data.ligado, false);
 });
+
+/* ===== v1.95: lote de insígnias ===== */
+test('lote de insígnias: catálogo semeado pelo setup, sem duplicar, níveis em ordem e Celeste no topo', () => {
+  const { e, adm } = boot();
+  const lote = e.call('listInsigniaDefs', {}, adm).data.defs.filter(d => d.id.startsWith('IBL_'));
+  assert.equal(lote.length, 44);
+  const cats = new Set(lote.map(d => d.categoria));
+  for (const c of ['Eventos', 'Retiros', 'Encontros', 'Eventos de Célula', 'Células', 'Sod', 'Abas do App', 'Biblioteca', 'Vídeos e Transmissões', 'Chat', 'Perfis e Elogios', 'Bíblia']) assert.ok(cats.has(c), c);
+  for (const d of lote) {
+    assert.ok(d.regra && !/Concedida/.test(d.regra), d.id + ': ' + d.regra);
+    if (d.niveis) { const ns = d.niveis.map(n => n.n); assert.deepEqual(ns, [...ns].sort((a, b) => a - b), d.id); assert.equal(new Set(ns).size, ns.length, d.id); if (d.niveis.length >= 4) assert.equal(d.niveis[d.niveis.length - 1].visual.estilo, 'celeste', d.id); }
+  }
+  const bib = lote.find(d => d.id === 'IBL_BB_SEQ'); assert.equal(bib.niveis[bib.niveis.length - 1].n, 1095); assert.equal(bib.niveis[bib.niveis.length - 2].visual.estilo, 'celeste');
+  const ab = lote.find(d => d.id === 'IBL_AB_ABR'); assert.equal(ab.niveis[0].n, 100);
+  assert.equal(lote.find(d => d.id === 'IBL_RT_U5').criterio.n, 5);
+  assert.equal(e.run(`semeiaLote_()`), 0);
+  const a0 = lote.length; e.run(`setup()`); assert.equal(e.call('listInsigniaDefs', {}, adm).data.defs.filter(d => d.id.startsWith('IBL_')).length, a0);
+});
+test('lote de insígnias: editor aceita regras novas, categoria e até 100 mil; recusa regra sem palavra', () => {
+  const { e, adm } = boot();
+  const ok = e.call('saveInsigniaDef', { titulo: 'Retiro de Verão', categoria: 'Retiros', criterio: { tipo: 'eventos_palavra', palavra: 'verão' }, niveis: [{ nome: 'Um', n: 1 }, { nome: 'Cinco', n: 5 }], visual: { estilo: 'ouro', forma: 'hex', icone: 'montanha' } }, adm); assert.ok(ok.ok, JSON.stringify(ok));
+  const d = e.call('listInsigniaDefs', {}, adm).data.defs.find(x => x.id === ok.data.id); assert.equal(d.categoria, 'Retiros'); assert.equal(d.niveis.length, 2);
+  assert.equal(e.call('saveInsigniaDef', { titulo: 'Sem palavra', criterio: { tipo: 'eventos_palavra' }, niveis: [{ nome: 'a', n: 1 }, { nome: 'b', n: 2 }] }, adm).error.code, 'VALIDATION');
+  assert.ok(e.call('saveInsigniaDef', { titulo: 'Golpes', criterio: { tipo: 'sod_golpes', n: 100000 } }, adm).ok);
+  assert.equal(e.call('saveInsigniaDef', { titulo: 'Golpes 2', criterio: { tipo: 'sod_golpes', n: 100001 } }, adm).error.code, 'VALIDATION');
+});
+test('lote de insígnias: abas, livros 100%, vídeos (sem fraude de tempo), perfis e elogios alimentam as regras', () => {
+  const { e, adm, tok, mk } = boot(); mk('ana@zoe.com', 'membro'); mk('bia@zoe.com', 'membro'); const A = tok('ana@zoe.com', 'Temp12345'), B = tok('bia@zoe.com', 'Temp12345');
+  const ida = e.call('profileView', {}, A).data.id, idb = e.call('profileView', {}, B).data.id;
+  const prog = (tipo, mid, extra = {}) => e.run(`critProg_(${JSON.stringify(Object.assign({ tipo, n: 1 }, extra))}, ${JSON.stringify(mid)}).atual`);
+  // abas: distintas e aberturas; nomes inválidos são ignorados
+  assert.ok(e.call('track', { itens: [], abas: [{ aba: 'celula:mural', n: 2 }, { aba: 'feed', n: 1 }, { aba: 'inválida!', n: 1 }] }, A).ok);
+  e.call('track', { itens: [], abas: [{ aba: 'feed', n: 4 }] }, A); assert.equal(prog('abas_distintas', ida), 2); assert.equal(prog('abas_abertas', ida), 7);
+  // livros: só vale com todas as páginas; as faixas se juntam
+  e.run(`appendRow_(table_('Livros'), { LivroID: 'L1', Titulo: 'Livro', Status: 'Ativo' })`);
+  assert.equal(e.call('bookProgress', { livroId: 'L1', total: 10, pags: '1-5' }, A).data.lidas, 5);
+  assert.equal(e.call('bookProgress', { livroId: 'L1', total: 10, pags: '3-9,500' }, A).data.concluido, false); assert.equal(prog('livros_lidos', ida), 0);
+  const fim = e.call('bookProgress', { livroId: 'L1', total: 10, pags: '10' }, A).data; assert.equal(fim.concluido, true); assert.equal(prog('livros_lidos', ida), 1);
+  assert.equal(e.call('bookProgress', { livroId: 'NAO', total: 10, pags: '1' }, A).error.code, 'NOT_FOUND'); assert.equal(e.call('bookProgress', { livroId: 'L1', total: 0, pags: '1' }, A).error.code, 'VALIDATION');
+  // vídeos: o tempo contado não passa do que realmente se passou
+  e.run(`appendRow_(table_('Videos'), { VideoID: 'V1', Titulo: 'Live', Url: 'https://youtu.be/aaaaaaaaaaa', Status: 'Ativo', Tipo: 'live' })`);
+  e.call('videoWatched', { videoId: 'V1', seg: 120 }, A); e.call('videoWatched', { videoId: 'V1', seg: 120 }, A);
+  assert.ok(Number(e.run(`lazy_('VideosVistos').rows[0].Seg`)) < 60); assert.equal(prog('videos_vistos', ida), 0);
+  e.run(`(function () { const t = lazy_('VideosVistos'); writeRow_(t, t.rows[0]._row, { Ultimo: String(Date.now() - 60000) }); })()`);
+  e.call('videoWatched', { videoId: 'V1', seg: 30 }, A); e.run(`(function () { const t = lazy_('VideosVistos'); writeRow_(t, t.rows[0]._row, { Ultimo: String(Date.now() - 60000) }); })()`); e.call('videoWatched', { videoId: 'V1', seg: 30 }, A);
+  assert.equal(prog('videos_vistos', ida), 1); assert.equal(prog('lives_vistas', ida), 1); assert.ok(prog('videos_min', ida) >= 1);
+  // perfis e elogios
+  assert.ok(e.call('profileSeen', { alvoId: idb }, A).ok); e.call('profileSeen', { alvoId: idb }, A); e.call('profileSeen', { alvoId: ida }, A); assert.equal(prog('perfis_visitados', ida), 1);
+  assert.equal(e.call('praiseProfile', { alvoId: ida, texto: 'Você é ótima' }, A).error.code, 'VALIDATION');
+  assert.equal(e.call('praiseProfile', { alvoId: idb, texto: 'ok' }, A).error.code, 'VALIDATION'); assert.equal(e.call('praiseProfile', { alvoId: idb, texto: 'Veja https://x.com agora' }, A).error.code, 'VALIDATION');
+  assert.ok(e.call('praiseProfile', { alvoId: idb, texto: 'Deus te abençoe, Bia!' }, A).ok);
+  assert.equal(e.call('praiseProfile', { alvoId: idb, texto: 'Mais um elogio' }, A).error.code, 'VALIDATION');
+  assert.equal(e.run(`table_('Notificacoes').rows.filter(function (r) { return r.Tipo === 'elogio' && r.MembroID === ${JSON.stringify(idb)}; }).length`), 1);
+  assert.equal(prog('elogios_dados', ida), 1); assert.equal(prog('elogios_recebidos', idb), 1);
+  const pb = e.call('profileView', { membroId: idb }, A).data; assert.equal(pb.elogios.n, 1); assert.equal(pb.elogios.hoje, true);
+  // as insígnias do primeiro nível chegam sozinhas
+  const ga = e.call('profileView', {}, A).data.insignias.map(x => x.codigo), gb = e.call('profileView', {}, B).data.insignias.map(x => x.codigo);
+  for (const c of ['cust:IBL_PF_ELOGIO', 'cust:IBL_PF_VIS', 'cust:IBL_BI_LIDO', 'cust:IBL_VD_VID', 'cust:IBL_VD_LIVE']) assert.ok(ga.includes(c), c); assert.ok(!ga.includes('cust:IBL_AB_DIST')); // 2 abas ainda não chegam ao primeiro nível (5)
+  assert.ok(gb.includes('cust:IBL_PF_REC'));
+  const bl = e.call('profileView', {}, A).data.bloqueadas.find(x => x.codigo === 'cust:IBL_AB_DIST'); assert.ok(bl && bl.categoria === 'Abas do App' && bl.progresso.meta === 5 && bl.progresso.atual === 2);
+});
+test('lote de insígnias: chat com resposta, Bíblia em sequência, semanas de célula, eventos e Sod', () => {
+  const { e, adm, tok, mk } = boot(); mk('ana@zoe.com', 'membro'); mk('bia@zoe.com', 'membro'); const A = tok('ana@zoe.com', 'Temp12345'), B = tok('bia@zoe.com', 'Temp12345');
+  const ida = e.call('profileView', {}, A).data.id, idb = e.call('profileView', {}, B).data.id;
+  const prog = (tipo, mid, extra = {}) => e.run(`critProg_(${JSON.stringify(Object.assign({ tipo, n: 1 }, extra))}, ${JSON.stringify(mid)}).atual`);
+  // chat: só conta amigo quando houve resposta
+  assert.ok(e.call('sendChat', { para: idb, texto: 'Paz!' }, A).ok); assert.equal(prog('chat_amigos', ida), 0); assert.equal(prog('chat_msgs', ida), 1);
+  assert.ok(e.call('sendChat', { para: ida, texto: 'Paz, Ana!' }, B).ok); assert.equal(prog('chat_amigos', ida), 1); assert.equal(prog('chat_amigos', idb), 1);
+  // Bíblia: dias seguidos (a lacuna quebra a sequência) e total de dias
+  for (const d of ['2026-03-01', '2026-03-02', '2026-03-03', '2026-03-05']) e.run(`appendRow_(table_('BibMarcas'), { MembroID: ${JSON.stringify(ida)}, Ref: 'Jo 3:16', Cor: 'amarelo', Tipo: 'marca', Data: ${JSON.stringify(d)} })`);
+  assert.equal(prog('biblia_seq', ida), 3); assert.equal(prog('biblia_dias', ida), 4);
+  // célula: semanas seguidas (segunda a domingo)
+  for (const d of ['2026-03-02', '2026-03-10', '2026-03-16', '2026-03-30']) e.run(`appendRow_(table_('Presencas'), { ReuniaoID: 'R' + ${JSON.stringify(d)}, CelulaID: 'C1', Data: ${JSON.stringify(d)}, MembroID: ${JSON.stringify(ida)} })`);
+  assert.equal(prog('reunioes_seq', ida), 3); assert.equal(prog('reunioes', ida), 4);
+  // eventos por palavra no título e eventos de célula (inscrição)
+  e.run(`(function () { const t = table_('Eventos'); appendRow_(t, { EventoID: 'E1', Titulo: 'Retiro de Carnaval', Data: '2026-02-10', Status: 'Ativo', Escopo: 'igreja' }); appendRow_(t, { EventoID: 'E2', Titulo: 'Encontro com Deus', Data: '2026-03-10', Status: 'Ativo', Escopo: 'igreja' }); appendRow_(t, { EventoID: 'E3', Titulo: 'Lanche da célula', Data: '2026-03-12', Status: 'Ativo', Escopo: 'celula', CelulaID: 'C1' });
+    appendRow_(table_('EventoPresenca'), { EventoID: 'E1', MembroID: ${JSON.stringify(ida)}, Data: '2026-02-10' }); appendRow_(table_('Inscricoes'), { EventoID: 'E3', MembroID: ${JSON.stringify(ida)}, Data: '2026-03-01' }); })()`);
+  assert.equal(prog('eventos_palavra', ida, { palavra: 'RETIRO' }), 1); assert.equal(prog('eventos_palavra', ida, { palavra: 'encontro' }), 0); assert.equal(prog('eventos_celula', ida), 1);
+  // Sod: contadores vêm da linha do Sod e as missões completas do registro de XP
+  e.call('sodGet', {}, A); e.run(`(function () { const t = sodTab_(); writeRow_(t, t.rows[0]._row, { Soltos: '2', Golpes: '600', Abertas: '3' }); awardXp_(${JSON.stringify(ida)}, 'sodm:2026-03-01', 0, 'x'); awardXp_(${JSON.stringify(ida)}, 'sodm:2026-03-02', 0, 'x'); })()`);
+  assert.equal(prog('sod_soltos', ida), 2); assert.equal(prog('sod_golpes', ida), 600); assert.equal(prog('sod_caixas', ida), 3); assert.equal(prog('sod_missoes', ida), 2);
+  assert.equal(prog('sod_soltos', idb), 0);
+});

@@ -1,5 +1,24 @@
 [
  {
+  "titulo": "Lote de 44 insígnias com níveis, de Retiros ao Sod, abas, livros, vídeos, chat e elogios",
+  "melhorias": [
+   "44 insígnias novas em 14 categorias (Eventos, Retiros, Encontros, Eventos de Célula, Células, Sod, Abas do App, Biblioteca, Vídeos e Transmissões, Chat, Perfis e Elogios, Bíblia, Serviço e Cursos, Fidelidade), a maioria com 5 a 9 níveis. Os níveis começam no bordado e terminam no Celeste; as mais difíceis têm os dois últimos níveis em Celeste.",
+   "Retiros e encontros: Retirante (1, 2, 3, 5, 7 e 10 retiros), Retiro Sem Falta (últimos 3 retiros), Inseparável do Retiro (últimos 5) e Encontrado (1 a 20 encontros). Contam pela palavra no título do evento, com a presença marcada no check-in.",
+   "Células e eventos de célula: Pé na Célula (de 1 a 400 reuniões), Semanas Fiéis (até 104 semanas seguidas), Termômetro Vivo (notas de presença de Deus), Memória da Célula (mural), Pescador de Gente (visitantes), Multiplicação, Pastor de Célula (para líderes), Intercessor e Em Família (eventos da própria célula).",
+   "Sod: Libertador de Luz, Dias com Deus (missões diárias, até 730 dias), Mineiro de Pedras, Caçador de Caixas, Guarda-roupa do Reino e Tesouro Lendário.",
+   "Bíblia: Palavra Todos os Dias (3 dias até 3 anos seguidos lendo a Bíblia no app), Amigo da Palavra, Maratonista da Bíblia (até os 1189 capítulos), Anotador da Palavra e Devocional Diário. Ler = marcar um versículo ou registrar a leitura da Maratona.",
+   "Explorador do App (5 a 100 abas diferentes) e Cem Abas e Além (de 100 a 10 mil aberturas de abas). O app passa a contar as abas que cada pessoa abre.",
+   "Biblioteca: Leitor Voraz exige 100% das páginas do livro abertas no leitor (cada página precisa ficar aberta por 1,5 s) e Resenhista premia notas e comentários.",
+   "Vídeos e transmissões: Espectador, Ao Vivo na Presença e Horas de Edificação. O tempo só conta com o player aberto e a aba visível.",
+   "Chat: Amigo da Igreja (1, 5, 10, 25, 50 e 100 pessoas diferentes; a conversa precisa ter resposta) e Palavra Amiga (mensagens enviadas).",
+   "Perfis: botão Elogiar no perfil de outra pessoa (6 frases prontas ou texto livre de até 140 letras, sem links, 1 elogio por pessoa por dia e até 10 por dia). A pessoa recebe uma notificação. Insígnias Bom Vizinho (perfis visitados), Palavras de Vida (elogios dados), Amado pela Família (elogios recebidos) e Coração Generoso (curtidas).",
+   "Em Criar insígnias: 30 regras novas, campo Categoria e lista agrupada por categoria; o limite de N subiu para 100 mil. O cartão da insígnia mostra a categoria.",
+   "Atualize o Code.gs, rode setup() (cria as colunas e abas novas e as 44 insígnias; ao rodar de novo, só cria o que falta e não desfaz o que você editou) e publique nova versão."
+  ],
+  "v": "1.95",
+  "data": "02/11/2026"
+ },
+ {
   "titulo": "Feed único, eventos que passaram e fotos \"Como foi\"",
   "melhorias": [
    "Remarcar ou adiar evento: administração escolhe a nova data e hora (e o motivo); quem está inscrito é avisado e o evento mostra \"Remarcado · era dd/mm\".",
