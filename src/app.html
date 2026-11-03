@@ -1776,7 +1776,9 @@ const NAVSUB={celula:[['freq','Frequência'],['plan','Planejamento'],['papeis','
 const NAVMODOS=[['hv','Horizontal e vertical'],['h','Só no menu horizontal'],['v','Só no menu vertical (lateral)'],['-','Oculta']];
 const navCfg=()=>S.navCfg&&typeof S.navCfg==='object'?S.navCfg:null;
 function navModo(sec,id){const m=navCfg()&&navCfg().subs&&navCfg().subs[sec]&&navCfg().subs[sec][id];return NAVMODOS.some(x=>x[0]===m)?(m==='-'?'':m):(sec==='celula'?'hv':'h')}
-const navGr=sec=>{const g=navCfg()&&navCfg().grupos&&navCfg().grupos[sec];return Array.isArray(g)?g:[]};
+/* organização padrão de Células (vale enquanto o administrador não salvar outra) */
+const NAV_DEF_GRUPOS={celula:[{id:'todos',nome:'Para Todos',modo:'aberto',itens:['oracao','membros']},{id:'lideres',nome:'Para Líderes',modo:'aberto',itens:['papeis','freq','plan','ind']},{id:'perfil',nome:'Perfil da célula',modo:'aberto',itens:['perfilc','priv','mural','org']}]};
+const navGr=sec=>{const c=navCfg(),g=c&&c.grupos&&c.grupos[sec];return Array.isArray(g)?g:(c&&c.grupos&&sec in c.grupos?[]:(NAV_DEF_GRUPOS[sec]||[]))};
 /* grupos de uma seção, só com as guias presentes em list (na ordem da lista) */
 function navGrupos(sec,list){const ids=list.map(t=>t[0]),used=new Set();return navGr(sec).map(g=>({id:g.id,nome:g.nome,modo:g.modo||'aberto',m:list.filter(t=>(g.itens||[]).includes(t[0])&&!used.has(t[0])&&used.add(t[0]))})).filter(g=>g.m.length)}
 const GRPOPEN={};

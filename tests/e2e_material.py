@@ -11,7 +11,7 @@ with sync_playwright() as p:
     its=[x.strip().replace('▾','').strip() for x in pg.locator('#nvcel .sn').all_inner_texts()]
     assert 'Frequência' in its and 'Material Células' in its and its[-2:]==['Lições / Extras','Dinâmicas'], its
     assert pg.locator('#nvcel .sn.bub').first.evaluate("e=>getComputedStyle(e).opacity")=='1'
-    tabs=[x.strip() for x in pg.locator('#view .tabs button').all_inner_texts()]; assert tabs[-2:]==['Lições / Extras','Dinâmicas'], tabs
+    tabs=[x.strip() for x in pg.locator('#view .tabs button').all_inner_texts()]; assert 'Lições / Extras' in tabs and 'Dinâmicas' in tabs and 'Para Líderes' in tabs, tabs
     # clicar de novo recolhe, e de novo abre
     pg.click('.nav button.nv:has-text("Células")'); pg.wait_for_function("!document.querySelector('#nvcel').classList.contains('open')"); pg.wait_for_timeout(700)
     print('op',pg.locator('#nvcel .sn.bub').first.evaluate("e=>[getComputedStyle(e).opacity,e.parentElement.parentElement.className]")); pg.wait_for_timeout(800); assert float(pg.locator('#nvcel .sn.bub').first.evaluate("e=>getComputedStyle(e).opacity"))<0.05

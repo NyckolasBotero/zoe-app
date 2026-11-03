@@ -25,7 +25,7 @@ with sync_playwright() as p:
     pg.evaluate("S.navCfg=null;NV.d=null;shell();go('feed')"); pg.wait_for_timeout(400)
     assert 'Família Zoe' in side() and 'Mapas' in side()
     # v1.105: grupos de guias criados pelo admin
-    pg.evaluate("""NV.d=nvBase();nvGAdd('celula');nvGAdd('celula');const G=NV.d.grupos.celula;G[0].nome='Todos';G[0].modo='fixo';G[1].nome='Perfil';G[1].modo='fechado';
+    pg.evaluate("""NV.d=nvBase();NV.d.grupos.celula=[];nvGAdd('celula');nvGAdd('celula');const G=NV.d.grupos.celula;G[0].nome='Todos';G[0].modo='fixo';G[1].nome='Perfil';G[1].modo='fechado';
       nvGrp('celula','oracao',G[0].id);nvGrp('celula','membros',G[0].id);['perfilc','priv','mural','org'].forEach(i=>nvGrp('celula',i,G[1].id));nvSave()"""); pg.wait_for_timeout(500)
     pg.evaluate("setRole('admin');go('celula','freq')"); pg.wait_for_timeout(500)
     h=[x.strip() for x in pg.locator('#view .tabs:not(.tsub) button').all_inner_texts()]
