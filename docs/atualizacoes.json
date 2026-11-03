@@ -1,8 +1,8 @@
 [
  {
-  "titulo": "Lições / Extras e Dinâmicas em lista suspensa, só para líderes",
+  "titulo": "Material Células dentro de Células (Lições / Extras e Dinâmicas), só para líderes",
   "melhorias": [
-   "No menu lateral, Lições / Extras e Dinâmicas saíram da lista principal e agora ficam numa lista suspensa chamada “Material de célula”, logo abaixo de Células.",
+   "No menu lateral, Lições / Extras e Dinâmicas saíram da lista principal e ficam dentro de Células: ao clicar em Células, abre abaixo o grupo “Material Células” com Lições / Extras e Dinâmicas. Abre sozinho, sem precisar de outro clique.",
    "Só líderes de célula e acima (supervisores, pastores e administração) veem e acessam. Membros comuns não veem o menu, e, se tentarem abrir pelo endereço, voltam ao Início.",
    "A regra vale também no servidor: membros comuns não recebem as lições nem as dinâmicas e não conseguem criar dinâmicas.",
    "Backend: Code.gs com a restrição. Cole o novo Code.gs e publique nova versão; não precisa rodar setup()."
