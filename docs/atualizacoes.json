@@ -1,5 +1,15 @@
 [
  {
+  "titulo": "Guias dentro de outras guias no menu",
+  "melhorias": [
+   "Em Administração › Definições › Navegação do menu, cada guia ganhou o campo “Dentro de…”. Exemplo: Privacidade, Mural de fotos, Organograma e Membros podem ficar dentro de “Perfil da célula”.",
+   "No menu vertical, “Perfil da célula” vira um grupo que abre e recolhe com as guias dentro. No horizontal, ao abrir “Perfil da célula” aparece uma segunda linha com as guias que estão dentro dela.",
+   "As permissões continuam valendo guia por guia. Sem mudança de planilha: não precisa rodar o setup(), só publicar o novo Code.gs."
+  ],
+  "data": "02/11/2026",
+  "v": "1.104"
+ },
+ {
   "titulo": "Administrador define a navegação do menu",
   "melhorias": [
    "Nova opção em Administração › Definições: “Navegação do menu”. Você escolhe quais itens aparecem no menu lateral, a ordem (setas ↑ ↓) e pode renomear cada item.",

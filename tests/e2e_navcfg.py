@@ -24,4 +24,18 @@ with sync_playwright() as p:
     # restaurar padrão
     pg.evaluate("S.navCfg=null;NV.d=null;shell();go('feed')"); pg.wait_for_timeout(400)
     assert 'Família Zoe' in side() and 'Mapas' in side()
+    # v1.104: guias dentro de outra guia (Privacidade, Mural de fotos, Organograma, Membros dentro de Perfil da célula)
+    pg.evaluate("""NV.d=nvBase();['priv','mural','org','membros'].forEach(i=>nvGrp('celula',i,'perfilc'));nvSave()"""); pg.wait_for_timeout(500)
+    pg.evaluate("setRole('admin');go('celula','freq')"); pg.wait_for_timeout(500)
+    h=[x.strip() for x in pg.locator('#view .tabs:not(.tsub) button').all_inner_texts()]
+    assert 'Perfil da célula' in h and 'Privacidade' not in h and 'Organograma' not in h, h
+    assert pg.locator('#view .tabs.tsub').count()==0
+    pg.click('#view .tabs button:has-text("Perfil da célula")'); pg.wait_for_timeout(500)
+    ss=[x.strip() for x in pg.locator('#view .tabs.tsub button').all_inner_texts()]; assert ss==['Perfil da célula','Membros','Privacidade','Mural de fotos','Organograma'] or set(ss)=={'Perfil da célula','Membros','Privacidade','Mural de fotos','Organograma'}, ss
+    pg.click('#view .tabs.tsub button:has-text("Privacidade")'); pg.wait_for_timeout(400); assert pg.evaluate("R.sub.celula")=='priv'
+    assert pg.locator('#view .tabs.tsub').count()==1
+    pg.click('.nav button.nv:has-text("Células")') if not pg.locator('#nvcel.open').count() else None; pg.wait_for_selector('#nvcel.open'); pg.wait_for_timeout(900)
+    g=pg.locator('#nvcel .sn.grp:has-text("Perfil da célula")'); assert g.count()==1 and pg.locator('#nvg_celula_perfilc.open').count()==1
+    assert [x.strip() for x in pg.locator('#nvg_celula_perfilc .sn').all_inner_texts()].count('Organograma')==1
+    pg.evaluate("S.navCfg=null;NV.d=null;shell();go('feed')")
     print('OK navegação configurável'); b.close()
