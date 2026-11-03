@@ -1694,3 +1694,15 @@ test('v1.100: o feed é salvo no layout do Início e o XP das missões do Sod é
   assert.equal(e.call('profileView', {}, ta).data.xp.xp, x0 + 30); e.call('sodOrar', {}, ta); assert.equal(e.call('profileView', {}, ta).data.xp.xp, x0 + 30, 'só uma vez por dia');
   const v = e.call('sodGet', {}, ta).data; assert.equal(v.missoes.find(m => m.k === 'oracao').xp, 30);
 });
+
+test('Navegação do menu: só admin salva; ids/modos validados e exposta na config pública', () => {
+  const { e, adm, tok, mk } = boot(); mk('ana@zoe.com', 'membro'); const A = tok('ana@zoe.com', 'Temp12345');
+  assert.equal(e.call('saveNavConfig', { cfg: { itens: [{ id: 'feed' }] } }, A).error.code, 'FORBIDDEN');
+  assert.equal(e.call('saveNavConfig', { cfg: { itens: [{ id: 'xx' }] } }, adm).error.code, 'VALIDATION');
+  const r = e.call('saveNavConfig', { cfg: { itens: [{ id: 'familia', nome: 'Nossa Família' }, { id: 'admin', on: false }, { id: 'familia' }, { id: 'feed', on: false }], subs: { familia: { quem: 'v', fale: 'zz', 'x y': 'h' }, nada: { a: 'h' } } } }, adm);
+  assert.ok(r.ok, JSON.stringify(r)); const c = r.data.cfg;
+  assert.equal(c.itens.length, 3); assert.equal(c.itens[0].nome, 'Nossa Família'); assert.equal(c.itens.find(i => i.id === 'admin').on, true); assert.equal(c.itens.find(i => i.id === 'feed').on, false);
+  assert.deepEqual(c.subs, { familia: { quem: 'v' } });
+  assert.deepEqual(e.call('me', {}, A).data.config.navCfg, c);
+  assert.equal(e.call('saveNavConfig', { reset: true }, adm).data.cfg, null);
+});

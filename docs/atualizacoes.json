@@ -1,5 +1,16 @@
 [
  {
+  "titulo": "Administrador define a navegação do menu",
+  "melhorias": [
+   "Nova opção em Administração › Definições: “Navegação do menu”. Você escolhe quais itens aparecem no menu lateral, a ordem (setas ↑ ↓) e pode renomear cada item.",
+   "Para os itens que têm guias (Células, Cursos, Aulas, Família Zoe, Ministérios, Mapas, Lives e Vídeos, Aprovações) você escolhe, guia por guia, onde ela aparece: no menu horizontal, no vertical (lista que abre embaixo do item no menu lateral, com o efeito de bolhas), em ambos ou oculta.",
+   "Vale para todos os usuários, sempre respeitando as permissões de cada um. “Restaurar padrão” volta tudo como era. Administração nunca pode ser ocultada.",
+   "Sem mudança de planilha: não precisa rodar o setup(), só publicar o novo Code.gs."
+  ],
+  "data": "02/11/2026",
+  "v": "1.103"
+ },
+ {
   "titulo": "Células com droplist em cascata (efeito bolha) e Material Células",
   "melhorias": [
    "Ao clicar em Células no menu lateral, abre embaixo, em cascata e com efeito de bolhas, a lista das guias da célula (Frequência, Planejamento, Papéis…) e, para líderes de célula ou acima, o grupo “Material Células”, com Lições / Extras e Dinâmicas. Clicando em Células de novo, tudo recolhe em cascata; clicando outra vez, abre de novo.",
