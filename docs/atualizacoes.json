@@ -1,5 +1,17 @@
 [
  {
+  "titulo": "Perfil mais enxuto, XP das missões do Sod e feed que salva no lugar",
+  "melhorias": [
+   "Em “Ainda não conquistadas” aparecem só 2 fileiras, com o botão Mostrar mais (e Mostrar menos). O número de insígnias por fileira se ajusta à largura da tela.",
+   "O quadro do Sod no perfil ficou mais baixo, parando onde terminam as missões diárias (os botões de caixa, Personagem e Loja subiram para antes das missões), e mais largo: cerca de 50 px a mais para a esquerda.",
+   "Administração › Sod: agora você define o XP de cada missão diária (entrar, ler a Bíblia, orar, escrever anotação, ir à célula ou culto) e um bônus por cumprir todas, de 0 a 500. Cada missão vale uma vez por dia (a da célula ou culto, uma vez por semana). O XP aparece em cada missão e entra no nível do perfil. O padrão continua igual ao de antes: só “Entrar” vale 5 XP.",
+   "Feed no Início: corrigido o problema de ele voltar sempre para o meio da tela. O servidor descartava o bloco do Feed ao salvar o layout. Se o seu layout foi salvo antes desta versão, mova o Feed para onde quiser e salve de novo; a posição e o tamanho passam a ficar guardados.",
+   "Backend: nova rota do XP das missões e o Feed aceito no layout. Cole o novo Code.gs e publique nova versão; não precisa rodar setup()."
+  ],
+  "data": "02/11/2026",
+  "v": "1.100"
+ },
+ {
   "titulo": "Pop-up de conquista mais empolgante e um som para cada nível",
   "melhorias": [
    "O botão de ouvir o som de novo saiu do pop-up da insígnia.",

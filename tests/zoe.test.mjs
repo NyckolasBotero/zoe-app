@@ -1680,3 +1680,17 @@ test('v1.98: destaques por nível (1 a cada 5, até 5) e efeitos de brilho a par
   assert.ok(e.call('saveProfile', { insigniasTop: refs().map((r, i) => ({ r, fx: i === 0 ? 'aura' : '' })) }, ta).ok);
   p = e.call('profileView', {}, ta).data; assert.equal(p.top.length, 5); assert.equal(p.top[0].fx, 'aura');
 });
+test('v1.100: o feed é salvo no layout do Início e o XP das missões do Sod é definido pelo administrador', () => {
+  const { e, adm, tok, mk } = boot(); const a = mk('sodx@zoe.com', 'membro'), ta = tok('sodx@zoe.com', 'Temp12345');
+  const lay = [{ id: 'hero', w: 6, h: 5 }, { id: 'feed', w: 6, h: 40 }, { id: 'celula', w: 6, h: 13 }];
+  const r = e.call('saveHomeLayout', { layout: lay }, adm); assert.ok(r.ok); assert.deepEqual(r.data.layout.map(x => x.id), ['hero', 'feed', 'celula']); assert.equal(r.data.layout[1].w, 6);
+  // padrão: só Entrar vale XP
+  assert.deepEqual(e.call('sodGet', {}, ta).data.xp, { entrar: 5, biblia: 0, oracao: 0, anotar: 0, comunhao: 0, completo: 0 });
+  assert.equal(e.call('saveSodXp', { oracao: 30 }, ta).error.code, 'FORBIDDEN');
+  const s = e.call('saveSodXp', { entrar: 8, biblia: 20, oracao: 30, anotar: 15, comunhao: 25, completo: 50 }, adm); assert.equal(s.data.sodXp.oracao, 30);
+  assert.equal(e.call('saveSodXp', { biblia: 9999 }, adm).data.sodXp.biblia, 500);
+  e.call('saveSodXp', { biblia: 20 }, adm);
+  const x0 = e.call('profileView', {}, ta).data.xp.xp; e.call('sodOrar', {}, ta);
+  assert.equal(e.call('profileView', {}, ta).data.xp.xp, x0 + 30); e.call('sodOrar', {}, ta); assert.equal(e.call('profileView', {}, ta).data.xp.xp, x0 + 30, 'só uma vez por dia');
+  const v = e.call('sodGet', {}, ta).data; assert.equal(v.missoes.find(m => m.k === 'oracao').xp, 30);
+});
