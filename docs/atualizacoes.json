@@ -1,5 +1,15 @@
 [
  {
+  "titulo": "“Material Células” configurável",
+  "melhorias": [
+   "“Material Células” (Lições / Extras e Dinâmicas) deixou de ser fixo no código: agora é um grupo comum em Administração › Definições › Navegação do menu › Células › Guias. Você escolhe se começa aberto, fechado ou aberto fixo, renomeia, reordena, exclui ou move as guias para outro grupo.",
+   "Na barra horizontal, Lições / Extras e Dinâmicas agora aparecem dentro do botão “Material Células” (segunda linha), como os demais grupos. Continuam visíveis só para líderes de célula ou acima.",
+   "Code.gs atualizado (guarda a marca da nova configuração). Não precisa rodar o setup()."
+  ],
+  "data": "02/11/2026",
+  "v": "1.109"
+ },
+ {
   "titulo": "Menu lateral uniforme",
   "melhorias": [
    "Corrigido o espacinho a mais entre “Células” e “Família Zoe” (e em qualquer item com lista recolhida): o espaçamento de todo o menu lateral agora é igual.",

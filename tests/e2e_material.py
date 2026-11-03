@@ -9,22 +9,23 @@ with sync_playwright() as p:
     assert pg.locator('#nvcel.open').count()==0
     pg.click('.nav button.nv:has-text("Células")'); pg.wait_for_selector('#nvcel.open'); pg.wait_for_timeout(900)
     its=[x.strip().replace('▾','').strip() for x in pg.locator('#nvcel .sn').all_inner_texts()]
-    assert 'Frequência' in its and 'Material Células' in its and its[-2:]==['Lições / Extras','Dinâmicas'], its
+    assert 'Frequência' in its and any('Material Células' in x for x in its) and its[-2:]==['Lições / Extras','Dinâmicas'], its
     assert pg.locator('#nvcel .sn.bub').first.evaluate("e=>getComputedStyle(e).opacity")=='1'
-    tabs=[x.strip() for x in pg.locator('#view .tabs button').all_inner_texts()]; assert 'Lições / Extras' in tabs and 'Dinâmicas' in tabs and 'Para Líderes' in tabs, tabs
+    tabs=[x.strip() for x in pg.locator('#view .tabs button').all_inner_texts()]; assert 'Material Células' in tabs and 'Para Líderes' in tabs, tabs
+    pg.click('#view .tabs button:has-text("Material Células")'); pg.wait_for_timeout(400)
     # clicar de novo recolhe, e de novo abre
     pg.click('.nav button.nv:has-text("Células")'); pg.wait_for_function("!document.querySelector('#nvcel').classList.contains('open')"); pg.wait_for_timeout(700)
     print('op',pg.locator('#nvcel .sn.bub').first.evaluate("e=>[getComputedStyle(e).opacity,e.parentElement.parentElement.className]")); pg.wait_for_timeout(800); assert float(pg.locator('#nvcel .sn.bub').first.evaluate("e=>getComputedStyle(e).opacity"))<0.05
     assert pg.evaluate("R.r")=='celula'
     pg.click('.nav button.nv:has-text("Células")'); pg.wait_for_selector('#nvcel.open')
-    # grupo Material Células recolhe/abre
-    pg.click('#nvmatb'); pg.wait_for_function("!document.querySelector('#nvmat').classList.contains('open')"); pg.click('#nvmatb'); pg.wait_for_selector('#nvmat.open'); pg.wait_for_timeout(700)
-    pg.click('#nvmat .sn:has-text("Dinâmicas")'); pg.wait_for_timeout(500); assert pg.evaluate("R.r+':'+R.sub.celula")=='celula:dinamicas'
+    # grupo Material Células recolhe/abre (estado configurável)
+    G='#nvg_celula_material'; pg.wait_for_selector(G+'.open'); pg.click('#nvcel .sn.grp:has-text("Material Células")'); pg.wait_for_function("!document.querySelector('#nvg_celula_material').classList.contains('open')"); pg.click('#nvcel .sn.grp:has-text("Material Células")'); pg.wait_for_selector(G+'.open'); pg.wait_for_timeout(700)
+    pg.click(G+' .sn:has-text("Dinâmicas")'); pg.wait_for_timeout(500); assert pg.evaluate("R.r+':'+R.sub.celula")=='celula:dinamicas'
     pg.click('#view .tabs button:has-text("Lições")'); pg.wait_for_timeout(400); assert pg.evaluate("R.sub.celula")=='licoes'
     pg.evaluate("go('licoes')"); pg.wait_for_timeout(300); assert pg.evaluate("R.r+':'+R.sub.celula")=='celula:licoes'
     pg.screenshot(path='/tmp/nav.png',clip={'x':0,'y':0,'width':320,'height':720})
     # membro comum: sem Material Células nem as guias
     pg.evaluate("setRole('membro')"); pg.wait_for_timeout(500)
-    assert pg.locator('#nvmat').count()==0 and pg.locator('#view .tabs button:has-text("Dinâmicas")').count()==0
+    assert pg.locator('#nvg_celula_material').count()==0 and pg.locator('#view .tabs button:has-text("Dinâmicas")').count()==0
     pg.evaluate("go('licoes')"); pg.wait_for_timeout(300); assert pg.evaluate("R.r")=='feed'
     print('OK material de célula'); b.close()

@@ -409,7 +409,7 @@ function navCfgOk_(c) {
       lista.push({ id: id, nome: String(g.nome || '').trim().slice(0, 30) || 'Grupo', modo: modo, itens: it });
     }); grupos[k] = lista;
   });
-  return { itens: itens, subs: subs, grupos: grupos };
+  return { v: c.v === 2 ? 2 : undefined, itens: itens, subs: subs, grupos: grupos };
 }
 function saveNavConfig_(d, u) {
   return withLock_(function () {

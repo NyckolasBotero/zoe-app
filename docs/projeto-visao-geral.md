@@ -1,6 +1,6 @@
 # Ministério Zoe — Página de Membros e App da Igreja
 
-App web para iPhone, Android e computador, com níveis de permissão e dimensionamento de acessos. Plataforma geral da igreja. Versão atual: **1.108** (a "2.0" só será anunciada quando estiver em produção rodando na igreja).
+App web para iPhone, Android e computador, com níveis de permissão e dimensionamento de acessos. Plataforma geral da igreja. Versão atual: **1.109** (a "2.0" só será anunciada quando estiver em produção rodando na igreja).
 
 ## Onde está tudo
 - Código: repositório privado GitHub `NyckolasBotero/zoe-app` (branch `main`, publicado via GitHub Pages).
