@@ -1,5 +1,16 @@
 [
  {
+  "titulo": "Grupos de guias personalizados no menu",
+  "melhorias": [
+   "Em Administração › Definições › Navegação do menu › “Guias” de cada item, o administrador cria grupos com o nome que quiser (ex.: Todos, Líderes, Perfil da célula) e escolhe, guia por guia, em qual grupo ela fica. Só organização: não muda permissões.",
+   "Cada grupo tem um estado no menu vertical: começa aberto (pode recolher), começa fechado (pode abrir) ou aberto fixo (não recolhe). A ordem dos grupos é definida com as setas ↑ ↓.",
+   "No menu horizontal o grupo aparece como um botão e, ao abri-lo, mostra uma segunda linha com as guias dele. Guias sem grupo continuam soltas.",
+   "Substitui o campo “Dentro de…” da v1.104. Sem mudança de planilha: não precisa rodar o setup(), só publicar o novo Code.gs."
+  ],
+  "data": "02/11/2026",
+  "v": "1.105"
+ },
+ {
   "titulo": "Guias dentro de outras guias no menu",
   "melhorias": [
    "Em Administração › Definições › Navegação do menu, cada guia ganhou o campo “Dentro de…”. Exemplo: Privacidade, Mural de fotos, Organograma e Membros podem ficar dentro de “Perfil da célula”.",

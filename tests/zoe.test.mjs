@@ -1699,11 +1699,11 @@ test('Navegação do menu: só admin salva; ids/modos validados e exposta na con
   const { e, adm, tok, mk } = boot(); mk('ana@zoe.com', 'membro'); const A = tok('ana@zoe.com', 'Temp12345');
   assert.equal(e.call('saveNavConfig', { cfg: { itens: [{ id: 'feed' }] } }, A).error.code, 'FORBIDDEN');
   assert.equal(e.call('saveNavConfig', { cfg: { itens: [{ id: 'xx' }] } }, adm).error.code, 'VALIDATION');
-  const r = e.call('saveNavConfig', { cfg: { itens: [{ id: 'familia', nome: 'Nossa Família' }, { id: 'admin', on: false }, { id: 'familia' }, { id: 'feed', on: false }], subs: { familia: { quem: 'v', fale: 'zz', 'x y': 'h' }, nada: { a: 'h' } }, grp: { celula: { privacidade: 'perfilc', priv: 'perfilc', mural: 'mural', x: 'priv' }, zz: { a: 'b' } } } }, adm);
+  const r = e.call('saveNavConfig', { cfg: { itens: [{ id: 'familia', nome: 'Nossa Família' }, { id: 'admin', on: false }, { id: 'familia' }, { id: 'feed', on: false }], subs: { familia: { quem: 'v', fale: 'zz', 'x y': 'h' }, nada: { a: 'h' } }, grupos: { celula: [{ id: 'g1', nome: 'Líderes', modo: 'fixo', itens: ['papeis', 'freq', 'x y'] }, { id: 'g1', nome: 'dup', itens: ['oracao'] }, { id: 'g2', nome: '', modo: 'zz', itens: ['freq', 'oracao'] }], zz: [{ id: 'a' }] } } }, adm);
   assert.ok(r.ok, JSON.stringify(r)); const c = r.data.cfg;
   assert.equal(c.itens.length, 3); assert.equal(c.itens[0].nome, 'Nossa Família'); assert.equal(c.itens.find(i => i.id === 'admin').on, true); assert.equal(c.itens.find(i => i.id === 'feed').on, false);
   assert.deepEqual(c.subs, { familia: { quem: 'v' } });
-  assert.deepEqual(c.grp, { celula: { privacidade: 'perfilc', priv: 'perfilc' } });
+  assert.deepEqual(c.grupos, { celula: [{ id: 'g1', nome: 'Líderes', modo: 'fixo', itens: ['papeis', 'freq'] }, { id: 'g2', nome: 'Grupo', modo: 'aberto', itens: ['oracao'] }] });
   assert.deepEqual(e.call('me', {}, A).data.config.navCfg, c);
   assert.equal(e.call('saveNavConfig', { reset: true }, adm).data.cfg, null);
 });

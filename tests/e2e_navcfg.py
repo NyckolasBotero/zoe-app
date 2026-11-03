@@ -24,18 +24,21 @@ with sync_playwright() as p:
     # restaurar padrão
     pg.evaluate("S.navCfg=null;NV.d=null;shell();go('feed')"); pg.wait_for_timeout(400)
     assert 'Família Zoe' in side() and 'Mapas' in side()
-    # v1.104: guias dentro de outra guia (Privacidade, Mural de fotos, Organograma, Membros dentro de Perfil da célula)
-    pg.evaluate("""NV.d=nvBase();['priv','mural','org','membros'].forEach(i=>nvGrp('celula',i,'perfilc'));nvSave()"""); pg.wait_for_timeout(500)
+    # v1.105: grupos de guias criados pelo admin
+    pg.evaluate("""NV.d=nvBase();nvGAdd('celula');nvGAdd('celula');const G=NV.d.grupos.celula;G[0].nome='Todos';G[0].modo='fixo';G[1].nome='Perfil';G[1].modo='fechado';
+      nvGrp('celula','oracao',G[0].id);nvGrp('celula','membros',G[0].id);['perfilc','priv','mural','org'].forEach(i=>nvGrp('celula',i,G[1].id));nvSave()"""); pg.wait_for_timeout(500)
     pg.evaluate("setRole('admin');go('celula','freq')"); pg.wait_for_timeout(500)
     h=[x.strip() for x in pg.locator('#view .tabs:not(.tsub) button').all_inner_texts()]
-    assert 'Perfil da célula' in h and 'Privacidade' not in h and 'Organograma' not in h, h
-    assert pg.locator('#view .tabs.tsub').count()==0
-    pg.click('#view .tabs button:has-text("Perfil da célula")'); pg.wait_for_timeout(500)
-    ss=[x.strip() for x in pg.locator('#view .tabs.tsub button').all_inner_texts()]; assert ss==['Perfil da célula','Membros','Privacidade','Mural de fotos','Organograma'] or set(ss)=={'Perfil da célula','Membros','Privacidade','Mural de fotos','Organograma'}, ss
+    assert 'Todos' in h and 'Perfil' in h and 'Privacidade' not in h and 'Oração' not in h and 'Frequência' in h, h
+    pg.click('#view .tabs button:has-text("Perfil")'); pg.wait_for_timeout(500)
+    ss=[x.strip() for x in pg.locator('#view .tabs.tsub button').all_inner_texts()]; assert set(ss)=={'Perfil da célula','Privacidade','Mural de fotos','Organograma'}, ss
     pg.click('#view .tabs.tsub button:has-text("Privacidade")'); pg.wait_for_timeout(400); assert pg.evaluate("R.sub.celula")=='priv'
-    assert pg.locator('#view .tabs.tsub').count()==1
     pg.click('.nav button.nv:has-text("Células")') if not pg.locator('#nvcel.open').count() else None; pg.wait_for_selector('#nvcel.open'); pg.wait_for_timeout(900)
-    g=pg.locator('#nvcel .sn.grp:has-text("Perfil da célula")'); assert g.count()==1 and pg.locator('#nvg_celula_perfilc.open').count()==1
-    assert [x.strip() for x in pg.locator('#nvg_celula_perfilc .sn').all_inner_texts()].count('Organograma')==1
+    assert pg.locator('#nvcel .sn.grp:has-text("Todos")[disabled]').count()==1, 'fixo'
+    ids=pg.evaluate("[...document.querySelectorAll('#nvcel [id^=nvg_]')].map(e=>[e.id,e.classList.contains('open')])")
+    assert ids[0][1] is True and ids[1][1] is True, ids  # fixo aberto; fechado abre pois contém a guia ativa
+    pg.evaluate("go('celula','freq')"); pg.wait_for_timeout(900)
+    ids=pg.evaluate("[...document.querySelectorAll('#nvcel [id^=nvg_]')].map(e=>e.classList.contains('open'))"); assert ids==[True,False], ids
+    pg.click('#nvcel .sn.grp:has-text("Perfil")'); pg.wait_for_timeout(500); assert pg.evaluate("document.querySelectorAll('#nvcel [id^=nvg_]')[1].classList.contains('open')")
     pg.evaluate("S.navCfg=null;NV.d=null;shell();go('feed')")
     print('OK navegação configurável'); b.close()

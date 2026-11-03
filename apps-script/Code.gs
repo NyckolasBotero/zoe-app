@@ -399,9 +399,17 @@ function navCfgOk_(c) {
   if (!itens.length) return null;
   const s = c.subs && typeof c.subs === 'object' ? c.subs : {};
   Object.keys(s).slice(0, 30).forEach(function (k) { if (NAV_IDS.indexOf(k) < 0 || !s[k] || typeof s[k] !== 'object') return; const o = {}; Object.keys(s[k]).slice(0, 30).forEach(function (g) { if (/^[a-z0-9_]{1,24}$/.test(g) && ['hv', 'h', 'v', '-'].indexOf(s[k][g]) >= 0) o[g] = s[k][g]; }); subs[k] = o; });
-  const grp = {}, g0 = c.grp && typeof c.grp === 'object' ? c.grp : {};
-  Object.keys(g0).slice(0, 30).forEach(function (k) { if (NAV_IDS.indexOf(k) < 0 || !g0[k] || typeof g0[k] !== 'object') return; const m = g0[k], o = {}; Object.keys(m).slice(0, 30).forEach(function (g) { const p = m[g]; if (/^[a-z0-9_]{1,24}$/.test(g) && typeof p === 'string' && /^[a-z0-9_]{1,24}$/.test(p) && p !== g) o[g] = p; }); Object.keys(o).forEach(function (g) { if (o[o[g]]) delete o[g]; }); grp[k] = o; });
-  return { itens: itens, subs: subs, grp: grp };
+  const grupos = {}, g0 = c.grupos && typeof c.grupos === 'object' ? c.grupos : {};
+  Object.keys(g0).slice(0, 30).forEach(function (k) {
+    if (NAV_IDS.indexOf(k) < 0 || !Array.isArray(g0[k])) return; const vistos = {}, ids = {}, lista = [];
+    g0[k].slice(0, 12).forEach(function (g) {
+      if (!g || typeof g !== 'object') return; const id = String(g.id || ''); if (!/^[a-z0-9_]{1,12}$/.test(id) || ids[id]) return; ids[id] = 1;
+      const modo = ['aberto', 'fechado', 'fixo'].indexOf(g.modo) >= 0 ? g.modo : 'aberto', it = [];
+      (Array.isArray(g.itens) ? g.itens : []).slice(0, 30).forEach(function (x) { if (typeof x === 'string' && /^[a-z0-9_]{1,24}$/.test(x) && !vistos[x]) { vistos[x] = 1; it.push(x); } });
+      lista.push({ id: id, nome: String(g.nome || '').trim().slice(0, 30) || 'Grupo', modo: modo, itens: it });
+    }); grupos[k] = lista;
+  });
+  return { itens: itens, subs: subs, grupos: grupos };
 }
 function saveNavConfig_(d, u) {
   return withLock_(function () {
