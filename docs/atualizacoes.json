@@ -1,5 +1,16 @@
 [
  {
+  "titulo": "Lições / Extras e Dinâmicas em lista suspensa, só para líderes",
+  "melhorias": [
+   "No menu lateral, Lições / Extras e Dinâmicas saíram da lista principal e agora ficam numa lista suspensa chamada “Material de célula”, logo abaixo de Células.",
+   "Só líderes de célula e acima (supervisores, pastores e administração) veem e acessam. Membros comuns não veem o menu, e, se tentarem abrir pelo endereço, voltam ao Início.",
+   "A regra vale também no servidor: membros comuns não recebem as lições nem as dinâmicas e não conseguem criar dinâmicas.",
+   "Backend: Code.gs com a restrição. Cole o novo Code.gs e publique nova versão; não precisa rodar setup()."
+  ],
+  "data": "02/11/2026",
+  "v": "1.101"
+ },
+ {
   "titulo": "Perfil mais enxuto, XP das missões do Sod e feed que salva no lugar",
   "melhorias": [
    "Em “Ainda não conquistadas” aparecem só 2 fileiras, com o botão Mostrar mais (e Mostrar menos). O número de insígnias por fileira se ajusta à largura da tela.",
