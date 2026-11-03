@@ -1757,6 +1757,18 @@ const ABAS_FIXAS=new Set(['feed','escalas','multimidia','artes','arvore','rostos
 const abaOk=k=>{if(!ONLINE||ABAS_FIXAS.has(k)||S.role==='admin'||!S.abas||S.abas[k]!==0)return true;return k==='celula'&&!!(S.celulaId||(S.minhas||[]).length)};
 const NAV=[['feed','home','Início'],['meu','star','Meu perfil'],['pessoas','users','Pessoas'],['membro','book','Bíblia e Anotações'],['biblioteca','lib','Biblioteca virtual'],['celula','users','Células'],['familia','heart','Família Zoe'],['ministerios','grid','Ministérios'],['buscar','pin','Mapas'],['licoes','file','Lições / Extras'],['dinamicas','bulb','Dinâmicas'],['cursos','grad','Cursos'],['aulas','file','Aulas'],['eventos','cal','Eventos'],['multimidia','play','Studio Zoe'],['rostos','camera','Presença facial'],['insignias','star','Insígnias'],['consolidacao','pin','Consolidação'],['fichas','book','Fichas de membros'],['aniversarios','cake','Aniversariantes'],['tutoriais','play','Lives e Vídeos'],['loja','bag','Loja Zoe'],['aprovacoes','check','Aprovações'],['admin','gear','Administração']];
 const NAV_MAT=['licoes','dinamicas'];
+/* ===== Admin: mensagens dos e-mails de recuperação de senha ===== */
+const ES={d:null,busy:false};
+function emailSenhaCard(){if(!ONLINE)return '';if(!ES.d&&!ES.busy){ES.busy=true;api('getEmailSenha').then(r=>{ES.d=JSON.parse(JSON.stringify(r.cfg));ES.pad=r.padrao;ES.busy=false;if(R.r==='admin')renderKeep()}).catch(()=>{ES.busy=false})}
+ const d=ES.d;if(!d)return `<div class="card flat col"><h3>Mensagens de recuperação de senha</h3><p class="muted sm">Carregando…</p></div>`;
+ const f=(k,l,ml,rows)=>`<label class="f full">${l}${rows?`<textarea id="es_${k}" rows="${rows}" maxlength="${ml}" oninput="ES.d.${k}=this.value">${esc(d[k])}</textarea>`:`<input id="es_${k}" maxlength="${ml}" value="${esc(d[k])}" oninput="ES.d.${k}=this.value">`}</label>`;
+ return `<div class="card flat col"><h3>Mensagens de recuperação de senha</h3><p class="muted sm">Personalize os e-mails da recuperação de senha. Use <code>{nome}</code> (nome da pessoa), <code>{igreja}</code> (nome da igreja) e, no e-mail do código, <code>{codigo}</code> (obrigatório).</p>
+ <h4 style="margin:6px 0 0">E-mail que a pessoa recebe com o código</h4>${f('a','Assunto',120)}${f('c','Mensagem',2000,8)}
+ <h4 style="margin:6px 0 0">E-mail que o pastor/responsável recebe (“Falar com meu pastor”)</h4>${f('pa','Assunto',120)}${f('pc','Mensagem',2000,7)}
+ <div class="row" style="flex-wrap:wrap;gap:8px"><button class="btn" onclick="esSalva()">Salvar mensagens</button><button class="btn ghost" onclick="esTeste()">Enviar teste para o meu e-mail</button><button class="btn ghost" onclick="esReset()">Restaurar padrão</button></div><p class="muted sm">O teste usa o código 123456 e é enviado só para você. Salve antes de testar.</p></div>`}
+async function esSalva(){const r=await push('saveEmailSenha',{cfg:ES.d},'Mensagens salvas');if(r===undefined)return;ES.d=JSON.parse(JSON.stringify(r.cfg));renderKeep()}
+async function esReset(){if(!confirm('Voltar as mensagens ao texto padrão?'))return;const r=await push('saveEmailSenha',{reset:true},'Mensagens restauradas');if(r===undefined)return;ES.d=JSON.parse(JSON.stringify(r.cfg));renderKeep()}
+async function esTeste(){const r=await push('testEmailSenha',{},'Teste enviado para o seu e-mail');if(r===undefined)return}
 /* ===== Admin: navegação do menu lateral ===== */
 const NV={d:null,open:''};
 function nvBase(){const c=navCfg(),all=NAV.filter(n=>!NAV_MAT.includes(n[0])),pos={},cf={};((c&&c.itens)||[]).forEach((x,i)=>{pos[x.id]=i;cf[x.id]=x});
@@ -2059,7 +2071,7 @@ admin(){const P=S.perm;const rolesN={admin:'Administrador',pastor:'Pastor',profe
   ['ind','Indicadores',on&&cc?usoCard():''],
   ['des','Desempenho e capacidade',on&&cc?desempenhoCard():''],
   ['cel','Células',(on&&cc?novaCelulaCard()+admBloco('celulas','Células cadastradas'):'')],
-  ['def','Definições de Parâmetros',(cc?navCfgCard()+regrasCelulasCard()+regraCard()+sodCard()+fotosDriveCard()+pushDiagCard()+notifCfgCard()+colunasCard()+igrejaCard():'')],
+  ['def','Definições de Parâmetros',(cc?navCfgCard()+emailSenhaCard()+regrasCelulasCard()+regraCard()+sodCard()+fotosDriveCard()+pushDiagCard()+notifCfgCard()+colunasCard()+igrejaCard():'')],
   ['doc','Documentação',cc?docCard():''],
   ['loja','Loja Zoe',cc?lojaContatoCard()+lojaNovoCard()+lojaPromoCard()+lojaListaCard():'']].filter(g=>g[2].trim());
  const painel=`<div class="card flat"><h2>Painel de administração</h2><p class="muted sm">Visão atual: ${esc(cargoTxt())}. O nível de acesso define o que você vê aqui; os cargos de célula (líder, supervisor, líder em treinamento) são definidos em cada célula e valem em qualquer nível.</p><p class="muted sm"><b>Hierarquia:</b> o supervisor decide os pedidos e recebe as notificações para isso; o líder cuida da célula e recebe apenas o resultado dos pedidos que fez (com o motivo); líder em treinamento é a nomenclatura do futuro líder.</p><div id="zver" class="zver"></div></div>`;

@@ -434,6 +434,33 @@ function emailSeguro_(to, assunto, corpo) { try { MailApp.sendEmail({ to: to, su
 function usuarioPorEmail_(email) { const t = table_('Usuarios'); const u = t.rows.filter(function (r) { return String(r.Email).toLowerCase() === email; })[0]; return u && u.Status !== 'Inativo' ? { t: t, u: u } : null; }
 function limiteSenha_(chave, max, seg) { const cc = CacheService.getScriptCache(), n = Number(cc.get(chave) || 0); if (n >= max) return false; cc.put(chave, String(n + 1), seg); return true; }
 function gravaSenha_(t, u, nova, trocar) { const salt = Utilities.getUuid(); writeRow_(ensureCols_('Usuarios', ['SenhaVis']), u._row, { Salt: salt, SenhaHash: hash_(salt, nova), SenhaVis: pwEnc_(nova, salt), TrocarSenha: trocar ? '1' : '' }); bumpVer_(String(u.Email).toLowerCase()); }
+/* Mensagens dos e-mails de recuperação: o administrador pode personalizar. Variáveis: {nome} {igreja} {codigo} (só no e-mail do código) */
+const EMAIL_SENHA_PAD = {
+  a: 'Seu código para criar uma nova senha',
+  c: 'Olá, {nome}!\n\nSeu código para criar uma nova senha no app do {igreja} é:\n\n    {codigo}\n\nEle vale por 15 minutos e só pode ser usado uma vez. Se você não pediu, ignore este e-mail: sua senha continua a mesma.\n\nQue Deus abençoe!',
+  pa: 'Pedido de nova senha: {nome}',
+  pc: 'Paz do Senhor!\n\n{nome} pediu ajuda para recuperar o acesso ao app do {igreja}.\n\nEntre no app, abra o sino de notificações e toque no pedido para gerar uma senha temporária. Depois é só enviar a senha para a pessoa.\n\nQue Deus abençoe!'
+};
+function emailSenhaCfg_() { const o = jparse_(cfgMap_().EmailSenha, {}), r = {}; Object.keys(EMAIL_SENHA_PAD).forEach(function (k) { r[k] = typeof o[k] === 'string' && o[k].trim() ? o[k] : EMAIL_SENHA_PAD[k]; }); return r; }
+function tplEmail_(txt, v) { return String(txt).replace(/\{(nome|igreja|codigo)\}/g, function (m, k) { return v[k] === undefined ? m : v[k]; }); }
+function getEmailSenha_() { return { cfg: emailSenhaCfg_(), padrao: EMAIL_SENHA_PAD }; }
+function saveEmailSenha_(d, u) {
+  return withLock_(function () {
+    let v = '';
+    if (!d.reset) {
+      const o = {}; ['a', 'c', 'pa', 'pc'].forEach(function (k) { o[k] = String((d.cfg || {})[k] || '').replace(/\r/g, '').trim().slice(0, k === 'a' || k === 'pa' ? 120 : 2000); if (!o[k]) throw new ApiError('VALIDATION', 'Preencha o assunto e a mensagem dos dois e-mails (ou use “Restaurar padrão”).'); });
+      if (o.c.indexOf('{codigo}') < 0) throw new ApiError('VALIDATION', 'A mensagem do código precisa ter a palavra {codigo} no texto, senão a pessoa não recebe o código.');
+      v = JSON.stringify(o);
+    }
+    const t = table_('Config'), r = t.rows.filter(function (x) { return x.Chave === 'EmailSenha'; })[0];
+    if (r) writeRow_(t, r._row, { Valor: v }); else appendRow_(t, { Chave: 'EmailSenha', Valor: v });
+    audit_(u.email, 'EMAIL_SENHA_CFG', d.reset ? 'padrão' : 'personalizado', 'OK'); return getEmailSenha_();
+  });
+}
+function testEmailSenha_(d, u) {
+  const c = emailSenhaCfg_(), v = { nome: 'Maria', igreja: nomeIgreja_(), codigo: '123456' }, ok1 = emailSeguro_(u.email, '[TESTE] ' + tplEmail_(c.a, v), tplEmail_(c.c, v)), ok2 = emailSeguro_(u.email, '[TESTE] ' + tplEmail_(c.pa, v), tplEmail_(c.pc, v));
+  if (!ok1 || !ok2) throw new ApiError('BAD_REQUEST', 'Não foi possível enviar. Rode autorizarEnvioEmail() no editor do Apps Script e tente de novo.'); return { ok: true, para: u.email };
+}
 function pwdForgot_(d) {
   const email = clip_(d.email, 120).toLowerCase(), resp = { ok: true };
   if (!email || email.indexOf('@') < 1) return resp;
@@ -441,7 +468,8 @@ function pwdForgot_(d) {
   const f = usuarioPorEmail_(email); if (!f) { audit_(email, 'SENHA_ESQUECI', '', 'DESCONHECIDO'); return resp; }
   const codigo = rnd_(6, '0123456789'), salt = Utilities.getUuid();
   CacheService.getScriptCache().put('pr:' + email, JSON.stringify({ h: hash_(salt, codigo), s: salt, n: 0 }), 900);
-  const ok = emailSeguro_(email, 'Seu código para criar uma nova senha', 'Olá!\n\nSeu código para criar uma nova senha no app do ' + nomeIgreja_() + ' é:\n\n    ' + codigo + '\n\nEle vale por 15 minutos e só pode ser usado uma vez. Se você não pediu, ignore este e-mail: sua senha continua a mesma.\n\nQue Deus abençoe!');
+  const mm = table_('Membros').rows.filter(function (r) { return r.MembroID === f.u.MembroID; })[0] || {}, c = emailSenhaCfg_(), v = { nome: mm.Apelido || mm.Simples || String(mm.Nome || '').split(' ')[0] || 'irmão(ã)', igreja: nomeIgreja_(), codigo: codigo };
+  const ok = emailSeguro_(email, tplEmail_(c.a, v), tplEmail_(c.c, v));
   audit_(email, 'SENHA_ESQUECI', '', ok ? 'OK' : 'FALHA'); return resp;
 }
 function pwdReset_(d) {
@@ -475,7 +503,7 @@ function pwdHelp_(d) {
   if (!resp_) { audit_(email, 'SENHA_AJUDA', '', 'SEM_RESPONSAVEL'); return resp; }
   const txt = nome + ' pediu ajuda para recuperar o acesso. Abra para gerar uma senha temporária e envie a ela(e).';
   withLock_(function () { notify_(resp_.MembroID, 'senha_ajuda', 'Pedido de nova senha: ' + nome, txt, 'senha:' + f.u.MembroID); });
-  emailSeguro_(String(resp_.Email), 'Pedido de nova senha: ' + nome, 'Paz do Senhor!\n\n' + nome + ' pediu ajuda para recuperar o acesso ao app do ' + nomeIgreja_() + '.\n\nEntre no app, abra o sino de notificações e toque no pedido para gerar uma senha temporária. Depois é só enviar a senha para a pessoa.\n\nQue Deus abençoe!');
+  const c = emailSenhaCfg_(), v = { nome: nome, igreja: nomeIgreja_() }; emailSeguro_(String(resp_.Email), tplEmail_(c.pa, v), tplEmail_(c.pc, v));
   audit_(email, 'SENHA_AJUDA', 'avisou ' + resp_.Email, 'OK'); return resp;
 }
 function pwdHelpReset_(d, u) {
@@ -3949,7 +3977,7 @@ function boot_(d, u) {
 
 const ROUTES = {
   ping: { fn: function () { return { servico: 'Zoe API', status: 'online' }; } },
-  login: { fn: login_ }, pwdForgot: { fn: pwdForgot_ }, pwdReset: { fn: pwdReset_ }, pwdHelp: { fn: pwdHelp_ }, pwdHelpReset: { auth: 'any', write: 1, fn: pwdHelpReset_ },
+  login: { fn: login_ }, pwdForgot: { fn: pwdForgot_ }, pwdReset: { fn: pwdReset_ }, pwdHelp: { fn: pwdHelp_ }, pwdHelpReset: { auth: 'any', write: 1, fn: pwdHelpReset_ }, getEmailSenha: { auth: 'config', fn: getEmailSenha_ }, saveEmailSenha: { auth: 'config', write: 1, fn: saveEmailSenha_ }, testEmailSenha: { auth: 'config', fn: testEmailSenha_ },
   logout: { auth: 'any', fn: function (d, u) { bumpVer_(u.email); return { ok: true }; } },
   me: { auth: 'any', fn: me_ }, changePassword: { auth: 'any', write: 1, fn: changePassword_ },
   saveMember: { auth: 'any', write: 1, fn: saveMember_ }, acceptLegal: { auth: 'any', write: 1, fn: acceptLegal_ }, birthdays: { auth: 'any', fn: birthdays_ },

@@ -1741,3 +1741,18 @@ test('Recuperação de senha: código por e-mail, limites, resposta genérica e 
   assert.equal(e.call('pwdHelpReset', { membroId: mid }, outro).error.code, 'FORBIDDEN');
   assert.ok(e.call('pwdHelpReset', { membroId: mid }, adm).ok, 'admin também pode');
 });
+
+test('Recuperação de senha: administrador personaliza as mensagens dos e-mails', () => {
+  const { e, adm, tok, mk } = boot(); mk('ana@zoe.com', 'membro'); mk('pr@zoe.com', 'pastor'); const ana = tok('ana@zoe.com', 'Temp12345');
+  assert.equal(e.call('getEmailSenha', {}, ana).error.code, 'FORBIDDEN'); assert.equal(e.call('saveEmailSenha', { cfg: {} }, ana).error.code, 'FORBIDDEN');
+  assert.ok(e.call('getEmailSenha', {}, adm).data.cfg.c.includes('{codigo}'));
+  const base = { a: 'Código {igreja}', c: 'Oi {nome}, seu código é {codigo}. Paz!', pa: 'Ajuda: {nome}', pc: '{nome} precisa de ajuda no {igreja}.' };
+  assert.equal(e.call('saveEmailSenha', { cfg: Object.assign({}, base, { c: 'sem o código' }) }, adm).error.code, 'VALIDATION');
+  assert.equal(e.call('saveEmailSenha', { cfg: Object.assign({}, base, { a: '' }) }, adm).error.code, 'VALIDATION');
+  assert.ok(e.call('saveEmailSenha', { cfg: base }, adm).ok);
+  e.call('pwdForgot', { email: 'ana@zoe.com' }); const m = e.mails[e.mails.length - 1];
+  assert.match(m.subject, /^Código /); assert.match(m.body, /^Oi ana, seu código é \d{6}\. Paz!$/);
+  e.call('pwdHelp', { email: 'ana@zoe.com' }); const h = e.mails[e.mails.length - 1]; assert.equal(h.subject, 'Ajuda: ana'); assert.match(h.body, /^ana precisa de ajuda no /);
+  const n0 = e.mails.length; assert.ok(e.call('testEmailSenha', {}, adm).ok); assert.equal(e.mails.length, n0 + 2); assert.match(e.mails[n0].subject, /^\[TESTE\]/); assert.match(e.mails[n0].body, /123456/);
+  assert.ok(e.call('saveEmailSenha', { reset: true }, adm).data.cfg.c.includes('{codigo}'));
+});
