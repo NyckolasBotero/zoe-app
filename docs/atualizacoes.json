@@ -1,5 +1,16 @@
 [
  {
+  "titulo": "Células com droplist em cascata (efeito bolha) e Material Células",
+  "melhorias": [
+   "Ao clicar em Células no menu lateral, abre embaixo, em cascata e com efeito de bolhas, a lista das guias da célula (Frequência, Planejamento, Papéis…) e, para líderes de célula ou acima, o grupo “Material Células”, com Lições / Extras e Dinâmicas. Clicando em Células de novo, tudo recolhe em cascata; clicando outra vez, abre de novo.",
+   "O grupo “Material Células” também abre e recolhe ao clicar nele.",
+   "Lições / Extras e Dinâmicas também aparecem como guias na barra horizontal dentro de Células, só para quem tem permissão (líderes ou acima).",
+   "Quem não é líder não vê o grupo nem as guias; se tentar abrir pelo endereço, volta ao Início."
+  ],
+  "data": "02/11/2026",
+  "v": "1.102"
+ },
+ {
   "titulo": "Material Células dentro de Células (Lições / Extras e Dinâmicas), só para líderes",
   "melhorias": [
    "No menu lateral, Lições / Extras e Dinâmicas saíram da lista principal e ficam dentro de Células: ao clicar em Células, abre abaixo o grupo “Material Células” com Lições / Extras e Dinâmicas. Abre sozinho, sem precisar de outro clique.",

@@ -1,19 +1,30 @@
-# Lições / Extras e Dinâmicas: Células › Material Células › Lições / Extras e Dinâmicas, só para líderes de célula ou acima
+# Células: droplist em cascata (efeito bolha) com as guias da célula e “Material Células” (Lições / Extras e Dinâmicas), só para líderes ou acima
 from playwright.sync_api import sync_playwright
 exec(open('tests/e2e_agendas.py').read().split('with sync_playwright')[0])
 with sync_playwright() as p:
     b=p.chromium.launch(); pg=entra(b,1280,900)
     pg.add_style_tag(content='#pushbar{display:none!important}')
-    lab=lambda: [x.strip() for x in pg.locator('.nav .nv span').all_inner_texts()]
-    L=lab(); assert 'Lições / Extras' not in L and 'Dinâmicas' not in L and 'Material de célula' not in L, L
-    pg.evaluate("go('feed')"); pg.wait_for_timeout(300); assert not pg.locator('#nvmat.open').count()
-    pg.click('.nav button:has-text("Células")'); pg.wait_for_selector('#nvmat.open'); assert pg.evaluate("R.r")=='celula'
-    assert pg.locator('#nvmat .snh').inner_text().strip().lower()=='material células'
-    assert [x.strip() for x in pg.locator('#nvmat .sn').all_inner_texts()]==['Lições / Extras','Dinâmicas']
-    pg.evaluate("setRole('membro')"); pg.wait_for_timeout(300); assert not pg.locator('#nvmat').count()
+    side=lambda: [x.strip() for x in pg.locator('.nav .nv span').all_inner_texts()]
+    L=side(); assert 'Lições / Extras' not in L and 'Dinâmicas' not in L and 'Material de célula' not in L, L
+    assert pg.locator('#nvcel.open').count()==0
+    pg.click('.nav button.nv:has-text("Células")'); pg.wait_for_selector('#nvcel.open'); pg.wait_for_timeout(900)
+    its=[x.strip().replace('▾','').strip() for x in pg.locator('#nvcel .sn').all_inner_texts()]
+    assert 'Frequência' in its and 'Material Células' in its and its[-2:]==['Lições / Extras','Dinâmicas'], its
+    assert pg.locator('#nvcel .sn.bub').first.evaluate("e=>getComputedStyle(e).opacity")=='1'
+    tabs=[x.strip() for x in pg.locator('#view .tabs button').all_inner_texts()]; assert tabs[-2:]==['Lições / Extras','Dinâmicas'], tabs
+    # clicar de novo recolhe, e de novo abre
+    pg.click('.nav button.nv:has-text("Células")'); pg.wait_for_function("!document.querySelector('#nvcel').classList.contains('open')"); pg.wait_for_timeout(700)
+    print('op',pg.locator('#nvcel .sn.bub').first.evaluate("e=>[getComputedStyle(e).opacity,e.parentElement.parentElement.className]")); pg.wait_for_timeout(800); assert float(pg.locator('#nvcel .sn.bub').first.evaluate("e=>getComputedStyle(e).opacity"))<0.05
+    assert pg.evaluate("R.r")=='celula'
+    pg.click('.nav button.nv:has-text("Células")'); pg.wait_for_selector('#nvcel.open')
+    # grupo Material Células recolhe/abre
+    pg.click('#nvmatb'); pg.wait_for_function("!document.querySelector('#nvmat').classList.contains('open')"); pg.click('#nvmatb'); pg.wait_for_selector('#nvmat.open'); pg.wait_for_timeout(700)
+    pg.click('#nvmat .sn:has-text("Dinâmicas")'); pg.wait_for_timeout(500); assert pg.evaluate("R.r+':'+R.sub.celula")=='celula:dinamicas'
+    pg.click('#view .tabs button:has-text("Lições")'); pg.wait_for_timeout(400); assert pg.evaluate("R.sub.celula")=='licoes'
+    pg.evaluate("go('licoes')"); pg.wait_for_timeout(300); assert pg.evaluate("R.r+':'+R.sub.celula")=='celula:licoes'
+    pg.screenshot(path='/tmp/nav.png',clip={'x':0,'y':0,'width':320,'height':720})
+    # membro comum: sem Material Células nem as guias
+    pg.evaluate("setRole('membro')"); pg.wait_for_timeout(500)
+    assert pg.locator('#nvmat').count()==0 and pg.locator('#view .tabs button:has-text("Dinâmicas")').count()==0
     pg.evaluate("go('licoes')"); pg.wait_for_timeout(300); assert pg.evaluate("R.r")=='feed'
-    pg.evaluate("setRole('lider')"); pg.wait_for_timeout(300); pg.click('.nav button:has-text("Células")'); pg.wait_for_selector('#nvmat.open')
-    pg.click('#nvmat .sn:has-text("Dinâmicas")'); pg.wait_for_timeout(400); assert pg.evaluate("R.r")=='dinamicas'; assert pg.locator('#nvmat.open').count()
-    pg.click('#nvmat .sn:has-text("Lições")'); pg.wait_for_timeout(400); assert pg.evaluate("R.r")=='licoes'
-    pg.screenshot(path='/tmp/nav.png',clip={'x':0,'y':0,'width':320,'height':560})
     print('OK material de célula'); b.close()
