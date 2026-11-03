@@ -419,6 +419,76 @@ function saveNavConfig_(d, u) {
     audit_(u.email, 'NAV_CFG', cfg ? cfg.itens.length + ' itens' : 'padrão', 'OK'); return { ok: true, cfg: cfg };
   });
 }
+/* ===== v1.110 — Recuperação de senha pelo próprio usuário =====
+   1) "Esqueci minha senha": código de 6 dígitos por e-mail (15 min, uso único, 5 tentativas) e nova senha.
+   2) "Falar com meu pastor": avisa (notificação no app + e-mail) o responsável ligado ao usuário (supervisor da célula, depois líder, depois pastor/admin),
+      que gera uma senha temporária pelo app. As respostas públicas nunca revelam se o e-mail existe. */
+function autorizarEnvioEmail() { Logger.log('Cota diária de e-mails: ' + MailApp.getRemainingDailyQuota()); return MailApp.getRemainingDailyQuota(); }
+function rnd_(n, chars) {
+  let out = '';
+  while (out.length < n) { const h = Utilities.getUuid().replace(/-/g, ''); for (let i = 0; i < h.length - 1 && out.length < n; i += 2) { if (i === 12 || i === 16) continue; const b = parseInt(h.substr(i, 2), 16); if (b < 256 - (256 % chars.length)) out += chars.charAt(b % chars.length); } }
+  return out;
+}
+function nomeIgreja_() { try { return cfgMap_().NomeIgreja || 'Ministério Zoe'; } catch (e) { return 'Ministério Zoe'; } }
+function emailSeguro_(to, assunto, corpo) { try { MailApp.sendEmail({ to: to, subject: assunto, body: corpo, name: nomeIgreja_() }); return true; } catch (e) { audit_(to, 'EMAIL_FALHA', assunto, 'FALHA'); return false; } }
+function usuarioPorEmail_(email) { const t = table_('Usuarios'); const u = t.rows.filter(function (r) { return String(r.Email).toLowerCase() === email; })[0]; return u && u.Status !== 'Inativo' ? { t: t, u: u } : null; }
+function limiteSenha_(chave, max, seg) { const cc = CacheService.getScriptCache(), n = Number(cc.get(chave) || 0); if (n >= max) return false; cc.put(chave, String(n + 1), seg); return true; }
+function gravaSenha_(t, u, nova, trocar) { const salt = Utilities.getUuid(); writeRow_(ensureCols_('Usuarios', ['SenhaVis']), u._row, { Salt: salt, SenhaHash: hash_(salt, nova), SenhaVis: pwEnc_(nova, salt), TrocarSenha: trocar ? '1' : '' }); bumpVer_(String(u.Email).toLowerCase()); }
+function pwdForgot_(d) {
+  const email = clip_(d.email, 120).toLowerCase(), resp = { ok: true };
+  if (!email || email.indexOf('@') < 1) return resp;
+  if (!limiteSenha_('prq:' + email, 3, 900)) return resp;
+  const f = usuarioPorEmail_(email); if (!f) { audit_(email, 'SENHA_ESQUECI', '', 'DESCONHECIDO'); return resp; }
+  const codigo = rnd_(6, '0123456789'), salt = Utilities.getUuid();
+  CacheService.getScriptCache().put('pr:' + email, JSON.stringify({ h: hash_(salt, codigo), s: salt, n: 0 }), 900);
+  const ok = emailSeguro_(email, 'Seu código para criar uma nova senha', 'Olá!\n\nSeu código para criar uma nova senha no app do ' + nomeIgreja_() + ' é:\n\n    ' + codigo + '\n\nEle vale por 15 minutos e só pode ser usado uma vez. Se você não pediu, ignore este e-mail: sua senha continua a mesma.\n\nQue Deus abençoe!');
+  audit_(email, 'SENHA_ESQUECI', '', ok ? 'OK' : 'FALHA'); return resp;
+}
+function pwdReset_(d) {
+  const email = clip_(d.email, 120).toLowerCase(), codigo = String(d.codigo || '').replace(/\D/g, ''), nova = String(d.nova || ''), erro = new ApiError('AUTH', 'Código inválido ou expirado. Peça um novo código.');
+  if (nova.length < 8 || nova.length > 200) throw new ApiError('VALIDATION', 'A nova senha precisa ter 8+ caracteres.');
+  const cc = CacheService.getScriptCache(), raw = email && cc.get('pr:' + email); if (!raw) throw erro;
+  const r = JSON.parse(raw); if (r.n >= 5) { cc.remove('pr:' + email); throw erro; }
+  if (!codigo || !safeEq_(hash_(r.s, codigo), r.h)) { r.n++; cc.put('pr:' + email, JSON.stringify(r), 900); audit_(email, 'SENHA_CODIGO', '', 'FALHA'); throw erro; }
+  return withLock_(function () {
+    const f = usuarioPorEmail_(email); if (!f) throw erro;
+    gravaSenha_(f.t, f.u, nova, false); cc.remove('pr:' + email); cc.remove('f:' + email); audit_(email, 'SENHA_REDEFINIDA', 'por código', 'OK');
+    return { ok: true };
+  });
+}
+/* quem ajuda o usuário a recuperar o acesso: supervisor da célula, líder, (se for líder) o supervisor da célula que lidera, depois pastor e admin */
+function responsavelSenha_(mid) {
+  const us = table_('Usuarios').rows.filter(function (x) { return x.Status !== 'Inativo' && x.MembroID; }), cels = table_('Celulas').rows.filter(function (c) { return c.Status !== 'Inativa'; });
+  const m = table_('Membros').rows.filter(function (r) { return r.MembroID === mid; })[0] || {}, cand = [];
+  const c = cels.filter(function (x) { return x.CelulaID === m.CelulaID; })[0]; if (c) { cand.push(c.SupervisorID, c.LiderID); }
+  cels.forEach(function (x) { if (x.LiderID === mid) cand.push(x.SupervisorID); });
+  for (let i = 0; i < cand.length; i++) { if (!cand[i] || cand[i] === mid) continue; const u = us.filter(function (x) { return x.MembroID === cand[i]; })[0]; if (u) return u; }
+  const por = function (papel) { return us.filter(function (x) { return x.Papel === papel && x.MembroID !== mid; })[0]; };
+  return por('pastor') || por('admin') || null;
+}
+function pwdHelp_(d) {
+  const email = clip_(d.email, 120).toLowerCase(), resp = { ok: true };
+  if (!email || email.indexOf('@') < 1) return resp;
+  if (!limiteSenha_('prh:' + email, 1, 3600)) return resp;
+  const f = usuarioPorEmail_(email); if (!f || !f.u.MembroID) { audit_(email, 'SENHA_AJUDA', '', 'DESCONHECIDO'); return resp; }
+  const mem = table_('Membros').rows.filter(function (r) { return r.MembroID === f.u.MembroID; })[0] || {}, nome = mem.Apelido || mem.Simples || mem.Nome || email, resp_ = responsavelSenha_(f.u.MembroID);
+  if (!resp_) { audit_(email, 'SENHA_AJUDA', '', 'SEM_RESPONSAVEL'); return resp; }
+  const txt = nome + ' pediu ajuda para recuperar o acesso. Abra para gerar uma senha temporária e envie a ela(e).';
+  withLock_(function () { notify_(resp_.MembroID, 'senha_ajuda', 'Pedido de nova senha: ' + nome, txt, 'senha:' + f.u.MembroID); });
+  emailSeguro_(String(resp_.Email), 'Pedido de nova senha: ' + nome, 'Paz do Senhor!\n\n' + nome + ' pediu ajuda para recuperar o acesso ao app do ' + nomeIgreja_() + '.\n\nEntre no app, abra o sino de notificações e toque no pedido para gerar uma senha temporária. Depois é só enviar a senha para a pessoa.\n\nQue Deus abençoe!');
+  audit_(email, 'SENHA_AJUDA', 'avisou ' + resp_.Email, 'OK'); return resp;
+}
+function pwdHelpReset_(d, u) {
+  const mid = clip_(d.membroId, 30); if (!mid) throw new ApiError('VALIDATION', 'Pessoa inválida.'); if (mid === u.membroId) throw new ApiError('FORBIDDEN', 'Peça a outra pessoa para redefinir a sua senha.');
+  const alvo = table_('Usuarios').rows.filter(function (x) { return x.MembroID === mid && x.Status !== 'Inativo'; })[0]; if (!alvo) throw new ApiError('NOT_FOUND', 'Usuário não encontrado ou inativo.');
+  const resp = responsavelSenha_(mid); if (!can_(u, 'config') && !(resp && resp.MembroID === u.membroId)) throw new ApiError('FORBIDDEN', 'Você não é o responsável por esta pessoa.');
+  return withLock_(function () {
+    const t = table_('Usuarios'), r = t.rows.filter(function (x) { return x.Email === alvo.Email; })[0], nova = rnd_(10, 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789');
+    gravaSenha_(t, r, nova, true); CacheService.getScriptCache().remove('f:' + String(alvo.Email).toLowerCase()); audit_(u.email, 'SENHA_TEMPORARIA', String(alvo.Email), 'OK');
+    const m = table_('Membros').rows.filter(function (x) { return x.MembroID === mid; })[0] || {};
+    return { senha: nova, nome: m.Apelido || m.Simples || m.Nome || '', telefone: String(m.Telefone || '').replace(/\D/g, '') };
+  });
+}
 const NOTIF_CATS = ['aniv', 'celula', 'eventos', 'oracao', 'cursos', 'transf', 'escala'];
 function notifTipos_(c) { const o = jparse_((c || cfgMap_()).NotifTipos, {}), r = {}; NOTIF_CATS.forEach(function (k) { r[k] = o[k] !== false; }); return r; }
 function saveConfig_(d, u) {
@@ -3879,7 +3949,7 @@ function boot_(d, u) {
 
 const ROUTES = {
   ping: { fn: function () { return { servico: 'Zoe API', status: 'online' }; } },
-  login: { fn: login_ },
+  login: { fn: login_ }, pwdForgot: { fn: pwdForgot_ }, pwdReset: { fn: pwdReset_ }, pwdHelp: { fn: pwdHelp_ }, pwdHelpReset: { auth: 'any', write: 1, fn: pwdHelpReset_ },
   logout: { auth: 'any', fn: function (d, u) { bumpVer_(u.email); return { ok: true }; } },
   me: { auth: 'any', fn: me_ }, changePassword: { auth: 'any', write: 1, fn: changePassword_ },
   saveMember: { auth: 'any', write: 1, fn: saveMember_ }, acceptLegal: { auth: 'any', write: 1, fn: acceptLegal_ }, birthdays: { auth: 'any', fn: birthdays_ },

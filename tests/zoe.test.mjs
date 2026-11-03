@@ -1707,3 +1707,37 @@ test('Navegação do menu: só admin salva; ids/modos validados e exposta na con
   assert.deepEqual(e.call('me', {}, A).data.config.navCfg, c);
   assert.equal(e.call('saveNavConfig', { reset: true }, adm).data.cfg, null);
 });
+
+test('Recuperação de senha: código por e-mail, limites, resposta genérica e ajuda do pastor', () => {
+  const { e, adm, tok, mk } = boot(); mk('ana@zoe.com', 'membro'); mk('pr@zoe.com', 'pastor'); const ana = tok('ana@zoe.com', 'Temp12345');
+  // e-mail desconhecido: mesma resposta, nenhum e-mail enviado
+  assert.deepEqual(e.call('pwdForgot', { email: 'nao@existe.com' }).data, { ok: true }); assert.equal(e.mails.length, 0);
+  assert.deepEqual(e.call('pwdForgot', { email: 'ana@zoe.com' }).data, { ok: true }); assert.equal(e.mails.length, 1);
+  const cod = /\n\s+(\d{6})\n/.exec(e.mails[0].body)[1]; assert.equal(e.mails[0].to, 'ana@zoe.com');
+  assert.ok(!JSON.stringify(e.sheets).includes(cod), 'o código não é gravado na planilha');
+  assert.equal(e.call('pwdReset', { email: 'ana@zoe.com', codigo: '000000', nova: 'NovaSenha123' }).error.code, 'AUTH');
+  assert.equal(e.call('pwdReset', { email: 'ana@zoe.com', codigo: cod, nova: 'curta' }).error.code, 'VALIDATION');
+  assert.ok(e.call('pwdReset', { email: 'ana@zoe.com', codigo: cod, nova: 'NovaSenha123' }).ok);
+  assert.equal(e.call('pwdReset', { email: 'ana@zoe.com', codigo: cod, nova: 'Outra123456' }).error.code, 'AUTH', 'uso único');
+  assert.equal(e.call('login', { email: 'ana@zoe.com', senha: 'Temp12345' }).error.code, 'AUTH');
+  assert.ok(e.call('login', { email: 'ana@zoe.com', senha: 'NovaSenha123' }).ok);
+  assert.equal(e.call('me', {}, ana).error.code, 'SESSION', 'sessões antigas caem');
+  // 5 códigos errados invalidam o código
+  e.mails.length = 0; e.call('pwdForgot', { email: 'ana@zoe.com' }); const c2 = /\n\s+(\d{6})\n/.exec(e.mails[0].body)[1];
+  for (let i = 0; i < 5; i++) e.call('pwdReset', { email: 'ana@zoe.com', codigo: '111111', nova: 'NovaSenha123' });
+  assert.equal(e.call('pwdReset', { email: 'ana@zoe.com', codigo: c2, nova: 'NovaSenha123' }).error.code, 'AUTH');
+  // no máximo 3 pedidos por 15 min
+  e.mails.length = 0; for (let i = 0; i < 6; i++) e.call('pwdForgot', { email: 'ana@zoe.com' }); assert.ok(e.mails.length <= 2, 'limite de pedidos');
+  // ajuda do pastor: sem célula cai no pastor; resposta sempre genérica
+  e.mails.length = 0; assert.deepEqual(e.call('pwdHelp', { email: 'nao@existe.com' }).data, { ok: true });
+  assert.deepEqual(e.call('pwdHelp', { email: 'ana@zoe.com' }).data, { ok: true });
+  assert.equal(e.mails.length, 1); assert.equal(e.mails[0].to, 'pr@zoe.com');
+  const pr = tok('pr@zoe.com', 'Temp12345'); const nt = e.call('listNotifications', {}, pr).data.itens.find(n => n.tipo === 'senha_ajuda'); assert.ok(nt && /^senha:/.test(nt.ref));
+  const mid = nt.ref.split(':')[1];
+  const outro = (mk('bia@zoe.com', 'membro'), tok('bia@zoe.com', 'Temp12345'));
+  assert.equal(e.call('pwdHelpReset', { membroId: mid }, outro).error.code, 'FORBIDDEN');
+  const r = e.call('pwdHelpReset', { membroId: mid }, pr); assert.ok(r.ok && r.data.senha.length === 10, JSON.stringify(r));
+  const lg = e.call('login', { email: 'ana@zoe.com', senha: r.data.senha }); assert.ok(lg.ok && lg.data.trocarSenha === true);
+  assert.equal(e.call('pwdHelpReset', { membroId: mid }, outro).error.code, 'FORBIDDEN');
+  assert.ok(e.call('pwdHelpReset', { membroId: mid }, adm).ok, 'admin também pode');
+});

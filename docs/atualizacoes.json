@@ -1,5 +1,16 @@
 [
  {
+  "titulo": "Recuperação de senha pelo próprio usuário",
+  "melhorias": [
+   "Na tela de login, novo botão “Esqueci minha senha”: o usuário digita o e-mail, recebe um código de 6 dígitos (vale 15 minutos, uso único, até 5 tentativas) e cria uma nova senha. Ao trocar, as sessões antigas são encerradas.",
+   "Novo botão “Falar com meu pastor”: avisa direto, no app (sino) e por e-mail, o responsável ligado ao usuário (supervisor da célula; se não houver, o líder; depois pastor e administrador). Ao tocar no aviso, ele gera uma senha temporária (o usuário é obrigado a trocá-la no primeiro acesso) e pode enviá-la por WhatsApp.",
+   "Segurança: as respostas da tela de login são sempre as mesmas, exista ou não o e-mail; limite de pedidos por e-mail; tudo registrado na auditoria.",
+   "Passo único para você: no editor do Apps Script, rode a função autorizarEnvioEmail() uma vez e aceite a permissão de enviar e-mails; depois publique nova versão da implantação. Não precisa rodar o setup()."
+  ],
+  "data": "03/11/2026",
+  "v": "1.110"
+ },
+ {
   "titulo": "“Material Células” configurável",
   "melhorias": [
    "“Material Células” (Lições / Extras e Dinâmicas) deixou de ser fixo no código: agora é um grupo comum em Administração › Definições › Navegação do menu › Células › Guias. Você escolhe se começa aberto, fechado ou aberto fixo, renomeia, reordena, exclui ou move as guias para outro grupo.",
