@@ -1,5 +1,14 @@
 [
  {
+  "titulo": "Menu lateral uniforme",
+  "melhorias": [
+   "Corrigido o espacinho a mais entre “Células” e “Família Zoe” (e em qualquer item com lista recolhida): o espaçamento de todo o menu lateral agora é igual.",
+   "Sem mudança no Code.gs nem na planilha."
+  ],
+  "data": "02/11/2026",
+  "v": "1.108"
+ },
+ {
   "titulo": "Pré-visualizar efeitos de insígnias ainda bloqueados",
   "melhorias": [
    "Na personalização do perfil, os efeitos de brilho que ainda não foram liberados (com 🔒 e o nível necessário) agora podem ser tocados para pré-visualizar na insígnia em destaque. A pré-visualização não é salva e fica marcada como “ainda bloqueado”.",
