@@ -1,5 +1,14 @@
 [
  {
+  "titulo": "Feed da Zoe: os outros cartões somem quando ele vem ao centro",
+  "melhorias": [
+   "No Início, conforme o Feed da Zoe desliza para o centro, os demais cartões esmaecem e somem, sem se sobrepor a ele. Ao voltar ao topo, reaparecem normalmente.",
+   "Vale só fora do modo de edição do Início e respeita \"Reduzir movimento\"."
+  ],
+  "v": "1.118",
+  "data": "04/11/2026"
+ },
+ {
   "titulo": "Feed da Zoe sem corte ao descer",
   "melhorias": [
    "No Início do computador, o bloco do Feed da Zoe deixou de ter rolagem própria: ele cresce com o conteúdo e a página inteira rola, então o deslize ao centro não é mais cortado nas bordas.",

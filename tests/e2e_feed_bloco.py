@@ -16,5 +16,9 @@ with sync_playwright() as p:
     r=pg.evaluate("(()=>{const w=document.querySelector('#fu_wrap'),k=w.closest('.hb'),a=w.getBoundingClientRect(),bk=k.getBoundingClientRect();return {wh:a.height,bh:bk.height,n:document.querySelectorAll('#fu_lista>*:not(.sf-more)').length}})()")
     print(r); assert r['bh']>=r['wh']-2 and r['n']>8, r
     pg.evaluate("scrollTo({top:document.querySelector('#fu_wrap').getBoundingClientRect().top+scrollY+900,behavior:'instant'})"); pg.wait_for_timeout(500)
+    o=pg.evaluate("[...document.querySelectorAll('.hgrid>.hb')].filter(e=>!e.querySelector('#fu_wrap')).map(e=>getComputedStyle(e).visibility=='hidden'||parseFloat(getComputedStyle(e).opacity)<.05)"); print(o); assert o and all(o), o
+    pg.evaluate("scrollTo({top:0,behavior:'instant'})"); pg.wait_for_timeout(400)
+    o2=pg.evaluate("[...document.querySelectorAll('.hgrid>.hb')].filter(e=>!e.querySelector('#fu_wrap')).map(e=>parseFloat(getComputedStyle(e).opacity))"); assert all(x>.95 for x in o2), o2
+    pg.evaluate("scrollTo({top:document.querySelector('#fu_wrap').getBoundingClientRect().top+scrollY+900,behavior:'instant'})"); pg.wait_for_timeout(400)
     pg.screenshot(path=OUT+'/feed_bloco.png'); assert not errs, errs
 print('OK')

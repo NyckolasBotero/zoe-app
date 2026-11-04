@@ -1388,13 +1388,15 @@ function sfMais(){const e=$('#fu_lista'),m=$('#fu_mais');if(!e||!m)return;const 
  sfPinta();if(SF.io&&$('#fu_mais'))setTimeout(()=>{const n=$('#fu_mais');if(n){SF.io.unobserve(n);SF.io.observe(n)}},60)}
 function sfPinta(){SF.raf=0;const w=$('#fu_wrap');if(!w)return;
  const bk=w.closest('.hb');if(bk){const ed=bk.classList.contains('ed');bk.classList.toggle('sf-blk',!ed);if(!ed&&getComputedStyle(bk.parentNode).display==='grid'){const n=Math.max(4,Math.ceil((w.offsetHeight+28)/34));if(bk.dataset.sfr!==String(n)){bk.dataset.sfr=n;bk.style.gridRow='span '+n}}}
- if(!sfMov()){w.style.transform='';return}
+ if(!sfMov()){w.style.transform='';sfOutros(w,0);return}
  /* quando só o feed ocupa a tela, a estrutura inteira desliza na horizontal até o centro da área de conteúdo */
  const v=$('#view').getBoundingClientRect(),vh=innerHeight,r=w.getBoundingClientRect(),cur=parseFloat(w.dataset.tx||0);
  const nat=r.left+r.width/2-cur,alvo=Math.max(0,v.left)+(Math.min(innerWidth,v.right)-Math.max(0,v.left))/2;
  const ocupa=(Math.min(r.bottom,vh)-Math.max(r.top,0))/vh,q=Math.max(0,Math.min(1,(ocupa-.5)/.4)),p=q*q*(3-2*q);
  const lado=Math.min(56,innerWidth*.12),tx=(alvo-nat)*p+(1-p)*lado;
- w.dataset.tx=tx.toFixed(1);w.style.transform='translateX('+tx.toFixed(1)+'px)';w.style.opacity=(.55+.45*p).toFixed(2)}
+ w.dataset.tx=tx.toFixed(1);w.style.transform='translateX('+tx.toFixed(1)+'px)';w.style.opacity=(.55+.45*p).toFixed(2);sfOutros(w,p)}
+/* os demais blocos do Início somem conforme o feed vem ao centro */
+function sfOutros(w,p){const bk=w.closest('.hb');if(!bk)return;const ed=bk.classList.contains('ed');bk.style.position='relative';bk.style.zIndex=!ed&&p>0?2:'';[...bk.parentNode.children].forEach(o=>{if(o===bk)return;const k=ed?0:p;o.style.opacity=k>.02?(1-k).toFixed(2):'';o.style.pointerEvents=k>.5?'none':'';o.style.visibility=k>.98?'hidden':''})}
 function sfAgenda(){if(!SF.raf)SF.raf=requestAnimationFrame(sfPinta)}
 function sfIni(){if(SF.io){SF.io.disconnect();SF.io=null}const m=$('#fu_mais');
  if(m&&'IntersectionObserver' in window){SF.io=new IntersectionObserver(es=>{if(es.some(x=>x.isIntersecting))sfMais()},{rootMargin:'0px 0px 420px 0px'});SF.io.observe(m)}
