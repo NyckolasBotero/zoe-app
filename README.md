@@ -427,3 +427,4 @@ Teste das fontes: `tests/e2e_feed_fontes.py`.
 - Início (computador): o bloco do feed recebe `.sf-blk` (sem rolagem interna) e `sfPinta` ajusta o `grid-row: span N` à altura do conteúdo; teste `tests/e2e_feed_bloco.py`.
 - `sfOutros`: os demais `.hb` do Início recebem opacidade `1-p` (e somem com `visibility:hidden` quando p≈1) enquanto o feed ocupa a tela.
 - Suavização: `SF.p` persegue o alvo com amortecimento por tempo (constante ~150 ms, independe da taxa de quadros); o alvo combina a posição do topo do feed e a fração da tela ocupada (curva smootherstep). Os testes esperam `SF.p` convergir.
+- Estilo: `button.opt` tem reset próprio (sem o visual nativo do navegador); `.opt.mm-it` vira cartão de lista; fichas usam `.fi-i`/`.fi-av`.
