@@ -206,5 +206,14 @@
       "preCarrega chama bibPre (índice e livro atual).",
       "Teste: tests/e2e_biblia.py (listMarks atrasado em 3 s; o texto precisa aparecer em menos de 2,5 s)."
     ]
+  },
+  {
+    "t": "PDFs: abertura rápida",
+    "itens": [
+      "pdfObtem/pdfSalva (app.html): cópia do PDF no IndexedDB (zoe-kv, chaves pdf:livro:<id> e pdf:aula:<id>, no máximo 6, até 25 MB cada). A cópia abre na hora e o app confere com o servidor por trás.",
+      "Servidor: getBookFile e getAulaPdf aceitam arq (ArquivoID guardado) e respondem {igual:true} sem o arquivo; a permissão é conferida antes. Se o arquivo mudou, vem {pdf, arq} e o leitor troca de documento mantendo a página.",
+      "abrirLivro carrega o pdf.js em paralelo ao download; sw.js guarda assets/lib/pdf*.js (cache zoe-bib-1).",
+      "Teste: tests/e2e_pdf_rapido.py (servidor com 3 s de atraso; a reabertura precisa levar menos de 2,5 s)."
+    ]
   }
 ]

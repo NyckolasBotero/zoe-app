@@ -18,11 +18,11 @@ self.addEventListener('notificationclick', (e) => {
   })());
 });
 
-// Texto da Bíblia (Almeida, arquivos fixos): guardado no aparelho e servido na hora; só vai à rede na primeira vez
+// Texto da Bíblia (Almeida) e leitor de PDF (pdf.js): arquivos fixos: guardado no aparelho e servido na hora; só vai à rede na primeira vez
 const BIB_CACHE = 'zoe-bib-1';
 self.addEventListener('fetch', (e) => {
   const u = new URL(e.request.url);
-  if (e.request.method !== 'GET' || u.origin !== self.location.origin || !/\/assets\/bible\/[\w.]+\.json$/.test(u.pathname)) return;
+  if (e.request.method !== 'GET' || u.origin !== self.location.origin || !/\/assets\/(bible\/[\w.]+\.json|lib\/pdf(\.worker)?\.js)$/.test(u.pathname)) return;
   e.respondWith(caches.open(BIB_CACHE).then(async (c) => {
     const hit = await c.match(e.request); if (hit) return hit;
     const r = await fetch(e.request); if (r.ok) c.put(e.request, r.clone()).catch(() => 0); return r;

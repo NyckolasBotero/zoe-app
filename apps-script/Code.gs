@@ -1166,7 +1166,8 @@ function deleteBook_(d, u) {
 }
 function getBookFile_(d, u) {
   const r = table_('Livros').rows.filter(function (x) { return x.LivroID === d.id && x.Status !== 'Removido'; })[0]; if (!r || !r.ArquivoID) throw new ApiError('NOT_FOUND', 'Livro não encontrado.');
-  return { pdf: Utilities.base64Encode(DriveApp.getFileById(r.ArquivoID).getBlob().getBytes()) };
+  if (d.arq && String(d.arq) === String(r.ArquivoID)) return { igual: true, arq: r.ArquivoID }; // o aparelho já tem este arquivo: não manda de novo
+  return { pdf: Utilities.base64Encode(DriveApp.getFileById(r.ArquivoID).getBlob().getBytes()), arq: r.ArquivoID };
 }
 function feed_(rows, tipo, nm, lk, u, idc, extra) {
   return rows.map(function (r) { const o = { id: r[idc], membroId: r.MembroID, autor: nm[r.MembroID] || 'Membro', meu: r.MembroID === u.membroId, data: r.Data, texto: r.Texto, curtidas: lk.n[r[idc]] || 0, curti: !!lk.eu[r[idc]] }; return extra(o, r); });
@@ -1563,7 +1564,8 @@ function courseDetail_(d, u) {
 function getAulaPdf_(d, u) {
   const a = table_('Aulas').rows.filter(function (r) { return r.AulaID === d.id && r.Status !== 'Removida'; })[0]; if (!a || !a.ArquivoID) throw new ApiError('NOT_FOUND', 'Arquivo não encontrado.');
   const c = getCurso_(a.CursoID); if (!(gereCurso_(u, c) || can_(u, 'cursos') || acessoMatricula_(u, c))) throw new ApiError('FORBIDDEN', 'O material é só para quem está matriculado.');
-  return { pdf: Utilities.base64Encode(DriveApp.getFileById(a.ArquivoID).getBlob().getBytes()), nome: a.PdfNome || 'aula.pdf' };
+  if (d.arq && String(d.arq) === String(a.ArquivoID)) return { igual: true, arq: a.ArquivoID, nome: a.PdfNome || 'aula.pdf' };
+  return { pdf: Utilities.base64Encode(DriveApp.getFileById(a.ArquivoID).getBlob().getBytes()), arq: a.ArquivoID, nome: a.PdfNome || 'aula.pdf' };
 }
 function enrollCourse_(d, u) {
   return withLock_(function () {

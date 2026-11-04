@@ -236,6 +236,7 @@ test('biblioteca virtual: admin envia PDF; membros leem e comentam; testemunhos 
   const id = e.call('saveBook', { titulo: 'Livro X', autor: 'Autor', descricao: 'Desc', capa: '', pdf }, adm).data.id;
   const l = e.call('listBooks', {}, A).data; assert.equal(l.length, 1); assert.equal(l[0].titulo, 'Livro X'); assert.equal(l[0].tamanho > 0, true);
   assert.equal(Buffer.from(e.call('getBookFile', { id }, A).data.pdf, 'base64').toString().startsWith('%PDF'), true);
+  { const r1 = e.call('getBookFile', { id }, A).data; assert.ok(r1.arq); const r2 = e.call('getBookFile', { id, arq: r1.arq }, A).data; assert.equal(r2.igual, true); assert.equal(r2.pdf, undefined, 'arquivo igual: não manda de novo'); assert.ok(e.call('getBookFile', { id, arq: 'outro' }, A).data.pdf, 'arquivo diferente: manda'); }
   const c = e.call('addBookComment', { livroId: id, texto: 'Que livro abençoador', pagina: '12' }, A).data.id;
   assert.equal(e.call('addBookComment', { livroId: id, texto: '' }, A).error.code, 'VALIDATION');
   assert.equal(e.call('toggleLike', { tipo: 'comentario', alvoId: c }, B).data.curti, true);
@@ -458,6 +459,7 @@ test('cursos: professor cria, supervisor aprova, aulas com chamada, certificado 
   assert.equal(e.call('listCourses', {}, A).data[0].minha.status, 'autorizado'); assert.equal(e.call('listCourses', {}, B).data[0].minha.status, 'negado');
   // material só para matriculado
   assert.equal(e.call('getAulaPdf', { id: a1 }, A).data.pdf, PDF); assert.equal(e.call('getAulaPdf', { id: a1 }, B).error.code, 'FORBIDDEN'); assert.equal(e.call('getAulaPdf', { id: a1 }, C).error.code, 'FORBIDDEN');
+  { const r1 = e.call('getAulaPdf', { id: a1 }, A).data; const r2 = e.call('getAulaPdf', { id: a1, arq: r1.arq }, A).data; assert.equal(r2.igual, true); assert.equal(r2.pdf, undefined); assert.equal(e.call('getAulaPdf', { id: a1, arq: r1.arq }, B).error.code, 'FORBIDDEN', 'sem permissão não ganha "igual"'); }
   dt = e.call('courseDetail', { cursoId: cid }, A).data; assert.equal(dt.aulas[0].temPdf, true); assert.equal(dt.aulas[0].descricao, 'Salvação'); assert.equal(e.call('courseDetail', { cursoId: cid }, B).data.aulas[0].temPdf, undefined);
   // chamada
   const roll = e.call('getClassRoll', { aulaId: a1 }, P).data; assert.deepEqual(roll.alunos.map(x => x.id), [anaId]); assert.equal(e.call('getClassRoll', { aulaId: a1 }, A).error.code, 'FORBIDDEN');

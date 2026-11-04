@@ -1,5 +1,15 @@
 [
  {
+  "titulo": "PDFs abrem mais rápido",
+  "melhorias": [
+   "Livros da biblioteca e materiais de aula ficam guardados no aparelho depois da primeira abertura: da segunda vez em diante abrem na hora. O app confere por trás se o arquivo mudou e só baixa de novo se o administrador trocou o PDF (tudo é apagado ao sair do app).",
+   "O leitor de PDF passa a carregar junto com o arquivo, e não depois dele, e fica guardado no aparelho. O app já prepara o leitor quando você abre a Biblioteca.",
+   "Para atualizar, cole o novo Code.gs (não precisa de setup()): o servidor responde \"igual\" sem reenviar o arquivo quando o aparelho já o tem."
+  ],
+  "v": "1.119",
+  "data": "04/11/2026"
+ },
+ {
   "titulo": "Feed da Zoe: os outros cartões somem quando ele vem ao centro",
   "melhorias": [
    "No Início, conforme o Feed da Zoe desliza para o centro, os demais cartões esmaecem e somem, sem se sobrepor a ele. Ao voltar ao topo, reaparecem normalmente.",
