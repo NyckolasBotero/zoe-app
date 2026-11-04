@@ -674,14 +674,13 @@ html.theming *,html.theming *::before,html.theming *::after{transition:backgroun
 .rdot{display:inline-block;flex:none;width:11px;height:11px;border-radius:50%;background:#ff2d2d;margin-left:auto;box-shadow:0 0 0 0 rgba(255,45,45,.75);animation:rblink 1s ease-in-out infinite}body.collapsed .nv .rdot{position:absolute;top:6px;right:6px;margin:0}.nv{position:relative}
 @keyframes rblink{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(255,45,45,.75)}50%{opacity:.35;box-shadow:0 0 10px 5px rgba(255,45,45,.35)}}@media(prefers-reduced-motion:reduce){.rdot{animation:none}}
 
-/* Feed da Zoe: cartões se aproximam do centro da tela e ganham foco ao rolar */
-#fu_lista.sf-on>*:not(.sf-more){--sa:1;--sd:0;transform:translateY(calc(var(--sd)*-14px)) scale(calc(1 - var(--sa)*.075));opacity:calc(1 - var(--sa)*.5);filter:saturate(calc(1 - var(--sa)*.25));transform-origin:50% 50%;will-change:transform,opacity;transition:box-shadow .25s var(--e-out,ease)}
-#fu_lista.sf-on>*:not(.sf-more){box-shadow:0 calc(4px + (1 - var(--sa))*18px) calc(10px + (1 - var(--sa))*26px) rgba(20,60,40,calc((1 - var(--sa))*.16))}
-#fu_lista>[data-sfn]{animation:sfin .5s var(--e-out,ease) backwards;animation-delay:calc(var(--i,0)*0ms + 40ms)}
+/* Feed da Zoe: a estrutura inteira desliza ao centro (JS grava transform em #fu_wrap) */
+#fu_wrap{will-change:transform,opacity}#view:has(#fu_wrap){overflow-x:clip}
+#fu_lista>[data-sfn]{animation:sfin .5s var(--e-out,ease) backwards;animation-delay:40ms}
 @keyframes sfin{from{opacity:0}}
 .sf-more{display:flex;justify-content:center;gap:8px;padding:22px 0 30px}.sf-more i{width:9px;height:9px;border-radius:50%;background:var(--verde);opacity:.35;animation:sfdot 1s ease-in-out infinite}.sf-more i:nth-child(2){animation-delay:.15s}.sf-more i:nth-child(3){animation-delay:.3s}
 @keyframes sfdot{0%,100%{transform:translateY(0);opacity:.3}50%{transform:translateY(-7px);opacity:1}}
-@media (prefers-reduced-motion:reduce){#fu_lista.sf-on>*{transform:none!important;opacity:1!important;filter:none!important}.sf-more i{animation:none}}
+@media (prefers-reduced-motion:reduce){#fu_wrap{transform:none!important;opacity:1!important}.sf-more i{animation:none}}
 </style>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><filter id="goo"><feGaussianBlur in="SourceGraphic" stdDeviation="14" result="b"/><feColorMatrix in="b" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -8"/></filter></defs></svg>
@@ -1370,7 +1369,10 @@ function fuItens(){const it=[],posts=SOC.igreja||[];
  posts.forEach(p=>{const k=p.tipo==='decisao'?'decisao':p.tipo==='evento'?'evento':'anotacao';if(feedF(k))it.push({k,d:p.data||'',h:socCard(p)})});
  if(feedF('testemunho'))(S.testemunhos||[]).forEach(t=>it.push({k:'testemunho',d:t.data||'',h:`<article class="card sp"><div class="sp-dec-h">${ic('heart',18)} <b>Testemunho</b></div>${tmItem(t)}</article>`}));
  if(feedF('noticia'))[...(S.posts||[]),...NOTICIAS].forEach(n=>it.push({k:'noticia',d:n.iso||'',h:fuNoticia(n)}));
+ if(feedF('anotacao')){const L=cultoNotasGet();((L&&L.itens)||[]).forEach(n=>it.push({k:'anotacao',d:(n.data||'')+'T23:59',h:fuNota(n)}))}
  return it.sort((a,b)=>a.d<b.d?1:a.d>b.d?-1:0)}
+function fuNota(n){return `<article class="card sp"><div class="sp-dec-h" style="color:var(--azul,#1d5f91)">${ic('note',18)} <b>Anotação do culto</b></div><h3 style="margin:8px 0 2px">${esc((n.dia?n.dia+' ':'')+fmt(n.data))}${n.tema?' · '+esc(n.tema):''}</h3><p class="muted sm">${esc(n.autor)}</p>${n.texto?`<p>${esc(n.texto)}</p>`:''}${(n.versiculos||[]).map(v=>`<div class="sp-v"><b>${esc(v.livro?v.livro+' ':'')}${esc(String(v.ref).split(':').slice(1).join(':'))}</b>${v.texto?` <span>“${esc(v.texto)}”</span>`:''}${v.coment?`<em>${esc(v.coment)}</em>`:''}</div>`).join('')}</article>`}
+function fuCarregaNotas(){if(!feedF('anotacao')||cultoNotasGet()||S.cultoCarr)return;S.cultoCarr=true;refreshCultos().finally(()=>{S.cultoCarr=false;fuRedesenha()})}
 function fuFiltrados(){const it=fuItens();return FU.f==='todos'?it:it.filter(x=>x.k===FU.f)}
 function fuSent(f){return f.length>FU.n?'<div id="fu_mais" class="sf-more" aria-hidden="true"><i></i><i></i><i></i></div>':''}
 function fuListaHTML(){const f=fuFiltrados();return f.length?f.slice(0,FU.n).map(x=>x.h).join('')+fuSent(f):'<div class="card flat"><p class="muted">Nada por aqui ainda. Quando a igreja publicar, aparece neste feed. 💛</p></div>'}
@@ -1384,24 +1386,25 @@ function sfMais(){const e=$('#fu_lista'),m=$('#fu_mais');if(!e||!m)return;const 
  m.insertAdjacentHTML('beforebegin',f.slice(a,FU.n).map((x,i)=>x.h.replace(/^<(\w+)/,'<$1 data-sfn="'+i+'"')).join(''));
  if(FU.n>=f.length){if(SF.io)SF.io.disconnect();m.remove()}
  sfPinta();if(SF.io&&$('#fu_mais'))setTimeout(()=>{const n=$('#fu_mais');if(n){SF.io.unobserve(n);SF.io.observe(n)}},60)}
-function sfPinta(){SF.raf=0;const e=$('#fu_lista');if(!e)return;
- if(!sfMov()){e.classList.remove('sf-on');return}e.classList.add('sf-on');
- /* a área visível é a janela, ou o bloco com rolagem própria (Início no computador) */
- let t=0,b=innerHeight;const bx=e.closest('.hbi');if(bx){const o=getComputedStyle(bx).overflowY;if(o==='auto'||o==='scroll'){const r=bx.getBoundingClientRect();t=Math.max(0,r.top);b=Math.min(innerHeight,r.bottom)}}
- const h=Math.max(1,b-t),c=t+h/2;
- [...e.children].forEach(el=>{if(el.id==='fu_mais')return;const r=el.getBoundingClientRect();if(r.bottom<t-200||r.top>b+200){el.style.setProperty('--sa',1);return}
-  const d=Math.max(-1,Math.min(1,((r.top+r.height/2)-c)/(h*.62)));el.style.setProperty('--sd',d.toFixed(3));el.style.setProperty('--sa',Math.abs(d).toFixed(3))})}
+function sfPinta(){SF.raf=0;const w=$('#fu_wrap');if(!w)return;
+ if(!sfMov()){w.style.transform='';return}
+ /* quando só o feed ocupa a tela, a estrutura inteira desliza na horizontal até o centro da área de conteúdo */
+ const v=$('#view').getBoundingClientRect(),vh=innerHeight,r=w.getBoundingClientRect(),cur=parseFloat(w.dataset.tx||0);
+ const nat=r.left+r.width/2-cur,alvo=Math.max(0,v.left)+(Math.min(innerWidth,v.right)-Math.max(0,v.left))/2;
+ const ocupa=(Math.min(r.bottom,vh)-Math.max(r.top,0))/vh,q=Math.max(0,Math.min(1,(ocupa-.5)/.4)),p=q*q*(3-2*q);
+ const lado=Math.min(56,innerWidth*.12),tx=(alvo-nat)*p+(1-p)*lado;
+ w.dataset.tx=tx.toFixed(1);w.style.transform='translateX('+tx.toFixed(1)+'px)';w.style.opacity=(.55+.45*p).toFixed(2)}
 function sfAgenda(){if(!SF.raf)SF.raf=requestAnimationFrame(sfPinta)}
 function sfIni(){if(SF.io){SF.io.disconnect();SF.io=null}const m=$('#fu_mais');
  if(m&&'IntersectionObserver' in window){SF.io=new IntersectionObserver(es=>{if(es.some(x=>x.isIntersecting))sfMais()},{rootMargin:'0px 0px 420px 0px'});SF.io.observe(m)}
  sfAgenda()}
 addEventListener('scroll',sfAgenda,{passive:true,capture:true});addEventListener('resize',sfAgenda,{passive:true});
-function feedUnicoHTML(){if(SOC.igreja===null||SOC.igreja===undefined)socCarrega('igreja');
+function feedUnicoHTML(){if(SOC.igreja===null||SOC.igreja===undefined)socCarrega('igreja');fuCarregaNotas();
  const ks=[...new Set(fuItens().map(x=>x.k))],chips=ks.length>1?`<div class="row" style="gap:6px;flex-wrap:wrap"><button class="chip ${FU.f==='todos'?'g':''}" onclick="fuFiltro('todos')">Tudo</button>${ks.map(k=>`<button class="chip ${FU.f===k?'g':''}" onclick="fuFiltro('${k}')">${FU_NOME[k]||k}</button>`).join('')}</div>`:'';
  const comp=(feedF('testemunho')?`<details class="card flat"><summary style="cursor:pointer;list-style:none"><b>${ic('heart',14)} Compartilhar meu testemunho</b></summary><div class="col" style="margin-top:8px"><input id="tm_t" maxlength="100" placeholder="Título (opcional)"><textarea id="tm_x" rows="3" maxlength="2000" placeholder="Conte o que Deus fez na sua vida"></textarea><div><button class="btn" onclick="publicarTest()">Compartilhar testemunho</button></div></div></details>`:'')+(can('eventos')&&feedF('noticia')?`<details class="card flat"><summary style="cursor:pointer;list-style:none"><b>${ic('note',14)} Nova notícia</b></summary><div class="col" style="margin-top:8px"><input id="npt" placeholder="Título"><textarea id="nps" placeholder="Texto da notícia"></textarea><div><button class="btn sm" onclick="postar()">Publicar no feed</button></div></div></details>`:'');
- return `<div class="col" style="max-width:720px;margin:0 auto;gap:12px"><h2 style="margin:0">Feed da Zoe</h2>${chips}${comp}${feedF('campanha')?campFeed():''}${feedF('proxevento')?fuProxEv():''}${feedF('aniv')?fuAniv():''}<div class="col" id="fu_lista" style="gap:12px">${fuListaHTML()}</div></div>`}
+ return `<div class="col" id="fu_wrap" style="max-width:720px;margin:0 auto;gap:12px"><h2 style="margin:0">Feed da Zoe</h2>${can('config')?`<details class="card flat" ${FU.cfg?'open':''} ontoggle="FU.cfg=this.open"><summary style="cursor:pointer;list-style:none"><b>${ic('gear',14)} Escolher o que aparece no feed</b></summary><div class="col" style="margin-top:8px;gap:6px">${FEED_K.map(([k,t,x])=>`<label class="opt" style="cursor:pointer"><input type="checkbox" ${feedF(k)?'checked':''} onchange="feedFonte(\'${k}\',this.checked)"><div style="flex:1"><b>${t}</b><div class="muted sm">${x}</div></div></label>`).join('')}<p class="muted sm">Vale para todos.</p></div></details>`:''}${chips}${comp}${feedF('campanha')?campFeed():''}${feedF('proxevento')?fuProxEv():''}${feedF('aniv')?fuAniv():''}<div class="col" id="fu_lista" style="gap:12px">${fuListaHTML()}</div></div>`}
 function feedAdmCard(){return `<div class="card flat col"><h3>Feed da igreja: o que aparece</h3><p class="muted sm">O Início tem um feed único, como numa rede social. Marque quais informações do site entram nele. Vale para todos.</p>${FEED_K.map(([k,t,x])=>`<label class="opt" style="cursor:pointer"><input type="checkbox" ${feedF(k)?'checked':''} onchange="feedFonte('${k}',this.checked)"><div style="flex:1"><b>${t}</b><div class="muted sm">${x}</div></div></label>`).join('')}</div>`}
-async function feedFonte(k,on){const f=Object.assign({},S.feedF||{});FEED_K.forEach(([x])=>{if(f[x]===undefined)f[x]=true});f[k]=!!on;try{S.feedF=ONLINE?await api('saveFeedFontes',{fontes:f}):f;save();toast(on?'Aparece no feed':'Saiu do feed')}catch(e){toast(e.message,'err');renderKeepSuave()}}
+async function feedFonte(k,on){const f=Object.assign({},S.feedF||{});FEED_K.forEach(([x])=>{if(f[x]===undefined)f[x]=true});f[k]=!!on;try{S.feedF=ONLINE?await api('saveFeedFontes',{fontes:f}):f;save();toast(on?'Aparece no feed':'Saiu do feed');FU.n=FU.pag;if(FU.f!=='todos'&&!feedF(FU.f))FU.f='todos';renderKeepSuave()}catch(e){toast(e.message,'err');renderKeepSuave()}}
 
 function zResp(q){const cq=zCampPerg(q);if(cq)return cq;const it=zPensa(q);if(!it)return{txt:'Hmm, não tenho certeza do que você procura. 🤔 Tente falar de outro jeito, ou escolha uma das opções abaixo.',chips:ZCHIPS};
  if(it.fn)return it.fn();
@@ -3507,7 +3510,7 @@ function cultoNotasGet(){if(S.cultoNotas)return S.cultoNotas;if(!ONLINE){const d
  {id:'d1',autor:'Mariana',data:d(7),dia:'Domingo',tema:'Mordomia cristã',texto:'Tudo o que temos vem do Senhor. Preciso ser fiel no pouco.',versiculos:[{ref:'40:25:21',livro:'Mateus',texto:'Bem está, servo bom e fiel…',coment:'Fidelidade no dia a dia'}]},
  {id:'d2',autor:'Davi',data:d(7),dia:'Domingo',tema:'Mordomia cristã',texto:'Oferta é gratidão, não obrigação.',versiculos:[]},
  {id:'d3',autor:'Helena',data:d(14),dia:'Domingo',tema:'Fé que age',texto:'Fé sem obras é morta. Vou visitar minha vizinha esta semana.',versiculos:[{ref:'59:2:17',livro:'Tiago',texto:'Assim também a fé, se não tiver obras, por si só está morta.',coment:''}]}]}}return null}
-async function refreshCultos(){if(!ONLINE)return;try{S.cultoNotas=await api('listCultoNotes');const e=$('#cm_box');if(e&&!HL.edit)e.outerHTML=cultosHTML()}catch(e){}}
+async function refreshCultos(){if(!ONLINE)return;try{S.cultoNotas=await api('listCultoNotes');const e=$('#cm_box');if(e&&!HL.edit)e.outerHTML=cultosHTML();fuRedesenha()}catch(e){}}
 function cultosHTML(){const L=cultoNotasGet();if(!L){if(!S.cultoCarr){S.cultoCarr=true;refreshCultos().finally(()=>S.cultoCarr=false)}return `<div class="card cm" id="cm_box"><div class="row"><span class="chip">${ic('note',14)} Anotações dos cultos</span></div><div class="skel" aria-busy="true"></div></div>`}
  const it=L.itens||[],card=(n,dup)=>`<article class="cmi"${dup?' aria-hidden="true"':''}><div class="row" style="gap:6px;flex-wrap:wrap"><b>${esc(n.autor)}</b><span class="chip">${esc(n.dia)} ${fmt(n.data)}</span>${n.tema?`<span class="chip g">${esc(n.tema)}</span>`:''}</div>${n.texto?`<p>${esc(n.texto)}</p>`:''}${(n.versiculos||[]).map(v=>`<blockquote><b>${esc(v.livro)} ${esc(String(v.ref).split(':').slice(1).join(':'))}</b>${v.texto?` “${esc(v.texto)}”`:''}${v.coment?`<div class="muted sm">${esc(v.coment)}</div>`:''}</blockquote>`).join('')}</article>`;
  const anim=S.anim&&it.length>1&&!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);

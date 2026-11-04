@@ -419,5 +419,7 @@ Admin › Publicações › Posts agendados: período por dias/meses/anos ou int
 
 ## Feed da Zoe: rolagem infinita e foco ao rolar
 - `feedUnicoHTML` pagina o feed (`FU.pag`=8): um sentinela `#fu_mais` observado por `IntersectionObserver` (`sfIni`/`sfMais`) acrescenta os próximos cartões sem redesenhar a tela.
-- Movimento: a cada rolagem (janela ou bloco `.hbi` com rolagem própria) `sfPinta` calcula a distância de cada cartão ao centro e grava `--sd`/`--sa`; o CSS `#fu_lista.sf-on` usa isso para escala, deslocamento, opacidade e sombra. Desligado com "reduzir movimento" ou animações off.
+- Movimento: `sfPinta` mede quanto da tela o `#fu_wrap` ocupa; quando só ele aparece, desliza (`translateX`) até o centro da área de conteúdo (`#view`), antes disso fica levemente deslocado e esmaecido. Desligado com "reduzir movimento" ou animações off.
+- Fontes do feed: `FEED_K` + `feedF()`; o seletor aparece no topo do feed para quem tem a permissão `config` (rota `saveFeedFontes`). `anotacao` usa `listCultoNotes` (`fuNota`).
 - Teste: `tests/e2e_feed_infinito.py` (com `node tests/devserver.mjs` rodando).
+Teste das fontes: `tests/e2e_feed_fontes.py`.

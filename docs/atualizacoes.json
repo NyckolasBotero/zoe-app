@@ -1,5 +1,15 @@
 [
  {
+  "titulo": "Feed da Zoe: estrutura inteira ao centro e escolha do que aparece",
+  "melhorias": [
+   "A estrutura inteira do Feed da Zoe (título, filtros e publicações) desliza na horizontal até o centro da tela quando só ele ocupa a tela. Substitui o efeito por cartão da versão anterior; o carregamento infinito continua.",
+   "Quem tem a permissão de configurações vê, no topo do feed, \"Escolher o que aparece no feed\": Quem aceitou Jesus, Como foi o evento, Testemunhos, Notícias, Datas e campanhas, Anotações dos cultos, Próximo evento e Aniversariantes. Vale para todos e muda na hora.",
+   "Anotações dos cultos agora entram de verdade no feed: as anotações que as pessoas marcaram para toda a igreja (dos 3 últimos cultos) aparecem como publicações, em ordem de data."
+  ],
+  "v": "1.116",
+  "data": "04/11/2026"
+ },
+ {
   "titulo": "Bíblia abre mais rápido",
   "melhorias": [
    "O texto do capítulo aparece assim que é lido; suas marcações e os comentários públicos chegam logo depois, por trás, sem segurar a leitura. Antes a Bíblia esperava o servidor responder para mostrar qualquer versículo.",

@@ -16,10 +16,9 @@ with sync_playwright() as p:
         pg.mouse.wheel(0,900); pg.wait_for_timeout(250)
     n1=pg.evaluate("document.querySelectorAll('#fu_lista>*:not(.sf-more)').length"); print('depois',n1)
     assert n1>n0, (n0,n1)
-    # o cartão mais ao centro tem --sa pequeno; os das bordas, maior
-    pg.evaluate("document.querySelectorAll('#fu_lista>*')[15].scrollIntoView({block:'center'})"); pg.wait_for_timeout(300)
-    r=pg.evaluate("""()=>{const v=[...document.querySelectorAll('#fu_lista>*:not(.sf-more)')].map(e=>({s:parseFloat(e.style.getPropertyValue('--sa')),t:e.getBoundingClientRect().top})).filter(x=>x.t>-300&&x.t<1100);return {min:Math.min(...v.map(x=>x.s)),max:Math.max(...v.map(x=>x.s)),on:document.querySelector('#fu_lista').classList.contains('sf-on')}}""")
-    print(r); assert r['on'] and r['min']<.35 and r['max']>.6, r
+    pg.evaluate("scrollTo({top:document.querySelector('#fu_wrap').getBoundingClientRect().top+scrollY+600,behavior:'instant'})"); pg.wait_for_timeout(400)
+    r=pg.evaluate("(()=>{const w=document.querySelector('#fu_wrap'),v=document.querySelector('#view').getBoundingClientRect(),b=w.getBoundingClientRect();return {tx:parseFloat(w.dataset.tx),dc:Math.abs((b.left+b.width/2)-(v.left+v.width/2))}})()")
+    print(r); assert abs(r['tx'])<60 and r['dc']<2, r
     pg.screenshot(path=OUT+'/feed_infinito.png')
     assert not errs, errs
 print('OK')
