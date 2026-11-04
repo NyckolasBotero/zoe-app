@@ -1,5 +1,14 @@
 [
  {
+  "titulo": "Feed da Zoe: deslize ao centro mais suave",
+  "melhorias": [
+   "O movimento do Feed da Zoe até o centro agora acompanha a rolagem com amortecimento (frenagem suave), em vez de seguir cada passo da roda do mouse ou do dedo.",
+   "A transição começa mais cedo e dura mais: só começa quando o feed sobe de fato na tela, então os outros cartões do Início não ficam meio apagados no topo da página."
+  ],
+  "v": "1.120",
+  "data": "04/11/2026"
+ },
+ {
   "titulo": "PDFs abrem mais rápido",
   "melhorias": [
    "Livros da biblioteca e materiais de aula ficam guardados no aparelho depois da primeira abertura: da segunda vez em diante abrem na hora. O app confere por trás se o arquivo mudou e só baixa de novo se o administrador trocou o PDF (tudo é apagado ao sair do app).",

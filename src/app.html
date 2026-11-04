@@ -1391,7 +1391,7 @@ function fuRedesenha(){const e=$('#fu_lista');if(e){e.innerHTML=fuListaHTML();sf
 function fuFiltro(k){FU.f=k;FU.n=FU.pag;render()}
 
 /* ===== Feed da Zoe: rolagem infinita e cartões que se centralizam em movimento ===== */
-const SF={io:null,raf:0};
+const SF={io:null,raf:0,p:0};
 const sfMov=()=>S.anim!==false&&!matchMedia('(prefers-reduced-motion:reduce)').matches;
 function sfMais(){const e=$('#fu_lista'),m=$('#fu_mais');if(!e||!m)return;const f=fuFiltrados(),a=FU.n;FU.n=Math.min(f.length,a+FU.pag);
  m.insertAdjacentHTML('beforebegin',f.slice(a,FU.n).map((x,i)=>x.h.replace(/^<(\w+)/,'<$1 data-sfn="'+i+'"')).join(''));
@@ -1399,12 +1399,14 @@ function sfMais(){const e=$('#fu_lista'),m=$('#fu_mais');if(!e||!m)return;const 
  sfPinta();if(SF.io&&$('#fu_mais'))setTimeout(()=>{const n=$('#fu_mais');if(n){SF.io.unobserve(n);SF.io.observe(n)}},60)}
 function sfPinta(){SF.raf=0;const w=$('#fu_wrap');if(!w)return;
  const bk=w.closest('.hb');if(bk){const ed=bk.classList.contains('ed');bk.classList.toggle('sf-blk',!ed);if(!ed&&getComputedStyle(bk.parentNode).display==='grid'){const n=Math.max(4,Math.ceil((w.offsetHeight+28)/34));if(bk.dataset.sfr!==String(n)){bk.dataset.sfr=n;bk.style.gridRow='span '+n}}}
- if(!sfMov()){w.style.transform='';sfOutros(w,0);return}
+ if(!sfMov()){w.style.transform='';SF.p=0;sfOutros(w,0);return}
  /* quando só o feed ocupa a tela, a estrutura inteira desliza na horizontal até o centro da área de conteúdo */
  const v=$('#view').getBoundingClientRect(),vh=innerHeight,r=w.getBoundingClientRect(),cur=parseFloat(w.dataset.tx||0);
  const nat=r.left+r.width/2-cur,alvo=Math.max(0,v.left)+(Math.min(innerWidth,v.right)-Math.max(0,v.left))/2;
- const ocupa=(Math.min(r.bottom,vh)-Math.max(r.top,0))/vh,q=Math.max(0,Math.min(1,(ocupa-.5)/.4)),p=q*q*(3-2*q);
- const lado=Math.min(56,innerWidth*.12),tx=(alvo-nat)*p+(1-p)*lado;
+ const ocupa=(Math.min(r.bottom,vh)-Math.max(r.top,0))/vh,qo=Math.max(0,Math.min(1,(ocupa-.3)/.65)),qt=w.closest('.hb')?Math.max(0,Math.min(1,(vh*.35-r.top)/(vh*.4))):1,q=Math.min(qo,qt),alvoP=q*q*q*(q*(q*6-15)+10);
+ /* amortecimento: o progresso persegue o alvo quadro a quadro, então o deslize fica fluido mesmo com a roda do mouse */
+ const ag=performance.now(),dt=Math.min(250,ag-(SF.t||ag));SF.t=ag;if(w.dataset.tx===undefined)SF.p=alvoP;SF.p+=(alvoP-SF.p)*(1-Math.exp(-dt/150));const falta=Math.abs(alvoP-SF.p);if(falta<.002){SF.p=alvoP;SF.t=0}else sfAgenda();
+ const p=SF.p,lado=Math.min(56,innerWidth*.12),tx=(alvo-nat)*p+(1-p)*lado;
  w.dataset.tx=tx.toFixed(1);w.style.transform='translateX('+tx.toFixed(1)+'px)';w.style.opacity=(.55+.45*p).toFixed(2);sfOutros(w,p)}
 /* os demais blocos do Início somem conforme o feed vem ao centro */
 function sfOutros(w,p){const bk=w.closest('.hb');if(!bk)return;const ed=bk.classList.contains('ed');bk.style.position='relative';bk.style.zIndex=!ed&&p>0?2:'';[...bk.parentNode.children].forEach(o=>{if(o===bk)return;const k=ed?0:p;o.style.opacity=k>.02?(1-k).toFixed(2):'';o.style.pointerEvents=k>.5?'none':'';o.style.visibility=k>.98?'hidden':''})}
