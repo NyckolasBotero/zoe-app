@@ -1,5 +1,14 @@
 [
  {
+  "titulo": "Feed da Zoe sem corte ao descer",
+  "melhorias": [
+   "No Início do computador, o bloco do Feed da Zoe deixou de ter rolagem própria: ele cresce com o conteúdo e a página inteira rola, então o deslize ao centro não é mais cortado nas bordas.",
+   "Ao carregar mais publicações, o bloco aumenta sozinho e os demais blocos continuam ao lado, na ordem de sempre."
+  ],
+  "v": "1.117",
+  "data": "04/11/2026"
+ },
+ {
   "titulo": "Feed da Zoe: estrutura inteira ao centro e escolha do que aparece",
   "melhorias": [
    "A estrutura inteira do Feed da Zoe (título, filtros e publicações) desliza na horizontal até o centro da tela quando só ele ocupa a tela. Substitui o efeito por cartão da versão anterior; o carregamento infinito continua.",

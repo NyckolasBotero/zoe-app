@@ -423,3 +423,4 @@ Admin › Publicações › Posts agendados: período por dias/meses/anos ou int
 - Fontes do feed: `FEED_K` + `feedF()`; o seletor aparece no topo do feed para quem tem a permissão `config` (rota `saveFeedFontes`). `anotacao` usa `listCultoNotes` (`fuNota`).
 - Teste: `tests/e2e_feed_infinito.py` (com `node tests/devserver.mjs` rodando).
 Teste das fontes: `tests/e2e_feed_fontes.py`.
+- Início (computador): o bloco do feed recebe `.sf-blk` (sem rolagem interna) e `sfPinta` ajusta o `grid-row: span N` à altura do conteúdo; teste `tests/e2e_feed_bloco.py`.
