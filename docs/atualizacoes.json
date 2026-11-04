@@ -1,5 +1,15 @@
 [
  {
+  "titulo": "Feed da Zoe infinito, com cartões que se centralizam ao rolar",
+  "melhorias": [
+   "Feed da Zoe: enquanto houver publicações, ao descer a página mais posts vão sendo carregados sozinhos (de 8 em 8), sem botão \"Ver mais\".",
+   "Ao rolar, o cartão que está no centro da tela ganha foco (tamanho total, nitidez e sombra) e os de cima e de baixo se aproximam do centro, encolhem um pouco e esmaecem, em movimento contínuo.",
+   "Respeita \"Reduzir movimento\" do aparelho e o botão de animações do topo. Ao curtir ou comentar, a posição da rolagem do feed é mantida."
+  ],
+  "v": "1.114",
+  "data": "04/11/2026"
+ },
+ {
   "titulo": "Mais rápido e com exportação das medições",
   "melhorias": [
    "Desempenho e capacidade: novos botões “Copiar resumo em texto” e “Baixar .txt” exportam tudo que o painel mostra (resumo, linha do tempo, ações e páginas que mais pesam, calculadora e conexão) em um texto curto, sem dados pessoais.",

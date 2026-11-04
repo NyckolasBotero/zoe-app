@@ -673,6 +673,15 @@ html.theming *,html.theming *::before,html.theming *::after{transition:backgroun
 .sdl-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:10px}.sdl{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;padding:10px 8px;border:2px solid var(--line,#e5e7eb);border-radius:14px;border-top:4px solid var(--rc)}.sdl.ja{opacity:.7}.sdl small{font-size:11px;font-weight:700}.sdlc{width:72px;height:72px;image-rendering:pixelated;background:#2b2f4a;border-radius:12px}
 .rdot{display:inline-block;flex:none;width:11px;height:11px;border-radius:50%;background:#ff2d2d;margin-left:auto;box-shadow:0 0 0 0 rgba(255,45,45,.75);animation:rblink 1s ease-in-out infinite}body.collapsed .nv .rdot{position:absolute;top:6px;right:6px;margin:0}.nv{position:relative}
 @keyframes rblink{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(255,45,45,.75)}50%{opacity:.35;box-shadow:0 0 10px 5px rgba(255,45,45,.35)}}@media(prefers-reduced-motion:reduce){.rdot{animation:none}}
+
+/* Feed da Zoe: cartões se aproximam do centro da tela e ganham foco ao rolar */
+#fu_lista.sf-on>*:not(.sf-more){--sa:1;--sd:0;transform:translateY(calc(var(--sd)*-14px)) scale(calc(1 - var(--sa)*.075));opacity:calc(1 - var(--sa)*.5);filter:saturate(calc(1 - var(--sa)*.25));transform-origin:50% 50%;will-change:transform,opacity;transition:box-shadow .25s var(--e-out,ease)}
+#fu_lista.sf-on>*:not(.sf-more){box-shadow:0 calc(4px + (1 - var(--sa))*18px) calc(10px + (1 - var(--sa))*26px) rgba(20,60,40,calc((1 - var(--sa))*.16))}
+#fu_lista>[data-sfn]{animation:sfin .5s var(--e-out,ease) backwards;animation-delay:calc(var(--i,0)*0ms + 40ms)}
+@keyframes sfin{from{opacity:0}}
+.sf-more{display:flex;justify-content:center;gap:8px;padding:22px 0 30px}.sf-more i{width:9px;height:9px;border-radius:50%;background:var(--verde);opacity:.35;animation:sfdot 1s ease-in-out infinite}.sf-more i:nth-child(2){animation-delay:.15s}.sf-more i:nth-child(3){animation-delay:.3s}
+@keyframes sfdot{0%,100%{transform:translateY(0);opacity:.3}50%{transform:translateY(-7px);opacity:1}}
+@media (prefers-reduced-motion:reduce){#fu_lista.sf-on>*{transform:none!important;opacity:1!important;filter:none!important}.sf-more i{animation:none}}
 </style>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><filter id="goo"><feGaussianBlur in="SourceGraphic" stdDeviation="14" result="b"/><feColorMatrix in="b" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -8"/></filter></defs></svg>
@@ -1352,7 +1361,7 @@ function evAbreRef(ref){const sid=String(ref||'').replace(/^evento:/,''),e=evSid
 /* ===== Feed único (estilo rede social): a administração escolhe o que aparece ===== */
 const FEED_K=[['decisao','Quem aceitou Jesus','Aviso quando alguém aceita Jesus (célula ou culto).'],['evento','"Como foi o evento"','Fotos e descrição dos eventos que já passaram.'],['testemunho','Testemunhos','Testemunhos que os membros compartilham.'],['noticia','Notícias','As notícias publicadas pela igreja.'],['campanha','Datas e campanhas','Posts agendados (Natal, Reforma, Dia do Músico…).'],['anotacao','Anotações dos cultos','Anotações compartilhadas pelos membros.'],['proxevento','Próximo evento','Cartão do próximo evento.'],['aniv','Aniversariantes de hoje','Quem faz aniversário hoje.']];
 const feedF=k=>!S.feedF||S.feedF[k]!==false;
-const FU={f:'todos'};
+const FU={f:'todos',n:8,pag:8};
 const FU_NOME={decisao:'Aceitaram Jesus',evento:'Como foi',testemunho:'Testemunhos',noticia:'Notícias',anotacao:'Anotações'};
 function fuNoticia(n){return `<article class="card sp"><div class="sp-dec-h">${ic('note',18)} <b>Notícia</b></div><h3 style="margin:8px 0 2px">${esc(n.t)}</h3><p class="muted sm">${esc(n.d)}</p><p style="margin-top:6px">${esc(n.s)}</p></article>`}
 function fuProxEv(){const ev=EVENTOS.filter(x=>x.d>=TODAY).sort((a,b)=>a.d<b.d?-1:1)[0];if(!ev)return '';return `<article class="card sp" style="cursor:pointer" onclick="go('eventos')">${ev.foto?`<img class="sp-ft" src="${esc(ev.foto)}" alt="">`:''}<div class="sp-dec-h">${ic('cal',18)} <b>Próximo evento</b></div><h3 style="margin:8px 0 2px">${esc(ev.t)}</h3><p class="muted sm">${fmt(ev.d)}${ev.h?' às '+esc(ev.h):''}${ev.loc?' · '+esc(ev.loc):''}${ev.rem?' · remarcado':''}</p></article>`}
@@ -1362,9 +1371,31 @@ function fuItens(){const it=[],posts=SOC.igreja||[];
  if(feedF('testemunho'))(S.testemunhos||[]).forEach(t=>it.push({k:'testemunho',d:t.data||'',h:`<article class="card sp"><div class="sp-dec-h">${ic('heart',18)} <b>Testemunho</b></div>${tmItem(t)}</article>`}));
  if(feedF('noticia'))[...(S.posts||[]),...NOTICIAS].forEach(n=>it.push({k:'noticia',d:n.iso||'',h:fuNoticia(n)}));
  return it.sort((a,b)=>a.d<b.d?1:a.d>b.d?-1:0)}
-function fuListaHTML(){const it=fuItens(),f=FU.f==='todos'?it:it.filter(x=>x.k===FU.f);return f.length?f.map(x=>x.h).join(''):'<div class="card flat"><p class="muted">Nada por aqui ainda. Quando a igreja publicar, aparece neste feed. 💛</p></div>'}
-function fuRedesenha(){const e=$('#fu_lista');if(e)e.innerHTML=fuListaHTML()}
-function fuFiltro(k){FU.f=k;render()}
+function fuFiltrados(){const it=fuItens();return FU.f==='todos'?it:it.filter(x=>x.k===FU.f)}
+function fuSent(f){return f.length>FU.n?'<div id="fu_mais" class="sf-more" aria-hidden="true"><i></i><i></i><i></i></div>':''}
+function fuListaHTML(){const f=fuFiltrados();return f.length?f.slice(0,FU.n).map(x=>x.h).join('')+fuSent(f):'<div class="card flat"><p class="muted">Nada por aqui ainda. Quando a igreja publicar, aparece neste feed. 💛</p></div>'}
+function fuRedesenha(){const e=$('#fu_lista');if(e){e.innerHTML=fuListaHTML();sfIni()}}
+function fuFiltro(k){FU.f=k;FU.n=FU.pag;render()}
+
+/* ===== Feed da Zoe: rolagem infinita e cartões que se centralizam em movimento ===== */
+const SF={io:null,raf:0};
+const sfMov=()=>S.anim!==false&&!matchMedia('(prefers-reduced-motion:reduce)').matches;
+function sfMais(){const e=$('#fu_lista'),m=$('#fu_mais');if(!e||!m)return;const f=fuFiltrados(),a=FU.n;FU.n=Math.min(f.length,a+FU.pag);
+ m.insertAdjacentHTML('beforebegin',f.slice(a,FU.n).map((x,i)=>x.h.replace(/^<(\w+)/,'<$1 data-sfn="'+i+'"')).join(''));
+ if(FU.n>=f.length){if(SF.io)SF.io.disconnect();m.remove()}
+ sfPinta();if(SF.io&&$('#fu_mais'))setTimeout(()=>{const n=$('#fu_mais');if(n){SF.io.unobserve(n);SF.io.observe(n)}},60)}
+function sfPinta(){SF.raf=0;const e=$('#fu_lista');if(!e)return;
+ if(!sfMov()){e.classList.remove('sf-on');return}e.classList.add('sf-on');
+ /* a área visível é a janela, ou o bloco com rolagem própria (Início no computador) */
+ let t=0,b=innerHeight;const bx=e.closest('.hbi');if(bx){const o=getComputedStyle(bx).overflowY;if(o==='auto'||o==='scroll'){const r=bx.getBoundingClientRect();t=Math.max(0,r.top);b=Math.min(innerHeight,r.bottom)}}
+ const h=Math.max(1,b-t),c=t+h/2;
+ [...e.children].forEach(el=>{if(el.id==='fu_mais')return;const r=el.getBoundingClientRect();if(r.bottom<t-200||r.top>b+200){el.style.setProperty('--sa',1);return}
+  const d=Math.max(-1,Math.min(1,((r.top+r.height/2)-c)/(h*.62)));el.style.setProperty('--sd',d.toFixed(3));el.style.setProperty('--sa',Math.abs(d).toFixed(3))})}
+function sfAgenda(){if(!SF.raf)SF.raf=requestAnimationFrame(sfPinta)}
+function sfIni(){if(SF.io){SF.io.disconnect();SF.io=null}const m=$('#fu_mais');
+ if(m&&'IntersectionObserver' in window){SF.io=new IntersectionObserver(es=>{if(es.some(x=>x.isIntersecting))sfMais()},{rootMargin:'0px 0px 420px 0px'});SF.io.observe(m)}
+ sfAgenda()}
+addEventListener('scroll',sfAgenda,{passive:true,capture:true});addEventListener('resize',sfAgenda,{passive:true});
 function feedUnicoHTML(){if(SOC.igreja===null||SOC.igreja===undefined)socCarrega('igreja');
  const ks=[...new Set(fuItens().map(x=>x.k))],chips=ks.length>1?`<div class="row" style="gap:6px;flex-wrap:wrap"><button class="chip ${FU.f==='todos'?'g':''}" onclick="fuFiltro('todos')">Tudo</button>${ks.map(k=>`<button class="chip ${FU.f===k?'g':''}" onclick="fuFiltro('${k}')">${FU_NOME[k]||k}</button>`).join('')}</div>`:'';
  const comp=(feedF('testemunho')?`<details class="card flat"><summary style="cursor:pointer;list-style:none"><b>${ic('heart',14)} Compartilhar meu testemunho</b></summary><div class="col" style="margin-top:8px"><input id="tm_t" maxlength="100" placeholder="Título (opcional)"><textarea id="tm_x" rows="3" maxlength="2000" placeholder="Conte o que Deus fez na sua vida"></textarea><div><button class="btn" onclick="publicarTest()">Compartilhar testemunho</button></div></div></details>`:'')+(can('eventos')&&feedF('noticia')?`<details class="card flat"><summary style="cursor:pointer;list-style:none"><b>${ic('note',14)} Nova notícia</b></summary><div class="col" style="margin-top:8px"><input id="npt" placeholder="Título"><textarea id="nps" placeholder="Texto da notícia"></textarea><div><button class="btn sm" onclick="postar()">Publicar no feed</button></div></div></details>`:'');
@@ -1671,7 +1702,7 @@ function bibRes(){const r=BIB.res;return `<div class="row"><h3 class="sp">${r.le
 let ADM={tipo:'',d:null};const ADMC={},ADMB={};
 const ADM_T=[['celulas','Células','celulas'],['eventos','Eventos','eventos'],['noticias','Notícias','eventos'],['corridas','Maratona Bíblica','eventos'],['ministerios','Ministérios','min'],['membros','Membros','config'],['cursos','Cursos','config'],['licoes','Lições / Extras','config'],['dinamicas','Dinâmicas','config'],['videos','Vídeos','config'],['pastores','Nossos Pastores','config'],['familia','Quem somos (fotos e vídeos)','config']];
 async function admCarga(t,force){if(!force&&ADMC[t])return ADMC[t];ADMB[t]=1;renderKeepSuave();try{ADMC[t]=await api('adminList',{tipo:t})}finally{ADMB[t]=0;renderKeepSuave()}return ADMC[t]}
-function renderKeepSuave(){const y=scrollY;renderKeep();scrollTo(0,y)}
+function renderKeepSuave(){const y=scrollY,bs={};document.querySelectorAll('.hb[data-id] .hbi').forEach(e=>{bs[e.parentNode.dataset.id]=e.scrollTop});renderKeep();scrollTo(0,y);Object.keys(bs).forEach(k=>{const e=document.querySelector('.hb[data-id="'+k+'"] .hbi');if(e&&bs[k])e.scrollTop=bs[k]});sfAgenda()}
 function admBloco(t,titulo){const def=ADM_T.find(x=>x[0]===t);if(!ONLINE||!def||!can(def[2]))return '';const d=ADMC[t];let b;
  if(d)b=`<div class="row"><input placeholder="Buscar" oninput="admFiltra('${t}',this.value)" style="flex:1" id="adq_${t}"><button class="btn" onclick="admForm('${t}','')">${ic('plus',16)} Novo</button></div><div id="adl_${t}">${admItens(t,d.itens)}</div>`;
  else if(ADMB[t])b='<div class="skel" aria-busy="true"></div>';
@@ -1876,7 +1907,7 @@ function toggleTheme(){const dark=document.documentElement.getAttribute('data-th
 function go(r,s){entra();if(NAV_MAT.includes(r)){if(!matOk()){toast('Lições e Dinâmicas são para líderes de célula e acima.');r='feed';s=''}else{s=r;r='celula'}}if(r!=='celula')CELDROP=null;if(R.r!==r)NSOPEN={};if(r==='arvore'){r='familia';s='arvore'}if(r==='escalas'){r='ministerios';s='escalas'}if(r==='corrida'){r='membro';s='maratona'}if(r==='perfil'){if(s)R.sub.perfil=s;r='meu';s='editar'}R.r=r;if(s){const k=r;R.sub[k]=s}menu(false);history.replaceState(null,'','#'+r);shell();render();scrollTo(0,0);if(r==='admin'&&ONLINE){loadAdmin();loadLivros()}if(r==='biblioteca'){LB.open=null;loadLivros()}if(r==='cursos'){CS.open='';carregaCursos().then(()=>R.r==='cursos'&&render())}if(r==='aulas'){PR.open='';carregaSig();carregaCursos().then(()=>R.r==='aulas'&&render())}if(r==='feed'&&ONLINE){refreshTest();refreshCultos()}if(r==='aprovacoes')refreshAprov();trkVisit(r);abaMark(r+(R.sub[r]?':'+R.sub[r]:''))}
 function sub(k,v){R.sub[k]=v;entra();abaMark(k+':'+v);render();if(k==='celula')shell()}
 function aplicaRO(){document.querySelectorAll('#view .ro').forEach(w=>{w.querySelectorAll('input,textarea,select,button').forEach(el=>{const oc=el.getAttribute('onclick')||'';if(/^(R\.|sub\()/.test(oc))return;el.disabled=true});if(R.r==='celula'&&/^(mural|org)$/.test(R.sub.celula))w.style.pointerEvents='none'})}
-function render(){if(R.r==='corrida'){R.r='membro';R.sub.membro='maratona'}if(R.r==='perfil'){R.r='meu';R.sub.meu='editar'}const v=VIEWS[R.r]||VIEWS.feed;$('#view').innerHTML=v();aplicaRO();sgIni();$('#view').dataset.r=R.r;if(R.r==='celula'&&R.sub.celula==='mural')muralInit();if(R.r==='celula'&&R.sub.celula==='org')orgInit();if(R.r==='celula'&&R.sub.celula==='perfilc')cmInit();if(R.r==='multimidia')mmInit();if(R.r==='familia')mfInit();if($('#casamapa'))casaInit();if($('#sedemapa'))sedeInit();if(R.r==='buscar'){if(distOk()&&(R.sub.buscar||'dist')==='dist')mpInit();else mapaInit()}if(R.r==='consolidacao'&&VT.sub==='novo')vmInit();if(R.r==='tutoriais')vcInit();carInit();coreografia();admMenu();zVerDraw();if(document.querySelector('canvas[data-sd],canvas.sdtc,canvas.sdlc'))sdAnim();if(R.r==='membro'&&R.sub.membro==='biblia'&&BIB.idx&&BIB.idx!=='erro')bibShow()}
+function render(){if(R.r==='corrida'){R.r='membro';R.sub.membro='maratona'}if(R.r==='perfil'){R.r='meu';R.sub.meu='editar'}const v=VIEWS[R.r]||VIEWS.feed;$('#view').innerHTML=v();aplicaRO();sgIni();$('#view').dataset.r=R.r;if(R.r==='celula'&&R.sub.celula==='mural')muralInit();if(R.r==='celula'&&R.sub.celula==='org')orgInit();if(R.r==='celula'&&R.sub.celula==='perfilc')cmInit();if(R.r==='multimidia')mmInit();if(R.r==='familia')mfInit();if($('#casamapa'))casaInit();if($('#sedemapa'))sedeInit();if(R.r==='buscar'){if(distOk()&&(R.sub.buscar||'dist')==='dist')mpInit();else mapaInit()}if(R.r==='consolidacao'&&VT.sub==='novo')vmInit();if(R.r==='tutoriais')vcInit();carInit();coreografia();sfIni();admMenu();zVerDraw();if(document.querySelector('canvas[data-sd],canvas.sdtc,canvas.sdlc'))sdAnim();if(R.r==='membro'&&R.sub.membro==='biblia'&&BIB.idx&&BIB.idx!=='erro')bibShow()}
 let MODT=0;function modal(html){MODT++;$('#layer').innerHTML=`<div class="modal" onclick="if(event.target===this)closeL()"><div class="box" role="dialog" aria-modal="true">${html}</div></div>`}
 function closeL(){const m=$('#layer .modal');if(!m||m.classList.contains('closing')||!S.anim){$('#layer').innerHTML='';return}const t=MODT;m.classList.add('closing');setTimeout(()=>{if(MODT===t)$('#layer').innerHTML=''},170)}
 
