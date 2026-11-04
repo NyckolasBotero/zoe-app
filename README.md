@@ -212,6 +212,7 @@ Administração › **Maratona Bíblica (programar)**: início (1º de janeiro),
 - Fontes extras (assinaturas cursivas e Multimídia) carregam depois do app, fora do caminho crítico.
 - **v1.93 – servidor avisa se algo mudou:** cada aba tem uma marca de versão (`tv:<Aba>`, CacheService) trocada só depois de uma gravação concluída. `auth_` guarda a identidade por até 60 s e as rotas `getTelao` e `listNotifications` respondem `{sem:true}` quando nada mudou (o app reaproveita a resposta anterior). Falha segura: no pior caso relê a planilha.
 - **Fotos de perfil no Drive (piloto, desligado):** Administração › Definições de Parâmetros › *Fotos de perfil no Drive*. Config `FotosDrive`, pasta `Zoe - Fotos de perfil`, link `lh3.googleusercontent.com/d/<id>=s256` em `Membros.Foto`; rotas `fotosDriveStatus`, `fotosDriveSet`, `fotosDriveMigra` (nos dois sentidos). As fotos ficam com "qualquer pessoa com o link pode ver": decidir sobre privacidade (LGPD, menores) antes de ligar. A planilha continua restrita.
+- **Bíblia rápida:** o texto aparece antes das marcações (`listMarks` por trás); `sw.js` guarda `assets/bible/*.json` (cache `zoe-bib-1`); `preCarrega` prepara índice e livro atual. Teste: `tests/e2e_biblia.py`.
 
 ## Insígnias com níveis, sequência e ícones
 - **Níveis**: ao criar uma insígnia você escolhe quantos níveis ela tem (até 10); cada nível tem nome, meta (parâmetro), XP e visual próprios (acabamento, forma, ícone, cores, texto). A pessoa mostra o nível mais alto alcançado e vê o próximo com o progresso.

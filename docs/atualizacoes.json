@@ -1,5 +1,14 @@
 [
  {
+  "titulo": "Bíblia abre mais rápido",
+  "melhorias": [
+   "O texto do capítulo aparece assim que é lido; suas marcações e os comentários públicos chegam logo depois, por trás, sem segurar a leitura. Antes a Bíblia esperava o servidor responder para mostrar qualquer versículo.",
+   "Os livros da Bíblia (Almeida 1819) ficam guardados no aparelho: da segunda vez em diante abrem na hora, até sem internet. O app já deixa o índice e o livro que você estava lendo prontos logo depois de entrar."
+  ],
+  "v": "1.115",
+  "data": "04/11/2026"
+ },
+ {
   "titulo": "Feed da Zoe infinito, com cartões que se centralizam ao rolar",
   "melhorias": [
    "Feed da Zoe: enquanto houver publicações, ao descer a página mais posts vão sendo carregados sozinhos (de 8 em 8), sem botão \"Ver mais\".",
