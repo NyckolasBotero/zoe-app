@@ -1,5 +1,16 @@
 [
  {
+  "titulo": "Mais rápido e com exportação das medições",
+  "melhorias": [
+   "Desempenho e capacidade: novos botões “Copiar resumo em texto” e “Baixar .txt” exportam tudo que o painel mostra (resumo, linha do tempo, ações e páginas que mais pesam, calculadora e conexão) em um texto curto, sem dados pessoais.",
+   "Menos fila nas gravações: o registro de uso passa a ser enviado a cada 2 minutos (antes 45 s) sem perder o tempo online; abrir o Meu perfil só trava a fila quando há insígnia nova a conceder; a inscrição de notificações não é reenviada a cada abertura.",
+   "Menos consultas de fundo: lista de conversas a cada 30 s com o chat fechado (antes 20 s) e, com uma conversa aberta, atualizada a cada 5 ciclos; o telão não empilha consultas quando o servidor está lento; Aprovações pendentes passa a responder “sem mudança” quando nada mudou.",
+   "Atenção: esta versão muda o Code.gs. Copie o Code.gs novo para o Apps Script e publique uma nova versão da implantação."
+  ],
+  "v": "1.113",
+  "data": "03/11/2026"
+ },
+ {
   "titulo": "Login organizado e logo centralizada",
   "melhorias": [
    "Na tela de login, “Esqueci minha senha” e “Falar com meu pastor” agora ficam lado a lado, abaixo do botão Entrar, com o mesmo tamanho (também nas telas de recuperação).",

@@ -32,6 +32,13 @@ with sync_playwright() as p:
     a.click('button:has-text("Voltar aos valores medidos")'); assert a.evaluate("CAP.srv===null&&CAP.red===0")
     # ping manual
     a.click('#mp_b'); a.wait_for_selector('text=Última medição',timeout=20000); assert '8/8' in a.inner_text('#view')
+    # exportação em texto: tudo do painel num texto curto, com os botões de copiar e baixar
+    tx=a.evaluate("metTexto()")
+    for t in ['MEDIÇÕES DE DESEMPENHO','RESUMO','LINHA DO TEMPO','AÇÕES QUE MAIS PESAM','PÁGINAS QUE MAIS PESAM','COMBINAÇÕES','CALCULADORA DE CAPACIDADE','ESTE APARELHO','listEvents','ping vazio (8/8']: assert t in tx,(t,tx[:400])
+    assert len(tx)<12000,len(tx)
+    assert a.locator('button:has-text("Copiar resumo em texto")').count()==1 and a.locator('button:has-text("Baixar .txt")').count()==1
+    with a.expect_download() as dl: a.click('button:has-text("Baixar .txt")')
+    assert dl.value.suggested_filename.startswith('zoe-medicoes-') and dl.value.suggested_filename.endswith('.txt')
     a.screenshot(path=OUT+'/desempenho_desktop.png',full_page=True)
     # muda período
     a.select_option('select >> nth=0','6'); a.wait_for_selector('svg[aria-label="Tempo de resposta ao longo do tempo"]',timeout=10000)

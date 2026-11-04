@@ -1940,13 +1940,13 @@ function defOut_(r) {
 }
 function defsAtivas_() { return table_('InsigniaDefs').rows.filter(function (r) { return r.Ativo !== '0'; }); }
 // confere as insígnias criadas pelos supervisores e entrega as que a pessoa já alcançou (chamada dentro dos pontos em que algo muda)
-function avaliaDefs_(mid) {
+function avaliaDefs_(mid, ensaio) { // ensaio=true: só conta o que seria concedido, sem gravar nada (pode rodar fora do cadeado)
   if (!mid) return 0; let n = 0; const meus = {}, memo = {}; table_('Insignias').rows.forEach(function (r) { if (r.MembroID === mid) meus[r.Ref] = 1; });
   defsAtivas_().forEach(function (r) {
     const c = jparse_(r.Criterio, { tipo: 'manual' }); if (c.tipo === 'manual') return;
     const nvs = defNiveis_(r); if (nvs.every(function (nv) { return meus[nivelCod_(r.DefID, nv.k)]; })) return;
     const atual = critProgMemo_(c, mid, memo).atual;
-    nvs.forEach(function (nv) { const cod = nivelCod_(r.DefID, nv.k); if (!meus[cod] && atual >= nv.n && awardBadge_(mid, cod, nivelTitulo_(r, nv, nvs.length), '', nv.xp)) n++; });
+    nvs.forEach(function (nv) { const cod = nivelCod_(r.DefID, nv.k); if (!meus[cod] && atual >= nv.n && (ensaio || awardBadge_(mid, cod, nivelTitulo_(r, nv, nvs.length), '', nv.xp))) n++; });
   });
   return n;
 }
@@ -2166,7 +2166,9 @@ function elogiosDe_(mid, eu) { // quantas pessoas já elogiaram este perfil e se
 }
 function profileView_(d, u) {
   const mid = clip_(d.membroId, 30) || u.membroId, m = table_('Membros').rows.filter(function (x) { return x.MembroID === mid && x.Status !== 'Inativo'; })[0]; if (!m) throw new ApiError('NOT_FOUND', 'Perfil não encontrado.');
-  const meu = mid === u.membroId; if (meu) withLock_(function () { avaliaDefs_(mid); });
+  const meu = mid === u.membroId;
+  // só pega o cadeado de escrita quando há mesmo insígnia nova a conceder (antes pegava a cada abertura do perfil, ~7 s por vez, e travava a fila de todos)
+  if (meu && avaliaDefs_(mid, true)) withLock_(function () { if (TMEMO_) TMEMO_ = {}; avaliaDefs_(mid); }); // dentro do cadeado relê as abas, para não decidir com dados velhos
   const p = perfilRow_(mid) || {}, rs = xpResumo_(mid), ganhas = listInsignias_(mid);
   const contorno = CONTORNOS.indexOf(p.Contorno) >= 0 ? p.Contorno : (CONTORNOS.indexOf(p.Moldura) >= 0 ? p.Moldura : 'simples');
   const out = { id: mid, meu: meu, nome: m.Simples || m.Nome, apelido: m.Apelido || '', foto: m.Foto || '', bio: p.Bio || '', capa: p.Capa || '', fundo: FUNDOS.indexOf(p.Fundo) >= 0 ? p.Fundo : 'zoe', contorno: contorno, moldura: MOLDURAS.indexOf(p.Quadro) >= 0 ? p.Quadro : 'nenhuma', versiculo: p.Versiculo || '', xp: rs, insignias: ganhas, top: topLista_(p.Top).map(function (x) { const g = ganhas.filter(function (g) { return g.codigo + (g.ano ? ':' + g.ano : '') === x.r; })[0]; return g ? Object.assign({}, g, { fx: x.fx }) : null; }).filter(Boolean).slice(0, 5), bloqueadas: bloqueadas_(mid, meu, ganhas), elogios: elogiosDe_(mid, u.membroId), oculto: p.Oculto === '1', envolvimento: (p.Oculto === '1' && !meu) ? null : envolvimento_(m),
@@ -4002,7 +4004,7 @@ const ROUTES = {
   lookup: { auth: 'any', fn: lookup_ }, requestTransfer: { auth: 'any', write: 1, fn: requestTransfer_ }, requestExit: { auth: 'any', write: 1, fn: requestExit_ }, decideExit: { auth: 'any', write: 1, fn: decideExit_ }, addNewMember: { auth: 'any', write: 1, fn: addNewMember_ }, orgTree: { auth: 'any', fn: orgTree_ },
   listTransfers: { auth: 'any', fn: listTransfers_ }, decideTransfer: { auth: 'any', write: 1, fn: decideTransfer_ },
   createEvent: { auth: 'eventos', write: 1, fn: createEvent_ }, postNews: { auth: 'eventos', write: 1, fn: postNews_ },
-  listApprovals: { auth: 'any', fn: listApprovals_ }, guideDone: { auth: 'any', write: 1, fn: guideDone_ }, listNotifications: { auth: 'any', cond: 60000, fn: listNotifications_ }, clearNotifications: { auth: 'any', write: 1, fn: clearNotifications_ }, readNotifications: { auth: 'any', write: 1, fn: readNotifications_ }, decideApproval: { auth: 'any', fn: decideApproval_ }, undoApproval: { auth: 'any', fn: undoApproval_ }, track: { auth: 'any', fn: track_ }, usageReport: { auth: 'config', fn: usageReport_ }, metricsReport: { auth: 'any', fn: metricsReport_ }, getMetrics: { auth: 'config', fn: getMetrics_ }, ping: { auth: 'any', fn: ping_ },
+  listApprovals: { auth: 'any', cond: 300000, fn: listApprovals_ }, guideDone: { auth: 'any', write: 1, fn: guideDone_ }, listNotifications: { auth: 'any', cond: 60000, fn: listNotifications_ }, clearNotifications: { auth: 'any', write: 1, fn: clearNotifications_ }, readNotifications: { auth: 'any', write: 1, fn: readNotifications_ }, decideApproval: { auth: 'any', fn: decideApproval_ }, undoApproval: { auth: 'any', fn: undoApproval_ }, track: { auth: 'any', fn: track_ }, usageReport: { auth: 'config', fn: usageReport_ }, metricsReport: { auth: 'any', fn: metricsReport_ }, getMetrics: { auth: 'config', fn: getMetrics_ }, ping: { auth: 'any', fn: ping_ },
   orgMove: { auth: 'any', write: 1, fn: orgMove_ }, saveOrgLayout: { auth: 'any', write: 1, fn: saveOrgLayout_ }, rateBook: { auth: 'any', write: 1, fn: rateBook_ }, fotos: { auth: 'any', fn: fotos_ },
   listBooks: { auth: 'any', fn: listBooks_ }, saveBook: { auth: 'any', write: 1, fn: saveBook_ }, deleteBook: { auth: 'any', write: 1, fn: deleteBook_ }, getBookFile: { auth: 'any', fn: getBookFile_ },
   listBookComments: { auth: 'any', fn: listBookComments_ }, addBookComment: { auth: 'any', write: 1, fn: addBookComment_ }, deleteBookComment: { auth: 'any', write: 1, fn: deleteBookComment_ },

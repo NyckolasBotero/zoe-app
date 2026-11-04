@@ -1756,3 +1756,30 @@ test('Recuperação de senha: administrador personaliza as mensagens dos e-mails
   const n0 = e.mails.length; assert.ok(e.call('testEmailSenha', {}, adm).ok); assert.equal(e.mails.length, n0 + 2); assert.match(e.mails[n0].subject, /^\[TESTE\]/); assert.match(e.mails[n0].body, /123456/);
   assert.ok(e.call('saveEmailSenha', { reset: true }, adm).data.cfg.c.includes('{codigo}'));
 });
+
+test('rota "sem mudança": Aprovações pendentes só responde sem dados quando nada mudou e mostra a novidade assim que ela chega', () => {
+  const { e, adm } = boot();
+  const r1 = e.call('listApprovals', {}, adm); assert.ok(r1.ok); assert.equal(r1.ver, undefined, 'na primeira vez ainda aprende as abas');
+  const r2 = e.call('listApprovals', {}, adm); assert.equal(typeof r2.ver, 'string'); assert.equal(r2.data.itens.length, 0);
+  const r3 = e.call('listApprovals', {}, adm, { ver: r2.ver }); assert.equal(r3.sem, true); assert.equal(r3.data, undefined, 'nada mudou: não manda dados');
+  const mid = e.call('me', {}, adm).data.membro.MembroID;
+  e.run(`appendRow_(table_('Interesses'), { InteresseID: 'I1', MembroID: '${mid}', MinisterioID: 'X', Status: 'pendente', Data: now_() }); tvFlush_()`);
+  const r4 = e.call('listApprovals', {}, adm, { ver: r2.ver }); assert.equal(r4.sem, undefined, 'mudou: manda tudo de novo'); assert.equal(r4.data.itens.length, 1);
+  const r5 = e.call('listApprovals', {}, adm); assert.equal(typeof r5.ver, 'string', 'com o item novo a rota lê abas novas; a versão completa vem na chamada seguinte'); assert.notEqual(r5.ver, r2.ver);
+  assert.equal(e.call('listApprovals', {}, adm, { ver: r5.ver }).sem, true);
+  assert.equal(e.call('listApprovals', {}, adm, { ver: 'lixo' }).data.itens.length, 1, 'versão inválida: resposta completa');
+});
+
+test('Meu perfil só pega o cadeado de escrita quando há insígnia nova a conceder (e ainda concede, sem duplicar)', () => {
+  const { e, adm, tok, mk } = boot(); mk('ana@zoe.com', 'membro'); const A = tok('ana@zoe.com', 'Temp12345');
+  const r = e.call('saveInsigniaDef', { titulo: 'Mão no arado', descricao: 'Serviço fiel', xp: 120, visual: { estilo: 'ouro', forma: 'hex', icone: 'arado', cor1: '#2f6b3a', cor2: '#efe3b0' }, criterio: { tipo: 'servico', atividade: 'Limpeza', meses: 2 } }, adm); assert.ok(r.ok, JSON.stringify(r));
+  e.run(`globalThis.__lk = 0; globalThis.__wl0 = withLock_; withLock_ = function (fn) { globalThis.__lk++; return globalThis.__wl0(fn); }`);
+  let pv = e.call('profileView', {}, A).data; assert.equal(e.run('__lk'), 0, 'nada a conceder: não pega o cadeado');
+  // dados que dão direito à insígnia, gravados direto na aba (sem passar pelas rotas que já avaliam na hora)
+  e.run(`appendRow_(table_('Servicos'), { MembroID: '${pv.id}', Atividade: 'Limpeza', Mes: '2026-09' }); appendRow_(table_('Servicos'), { MembroID: '${pv.id}', Atividade: 'Limpeza', Mes: '2026-10' }); tvFlush_()`);
+  pv = e.call('profileView', {}, A).data; assert.equal(e.run('__lk'), 1, 'havia insígnia nova: pegou o cadeado uma vez');
+  assert.ok(pv.insignias.some(x => x.codigo === 'cust:' + r.data.id), 'a insígnia já aparece na própria resposta'); assert.equal(pv.xp.xp, 120);
+  pv = e.call('profileView', {}, A).data; assert.equal(e.run('__lk'), 1, 'depois de concedida, abrir de novo não pega o cadeado');
+  assert.equal(pv.insignias.filter(x => x.codigo === 'cust:' + r.data.id).length, 1, 'sem duplicar'); assert.equal(pv.xp.xp, 120);
+  e.call('profileView', { membroId: pv.id }, adm); assert.equal(e.run('__lk'), 1, 'ver o perfil de outra pessoa nunca avalia nem trava');
+});

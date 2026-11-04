@@ -2416,7 +2416,7 @@ function abaMark(k){if(!ONLINE||!TOKEN)return;k=String(k||'').toLowerCase().repl
 function trkTick(){const n=Date.now();if(document.visibilityState==='visible'&&TRK.tela)TRK.buf[TRK.tela]=(TRK.buf[TRK.tela]||0)+Math.min(60,(n-TRK.last)/1000);TRK.last=n}
 function trkVisit(r){if(!ONLINE||!TOKEN)return;trkTick();TRK.tela=r;TRK.vis[r]=(TRK.vis[r]||0)+1}
 async function trkFlush(){if(!ONLINE||!TOKEN)return;trkTick();const itens=[];new Set([...Object.keys(TRK.buf),...Object.keys(TRK.vis)]).forEach(t=>{const seg=Math.round(TRK.buf[t]||0),v=TRK.vis[t]||0;if(seg>0||v)itens.push({tela:t,seg,visita:v})});const abas=Object.keys(TRK.abas).slice(0,40).map(k=>({aba:k,n:TRK.abas[k]}));TRK.abas={};TRK.buf={};TRK.vis={};if(!itens.length&&!abas.length)return;try{await apiRaw('track',{itens,abas})}catch(e){}}
-function trkStart(){if(!ONLINE||TRK.on)return;TRK.on=true;TRK.last=Date.now();TRK.tela=R.r;TRK.vis[R.r]=1;abaMark(R.r+(R.sub[R.r]?':'+R.sub[R.r]:''));setInterval(()=>{trkFlush()},45000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')trkFlush();else TRK.last=Date.now()})}
+function trkStart(){if(!ONLINE||TRK.on)return;TRK.on=true;TRK.last=Date.now();TRK.tela=R.r;TRK.vis[R.r]=1;abaMark(R.r+(R.sub[R.r]?':'+R.sub[R.r]:''));setInterval(trkTick,30000);setTimeout(()=>{trkFlush()},30000);setInterval(()=>{trkFlush()},120000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')trkFlush();else TRK.last=Date.now()})}
 /* administração: regra de membresia, uso da plataforma e acesso de cada pessoa */
 async function accRegra(p,g,k,on){const A=accEnsure();A.regras[p]=A.regras[p]||{};const x=A.regras[p][g]=A.regras[p][g]||{v:0,e:0};x[k]=on?1:0;if(k==='e'&&on)x.v=1;if(k==='v'&&!on)x.e=0;
  if(ONLINE){const r=await push('saveAccessRules',{regras:{[p]:{[g]:{v:x.v,e:x.e}}}});if(r===undefined){loadAdmin();return}S.acc=Object.assign({},S.acc,{regras:r.regras})}else{save();toast('Salvo com sucesso')}renderKeepSuave()}
@@ -2464,7 +2464,7 @@ function usoCard(){const u=S.uso;const sel=usoMes();
  <b>Telas mais usadas</b>${u.telas.length?u.telas.slice(0,10).map(t=>`<div class="opt"><div style="min-width:130px">${esc(telaNome(t.tela))}</div><div style="flex:1"><div class="bar"><i style="width:${Math.min(100,t.pct)}%"></i></div></div><b class="sm">${t.pct}%</b></div>`).join(''):'<p class="muted sm">Ainda sem dados neste período.</p>'}
  </div><div class="card flat col"><h3>Acessos dos usuários</h3><div class="tw"><table><tr><th>Nome</th><th>Logins</th><th>Tempo online</th><th>% do uso</th><th>Telas mais usadas</th><th>Último acesso</th></tr>${u.usuarios.map(x=>`<tr><td>${esc(x.nome)}</td><td>${x.logins}</td><td>${fmtTempo(x.segundos)}</td><td><div class="bar" style="min-width:60px"><i style="width:${Math.min(100,x.pct)}%"></i></div>${x.pct}%</td><td>${x.top.map(t=>esc(telaNome(t.tela))).join(', ')||'—'}</td><td>${x.ultimoAcesso?fmtDT(x.ultimoAcesso):'—'}</td></tr>`).join('')}</table></div>`}</div>`}
 /* ===== Painel: Desempenho e capacidade (medições reais das requisições ao Apps Script) ===== */
-const MET_ACOES={track:'Registro de uso (a cada 45 s)',listNotifications:'Notificações (a cada 60 s)',listChats:'Lista de conversas (chat)',getChat:'Conversa aberta (chat)',chatRead:'Marcar mensagem lida',sendChat:'Enviar mensagem',listApprovals:'Aprovações pendentes',getTelao:'Telão ao vivo',boot:'Carga inicial do app',me:'Sessão / perfil',metricsReport:'Envio destas medições',getMetrics:'Painel de desempenho'};
+const MET_ACOES={track:'Registro de uso (a cada 2 min)',listNotifications:'Notificações (a cada 60 s)',listChats:'Lista de conversas (chat)',getChat:'Conversa aberta (chat)',chatRead:'Marcar mensagem lida',sendChat:'Enviar mensagem',listApprovals:'Aprovações pendentes',getTelao:'Telão ao vivo',boot:'Carga inicial do app',me:'Sessão / perfil',metricsReport:'Envio destas medições',getMetrics:'Painel de desempenho'};
 const metAcaoNome=a=>MET_ACOES[a]||a;
 const metFmt=v=>v==null?'—':v>=10000?Math.round(v/1000)+' s':v>=1000?(v/1000).toFixed(1).replace('.',',')+' s':Math.round(v)+' ms';
 const metNum=v=>v==null?'—':Math.round(v).toLocaleString('pt-BR');
@@ -2487,22 +2487,58 @@ function metTab(lista,nomeFn,tit){const tn=lista.reduce((a,x)=>a+x.n,0),ts=lista
 const CAP={n:300,rpm:null,srv:null,ks:null,lim:30,pico:2,marg:70,red:0};
 function metBase(m){const g=metGrade(m).map(x=>x.r).filter(Boolean),t=g.reduce((a,r)=>{['n','e','rs','ss','ks','ws','l','ap'].forEach(f=>a[f]+=r[f]||0);a.h=a.h.map((c,i)=>c+((r.h||[])[i]||0));a.rm=Math.max(a.rm,r.rm);return a},{n:0,e:0,rs:0,ss:0,ks:0,ws:0,l:0,ap:0,rm:0,h:[0,0,0,0,0,0,0]});
  t.slots=g.length;t.rpmDisp=t.ap?t.n/t.ap/5:null;t.srvMed=t.n?t.ss/t.n:null;t.ksDisp=t.ap?t.ks/t.ap/5:null;t.picoMin=g.reduce((a,r)=>Math.max(a,(r.n||0)/5),0);t.picoAp=g.reduce((a,r)=>Math.max(a,r.ap||0),0);return t}
-function capHtml(){const m=S.met,b=m&&!m.erro?metBase(m):{};const c=CAP,rpm=(c.rpm!=null?c.rpm:b.rpmDisp)||6,srv=(c.srv!=null?c.srv:b.srvMed)||500,ks=(c.ks!=null?c.ks:b.ksDisp)||0,f=1-c.red/100;
+function capCalc(){const m=S.met,b=m&&!m.erro?metBase(m):{};const c=CAP,rpm=(c.rpm!=null?c.rpm:b.rpmDisp)||6,srv=(c.srv!=null?c.srv:b.srvMed)||500,ks=(c.ks!=null?c.ks:b.ksDisp)||0,f=1-c.red/100;
  const perU=rpm*f/60*srv/1000,perK=ks*f/60000,teto=c.lim*c.marg/100,maxN=perU>0?Math.floor(teto/(perU*c.pico)):0,maxK=perK>0?Math.floor(c.marg/100/(perK*c.pico)):0,cap=Math.min(maxN||1e9,maxK||1e9);
  const st=(u,l)=>{const q=Math.max(u/(c.lim),l);return q<c.marg/100?['g','Folgado']:q<1?['y','Atenção']:['r','Vai travar']};
  const Ns=[...new Set([25,50,100,200,300,500,1000,2000,c.n])].sort((a,b)=>a-b);
- const linhas=Ns.map(N=>{const u=N*perU,up=u*c.pico,l=N*perK*c.pico,s=st(up,l);return `<tr${N===c.n?' style="font-weight:700"':''}><td>${metNum(N)}</td><td>${(N*rpm*f/60).toFixed(1).replace('.',',')}</td><td>${u.toFixed(1).replace('.',',')} → ${up.toFixed(1).replace('.',',')}</td><td>${Math.round(up/c.lim*100)}%</td><td>${Math.round(l*100)}%</td><td><span class="chip ${s[0]}">${s[1]}</span></td></tr>`}).join('');
+ const rows=Ns.map(N=>{const u=N*perU,up=u*c.pico,l=N*perK*c.pico;return{N,rps:N*rpm*f/60,u,up,pl:Math.round(up/c.lim*100),pk:Math.round(l*100),s:st(up,l)}});
+ return{c,rpm,srv,ks,maxN,maxK,cap,rows}}
+function capHtml(){const{c,rpm,srv,ks,maxN,maxK,cap,rows}=capCalc();
+ const linhas=rows.map(x=>`<tr${x.N===c.n?' style="font-weight:700"':''}><td>${metNum(x.N)}</td><td>${x.rps.toFixed(1).replace('.',',')}</td><td>${x.u.toFixed(1).replace('.',',')} → ${x.up.toFixed(1).replace('.',',')}</td><td>${x.pl}%</td><td>${x.pk}%</td><td><span class="chip ${x.s[0]}">${x.s[1]}</span></td></tr>`).join('');
  return `<p>Com os números abaixo, o Apps Script aguenta por volta de <b style="font-size:1.3em">${cap>=1e9?'muito mais de 10.000':metNum(cap)}</b> pessoas com o app aberto ao mesmo tempo${cap<1e9&&maxN&&maxK?` <span class="muted sm">(o que limita primeiro: ${maxK&&(!maxN||maxK<maxN)?'o cadeado das escritas':'as 30 execuções simultâneas'})</span>`:''}.</p>
  <div class="tw"><table><tr><th>Pessoas online juntas</th><th>Requisições/s</th><th>Simultâneas (média → pico)</th><th>% do limite</th><th>Cadeado ocupado</th><th>Situação</th></tr>${linhas}</table></div>
  <p class="muted sm">Cada linha usa: ${rpm.toFixed(1).replace('.',',')} requisições por minuto por pessoa × ${metFmt(srv)} de servidor por requisição${ks?` e ${Math.round(ks)} ms por minuto segurando o cadeado de escrita`:''}, com pico de ${String(c.pico).replace('.',',')}× a média. "Vai travar" significa que passa de 100% do limite: as requisições entram em fila e o app fica lento ou mostra erro de servidor ocupado.</p>`}
 function capLe(){const v=id=>{const e=$('#'+id);return e&&e.value!==''?Number(String(e.value).replace(',','.')):null};const n=v('cp_n'),r=v('cp_r'),s=v('cp_s'),k=v('cp_k');if(n>0)CAP.n=n;CAP.rpm=r>0?r:null;CAP.srv=s>0?s:null;CAP.ks=k!=null&&k>=0?k:null;const l=v('cp_l'),p=v('cp_p'),mg=v('cp_m'),rd=v('cp_d');if(l>0)CAP.lim=l;if(p>=1)CAP.pico=p;if(mg>0&&mg<=100)CAP.marg=mg;if(rd!=null&&rd>=0&&rd<=95)CAP.red=rd;const o=$('#capOut');if(o)o.innerHTML=capHtml()}
 function capPadrao(){Object.assign(CAP,{n:300,rpm:null,srv:null,ks:null,lim:30,pico:2,marg:70,red:0});renderKeep()}
 async function metPing(){const b=$('#mp_b');if(b){b.disabled=true;b.textContent='Medindo…'}const r=[];for(let i=0;i<8;i++){const t=performance.now();try{const j=await apiRaw('ping');r.push({rtt:Math.round(performance.now()-t),ok:1})}catch(e){r.push({rtt:Math.round(performance.now()-t),ok:0})}await sleep(250)}S.ping=r;renderKeep()}
+/* ---- Exportar as medições em texto leve (para colar na conversa, sem precisar de vários prints). Não contém dados pessoais. ---- */
+const tn1=v=>v==null||!isFinite(v)?'-':String(Math.round(v*10)/10),tms=v=>v==null||!isFinite(v)?'-':String(Math.round(v)),tmed=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
+function metTexto(){const m=S.met;if(!m||m.erro)return '';
+ const b=metBase(m),grade=metGrade(m),passo=m.horas<=6?3:12,gr=metGrupos(grade,passo),mins=passo*5,p95=metPct(b.h,b.rm,.95),dp=metAgr(m.det,r=>r.p),da=metAgr(m.det,r=>r.a),dc=metAgr(m.det,r=>r.p+' › '+r.a),cc=capCalc(),c=cc.c,L=[],cn=navigator.connection;
+ const disp=(puIOS()?'iPhone/iPad':puAnd()?'Android':'computador')+' · '+(isDesk()?'tela grande':'tela de celular')+' · '+(puStand()?'app instalado':'navegador');
+ L.push('ZOE · MEDIÇÕES DE DESEMPENHO · exportado em '+new Date().toLocaleString('pt-BR'));
+ L.push('app v'+(ZVER.v||'?')+' ('+(ZVER.id||'')+') · aparelho: '+disp+(cn?' · rede: '+(cn.effectiveType||'?')+(cn.rtt!=null?', rtt '+cn.rtt+' ms':'')+(cn.downlink!=null?', '+cn.downlink+' Mb/s':''):''));
+ L.push('linha do tempo: últimas '+m.horas+' h, cada linha = '+mins+' min · tabelas: últimos '+(R.metD||7)+' dia(s) · horários no fuso do servidor (agora = '+(m.agora||'?')+')');
+ L.push('');L.push('RESUMO (período da linha do tempo)');
+ L.push('requisições '+b.n+' · erros '+b.e+' ('+tn1(b.n?b.e/b.n*100:0)+'%) · resposta média '+tms(b.n?b.rs/b.n:null)+' ms · lenta(95%) '+tms(p95)+' ms · servidor médio '+tms(b.srvMed)+' ms · acima de 3 s: '+tn1(b.n?b.l/b.n*100:0)+'% · pico '+tn1(b.picoMin)+' req/min · máx. aparelhos juntos '+b.picoAp);
+ L.push('por aparelho aberto: '+tn1(b.rpmDisp)+' req/min · cadeado '+tms(b.ksDisp)+' ms/min');
+ L.push('');L.push('LINHA DO TEMPO (tempos em ms; só blocos com requisições)');
+ L.push('bloco | req/min | erros/min | aparelhos | cadeado% | resp.média | resp.lenta95 | servidor');
+ gr.forEach(x=>{if(!x.tem||!x.n)return;L.push([x.slot.slice(m.horas>24?5:11,16),tn1(x.n/mins),tn1(x.e/mins),x.ap,tn1(x.ks/(mins*60000)*100),tms(x.rs/x.n),tms(metPct(x.h,x.rm,.95)),tms(x.ss/x.n)].join(' | '))});
+ const tab=(tit,lista,nomeFn)=>{const tn=lista.reduce((a,x)=>a+x.n,0),ts=lista.reduce((a,x)=>a+x.ss,0);L.push('');L.push(tit);L.push('nome | req | %req | peso no servidor | tempo total | média servidor | média resposta | cadeado médio | erros');
+  lista.slice().sort((a,b)=>b.ss-a.ss||b.n-a.n).slice(0,15).forEach(x=>{const nm=nomeFn(x.k);L.push([x.k+(nm!==x.k?' ('+nm+')':''),x.n,tn?Math.round(x.n/tn*100)+'%':'-',ts?Math.round(x.ss/ts*100)+'%':'-',fmtTempo(x.ss/1000),tms(x.n?x.ss/x.n:null)+' ms',tms(x.n?x.rs/x.n:null)+' ms',x.ks?tms(x.ks/x.n)+' ms':'-',x.e].join(' | '))})};
+ tab('AÇÕES QUE MAIS PESAM (top 15 por tempo no servidor; cadeado = tempo segurando a fila de gravação)',da,metAcaoNome);
+ tab('PÁGINAS QUE MAIS PESAM (top 15)',dp,telaNome);
+ tab('COMBINAÇÕES PÁGINA › AÇÃO (top 15)',dc,k=>k);
+ L.push('');L.push('CALCULADORA DE CAPACIDADE (valores em uso)');
+ L.push('pessoas simuladas '+c.n+' · '+tn1(cc.rpm)+' req/min por pessoa · '+tms(cc.srv)+' ms de servidor por req · cadeado '+tms(cc.ks)+' ms/min por pessoa · limite '+c.lim+' execuções simultâneas · pico '+c.pico+'x · margem '+c.marg+'% · reduzir consultas '+c.red+'%');
+ L.push('aguenta ~'+(cc.cap>=1e9?'mais de 10000':cc.cap)+' pessoas juntas'+(cc.cap<1e9&&cc.maxN&&cc.maxK?' (limita primeiro: '+(cc.maxK&&(!cc.maxN||cc.maxK<cc.maxN)?'cadeado das escritas':'execuções simultâneas')+')':'')+' · pelo limite de execuções: '+(cc.maxN||'-')+' · pelo cadeado: '+(cc.maxK||'-'));
+ L.push('pessoas | req/s | simultâneas média→pico | %limite | cadeado | situação');
+ cc.rows.forEach(x=>L.push([x.N,tn1(x.rps),tn1(x.u)+'→'+tn1(x.up),x.pl+'%',x.pk+'%',x.s[1]].join(' | ')));
+ const lv=MET.live.slice(-60);L.push('');L.push('ESTE APARELHO');
+ if(S.ping&&S.ping.length){const ok=S.ping.filter(x=>x.ok),rt=S.ping.map(x=>x.rtt);L.push('ping vazio ('+ok.length+'/'+S.ping.length+' respostas): menor '+tms(Math.min(...rt))+' ms · média '+tms(tmed(rt))+' ms · maior '+tms(Math.max(...rt))+' ms')}else L.push('ping vazio: não medido (toque em "Medir conexão" antes de exportar para incluir)');
+ if(lv.length){const r=lv.map(x=>x.rtt),s=lv.map(x=>x.srv).filter(v=>v!=null);L.push('últimas '+lv.length+' requisições deste aparelho: resposta média '+tms(tmed(r))+' ms, máxima '+tms(Math.max(...r))+' ms'+(s.length?' · servidor médio '+tms(tmed(s))+' ms':''))}
+ L.push('');L.push('(sem dados pessoais; gerado pelo painel Desempenho e capacidade)');
+ return L.join('\n')}
+async function metCopia(){const t=metTexto();if(!t)return toast('Carregue as medições primeiro','err');let ok=false;
+ try{await navigator.clipboard.writeText(t);ok=true}catch(e){try{const a=document.createElement('textarea');a.value=t;a.style.cssText='position:fixed;top:0;left:0;opacity:0';document.body.appendChild(a);a.focus();a.select();ok=document.execCommand('copy');a.remove()}catch(e2){}}
+ if(ok)toast('Medições copiadas ('+Math.max(1,Math.round(t.length/1024))+' KB). Cole na conversa com a Claude.');else metBaixa()}
+function metBaixa(){const t=metTexto();if(!t)return toast('Carregue as medições primeiro','err');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/plain;charset=utf-8'}));a.download='zoe-medicoes-'+new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')+'.txt';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);toast('Arquivo .txt baixado')}
 function desempenhoCard(){const m=S.met,auto=isDesk()&&R.admg==='des';if(isDesk()&&!auto)return '<i></i>';
  if(!m&&!S.metLoad&&auto){setTimeout(carregaMet,0)}
  const sel=(k,ops,cur)=>`<select onchange="metPeriodo('${k}',this.value)">${ops.map(o=>`<option value="${o[0]}" ${o[0]===cur?'selected':''}>${o[1]}</option>`).join('')}</select>`;
  const topo=`<div class="card flat col"><h3>Desempenho e capacidade</h3><p class="muted sm">Cada aparelho mede o tempo de cada requisição ao servidor (Apps Script) e envia o resumo a cada 5 minutos, sem dados pessoais. Aqui você vê a velocidade ao longo do tempo, o que mais pesa e quantas pessoas o modelo atual aguenta.</p>
- <div class="row" style="gap:10px;flex-wrap:wrap"><label class="f" style="max-width:200px">Gráficos<select onchange="metPeriodo('metH',this.value)">${[[6,'Últimas 6 horas'],[24,'Últimas 24 horas'],[48,'Últimas 48 horas']].map(o=>`<option value="${o[0]}" ${o[0]===(R.metH||24)?'selected':''}>${o[1]}</option>`).join('')}</select></label><label class="f" style="max-width:200px">Tabelas<select onchange="metPeriodo('metD',this.value)">${[[1,'Hoje'],[7,'Últimos 7 dias'],[14,'Últimos 14 dias'],[30,'Últimos 30 dias']].map(o=>`<option value="${o[0]}" ${o[0]===(R.metD||7)?'selected':''}>${o[1]}</option>`).join('')}</select></label><button class="btn ghost" onclick="S.met=null;carregaMet();renderKeep()">Atualizar</button></div></div>`;
+ <div class="row" style="gap:10px;flex-wrap:wrap"><label class="f" style="max-width:200px">Gráficos<select onchange="metPeriodo('metH',this.value)">${[[6,'Últimas 6 horas'],[24,'Últimas 24 horas'],[48,'Últimas 48 horas']].map(o=>`<option value="${o[0]}" ${o[0]===(R.metH||24)?'selected':''}>${o[1]}</option>`).join('')}</select></label><label class="f" style="max-width:200px">Tabelas<select onchange="metPeriodo('metD',this.value)">${[[1,'Hoje'],[7,'Últimos 7 dias'],[14,'Últimos 14 dias'],[30,'Últimos 30 dias']].map(o=>`<option value="${o[0]}" ${o[0]===(R.metD||7)?'selected':''}>${o[1]}</option>`).join('')}</select></label><button class="btn ghost" onclick="S.met=null;carregaMet();renderKeep()">Atualizar</button>${m&&!m.erro?'<button class="btn" onclick="metCopia()">Copiar resumo em texto</button><button class="btn ghost" onclick="metBaixa()">Baixar .txt</button>':''}</div>${m&&!m.erro?'<p class="muted sm">Copia tudo o que aparece nesta página em texto curto (cerca de 5 KB, sem dados pessoais) para você colar na conversa. Para incluir a conexão deste aparelho, toque antes em "Medir conexão".</p>':''}</div>`;
  if(!m)return topo+`<div class="card flat col">${S.metLoad?'<p class="muted sm">Carregando medições…</p>':'<button class="btn" onclick="carregaMet();renderKeep()">Carregar medições</button>'}</div>`;
  if(m.erro)return topo+`<div class="card flat col"><p class="chip r">${esc(m.erro)}</p><p class="muted sm">Se a mensagem fala em aba ausente, rode setup() no Apps Script (a aba Metricas é criada ali).</p></div>`;
  const b=metBase(m),grade=metGrade(m),passo=Math.max(1,Math.ceil(grade.length/96)),gr=metGrupos(grade,passo),lab=gr.map(x=>x.slot),mins=passo*5,dia=m.horas>24;
@@ -3936,7 +3972,9 @@ async function paReset(){if(!confirm('Voltar a tela de pausa ao padrão?'))retur
 /* ---------- Controle remoto do telão: o celular passa os slides, o projetor do computador acompanha ---------- */
 const TLC=Math.random().toString(36).slice(2,8),TL={v:0,st:null,pt:0,seq:0,q:''};
 function telaoPub(){if(!MM.pj)return;clearTimeout(TL.pt);TL.pt=setTimeout(async()=>{const p=MM.pj;if(!p)return;try{const r=await mmApi('setTelao',{item:p.item||('m:'+p.song.id),i:p.i,pausado:!!p.pausado,ativa:mmAtiva(),by:TLC});TL.v=r.v}catch(e){}},120)}
-async function telaoTick(){
+let tlBusy=0; /* não empilha consultas: se a anterior ainda não voltou, espera (evita fila quando o servidor está lento) */
+async function telaoTick(){if(tlBusy)return;tlBusy=1;try{await telaoTick0()}finally{tlBusy=0}}
+async function telaoTick0(){
  if(MM.pj&&!(R.r==='multimidia'&&MM.sub==='remoto')){try{const r=await mmApi('getTelao',{}),p=MM.pj;if(!p||r.v<=TL.v)return;TL.v=r.v;if(r.by===TLC)return;let ch=false;
    if(r.item&&r.item!==p.item){const u=await mmUnit(r.item);if(u&&MM.pj===p){p.song=u;p.slides=u.img?['']:mmSplit(u.letra);p.item=r.item;ch=true}}
    const i=Math.max(0,Math.min(p.slides.length-1,r.i));if(i!==p.i){p.i=i;ch=true}if(!!r.pausado!==!!p.pausado){p.pausado=!!r.pausado;ch=true}
@@ -4078,7 +4116,9 @@ function stAudioSis(s){if(!s.getAudioTracks().length)return;const a=stAudioInit(
 function stNivel(k){const a=ST.aud;if(!a||!a[k])return 0;const d=new Uint8Array(a[k].an.fftSize);a[k].an.getByteTimeDomainData(d);let m=0;for(let i=0;i<d.length;i++)m=Math.max(m,Math.abs(d[i]-128));return Math.min(1,m/90)}
 
 /* ---- espelho do telão ---- */
-async function stTelaoTick(){if(R.r!=='multimidia'||!['estudio'].includes(MM.sub))return;try{const r=await mmApi('getTelao',{}),t=ST.tm;if(MM.songs===null){await mmCarrega()}
+let stBusy=0;
+async function stTelaoTick(){if(stBusy)return;stBusy=1;try{await stTelaoTick0()}finally{stBusy=0}}
+async function stTelaoTick0(){if(R.r!=='multimidia'||!['estudio'].includes(MM.sub))return;try{const r=await mmApi('getTelao',{}),t=ST.tm;if(MM.songs===null){await mmCarrega()}
   if(r.v!==t.v){t.v=r.v;t.i=r.i;t.pausado=!!r.pausado;if(r.item!==t.item){t.item=r.item;t.unit=r.item?await mmUnit(r.item):null}t.slides=t.unit?(t.unit.img?['']:mmSplit(t.unit.letra)):[];t.i=Math.max(0,Math.min(t.slides.length-1,t.i))}
   if(!ST.imgPausa&&MM.pausa&&MM.pausa.imagem){const im=new Image();im.onload=()=>{ST.imgPausa=im};im.src=MM.pausa.imagem}stTvInfo()}catch(e){}}
 setInterval(stTelaoTick,1500);
@@ -5101,10 +5141,11 @@ function chBox(){let e=$('#chatp');if(!e){e=document.createElement('div');e.id='
 function chatToggle(){CH.open?chFecha():chAbre()}
 async function chAbre(){CH.open=true;CH.view=CH.view==='thread'&&CH.com?'thread':'list';chRender();chTimer();await chTick(true)}
 function chFecha(){CH.open=false;const e=$('#chatp');if(e)e.remove();chTimer()}
-function chTimer(){clearInterval(CH.tm);CH.tm=setInterval(()=>{if(document.visibilityState==='visible')chTick()},CH.open?(CH.view==='thread'?2500:4000):20000)}
+function chTimer(){clearInterval(CH.tm);CH.tm=setInterval(()=>{if(document.visibilityState==='visible')chTick()},CH.open?(CH.view==='thread'?2500:4000):30000)}
 async function chAbreCom(id,nome){CH.com={id,nome};CH.st=null;CH.view='thread';CH.msgs=[];CH.ult=0;CH.open=true;if(R.r!=='pessoas'||!PS.perfil){}chRender();chTimer();await chTick(true)}
 async function chTick(force){if(!READY&&ONLINE)return;try{
   if(CH.open&&CH.view==='thread'&&CH.com){const antes=CH.ult,r=await chApi('getChat',{com:CH.com.id,depois:CH.ult});if(antes>0&&r.msgs.some(m=>!m.minha&&!CH.msgs.some(x=>x.id===m.id)))chatAviso();CH.st={online:r.online,visto:r.visto,digitando:r.digitando};PRS[CH.com.id]={on:!!r.online,visto:r.visto||0};chSt();if(r.msgs.length){CH.msgs=CH.msgs.concat(r.msgs.filter(m=>!CH.msgs.some(x=>x.id===m.id)));CH.ult=CH.msgs.length?CH.msgs[CH.msgs.length-1].ts:0;chMsgs(true);if(r.msgs.some(m=>!m.minha)){await chApi('chatRead',{com:CH.com.id})}}else if(force)chMsgs(true)}
+  if(CH.open&&CH.view==='thread'&&CH.com&&!force&&(CH.skip=(CH.skip||0)+1)%5)return; /* conversa aberta: a lista (avisos de outras conversas) só a cada 5 ciclos */
   const l=await chApi('listChats');if(CH.sim&&!CH.sim.lida){l.conversas=[{id:SIMID,nome:'Teste da Zoe',ultima:CH.sim.texto.slice(0,80),ts:CH.sim.ts,minha:false,naoLidas:1,online:true,visto:Date.now()}].concat(l.conversas);l.naoLidas=(l.naoLidas||0)+1}CH.lista=l.conversas;prSet(l.conversas);CH.unread=CH.open&&CH.view==='thread'&&CH.com?l.conversas.filter(c=>c.id!==CH.com.id).reduce((s,c)=>s+c.naoLidas,0):l.naoLidas;if(CH.tot!==undefined&&CH.unread>CH.tot)chatAviso();CH.tot=CH.unread;
   const bc=$('#bch');if(bc)bc.innerHTML=ic('chat')+(CH.unread?`<span class="dot">${CH.unread}</span>`:'');if(CH.open&&CH.view==='list')chCorpo()}catch(e){}}
 function chRender(){const e=chBox();
@@ -5169,7 +5210,9 @@ function puComoInstalar(){const ios=puIOS();modal(`<h2>Instalar o app da Zoe</h2
 function puComoLiberar(){modal(`<h2>Liberar as notificações</h2><p class="muted">O aparelho guardou que você bloqueou os avisos. Para voltar a receber:</p><div class="pu-passo"><i>1</i><div><b>iPhone:</b> Ajustes › Notificações › Zoe › Permitir notificações.</div></div><div class="pu-passo"><i>2</i><div><b>Android/Chrome:</b> toque no cadeado ao lado do endereço › Permissões › Notificações › Permitir.</div></div><div class="pu-passo"><i>3</i><div>Depois, volte ao app e recarregue a página.</div></div><div class="row" style="margin-top:12px"><button class="btn" onclick="closeL()">Entendi</button></div>`)}
 async function puAtiva(){try{try{await navigator.serviceWorker.register('sw.js')}catch(e){}const r=await Notification.requestPermission();if(r==='granted'){await puInscreve();toast('Notificações ativadas. Você vai receber os avisos neste aparelho.')}}catch(e){toast('Não consegui ativar as notificações neste aparelho.','err')}pushBarra()}
 async function puInscreve(){try{const reg=await navigator.serviceWorker.ready;let sub=await reg.pushManager.getSubscription();if(sub&&sub.options&&sub.options.applicationServerKey){const cur=btoa(String.fromCharCode(...new Uint8Array(sub.options.applicationServerKey))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');if(PU.key&&cur!==PU.key){try{await sub.unsubscribe()}catch(e){}sub=null}}if(!sub){const k=Uint8Array.from(atob(PU.key.replace(/-/g,'+').replace(/_/g,'/').padEnd(Math.ceil(PU.key.length/4)*4,'=')),c=>c.charCodeAt(0));sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:k})}
- const j=sub.toJSON();await api('savePushSub',{endpoint:j.endpoint,keys:j.keys,agente:navigator.userAgent.slice(0,80)});PU.ok=true}catch(e){}}
+ const j=sub.toJSON(),sk=j.endpoint+'|'+String(TOKEN||'').slice(-16); /* mesma inscrição e mesmo login: só reenvia depois de 12 h (cada envio ocupa o cadeado de escrita) */
+ if(puLS('zoe-psub')===sk&&Date.now()-(+puLS('zoe-psub-t')||0)<432e5){PU.ok=true;return}
+ await api('savePushSub',{endpoint:j.endpoint,keys:j.keys,agente:navigator.userAgent.slice(0,80)});puLS('zoe-psub',sk);puLS('zoe-psub-t',String(Date.now()));PU.ok=true}catch(e){}}
 
 
 /* ===== Cutscene do Sod: a história (lore) ===== */
