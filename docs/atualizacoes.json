@@ -1,5 +1,14 @@
 [
  {
+  "titulo": "Feed da Zoe: deslize leve e sem travar",
+  "melhorias": [
+   "Corrigido o deslize do Feed da Zoe que ficava travado na versão anterior: o cálculo por quadro em JavaScript foi trocado por transições CSS, que rodam na placa de vídeo. O cálculo agora só roda enquanto a página rola e nada fica rodando em segundo plano.",
+   "O ajuste da altura do bloco do feed no Início passou a acontecer só quando o conteúdo muda de tamanho, e não a cada rolagem."
+  ],
+  "v": "1.122",
+  "data": "04/11/2026"
+ },
+ {
   "titulo": "Listas de nomes com visual moderno",
   "melhorias": [
    "Fichas de membros: cada pessoa aparece com um círculo de iniciais, o nome em destaque, célula e situação logo abaixo e uma seta, com destaque suave ao passar o mouse ou tocar.",

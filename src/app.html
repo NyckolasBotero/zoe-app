@@ -675,12 +675,12 @@ html.theming *,html.theming *::before,html.theming *::after{transition:backgroun
 @keyframes rblink{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(255,45,45,.75)}50%{opacity:.35;box-shadow:0 0 10px 5px rgba(255,45,45,.35)}}@media(prefers-reduced-motion:reduce){.rdot{animation:none}}
 
 /* Feed da Zoe: a estrutura inteira desliza ao centro (JS grava transform em #fu_wrap) */
-#fu_wrap{will-change:transform,opacity}.hb.sf-blk .hbi{overflow:visible;height:auto}.hb.sf-blk .hbi>.card,.hb.sf-blk .hbi>div{height:auto}#view:has(#fu_wrap){overflow-x:clip}
+#fu_wrap{will-change:transform,opacity;transition:transform .55s cubic-bezier(.22,.7,.25,1),opacity .55s ease}.hgrid>.hb{transition:opacity .45s ease}.hb.sf-blk .hbi{overflow:visible;height:auto}.hb.sf-blk .hbi>.card,.hb.sf-blk .hbi>div{height:auto}#view:has(#fu_wrap){overflow-x:clip}
 #fu_lista>[data-sfn]{animation:sfin .5s var(--e-out,ease) backwards;animation-delay:40ms}
 @keyframes sfin{from{opacity:0}}
 .sf-more{display:flex;justify-content:center;gap:8px;padding:22px 0 30px}.sf-more i{width:9px;height:9px;border-radius:50%;background:var(--verde);opacity:.35;animation:sfdot 1s ease-in-out infinite}.sf-more i:nth-child(2){animation-delay:.15s}.sf-more i:nth-child(3){animation-delay:.3s}
 @keyframes sfdot{0%,100%{transform:translateY(0);opacity:.3}50%{transform:translateY(-7px);opacity:1}}
-@media (prefers-reduced-motion:reduce){#fu_wrap{transform:none!important;opacity:1!important}.sf-more i{animation:none}}
+@media (prefers-reduced-motion:reduce){#fu_wrap{transform:none!important;opacity:1!important;transition:none}.sf-more i{animation:none}}
 
 /* botões .opt: sem o visual cinza nativo do navegador; linhas de lista modernas */
 button.opt{appearance:none;-webkit-appearance:none;background:transparent;border:0;border-bottom:1px solid var(--line);border-radius:0;font:inherit;color:inherit;text-align:left;width:100%;cursor:pointer;transition:background var(--d-fast,.15s) ease,transform var(--d-fast,.15s) ease,box-shadow var(--d-fast,.15s) ease}
@@ -1398,27 +1398,27 @@ function fuRedesenha(){const e=$('#fu_lista');if(e){e.innerHTML=fuListaHTML();sf
 function fuFiltro(k){FU.f=k;FU.n=FU.pag;render()}
 
 /* ===== Feed da Zoe: rolagem infinita e cartões que se centralizam em movimento ===== */
-const SF={io:null,raf:0,p:0};
+const SF={io:null,raf:0,p:0,q:-1,ro:null,w:null};
 const sfMov=()=>S.anim!==false&&!matchMedia('(prefers-reduced-motion:reduce)').matches;
 function sfMais(){const e=$('#fu_lista'),m=$('#fu_mais');if(!e||!m)return;const f=fuFiltrados(),a=FU.n;FU.n=Math.min(f.length,a+FU.pag);
  m.insertAdjacentHTML('beforebegin',f.slice(a,FU.n).map((x,i)=>x.h.replace(/^<(\w+)/,'<$1 data-sfn="'+i+'"')).join(''));
  if(FU.n>=f.length){if(SF.io)SF.io.disconnect();m.remove()}
  sfPinta();if(SF.io&&$('#fu_mais'))setTimeout(()=>{const n=$('#fu_mais');if(n){SF.io.unobserve(n);SF.io.observe(n)}},60)}
 function sfPinta(){SF.raf=0;const w=$('#fu_wrap');if(!w)return;
- const bk=w.closest('.hb');if(bk){const ed=bk.classList.contains('ed');bk.classList.toggle('sf-blk',!ed);if(!ed&&getComputedStyle(bk.parentNode).display==='grid'){const n=Math.max(4,Math.ceil((w.offsetHeight+28)/34));if(bk.dataset.sfr!==String(n)){bk.dataset.sfr=n;bk.style.gridRow='span '+n}}}
- if(!sfMov()){w.style.transform='';SF.p=0;sfOutros(w,0);return}
- /* quando só o feed ocupa a tela, a estrutura inteira desliza na horizontal até o centro da área de conteúdo */
- const v=$('#view').getBoundingClientRect(),vh=innerHeight,r=w.getBoundingClientRect(),cur=parseFloat(w.dataset.tx||0);
- const nat=r.left+r.width/2-cur,alvo=Math.max(0,v.left)+(Math.min(innerWidth,v.right)-Math.max(0,v.left))/2;
- const ocupa=(Math.min(r.bottom,vh)-Math.max(r.top,0))/vh,qo=Math.max(0,Math.min(1,(ocupa-.3)/.65)),qt=w.closest('.hb')?Math.max(0,Math.min(1,(vh*.35-r.top)/(vh*.4))):1,q=Math.min(qo,qt),alvoP=q*q*q*(q*(q*6-15)+10);
- /* amortecimento: o progresso persegue o alvo quadro a quadro, então o deslize fica fluido mesmo com a roda do mouse */
- const ag=performance.now(),dt=Math.min(250,ag-(SF.t||ag));SF.t=ag;if(w.dataset.tx===undefined)SF.p=alvoP;SF.p+=(alvoP-SF.p)*(1-Math.exp(-dt/150));const falta=Math.abs(alvoP-SF.p);if(falta<.002){SF.p=alvoP;SF.t=0}else sfAgenda();
- const p=SF.p,lado=Math.min(56,innerWidth*.12),tx=(alvo-nat)*p+(1-p)*lado;
- w.dataset.tx=tx.toFixed(1);w.style.transform='translateX('+tx.toFixed(1)+'px)';w.style.opacity=(.55+.45*p).toFixed(2);sfOutros(w,p)}
-/* os demais blocos do Início somem conforme o feed vem ao centro */
-function sfOutros(w,p){const bk=w.closest('.hb');if(!bk)return;const ed=bk.classList.contains('ed');bk.style.position='relative';bk.style.zIndex=!ed&&p>0?2:'';[...bk.parentNode.children].forEach(o=>{if(o===bk)return;const k=ed?0:p;o.style.opacity=k>.02?(1-k).toFixed(2):'';o.style.pointerEvents=k>.5?'none':'';o.style.visibility=k>.98?'hidden':''})}
+ if(!sfMov()){w.style.transform='';w.style.opacity='';SF.p=0;SF.q=-1;sfOutros(w,0);return}
+ /* só leituras leves a cada quadro de rolagem; a suavidade vem das transições CSS (sem laço em JS) */
+ const vh=innerHeight,r=w.getBoundingClientRect(),pr=w.parentNode.getBoundingClientRect(),v=$('#view').getBoundingClientRect();
+ const nat=pr.left+pr.width/2,alvo=Math.max(0,v.left)+(Math.min(innerWidth,v.right)-Math.max(0,v.left))/2;
+ const ocupa=(Math.min(r.bottom,vh)-Math.max(r.top,0))/vh,qo=Math.max(0,Math.min(1,(ocupa-.3)/.65)),qt=w.closest('.hb')?Math.max(0,Math.min(1,(vh*.35-r.top)/(vh*.4))):1,q=Math.min(qo,qt),p=q*q*q*(q*(q*6-15)+10);
+ if(SF.q>=0&&Math.abs(p-SF.q)<.004&&!(p===0||p===1)&&SF.w===w)return;SF.q=p;SF.p=p;SF.w=w;
+ const lado=Math.min(56,innerWidth*.12),tx=(alvo-nat)*p+(1-p)*lado;
+ w.dataset.tx=tx.toFixed(1);w.style.transform='translate3d('+tx.toFixed(1)+'px,0,0)';w.style.opacity=(.55+.45*p).toFixed(2);sfOutros(w,p)}
+/* os demais blocos do Início somem conforme o feed vem ao centro (opacity em transição CSS) */
+function sfOutros(w,p){const bk=w.closest('.hb');if(!bk)return;const ed=bk.classList.contains('ed');bk.style.zIndex=!ed&&p>0?2:'';const k=ed?0:p;[...bk.parentNode.children].forEach(o=>{if(o===bk)return;o.style.opacity=k>.01?(1-k).toFixed(2):'';o.style.pointerEvents=k>.5?'none':''})}
+/* o bloco do feed no Início do computador cresce com o conteúdo (sem rolagem interna) */
+function sfAjusta(){const w=$('#fu_wrap'),bk=w&&w.closest('.hb');if(!bk)return;const ed=bk.classList.contains('ed');bk.classList.toggle('sf-blk',!ed);if(ed||getComputedStyle(bk.parentNode).display!=='grid')return;const n=Math.max(4,Math.ceil((w.offsetHeight+28)/34));if(bk.dataset.sfr!==String(n)){bk.dataset.sfr=n;bk.style.gridRow='span '+n}}
 function sfAgenda(){if(!SF.raf)SF.raf=requestAnimationFrame(sfPinta)}
-function sfIni(){if(SF.io){SF.io.disconnect();SF.io=null}const m=$('#fu_mais');
+function sfIni(){if(SF.ro){SF.ro.disconnect();SF.ro=null}const fw=$('#fu_wrap');SF.q=-1;if(fw&&'ResizeObserver' in window){SF.ro=new ResizeObserver(()=>sfAjusta());SF.ro.observe(fw)}sfAjusta();if(SF.io){SF.io.disconnect();SF.io=null}const m=$('#fu_mais');
  if(m&&'IntersectionObserver' in window){SF.io=new IntersectionObserver(es=>{if(es.some(x=>x.isIntersecting))sfMais()},{rootMargin:'0px 0px 420px 0px'});SF.io.observe(m)}
  sfAgenda()}
 addEventListener('scroll',sfAgenda,{passive:true,capture:true});addEventListener('resize',sfAgenda,{passive:true});
