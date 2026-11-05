@@ -1,5 +1,14 @@
 [
  {
+  "titulo": "Feed da Zoe: sem deslocamento e sem transparência",
+  "melhorias": [
+   "No topo da página o Feed da Zoe fica na posição normal do bloco (antes ficava empurrado para a direita) e sem transparência.",
+   "Ele só se move até o centro conforme você rola; os outros cartões continuam sumindo quando o feed ocupa a tela."
+  ],
+  "v": "1.123",
+  "data": "04/11/2026"
+ },
+ {
   "titulo": "Feed da Zoe: deslize leve e sem travar",
   "melhorias": [
    "Corrigido o deslize do Feed da Zoe que ficava travado na versão anterior: o cálculo por quadro em JavaScript foi trocado por transições CSS, que rodam na placa de vídeo. O cálculo agora só roda enquanto a página rola e nada fica rodando em segundo plano.",

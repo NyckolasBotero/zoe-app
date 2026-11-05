@@ -429,3 +429,4 @@ Teste das fontes: `tests/e2e_feed_fontes.py`.
 - Suavização: `SF.p` persegue o alvo com amortecimento por tempo (constante ~150 ms, independe da taxa de quadros); o alvo combina a posição do topo do feed e a fração da tela ocupada (curva smootherstep). Os testes esperam `SF.p` convergir.
 - Estilo: `button.opt` tem reset próprio (sem o visual nativo do navegador); `.opt.mm-it` vira cartão de lista; fichas usam `.fi-i`/`.fi-av`.
 - Desempenho (substitui a suavização por laço): `sfPinta` só lê posições a cada quadro de rolagem e grava `transform`/`opacity`; o amortecimento é `transition` CSS em `#fu_wrap` e `.hgrid>.hb`. A posição natural vem do pai (sem depender do transform atual). A altura do bloco é ajustada por `ResizeObserver` (`sfAjusta`).
+- O feed não tem mais deslocamento lateral inicial nem opacidade própria: `tx = (alvo - posição natural) * p`.
