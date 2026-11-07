@@ -1,0 +1,26 @@
+# ntfy próprio da Zoe, publicado pela Cloudflare (Tunnel), sem abrir portas no roteador.
+# Uso: copie esta pasta para o servidor, crie o arquivo .env (veja README.md) e rode: docker compose up -d
+services:
+  ntfy:
+    image: binwiederhier/ntfy:latest
+    command: serve
+    restart: unless-stopped
+    environment:
+      TZ: America/Sao_Paulo
+    volumes:
+      - ./server.yml:/etc/ntfy/server.yml:ro
+      - ntfy-cache:/var/cache/ntfy
+      - ntfy-data:/var/lib/ntfy
+    expose:
+      - "80"
+  tunel:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run
+    restart: unless-stopped
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - ntfy
+volumes:
+  ntfy-cache:
+  ntfy-data:

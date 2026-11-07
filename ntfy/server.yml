@@ -1,0 +1,13 @@
+# Configuração do ntfy da Zoe
+base-url: "https://ntfy.SEUDOMINIO.com.br"   # troque pelo endereço público do túnel
+listen-http: ":80"
+behind-proxy: true                            # está atrás do Cloudflare Tunnel
+cache-file: "/var/cache/ntfy/cache.db"
+cache-duration: "24h"
+auth-file: "/var/lib/ntfy/user.db"
+auth-default-access: "deny-all"               # ninguém lê nem publica sem permissão
+# iPhone: o iOS só recebe avisos instantâneos se o servidor avisar o ntfy.sh (só vai um ID, nunca o texto)
+upstream-base-url: "https://ntfy.sh"
+attachment-cache-dir: ""
+visitor-request-limit-burst: 60
+visitor-request-limit-replenish: "5s"

@@ -109,6 +109,7 @@ const SHEETS = {
   MuralFam: ['ItemID', 'Pagina', 'Tipo', 'X', 'Y', 'W', 'R', 'Z', 'Texto', 'Cor', 'Foto', 'Dados', 'CriadoEm'],
   FamiliaMidia: ['MidiaID', 'Tipo', 'Url', 'Foto', 'Legenda', 'Ordem', 'Ativo'],
   Videos: ['VideoID', 'Titulo', 'Url', 'Ordem', 'Status', 'Tipo', 'AoVivo', 'Hls', 'Links'],
+  Ntfy: ['MembroID', 'Topico', 'Modo', 'CriadoEm'],
   PushSubs: ['SubID', 'MembroID', 'Endpoint', 'P256dh', 'Auth', 'Agente', 'CriadoEm'],
   LiveComent: ['ComID', 'LiveID', 'MembroID', 'Nome', 'Texto', 'Ts'],
   Permissoes: ['Papel'].concat(PERMS),
@@ -4110,6 +4111,7 @@ const ROUTES = {
   listScales: { auth: 'any', fn: listScales_ }, claimScale: { auth: 'any', write: 1, fn: claimScale_ }, saveScale: { auth: 'any', write: 1, fn: saveScale_ }, rescheduleScale: { auth: 'any', write: 1, fn: rescheduleScale_ }, deleteScale: { auth: 'any', write: 1, fn: deleteScale_ }, respondScale: { auth: 'any', write: 1, fn: respondScale_ }, requestSwap: { auth: 'any', write: 1, fn: requestSwap_ }, answerSwap: { auth: 'any', write: 1, fn: answerSwap_ }, markScale: { auth: 'any', write: 1, fn: markScale_ }, requestJoin: { auth: 'any', write: 1, fn: requestJoin_ }, decideJoin: { auth: 'any', write: 1, fn: decideJoin_ },
   listSongs: { auth: 'any', fn: listSongs_ }, saveSong: { auth: 'any', write: 1, fn: saveSong_ }, deleteSong: { auth: 'any', write: 1, fn: deleteSong_ }, saveSongDefault: { auth: 'any', write: 1, fn: saveSongDefault_ }, searchLyrics: { auth: 'any', fn: searchLyrics_ }, importLyrics: { auth: 'any', fn: importLyrics_ },
   boot: { auth: 'any', fn: boot_ },
+  getEntrega: { auth: 'config', fn: getEntrega_ }, saveEntrega: { auth: 'config', write: 1, fn: saveEntrega_ }, getNtfy: { auth: 'any', fn: getNtfy_ }, setNtfy: { auth: 'any', write: 1, fn: setNtfy_ }, testNtfy: { auth: 'any', fn: testNtfy_ },
   getPushKey: { auth: 'any', fn: getPushKey_ }, pushDiag: { auth: 'any', fn: pushDiag_ }, savePushSub: { auth: 'any', write: 1, fn: savePushSub_ }, delPushSub: { auth: 'any', write: 1, fn: delPushSub_ },
   sodGet: { auth: 'any', write: 1, fn: sodGet_ }, sodAbrir: { auth: 'any', write: 1, fn: sodAbrir_ }, sodEquipar: { auth: 'any', write: 1, fn: sodEquipar_ }, sodDescartar: { auth: 'any', write: 1, fn: sodDescartar_ }, sodAparencia: { auth: 'any', write: 1, fn: sodAparencia_ }, sodOrar: { auth: 'any', write: 1, fn: sodOrar_ }, sodComprar: { auth: 'any', write: 1, fn: sodComprar_ },
   listMarks: { auth: 'any', fn: listMarks_ }, saveMark: { auth: 'any', write: 1, fn: saveMark_ }, saveNote: { auth: 'any', write: 1, fn: saveNote_ }, listCultoNotes: { auth: 'any', fn: listCultoNotes_ }, getMural: { auth: 'any', fn: getMural_ },
@@ -4317,6 +4319,7 @@ function pushDiag_(d, u) {
   return out;
 }
 function pushEnvia_(envios) {
+  const E = entregaProps_(); if (E.worker) return pushViaWorker_(envios, E);
   const v = vapid_(), cache = CacheService.getScriptCache(), jw = {}, reqs = [], eps = [], out = [];
   envios.forEach(function (e) {
     try {
@@ -4330,12 +4333,88 @@ function pushEnvia_(envios) {
   rs.forEach(function (r, i) { let st = 0, txt = ''; try { st = r.getResponseCode(); if (st >= 400) txt = String(r.getContentText()).slice(0, 120); } catch (e3) { /* sem resposta */ } out.push({ endpoint: eps[i], status: st, erro: txt }); });
   return out;
 }
+/* ===== Entrega das notificações: Cloudflare Worker (Web Push) e ntfy ===== */
+// Tudo o que é segredo fica nas Propriedades do script (nunca na planilha nem no app)
+function entregaProps_() {
+  const pr = PropertiesService.getScriptProperties(), g = function (k) { return String(pr.getProperty(k) || '').trim(); };
+  const wu = g('PUSH_URL'), ws = g('PUSH_SEGREDO'), nu = g('NTFY_URL').replace(/\/+$/, '');
+  return { worker: /^https:\/\//.test(wu) && ws ? { url: wu, segredo: ws } : null, ntfy: g('NTFY_ATIVO') === '1' && /^https?:\/\//.test(nu) ? { url: nu, token: g('NTFY_TOKEN') } : null };
+}
+function pushViaWorker_(envios, E) {
+  const out = [], v = vapid_();
+  for (let i = 0; i < envios.length; i += 50) {
+    const lote = envios.slice(i, i + 50);
+    try {
+      const r = UrlFetchApp.fetch(E.worker.url, { method: 'post', contentType: 'application/json', headers: { 'X-Segredo': E.worker.segredo }, payload: JSON.stringify({ itens: lote }), muteHttpExceptions: true });
+      const st = r.getResponseCode(); let j = null; try { j = JSON.parse(r.getContentText()); } catch (e2) { j = null; }
+      if (st === 200 && j && j.resultados) j.resultados.forEach(function (x) { out.push({ endpoint: x.endpoint, status: x.status, erro: x.erro || '' }); });
+      else lote.forEach(function (e) { out.push({ endpoint: e.sub.endpoint, status: 0, erro: 'Worker respondeu ' + st + (st === 401 ? ' (segredo diferente)' : '') }); });
+    } catch (err) { lote.forEach(function (e) { out.push({ endpoint: e.sub.endpoint, status: 0, erro: 'Worker inacessível: ' + String(err && err.message || err).slice(0, 60) }); }); }
+  }
+  return out;
+}
+// Rode UMA vez no editor do Apps Script para copiar as chaves ao Worker (Settings > Variables and Secrets)
+function exportaVapid() {
+  const v = vapid_(), pub = WP_.b64u(WP_.pub(v.d)), d = WP_.b64u(v.d);
+  Logger.log('VAPID_PUBLICA=' + pub); Logger.log('VAPID_PRIVADA=' + d); return { VAPID_PUBLICA: pub, VAPID_PRIVADA: d };
+}
+// Rode UMA vez no editor para autorizar o envio a servidores externos (UrlFetchApp) depois de colar PUSH_URL
+function liberarPush() { UrlFetchApp.fetch('https://example.com', { muteHttpExceptions: true }); Logger.log('Autorizado.'); }
+function getEntrega_() {
+  const E = entregaProps_(), pr = PropertiesService.getScriptProperties();
+  return { worker: !!E.worker, workerUrl: String(pr.getProperty('PUSH_URL') || ''), ntfy: !!E.ntfy, ntfyUrl: String(pr.getProperty('NTFY_URL') || ''), ntfyToken: !!String(pr.getProperty('NTFY_TOKEN') || '').trim(), pessoasNtfy: table_('Ntfy').rows.filter(function (x) { return x.MembroID && x.Topico; }).length };
+}
+function saveEntrega_(d) {
+  const pr = PropertiesService.getScriptProperties(), set = function (k, v) { v = String(v == null ? '' : v).trim(); if (v) pr.setProperty(k, v); else pr.deleteProperty(k); };
+  if (d.workerUrl !== undefined) { const w = String(d.workerUrl).trim(); if (w && !/^https:\/\/[^\s]{6,300}$/.test(w)) throw new ApiError('VALIDATION', 'O endereço do Worker deve começar com https://'); set('PUSH_URL', w); }
+  if (d.workerSegredo) set('PUSH_SEGREDO', String(d.workerSegredo).slice(0, 200));
+  if (d.workerLimpar) { pr.deleteProperty('PUSH_URL'); pr.deleteProperty('PUSH_SEGREDO'); }
+  if (d.ntfyUrl !== undefined) { const n = String(d.ntfyUrl).trim(); if (n && !/^https?:\/\/[^\s]{3,300}$/.test(n)) throw new ApiError('VALIDATION', 'O endereço do ntfy deve começar com https://'); set('NTFY_URL', n); }
+  if (d.ntfyToken) set('NTFY_TOKEN', String(d.ntfyToken).slice(0, 200));
+  if (d.ntfyAtivo !== undefined) pr.setProperty('NTFY_ATIVO', d.ntfyAtivo ? '1' : '0');
+  return getEntrega_();
+}
+function ntfyTopico_() { const a = 'abcdefghijklmnopqrstuvwxyz0123456789'; let t = 'zoe-'; for (let i = 0; i < 24; i++) t += a.charAt(Math.floor(Math.random() * a.length)); return t; }
+function getNtfy_(d, u) {
+  const E = entregaProps_(), r = table_('Ntfy').rows.filter(function (x) { return x.MembroID === u.membroId && x.Topico; })[0];
+  return { disponivel: !!E.ntfy, servidor: E.ntfy ? E.ntfy.url : '', topico: r ? r.Topico : '', modo: r ? (r.Modo || 'ambos') : '' };
+}
+// d.ligar=true cria (ou mantém) o tópico secreto da pessoa; false apaga; d.modo 'ambos' | 'so_ntfy'; d.novo=true troca o tópico
+function setNtfy_(d, u) {
+  if (!entregaProps_().ntfy && d.ligar) throw new ApiError('VALIDATION', 'O ntfy ainda não foi ligado pela administração.');
+  withLock_(function () {
+    const t = table_('Ntfy'), r = t.rows.filter(function (x) { return x.MembroID === u.membroId; })[0], modo = d.modo === 'so_ntfy' ? 'so_ntfy' : 'ambos';
+    if (d.ligar === false) { if (r) writeRow_(t, r._row, { Topico: '', Modo: '' }); return; }
+    if (r) writeRow_(t, r._row, { Topico: (r.Topico && !d.novo) ? r.Topico : ntfyTopico_(), Modo: d.modo ? modo : (r.Modo || 'ambos') });
+    else appendRow_(t, { MembroID: u.membroId, Topico: ntfyTopico_(), Modo: modo, CriadoEm: now_() });
+  });
+  return getNtfy_(d, u);
+}
+function ntfyReq_(E, topico, n) {
+  const h = {}; if (E.token) h.Authorization = 'Bearer ' + E.token;
+  return { url: E.url, method: 'post', contentType: 'application/json', headers: h, muteHttpExceptions: true, payload: JSON.stringify({ topic: topico, title: clip_(n.t, 80), message: clip_(n.b, 300) || ' ', tags: ['bell'], priority: 4, click: n.click || undefined }) };
+}
+function ntfyEnvia_(q) {
+  const E = entregaProps_().ntfy; if (!E) return {};
+  let rows; try { rows = table_('Ntfy').rows.filter(function (x) { return x.MembroID && x.Topico; }); } catch (e) { return {}; } if (!rows.length) return {};
+  const por = {}; rows.forEach(function (x) { por[x.MembroID] = x; });
+  const reqs = [], exclusivo = {}; q.forEach(function (n) { const x = por[n.m]; if (!x) return; reqs.push(ntfyReq_(E, x.Topico, n)); if (x.Modo === 'so_ntfy') exclusivo[n.m] = 1; });
+  if (reqs.length) { try { UrlFetchApp.fetchAll(reqs.slice(0, 120)); } catch (err) { reqs.slice(0, 120).forEach(function (r) { try { UrlFetchApp.fetch(r.url, r); } catch (e2) { /* ntfy fora do ar */ } }); } }
+  return exclusivo;
+}
+function testNtfy_(d, u) {
+  const E = entregaProps_().ntfy, r = table_('Ntfy').rows.filter(function (x) { return x.MembroID === u.membroId && x.Topico; })[0];
+  if (!E) throw new ApiError('VALIDATION', 'O ntfy ainda não foi ligado pela administração.'); if (!r) throw new ApiError('VALIDATION', 'Ative o ntfy no seu perfil primeiro.');
+  const x = UrlFetchApp.fetch(E.url, ntfyReq_(E, r.Topico, { t: 'Teste da Zoe 🔔', b: 'Se você está lendo isto, o ntfy está funcionando.' })), st = x.getResponseCode();
+  return { ok: st >= 200 && st < 300, status: st };
+}
 function pushMortos_(res) { const m = {}; res.forEach(function (x) { if (x && (x.status === 404 || x.status === 410)) m[x.endpoint] = 1; }); if (Object.keys(m).length) withLock_(function () { const t = table_('PushSubs'); t.rows.forEach(function (sb) { if (m[sb.Endpoint]) writeRow_(t, sb._row, { MembroID: '', Endpoint: '' }); }); }); }
 function pushFlush_() {
   if (!PUSHQ_.length) return; const q = PUSHQ_.splice(0, PUSHQ_.length);
+  let excl = {}; try { excl = ntfyEnvia_(q); } catch (e) { excl = {}; }
   let subs; try { subs = table_('PushSubs').rows; } catch (e) { return; } if (!subs.length) return;
   const por = {}; subs.forEach(function (s) { if (s.MembroID && s.Endpoint) (por[s.MembroID] = por[s.MembroID] || []).push(s); });
-  const envios = []; q.forEach(function (n) { (por[n.m] || []).forEach(function (s) { envios.push({ sub: { endpoint: s.Endpoint, keys: { p256dh: s.P256dh, auth: s.Auth } }, payload: { title: clip_(n.t, 80), body: clip_(n.b, 160), tag: n.k, url: './' } }); }); });
+  const envios = []; q.forEach(function (n) { if (excl[n.m]) return; (por[n.m] || []).forEach(function (s) { envios.push({ sub: { endpoint: s.Endpoint, keys: { p256dh: s.P256dh, auth: s.Auth } }, payload: { title: clip_(n.t, 80), body: clip_(n.b, 160), tag: n.k, url: './' } }); }); });
   if (!envios.length) return;
   pushMortos_(pushEnvia_(envios.slice(0, 120)));
 }
