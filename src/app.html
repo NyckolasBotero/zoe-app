@@ -5155,6 +5155,9 @@ function avGalhos(fams){const by={},pais={},filhos={},conj=[],irm=[],ord=[],add=
  units.forEach(U=>{let x=U.up,n=0;while(x&&n++<60){if(x===U){U.up=null;break}x=x.up}});
  units.forEach(U=>U.kids.forEach(c=>{const Uc=uOf[c];if(Uc){if(Uc.up===U){if(!U.items.some(it=>it.u===Uc))U.items.push({u:Uc})}else U.links.push(c)}else U.items.push({p:by[c]})}));
  const cnt=U=>U.n||(U.n=U.m.length+U.items.reduce((s,it)=>s+(it.u?cnt(it.u):1),0));units.forEach(cnt);
+ /* uma família (sobrenome) tem um só galho principal: os outros galhos soltos com o mesmo sobrenome viram ramos dele */
+ {const sn=U=>{const p=by[U.m[0]||U.kids[0]]||{};const nm=String((p.fam&&p.fam.nome)||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();return nm==='familia'?'':nm},grp={};units.forEach(U=>{if(U.up)return;const k=sn(U);if(k)(grp[k]=grp[k]||[]).push(U)});
+  Object.keys(grp).forEach(k=>{const g=grp[k];if(g.length<2)return;g.sort((x,y)=>y.n-x.n);const main=g[0];g.slice(1).forEach(U=>{U.up=main;main.items.push({u:U})})});units.forEach(U=>{U.n=0});units.forEach(cnt)}
  const rs=units.filter(U=>!U.up).sort((a,b)=>b.n-a.n),roots=[];rs.forEach((r,i)=>{if(i%2)roots.push(r);else roots.unshift(r)});
  units.forEach(U=>{U.m=U.m.map(i=>by[i]);U.fam=(U.m[0]||by[U.kids[0]]||{}).fam||{};U.key=U.virt?'v:'+U.kids.slice().sort()[0]:U.m.map(x=>x.id).sort()[0]});
  return{roots,units,by}}

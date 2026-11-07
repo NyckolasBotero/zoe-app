@@ -1,5 +1,14 @@
 [
  {
+  "titulo": "Árvore Zoe: um só galho principal por sobrenome",
+  "melhorias": [
+   "Antes, cada grupo de parentes sem ligação entre si ganhava o seu próprio galho 'Família Botero'. Agora existe um único galho principal por sobrenome (o maior).",
+   "As outras famílias com o mesmo sobrenome viram ramos ligados ao galho principal, por exemplo 'Nyckolas e Isabela' e 'Avana e filhos'. Quem ainda não formou família continua no galho principal."
+  ],
+  "v": "1.127",
+  "data": "07/11/2026"
+ },
+ {
   "titulo": "Células: regras de presença definidas na Administração",
   "melhorias": [
    "Em Administração > Definições de Parâmetros > Regras Membro, agora dá para definir quantas presenças fazem o visitante virar participante (padrão 3) e quantas faltas seguidas mandam o participante para ex-participantes (padrão 6).",
