@@ -1,5 +1,16 @@
 [
  {
+  "titulo": "Árvore Zoe em formato de árvore",
+  "melhorias": [
+   "Toda a igreja: Cristo Jesus é o tronco, na base, e a árvore cresce para cima. Cada família é um galho, com o nome na etiqueta.",
+   "Quando alguém forma uma nova família (casa e tem filhos), nasce um galho novo ligado ao galho de onde veio. Os filhos que ainda não formaram família ficam como folhas no galho dos pais.",
+   "Minha família: mostra só o galho da sua família, na vertical, como um zoom no galho da árvore de Cristo.",
+   "Na tela do computador dá para arrastar a árvore com o mouse; ao abrir, ela já começa no tronco."
+  ],
+  "v": "1.124",
+  "data": "07/11/2026"
+ },
+ {
   "titulo": "Feed da Zoe: sem deslocamento e sem transparência",
   "melhorias": [
    "No topo da página o Feed da Zoe fica na posição normal do bloco (antes ficava empurrado para a direita) e sem transparência.",

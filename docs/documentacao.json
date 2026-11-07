@@ -114,7 +114,7 @@
     "itens": [
       "Tabela Parentes (A, B, Tipo): conjuge (simétrico), filho (A é pai/mãe de B) e irmao (simétrico). Irmãos por pais em comum são deduzidos. Regras: sem ciclos, no máximo 2 pais, 1 cônjuge por pessoa.",
       "suggestKin procura por sobrenome (iguais e família); saveKin devolve sugestões deduzidas (casal pelo filho em comum, filhos do cônjuge). Quem vincula: a própria pessoa, quem já está na família ou a liderança (fichaNivel_).",
-      "getArvore: família de uma pessoa ou, com todos, a visão da igreja (só liderança). avLayout/avSVG desenham gerações em SVG.",
+      "getArvore: família de uma pessoa ou, com todos, a visão da igreja (só liderança). avGalhos/avArvoreSVG desenham a árvore em SVG: Cristo no tronco, uma família por galho e galhos novos para famílias formadas.",
       "Pessoas usa listPeople (só quem tem acesso ativo). Células › Membros usa getMemberCard (fichaNivel_), mostrando endereço e o ponto marcado pela pessoa."
     ]
   },

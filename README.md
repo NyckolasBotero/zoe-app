@@ -430,3 +430,6 @@ Teste das fontes: `tests/e2e_feed_fontes.py`.
 - Estilo: `button.opt` tem reset próprio (sem o visual nativo do navegador); `.opt.mm-it` vira cartão de lista; fichas usam `.fi-i`/`.fi-av`.
 - Desempenho (substitui a suavização por laço): `sfPinta` só lê posições a cada quadro de rolagem e grava `transform`/`opacity`; o amortecimento é `transition` CSS em `#fu_wrap` e `.hgrid>.hb`. A posição natural vem do pai (sem depender do transform atual). A altura do bloco é ajustada por `ResizeObserver` (`sfAjusta`).
 - O feed não tem mais deslocamento lateral inicial nem opacidade própria: `tx = (alvo - posição natural) * p`.
+
+## v1.124 — Árvore Zoe em galhos
+Cristo é o tronco; cada família é um galho; nova família = galho ligado ao de origem. Visão "Minha família" mostra só o galho na vertical. Código: avGalhos/avArvoreSVG em src/app.html; teste tests/e2e_arvore_galhos.py. Code.gs sem mudança.
