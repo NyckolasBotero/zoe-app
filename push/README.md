@@ -22,7 +22,7 @@ O Worker recebe do Apps Script a lista de aparelhos e a mensagem, cifra e entreg
 Se o Worker for apagado ou o segredo ficar errado, o app volta sozinho a avisar a falha no teste (erro 401 = segredo diferente). Para voltar ao envio direto, use *Desligar o Worker*.
 
 ## iPhone
-O iPhone só recebe Web Push com o app **instalado na Tela de Início** (Safari › Compartilhar › Adicionar à Tela de Início) e iOS 16.4 ou mais novo. O ntfy (pasta `ntfy/`) é uma alternativa que não exige isso.
+O iPhone só recebe Web Push com o app **instalado na Tela de Início** (Safari › Compartilhar › Adicionar à Tela de Início) e iOS 16.4 ou mais novo. 
 
 ## Teste local
 `node push/test_worker.mjs` confere que o Worker cifra de um jeito que o navegador consegue decifrar.

@@ -440,10 +440,9 @@ Novas colunas em Membros (Crista, CongregaZoe, Parente) e aba Galhos: rode `setu
 ## v1.126 — Regras de presença das células
 Config PresencasParaParticipante (3) e FaltasParaExParticipante (6), editáveis em Administração. exAutomatico_ roda ao salvar a frequência. Testes: tests/regras_participante.mjs e e2e_regras_participante.py.
 
-## v1.131 — Notificações com o app fechado (Cloudflare + ntfy)
+## v1.131 — Notificações com o app fechado (Cloudflare)
 - `push/worker_push.js`: Worker da Cloudflare que cifra e entrega o Web Push (secrets `SEGREDO`, `VAPID_PUBLICA`, `VAPID_PRIVADA`). Guia em `push/README.md`; teste: `node push/test_worker.mjs`.
-- `ntfy/`: `docker-compose.yml` (ntfy + Cloudflare Tunnel), `server.yml` e guia. Cada pessoa tem um tópico secreto (aba `Ntfy`), com modo "só ntfy".
-- Code.gs: `entregaProps_`, `pushViaWorker_` (lotes de 50), `exportaVapid`, `liberarPush`, rotas `getEntrega/saveEntrega/getNtfy/setNtfy/testNtfy`. Propriedades do script: `PUSH_URL`, `PUSH_SEGREDO`, `NTFY_URL`, `NTFY_TOKEN`, `NTFY_ATIVO`.
+- Code.gs: `entregaProps_`, `pushViaWorker_` (lotes de 50), `exportaVapid`, `liberarPush`, rotas `getEntrega/saveEntrega`. Propriedades do script: `PUSH_URL`, `PUSH_SEGREDO`.
 - Teste: `node tests/entrega.mjs`.
 
 ## v1.130 — Papéis com histórico e lição na presença

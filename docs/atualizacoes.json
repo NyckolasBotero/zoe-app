@@ -1,11 +1,10 @@
 [
  {
-  "titulo": "Notificações com o app fechado: Cloudflare e ntfy",
+  "titulo": "Notificações com o app fechado pela Cloudflare",
   "melhorias": [
-   "Os avisos podem ser enviados por um Worker da Cloudflare (plano gratuito), sem depender do site aberto e sem sobrecarregar o Apps Script.",
-   "Novo: ntfy. Cada pessoa ativa em Editar perfil › Configurações, assina um tópico secreto no app ntfy e recebe os avisos mesmo sem o navegador; pode escolher receber só pelo ntfy.",
-   "Administração › Definições › Entrega fora do app: endereço e segredo do Worker, endereço e token do ntfy (os segredos ficam só no Apps Script).",
-   "Guias passo a passo em push/README.md e ntfy/README.md."
+   "Os avisos passam por um Worker da Cloudflare (plano gratuito): chegam sem o site aberto e sem sobrecarregar o Apps Script.",
+   "Administração › Definições › Notificações pela Cloudflare: endereço e segredo do Worker (o segredo fica só no Apps Script).",
+   "Guia passo a passo em push/README.md."
   ],
   "v": "1.131",
   "data": "07/11/2026"
