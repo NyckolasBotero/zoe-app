@@ -1,5 +1,14 @@
 [
  {
+  "titulo": "Árvore Zoe: arrastar mais leve e responsivo",
+  "melhorias": [
+   "Ao clicar e arrastar a árvore, o movimento acompanha o mouse quadro a quadro e continua deslizando um pouco ao soltar, como no celular.",
+   "A árvore passa a ser desenhada em uma camada própria e não seleciona mais texto ao arrastar, o que tira o travamento."
+  ],
+  "v": "1.128",
+  "data": "07/11/2026"
+ },
+ {
   "titulo": "Árvore Zoe: um só galho principal por sobrenome",
   "melhorias": [
    "Antes, cada grupo de parentes sem ligação entre si ganhava o seu próprio galho 'Família Botero'. Agora existe um único galho principal por sobrenome (o maior).",
