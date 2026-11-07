@@ -433,3 +433,6 @@ Teste das fontes: `tests/e2e_feed_fontes.py`.
 
 ## v1.124 — Árvore Zoe em galhos
 Cristo é o tronco; cada família é um galho; nova família = galho ligado ao de origem. Visão "Minha família" mostra só o galho na vertical. Código: avGalhos/avArvoreSVG em src/app.html; teste tests/e2e_arvore_galhos.py. Code.gs sem mudança.
+
+## v1.125 — Árvore: cristãos, folhas, galhos manuais
+Novas colunas em Membros (Crista, CongregaZoe, Parente) e aba Galhos: rode `setup()` uma vez após publicar o Code.gs. Testes: e2e_arvore_cristaos.py, e2e_parentes_folhas.py.

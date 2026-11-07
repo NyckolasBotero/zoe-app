@@ -1,5 +1,18 @@
 [
  {
+  "titulo": "Árvore Zoe: cristãos, folhas, galhos manuais e parentes sem login",
+  "melhorias": [
+   "Resumo da árvore: total de pessoas cristãs, cristãs que congregam na Zoe, cristãs que não congregam na Zoe e não cristãs, cada uma com seu percentual. Aparece na visão da igreja e na da família.",
+   "Passe o mouse (ou toque) no nome de um galho para ver o resumo e os percentuais daquele galho. Cada pessoa mostra um ponto colorido: verde cristã na Zoe, azul cristã fora da Zoe, vermelho não cristã, cinza sem informação.",
+   "Novo seletor 'Mostrar apenas Zoe': Sim mostra só quem congrega na Zoe.",
+   "Em Editar perfil > Família, os filhos aparecem como folhas: a idade define o tamanho e a cor. Dá para marcar se cada parente é cristão e se congrega na Zoe.",
+   "Dá para cadastrar um parente que não usa o site (com foto, se é cristã e se congrega na Zoe). Se o nome digitado não for encontrado, o site oferece o cadastro.",
+   "Liderança: clique com o botão direito (ou segure o dedo) para criar uma ramificação com nomes escolhidos, e arraste o nome de um galho para definir o tamanho e a direção. Pegar e soltar com o mouse anda pela árvore."
+  ],
+  "v": "1.125",
+  "data": "07/11/2026"
+ },
+ {
   "titulo": "Árvore Zoe em formato de árvore",
   "melhorias": [
    "Toda a igreja: Cristo Jesus é o tronco, na base, e a árvore cresce para cima. Cada família é um galho, com o nome na etiqueta.",
