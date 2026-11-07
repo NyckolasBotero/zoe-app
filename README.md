@@ -436,3 +436,6 @@ Cristo é o tronco; cada família é um galho; nova família = galho ligado ao d
 
 ## v1.125 — Árvore: cristãos, folhas, galhos manuais
 Novas colunas em Membros (Crista, CongregaZoe, Parente) e aba Galhos: rode `setup()` uma vez após publicar o Code.gs. Testes: e2e_arvore_cristaos.py, e2e_parentes_folhas.py.
+
+## v1.126 — Regras de presença das células
+Config PresencasParaParticipante (3) e FaltasParaExParticipante (6), editáveis em Administração. exAutomatico_ roda ao salvar a frequência. Testes: tests/regras_participante.mjs e e2e_regras_participante.py.

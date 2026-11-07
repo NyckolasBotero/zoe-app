@@ -1,5 +1,15 @@
 [
  {
+  "titulo": "Células: regras de presença definidas na Administração",
+  "melhorias": [
+   "Em Administração > Definições de Parâmetros > Regras Membro, agora dá para definir quantas presenças fazem o visitante virar participante (padrão 3) e quantas faltas seguidas mandam o participante para ex-participantes (padrão 6).",
+   "Participantes aparecem em uma categoria: Membro da igreja, Batizado não-membro ou Não batizado; quem ainda não chegou ao número de presenças aparece como Visitante.",
+   "Ao lançar a frequência, quem atinge o limite de faltas seguidas passa sozinho para ex-participantes e o líder e o supervisor são avisados. Quem lidera a célula não sai por essa regra."
+  ],
+  "v": "1.126",
+  "data": "07/11/2026"
+ },
+ {
   "titulo": "Árvore Zoe: cristãos, folhas, galhos manuais e parentes sem login",
   "melhorias": [
    "Resumo da árvore: total de pessoas cristãs, cristãs que congregam na Zoe, cristãs que não congregam na Zoe e não cristãs, cada uma com seu percentual. Aparece na visão da igreja e na da família.",
