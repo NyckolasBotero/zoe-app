@@ -439,3 +439,6 @@ Novas colunas em Membros (Crista, CongregaZoe, Parente) e aba Galhos: rode `setu
 
 ## v1.126 — Regras de presença das células
 Config PresencasParaParticipante (3) e FaltasParaExParticipante (6), editáveis em Administração. exAutomatico_ roda ao salvar a frequência. Testes: tests/regras_participante.mjs e e2e_regras_participante.py.
+
+## v1.130 — Papéis com histórico e lição na presença
+Tabela PapeisLog; colunas LicaoID/LicaoTitulo/LicaoResumo/Papeis em Reunioes (criadas na hora). Teste: tests/papeis_licao.mjs. Os e2e que registram frequência escolhem "Outra" com resumo.

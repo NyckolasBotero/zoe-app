@@ -19,11 +19,11 @@ with sync_playwright() as p:
     assert 'Ana' in l1.inner_text('#view') and 'Beto' in l1.inner_text('#view')
     # data numa terça (2026-10-27): aviso de dia diferente e pede confirmação
     l1.fill('#fdata','2026-10-27'); l1.dispatch_event('#fdata','change'); assert 'a célula acontece na Quinta' in l1.inner_text('#fhint'), l1.inner_text('#fhint')
-    l1.click("text=Registrar frequência"); l1.wait_for_selector("text=Dia diferente do dia da célula"); l1.click("text=Corrigir a data")
+    l1.evaluate("frLic('__outra');frD().licR='Estudo da Palavra em célula';const f=document.querySelector('#flr');if(f)f.value=frD().licR"); l1.click("text=Registrar frequência"); l1.wait_for_selector("text=Dia diferente do dia da célula"); l1.click("text=Corrigir a data")
     assert 'Nenhuma reunião' in (l1.evaluate("go('celula','hist')") or '') or True
     l1.evaluate("go('celula','freq')"); l1.wait_for_selector('#fdata')
     l1.fill('#fdata','2026-10-22'); l1.dispatch_event('#fdata','change'); assert 'dia da célula' in l1.inner_text('#fhint')
-    l1.check('.pr >> nth=1'); l1.click("text=Registrar frequência"); l1.wait_for_selector("text=Histórico de presença")
+    l1.check('.pr >> nth=1'); l1.evaluate("frLic('__outra');frD().licR='Estudo da Palavra em célula';const f=document.querySelector('#flr');if(f)f.value=frD().licR"); l1.click("text=Registrar frequência"); l1.wait_for_selector("text=Histórico de presença")
     t=l1.inner_text('#view'); assert '22/10/2026 · Quinta' in t, t
     l1.click('summary >> nth=0'); t=l1.inner_text('#view'); assert 'Presentes:' in t and 'Ausentes:' in t
     # informar saída

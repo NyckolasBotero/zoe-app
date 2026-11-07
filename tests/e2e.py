@@ -40,7 +40,7 @@ with sync_playwright() as p:
     pg.evaluate("go('celula','pres')"); pg.wait_for_selector('#pq'); pg.fill('#pq','Maria Nova'); pg.click("text=Verificar"); pg.wait_for_selector('#nn')
     pg.fill('#ne','Rua 2'); pg.fill('#nc','61988887777'); pg.click("text=Cadastrar e marcar presença"); pg.wait_for_timeout(600)
     pg.evaluate("go('celula','membros')"); pg.wait_for_selector("text=Maria Nova")
-    pg.evaluate("go('celula','freq')"); pg.wait_for_selector('.pr'); pg.locator('.pr').first.check(); pg.click("text=Registrar frequência"); pg.wait_for_timeout(700)
+    pg.evaluate("go('celula','freq')"); pg.wait_for_selector('.pr'); pg.locator('.pr').first.check(); pg.evaluate("frLic('__outra');frD().licR='Estudo da Palavra em célula';const f=document.querySelector('#flr');if(f)f.value=frD().licR"); pg.click("text=Registrar frequência"); pg.wait_for_timeout(700)
     assert '1 de 2' in pg.inner_text('#view'), pg.inner_text('#view')[:300]
     pg.evaluate("go('celula','oracao')"); pg.fill('#ox','Peço oração pela minha família'); pg.click("text=Enviar pedido"); pg.wait_for_timeout(500)
     assert 'minha família' in pg.inner_text('#view')

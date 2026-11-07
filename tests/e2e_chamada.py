@@ -25,7 +25,7 @@ with sync_playwright() as p:
     lid.wait_for_selector('#fv:has-text("Visitante da célula Célula Sul")')
     lid.fill('#fvq','Pedro Novo'); lid.click('#fv button:has-text("Verificar")'); lid.click('#fvr button:has-text("Cadastrar como visitante novo")'); lid.wait_for_selector('#fv:has-text("Visitante novo (pré-cadastro)")')
     assert lid.locator('.pr').first.is_checked()
-    lid.evaluate("fdChange(TODAY,true)"); lid.click('button:has-text("Registrar frequência")')
+    lid.evaluate("fdChange(TODAY,true)"); lid.evaluate("frLic('__outra');frD().licR='Estudo da Palavra em célula';const f=document.querySelector('#flr');if(f)f.value=frD().licR"); lid.click('button:has-text("Registrar frequência")')
     try: lid.wait_for_selector('button:has-text("Confirmar: foi nesse dia")',timeout=2500); lid.click('button:has-text("Confirmar: foi nesse dia")')
     except Exception: pass
     lid.wait_for_selector('.toast:has-text("Frequência")',timeout=10000); t=lid.inner_text('.toast'); assert '2 visitante' in t and 'mural' in t, t

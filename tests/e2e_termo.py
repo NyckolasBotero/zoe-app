@@ -15,7 +15,7 @@ with sync_playwright() as p:
     pg.locator('.tmc').screenshot(path=OUT+'/m_termo.png'); mover(40); pg.locator('.tmc').screenshot(path=OUT+'/m_termo2.png'); mover(95)
     mover(10); assert 'ice' in box()
     mover(88); pg.fill('#fobs','Louvor marcante e dois testemunhos.')
-    pg.check('.pr >> nth=0'); pg.click('button:has-text("Registrar frequência")'); pg.wait_for_selector('text=Histórico de presença')
+    pg.check('.pr >> nth=0'); pg.evaluate("frLic('__outra');frD().licR='Estudo da Palavra em célula';const f=document.querySelector('#flr');if(f)f.value=frD().licR"); pg.click('button:has-text("Registrar frequência")'); pg.wait_for_selector('text=Histórico de presença')
     pg.wait_for_selector('.tmh svg'); pg.click('summary >> nth=0'); assert 'Resumo: Louvor marcante e dois testemunhos.' in pg.inner_text('#view')
     pg.click('.tabs button:has-text("Indicadores")'); pg.wait_for_selector('h3:has-text("Termômetro da presença de Deus")'); t=pg.inner_text('#view'); print(t[:200].replace('\n',' | ')); assert '88%' in t
     pg.screenshot(path=OUT+'/m_termo_ind.png')

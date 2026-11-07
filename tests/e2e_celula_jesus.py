@@ -17,7 +17,7 @@ with sync_playwright() as p:
     lid.wait_for_selector('#fj'); lid.check('#fj input[type=checkbox]'); lid.wait_for_selector('#fj select')
     lid.select_option('#fj select','') ; lid.fill('#fj input[placeholder^="Nome de quem"]','Marcos Ferreira')
     lid.evaluate("document.querySelector('#term').value=85;termoUpd(85)")
-    lid.click('button:has-text("Registrar frequência")'); lid.wait_for_selector('.toast:has-text("Frequência")',timeout=10000)
+    lid.evaluate("frLic('__outra');frD().licR='Estudo da Palavra em célula';const f=document.querySelector('#flr');if(f)f.value=frD().licR"); lid.click('button:has-text("Registrar frequência")'); lid.wait_for_selector('.toast:has-text("Frequência")',timeout=10000)
     adm.evaluate("SOC.igreja=null;go('feed')"); adm.wait_for_selector('.sp-j:has-text("Marcos Ferreira")'); t=adm.inner_text('.sp-j'); assert 'Presença de Deus 85%' in t and 'Célula Norte' in t, t
     adm.screenshot(path=OUT+'/feed_celula_jesus.png')
     print('ERROS',errs); assert not errs

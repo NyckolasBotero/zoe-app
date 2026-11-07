@@ -1,5 +1,15 @@
 [
  {
+  "titulo": "Células: histórico de papéis e lição ministrada na presença",
+  "melhorias": [
+   "Papéis: cada mudança fica registrada (quem recebeu ou deixou o papel, quem fez a mudança e quando) na guia Papéis da célula.",
+   "Cada reunião guarda quem estava responsável por cada papel naquele dia; aparece no Histórico de presença.",
+   "Ao registrar a presença, escolha uma das lições já criadas. Se o que foi ministrado não está nas lições, escreva um breve resumo (obrigatório) para poder lançar."
+  ],
+  "v": "1.130",
+  "data": "07/11/2026"
+ },
+ {
   "titulo": "Árvore Zoe: nome do galho só com 'e filhos' quando há filhos",
   "melhorias": [
    "O galho de uma pessoa sozinha agora mostra só o nome (ex.: 'Nathan'). O 'e filhos' aparece apenas quando ela tem filhos cadastrados."
