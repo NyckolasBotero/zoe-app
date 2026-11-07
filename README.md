@@ -442,8 +442,8 @@ Config PresencasParaParticipante (3) e FaltasParaExParticipante (6), editáveis 
 
 ## v1.133 — Quiz da lição
 - Ao lançar a presença com lição (ou resumo livre), `quizAgenda_` cria um quiz (`Quizzes`) para o dia seguinte. `enviaQuizzes` (gatilho diário 9h, criado em `instalaGatilhos_`; também roda sozinho quando alguém abre o app) gera as perguntas e avisa todos da célula.
-- Geração: IA (Anthropic, propriedades `QUIZ_API_KEY` e `QUIZ_MODELO`, padrão `claude-haiku-5-5`) com plano B sem IA (tema da lição e completar frases). Respostas em `QuizRespostas`, XP 5 + 3 por acerto.
-- Rotas: `myQuizzes`, `getQuiz`, `answerQuiz`, `quizLider`, `quizAcao`, `getQuizCfg`, `saveQuizCfg`. Lições ganharam a coluna `Conteudo`.
+- Geração: IA gratuita da Cloudflare (Workers AI) pelo Worker, rota `/ia` (vínculo `AI`), com plano B sem IA (tema da lição e completar frases). Sem custo. Respostas em `QuizRespostas`, XP 5 + 3 por acerto.
+- Rotas: `myQuizzes`, `getQuiz`, `answerQuiz`, `quizLider`, `quizAcao`, `getQuizCfg`, `testQuizIa`. Lições ganharam a coluna `Conteudo`.
 - Testes: `node tests/quiz.mjs`, `tests/e2e_quiz.py`.
 
 ## v1.131 — Notificações com o app fechado (Cloudflare)

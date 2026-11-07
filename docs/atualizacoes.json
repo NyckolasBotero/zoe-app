@@ -1,5 +1,15 @@
 [
  {
+  "titulo": "Quiz da lição sem custo (IA gratuita da Cloudflare)",
+  "melhorias": [
+   "As perguntas do quiz agora são feitas pela IA gratuita da Cloudflare (Workers AI), no mesmo Worker das notificações. Não precisa de chave nem de pagamento.",
+   "Administração › Definições › Quiz das lições: botão para testar a IA.",
+   "Sem a IA ligada, o quiz continua funcionando com perguntas simples de completar frases."
+  ],
+  "v": "1.136",
+  "data": "07/11/2026"
+ },
+ {
   "titulo": "Quiz da lição para a célula",
   "melhorias": [
    "Ao lançar a presença com a lição ministrada, o app monta sozinho um quiz de 5 perguntas sobre ela e envia um lembrete a todos da célula na manhã seguinte.",

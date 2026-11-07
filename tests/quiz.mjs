@@ -10,7 +10,7 @@ const tk = n => e.call('login', { email: n + '@zoe.com', senha: 'Temp12345' }).d
 ['Paz de Cristo', 'A armadura de Deus', 'Fé e obras', 'Oração que transforma'].forEach(t => call('saveLesson', { titulo: t, resumo: 'resumo' }));
 const texto = 'O semeador saiu a semear e parte da semente caiu à beira do caminho. Jesus explicou que a semente é a palavra de Deus anunciada. O coração endurecido não permite que a palavra produza frutos. A terra boa representa quem ouve a palavra e persevera com paciência.';
 call('saveLesson', { titulo: 'Parábola do Semeador', resumo: 'Os tipos de coração', conteudo: texto }); const lic = call('listLessons', {}).find(l => l.titulo === 'Parábola do Semeador').id;
-e.run('var CALLS = []; var IA = null; UrlFetchApp = { fetchAll: rs => rs.map(r => ({ getResponseCode: () => 200, getContentText: () => "" })), fetch: (u, r) => { CALLS.push({ url: u, r }); if (/anthropic/.test(u)) { if (IA === "erro") return { getResponseCode: () => 500, getContentText: () => "" }; return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ content: [{ type: "text", text: "Aqui está:\\n" + JSON.stringify(IA) }] }) }; } return { getResponseCode: () => 200, getContentText: () => "" }; } }');
+e.run('var CALLS = []; var IA = null; UrlFetchApp = { fetchAll: rs => rs.map(r => ({ getResponseCode: () => 200, getContentText: () => "" })), fetch: (u, r) => { CALLS.push({ url: u, r }); return { getResponseCode: () => 200, getContentText: () => "" }; } }');
 // presença com lição cria quiz agendado para o dia seguinte; sem lição/resumo não cria
 const ontem = new Date(Date.now() - 864e5 * 2).toISOString().slice(0, 10);
 call('saveAttendance', { celulaId: cel, data: ontem, presentes: [a], licaoId: lic, confirmaDia: true });
@@ -35,13 +35,16 @@ call('answerQuiz', { id, respostas: cert.map(p => (p + 1) % 4) }, bT); lq = call
 assert.equal(call('myQuizzes', {}, aT).pendentes, 0); assert.equal(call('myQuizzes', {}, bT).itens[0].feito.acertos, 0);
 assert.equal(e.call('quizAcao', { id, acao: 'refazer' }, adm).error.code, 'VALIDATION', 'não refaz depois de respondido');
 assert.equal(e.call('quizLider', { celulaId: cel }, zT).error.code, 'FORBIDDEN');
-// IA: chave ligada gera pelo Claude; resposta inválida cai para o modelo; chave não volta ao app
-assert.equal(e.call('saveQuizCfg', { apiKey: 'sk-ant-segredo123456789012345' }, aT).error.code, 'FORBIDDEN'); let cfg = call('saveQuizCfg', { apiKey: 'sk-ant-segredo123456789012345' }); assert.equal(cfg.ia, true); assert(!JSON.stringify(cfg).includes('segredo'));
-e.run(`IA = [1,2,3,4,5].map(i => ({ p: 'Pergunta ' + i + '?', op: ['A'+i, 'B'+i, 'C'+i, 'D'+i], c: i % 4, e: 'porque sim' })); CALLS.length = 0`);
+// IA gratuita (Worker /ia): ligar o Worker faz as perguntas virem da IA
+assert.equal(e.call('testQuizIa', {}, adm).error.code, 'VALIDATION', 'sem Worker não testa');
+call('saveEntrega', { workerUrl: 'https://worker.exemplo.workers.dev', workerSegredo: 's3' }); assert.equal(call('getQuizCfg', {}).ia, true);
+e.run(`UrlFetchApp.fetch = (u, r) => { CALLS.push({ url: u, r }); if (/\\/ia$/.test(u)) { if (IA === "erro") return { getResponseCode: () => 502, getContentText: () => "{}" }; return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ ok: true, texto: "Claro! Aqui está:\\n" + JSON.stringify(IA) }) }; } return { getResponseCode: () => 200, getContentText: () => "" }; };
+IA = [1,2,3,4,5].map(i => ({ p: 'Pergunta ' + i + '?', op: ['A'+i, 'B'+i, 'C'+i, 'D'+i], c: i % 4, e: 'porque sim' })); CALLS.length = 0`);
+assert.equal(call('testQuizIa', {}).ok, true);
 call('saveAttendance', { celulaId: cel, data: new Date().toISOString().slice(0, 10), presentes: [a, b], licaoId: '', licaoResumo: 'Estudamos a oração do Pai Nosso e a importância de orar com fé e perseverança todos os dias', confirmaDia: true });
 let ag = JSON.parse(e.run('JSON.stringify(table_("Quizzes").rows.filter(r=>r.Status==="agendado"))')); assert.equal(ag.length, 1, 'resumo livre também gera quiz'); assert.equal(ag[0].EnviarEm, new Date(Date.now() + 864e5).toISOString().slice(0, 10), 'enviado só no dia seguinte');
 assert.equal(call('myQuizzes', {}, aT).itens.length, 1, 'ainda não venceu');
-let ac = call('quizAcao', { id: ag[0].QuizID, acao: 'enviar' }, adm); assert.equal(ac.ok, true); const ca = e.run('JSON.stringify(CALLS.filter(c=>/anthropic/.test(c.url)).map(c=>({h:c.r.headers,b:JSON.parse(c.r.payload)})))'); const cj = JSON.parse(ca); assert.equal(cj.length, 1); assert.equal(cj[0].h['x-api-key'], 'sk-ant-segredo123456789012345'); assert.match(cj[0].b.messages[0].content, /oração do Pai Nosso/);
+e.run('CALLS.length = 0'); let ac = call('quizAcao', { id: ag[0].QuizID, acao: 'enviar' }, adm); assert.equal(ac.ok, true); const ca = e.run('JSON.stringify(CALLS.filter(c=>/\\/ia$/.test(c.url)).map(c=>({h:c.r.headers,b:JSON.parse(c.r.payload)})))'); const cj = JSON.parse(ca); assert.equal(cj.length, 1); assert.equal(cj[0].h['X-Segredo'], 's3'); assert.match(cj[0].b.prompt, /oração do Pai Nosso/);
 lq = call('quizLider', { celulaId: cel }); assert.equal(lq.itens[0].fonte, 'ia'); assert.equal(lq.itens[0].total, 5); assert.equal(lq.itens[0].perguntas[0].p, 'Pergunta 1?');
 e.run('IA = "erro"'); call('saveAttendance', { celulaId: cel, data: ontem, presentes: [a], licaoId: lic, confirmaDia: true });
 // gatilho diário

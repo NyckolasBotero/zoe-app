@@ -51,11 +51,23 @@ async function enviar(sub, payload, env){
     'Content-Encoding':'aes128gcm', 'Content-Type':'application/octet-stream', 'TTL':'86400', 'Urgency':'high' } });
   return r.status;
 }
+/** IA gratuita (Cloudflare Workers AI) para o quiz das lições. Precisa do vínculo "AI" (Settings > Bindings > Workers AI). */
+async function ia(d, env){
+  const json = (o, st) => new Response(JSON.stringify(o), { status: st || 200, headers:{ 'Content-Type':'application/json' } });
+  if(!env.AI) return json({ ok:false, erro:'Vínculo "AI" não configurado no Worker' }, 501);
+  const prompt = String(d.prompt || '').slice(0, 9000); if(!prompt) return json({ ok:false, erro:'sem texto' }, 400);
+  try{
+    const r = await env.AI.run(env.IA_MODELO || '@cf/meta/llama-3.3-70b-instruct-fp8-fast', { messages:[{ role:'system', content:'Você responde sempre em português do Brasil e exatamente no formato pedido.' }, { role:'user', content:prompt }], max_tokens: Math.min(+d.max_tokens || 1500, 2500), temperature: 0.4 });
+    const t = r && (typeof r.response === 'string' ? r.response : JSON.stringify(r.response || r));
+    return json({ ok:true, texto: String(t || '') });
+  }catch(e){ return json({ ok:false, erro:String(e && e.message || e).slice(0, 160) }, 502); }
+}
 export default {
   async fetch(req, env){
     if(req.method !== 'POST') return new Response('Zoe: servidor de notificações', { status:200 });
     if(!env.SEGREDO || req.headers.get('X-Segredo') !== env.SEGREDO) return new Response('não autorizado', { status:401 });
     let d; try{ d = await req.json(); }catch(e){ return new Response('json inválido', { status:400 }); }
+    if(new URL(req.url).pathname === '/ia') return ia(d, env);
     const res = await Promise.all((d.itens||[]).slice(0,50).map(async it=>{
       try{ return { endpoint:it.sub.endpoint, status: await enviar(it.sub, it.payload, env) }; }catch(e){ return { endpoint:it.sub && it.sub.endpoint, status:0, erro:String(e && e.message || e).slice(0,120) }; }
     }));

@@ -4114,7 +4114,7 @@ const ROUTES = {
   listScales: { auth: 'any', fn: listScales_ }, claimScale: { auth: 'any', write: 1, fn: claimScale_ }, saveScale: { auth: 'any', write: 1, fn: saveScale_ }, rescheduleScale: { auth: 'any', write: 1, fn: rescheduleScale_ }, deleteScale: { auth: 'any', write: 1, fn: deleteScale_ }, respondScale: { auth: 'any', write: 1, fn: respondScale_ }, requestSwap: { auth: 'any', write: 1, fn: requestSwap_ }, answerSwap: { auth: 'any', write: 1, fn: answerSwap_ }, markScale: { auth: 'any', write: 1, fn: markScale_ }, requestJoin: { auth: 'any', write: 1, fn: requestJoin_ }, decideJoin: { auth: 'any', write: 1, fn: decideJoin_ },
   listSongs: { auth: 'any', fn: listSongs_ }, saveSong: { auth: 'any', write: 1, fn: saveSong_ }, deleteSong: { auth: 'any', write: 1, fn: deleteSong_ }, saveSongDefault: { auth: 'any', write: 1, fn: saveSongDefault_ }, searchLyrics: { auth: 'any', fn: searchLyrics_ }, importLyrics: { auth: 'any', fn: importLyrics_ },
   boot: { auth: 'any', fn: boot_ },
-  myQuizzes: { auth: 'any', fn: myQuizzes_ }, getQuiz: { auth: 'any', fn: getQuiz_ }, answerQuiz: { auth: 'any', write: 1, fn: answerQuiz_ }, quizLider: { auth: 'any', fn: quizLider_ }, quizAcao: { auth: 'any', write: 1, fn: quizAcao_ }, getQuizCfg: { auth: 'config', fn: getQuizCfg_ }, saveQuizCfg: { auth: 'config', write: 1, fn: saveQuizCfg_ },
+  myQuizzes: { auth: 'any', fn: myQuizzes_ }, getQuiz: { auth: 'any', fn: getQuiz_ }, answerQuiz: { auth: 'any', write: 1, fn: answerQuiz_ }, quizLider: { auth: 'any', fn: quizLider_ }, quizAcao: { auth: 'any', write: 1, fn: quizAcao_ }, getQuizCfg: { auth: 'config', fn: getQuizCfg_ }, testQuizIa: { auth: 'config', fn: testQuizIa_ },
   getEntrega: { auth: 'config', fn: getEntrega_ }, saveEntrega: { auth: 'config', write: 1, fn: saveEntrega_ },
   getPushKey: { auth: 'any', fn: getPushKey_ }, pushDiag: { auth: 'any', fn: pushDiag_ }, savePushSub: { auth: 'any', write: 1, fn: savePushSub_ }, delPushSub: { auth: 'any', write: 1, fn: delPushSub_ },
   sodGet: { auth: 'any', write: 1, fn: sodGet_ }, sodAbrir: { auth: 'any', write: 1, fn: sodAbrir_ }, sodEquipar: { auth: 'any', write: 1, fn: sodEquipar_ }, sodDescartar: { auth: 'any', write: 1, fn: sodDescartar_ }, sodAparencia: { auth: 'any', write: 1, fn: sodAparencia_ }, sodOrar: { auth: 'any', write: 1, fn: sodOrar_ }, sodComprar: { auth: 'any', write: 1, fn: sodComprar_ },
@@ -4366,12 +4366,12 @@ function quizModelo_(titulo, texto, seed) {
   return out;
 }
 function quizIa_(titulo, texto) {
-  const pr = PropertiesService.getScriptProperties(), key = String(pr.getProperty('QUIZ_API_KEY') || '').trim(); if (!key) return null;
-  const modelo = String(pr.getProperty('QUIZ_MODELO') || '').trim() || 'claude-haiku-5-5';
+  const E = entregaProps_(); if (!E.worker) return null;
   const prompt = 'Você prepara um quiz curto para os participantes de uma célula (pequeno grupo) de uma igreja cristã evangélica, feito depois da reunião, para fixar a lição.\n\nLição: ' + titulo + '\n\nConteúdo da lição:\n' + texto + '\n\nCrie exatamente ' + QUIZ_N_ + ' perguntas de múltipla escolha em português do Brasil, em linguagem simples, sobre o que foi ensinado. Use só o que está no conteúdo (se ele for curto, pergunte sobre o tema e as ideias principais) e não invente doutrina. Cada pergunta tem 4 alternativas curtas, só 1 correta, e as erradas devem parecer plausíveis. Varie a posição da correta. Inclua uma explicação de uma frase.\n\nResponda SOMENTE com um JSON, sem texto antes ou depois, neste formato:\n[{"p":"pergunta","op":["a","b","c","d"],"c":0,"e":"explicação"}]\nonde "c" é o índice (0 a 3) da alternativa correta.';
-  const r = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', { method: 'post', contentType: 'application/json', headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01' }, payload: JSON.stringify({ model: modelo, max_tokens: 2000, messages: [{ role: 'user', content: prompt }] }), muteHttpExceptions: true });
+  const r = UrlFetchApp.fetch(E.worker.url.replace(/\/+$/, '') + '/ia', { method: 'post', contentType: 'application/json', headers: { 'X-Segredo': E.worker.segredo }, payload: JSON.stringify({ prompt: prompt, max_tokens: 1800 }), muteHttpExceptions: true });
   if (r.getResponseCode() !== 200) throw new Error('IA respondeu ' + r.getResponseCode());
-  const j = JSON.parse(r.getContentText()), tx = (j.content || []).map(function (b) { return b.text || ''; }).join(''), m = tx.match(/\[[\s\S]*\]/); if (!m) throw new Error('resposta sem JSON');
+  const j = JSON.parse(r.getContentText()); if (!j.ok) throw new Error(String(j.erro || 'sem resposta').slice(0, 60));
+  const m = String(j.texto || '').match(/\[[\s\S]*\]/); if (!m) throw new Error('resposta sem JSON');
   return quizValida_(JSON.parse(m[0]));
 }
 function quizValida_(arr) {
@@ -4427,7 +4427,7 @@ function answerQuiz_(d, u) {
 function quizLider_(d, u) {
   const id = cellOf_(u, d, 'ver', 'ind', 'ver'), mem = ativosDaCelula_(id), nome = {}; mem.forEach(function (m) { nome[m.MembroID] = m.Apelido || m.Simples || m.Nome; });
   const resp = {}; lazy_('QuizRespostas').rows.forEach(function (r) { (resp[r.QuizID] = resp[r.QuizID] || []).push(r); });
-  return { ia: !!String(PropertiesService.getScriptProperties().getProperty('QUIZ_API_KEY') || '').trim(), itens: lazy_('Quizzes').rows.filter(function (q) { return q.CelulaID === id && q.Status !== 'cancelado'; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).slice(0, 10).map(function (q) {
+  return { ia: !!entregaProps_().worker, itens: lazy_('Quizzes').rows.filter(function (q) { return q.CelulaID === id && q.Status !== 'cancelado'; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).slice(0, 10).map(function (q) {
     const rs = resp[q.QuizID] || [], ps = jparse_(q.Perguntas, []), feitos = {}; rs.forEach(function (r) { feitos[r.MembroID] = Number(r.Acertos); });
     return { id: q.QuizID, titulo: q.Titulo, data: q.Data, status: q.Status, fonte: q.Fonte, enviarEm: q.EnviarEm, perguntas: ps, total: ps.length, responderam: rs.length, participantes: mem.length, media: rs.length ? Math.round(rs.reduce(function (a, r) { return a + Number(r.Acertos); }, 0) / rs.length * 10) / 10 : 0, pessoas: mem.map(function (m) { return { nome: nome[m.MembroID], acertos: feitos[m.MembroID] === undefined ? null : feitos[m.MembroID] }; }) };
   }) };
@@ -4442,12 +4442,12 @@ function quizAcao_(d, u) {
   if (a === 'enviar') { if (q0.Status !== 'agendado' && q0.Status !== 'sem') throw new ApiError('VALIDATION', 'Este quiz já foi enviado.'); withLock_(function () { const t = lazy_('Quizzes'), q = t.rows.filter(function (x) { return x.QuizID === q0.QuizID; })[0]; writeRow_(t, q._row, { Status: 'agendado', EnviarEm: today_() }); }); return { ok: quizEnvia_(q0.QuizID) }; }
   throw new ApiError('VALIDATION', 'Ação inválida.');
 }
-function getQuizCfg_() { const pr = PropertiesService.getScriptProperties(); return { ia: !!String(pr.getProperty('QUIZ_API_KEY') || '').trim(), modelo: String(pr.getProperty('QUIZ_MODELO') || '') }; }
-function saveQuizCfg_(d) {
-  const pr = PropertiesService.getScriptProperties();
-  if (d.limpar) { pr.deleteProperty('QUIZ_API_KEY'); } else if (d.apiKey) { const k = String(d.apiKey).trim(); if (!/^[\w-]{20,300}$/.test(k)) throw new ApiError('VALIDATION', 'Chave inválida.'); pr.setProperty('QUIZ_API_KEY', k); }
-  if (d.modelo !== undefined) { const m = String(d.modelo).trim(); if (m && !/^[\w.-]{3,60}$/.test(m)) throw new ApiError('VALIDATION', 'Nome de modelo inválido.'); if (m) pr.setProperty('QUIZ_MODELO', m); else pr.deleteProperty('QUIZ_MODELO'); }
-  return getQuizCfg_();
+function getQuizCfg_() { return { ia: !!entregaProps_().worker }; }
+// Testa a IA gratuita da Cloudflare com uma lição de exemplo
+function testQuizIa_() {
+  if (!entregaProps_().worker) throw new ApiError('VALIDATION', 'Ligue primeiro o Worker da Cloudflare (cartão acima).');
+  try { const r = quizIa_('Parábola do Semeador', 'O semeador saiu a semear e parte da semente caiu à beira do caminho. Jesus explicou que a semente é a palavra de Deus. A terra boa representa quem ouve a palavra e persevera.'); return { ok: !!(r && r.length >= 2), perguntas: r ? r.length : 0, msg: r && r.length >= 2 ? 'A IA gratuita respondeu e gerou ' + r.length + ' perguntas.' : 'A IA respondeu, mas sem perguntas válidas.' }; }
+  catch (e) { return { ok: false, perguntas: 0, msg: 'Não funcionou: ' + String(e && e.message || e).slice(0, 100) + '. Confira se o vínculo AI foi adicionado ao Worker.' }; }
 }
 /* ===== Entrega das notificações: Cloudflare Worker (Web Push) ===== */
 // Tudo o que é segredo fica nas Propriedades do script (nunca na planilha nem no app)

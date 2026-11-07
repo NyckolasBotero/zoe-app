@@ -21,6 +21,12 @@ O Worker recebe do Apps Script a lista de aparelhos e a mensagem, cifra e entreg
 
 Se o Worker for apagado ou o segredo ficar errado, o app volta sozinho a avisar a falha no teste (erro 401 = segredo diferente). Para voltar ao envio direto, use *Desligar o Worker*.
 
+## 4. IA gratuita para o quiz das lições (opcional)
+O quiz que a célula recebe depois da reunião usa a IA gratuita da Cloudflare (Workers AI), sem chave e sem custo dentro do limite diário gratuito.
+1. No Worker: **Settings › Bindings › Add › Workers AI**, com o nome de variável **`AI`**. *Deploy*.
+2. No app: Administração › Definições › **Quiz das lições (IA gratuita)** › *Testar a IA*.
+Sem esse vínculo o app usa perguntas simples de completar frases. Para trocar o modelo, crie a variável `IA_MODELO` no Worker (padrão `@cf/meta/llama-3.3-70b-instruct-fp8-fast`).
+
 ## iPhone
 O iPhone só recebe Web Push com o app **instalado na Tela de Início** (Safari › Compartilhar › Adicionar à Tela de Início) e iOS 16.4 ou mais novo. 
 
