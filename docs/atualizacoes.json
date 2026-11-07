@@ -1,8 +1,9 @@
 [
  {
-  "titulo": "Quiz único por lição",
+  "titulo": "Quiz único por lição escolhida",
   "melhorias": [
-   "Células que dão a mesma lição recebem o mesmo quiz: o app gera as perguntas uma vez só e reaproveita nas outras, economizando o limite gratuito da IA.",
+   "Quando a lição ministrada é escolhida na lista, todas as células recebem o mesmo quiz: as perguntas são geradas uma vez só (pelo nome da lição).",
+   "Quando o líder escolhe Outra e escreve o resumo, a IA entende o resumo e gera um quiz só daquela reunião.",
    "O líder ainda pode gerar as perguntas de novo para a sua célula."
   ],
   "v": "1.137",

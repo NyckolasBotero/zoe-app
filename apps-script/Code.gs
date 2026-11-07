@@ -94,7 +94,7 @@ const SHEETS = {
   EventoFotos: ['FotoID', 'EventoID', 'Foto', 'Por', 'Data'],
   Noticias: ['NoticiaID', 'Titulo', 'Texto', 'Data', 'CriadoPor', 'Status'],
   Licoes: ['LicaoID', 'Titulo', 'Resumo', 'Categoria', 'Url', 'Status', 'Conteudo'],
-  Quizzes: ['QuizID', 'ReuniaoID', 'CelulaID', 'Data', 'Titulo', 'Texto', 'Fonte', 'Perguntas', 'Status', 'EnviarEm', 'EnviadoEm', 'CriadoEm'],
+  Quizzes: ['QuizID', 'ReuniaoID', 'CelulaID', 'Data', 'Titulo', 'Texto', 'Fonte', 'Perguntas', 'Status', 'EnviarEm', 'EnviadoEm', 'CriadoEm', 'LicaoID'],
   QuizRespostas: ['QuizID', 'MembroID', 'Acertos', 'Total', 'Respostas', 'Data'],
   Dinamicas: ['DinamicaID', 'Titulo', 'Descricao', 'Minutos', 'MembroID', 'Data'],
   Produtos: ['ProdutoID', 'Nome', 'Categoria', 'Preco', 'Descricao', 'Foto', 'Opcoes', 'Ativo', 'Ordem', 'Disponivel', 'PromoPreco', 'PromoAte'],
@@ -4343,8 +4343,8 @@ function quizAgenda_(celulaId, reuniaoId, data, licao) {
   let titulo = licao.titulo || '', texto = licao.resumo || '';
   if (licao.id) { const l = table_('Licoes').rows.filter(function (x) { return x.LicaoID === licao.id; })[0]; if (l) { texto = [l.Resumo, l.Conteudo].filter(String).join('\n'); titulo = l.Titulo; } }
   if ((titulo + texto).length < 10) return;
-  const t = lazy_('Quizzes'), ex = t.rows.filter(function (q) { return q.ReuniaoID === reuniaoId; })[0], quando = addDias_(data, 1) > today_() ? addDias_(data, 1) : today_();
-  const v = { Titulo: clip_(titulo || 'Lição da célula', 120), Texto: clip_(texto, 4000) };
+  lazy_('Quizzes'); ensureCols_('Quizzes', ['LicaoID']); const t = table_('Quizzes'), ex = t.rows.filter(function (q) { return q.ReuniaoID === reuniaoId; })[0], quando = addDias_(data, 1) > today_() ? addDias_(data, 1) : today_();
+  const v = { Titulo: clip_(titulo || 'Lição da célula', 120), Texto: clip_(texto, 4000), LicaoID: licao.id || '' };
   if (ex) { if (ex.Status === 'agendado' || ex.Status === 'sem') writeRow_(t, ex._row, Object.assign(v, { Status: 'agendado', Perguntas: '', EnviarEm: quando })); return; }
   appendRow_(t, Object.assign({ QuizID: id_('QZ'), ReuniaoID: reuniaoId, CelulaID: celulaId, Data: data, Fonte: '', Perguntas: '', Status: 'agendado', EnviarEm: quando, CriadoEm: now_() }, v));
 }
@@ -4396,9 +4396,11 @@ function quizEnvia_(quizId) {
     return true;
   });
 }
-// Células que dão a mesma lição recebem o mesmo quiz: gera uma vez (1 chamada à IA) e reaproveita nas outras
+// Lição escolhida na lista (mesmo LicaoID) = mesmo quiz para todas as células: gera uma vez (1 chamada à IA) e reaproveita.
+// Lição "Outra" (resumo escrito na hora) nunca reaproveita: a IA entende o resumo e gera um quiz só daquela reunião.
 function quizReuso_(q0) {
-  const ia = !!entregaProps_().worker, mesmos = lazy_('Quizzes').rows.filter(function (q) { return q.QuizID !== q0.QuizID && q.Perguntas && q.Status !== 'cancelado' && q.Status !== 'sem' && norm_(q.Titulo) === norm_(q0.Titulo) && norm_(q.Texto) === norm_(q0.Texto); });
+  if (!q0.LicaoID) return null;
+  const ia = !!entregaProps_().worker, mesmos = lazy_('Quizzes').rows.filter(function (q) { return q.QuizID !== q0.QuizID && q.LicaoID === q0.LicaoID && q.Perguntas && q.Status !== 'cancelado' && q.Status !== 'sem'; });
   const alvo = mesmos.filter(function (q) { return q.Fonte === 'ia'; })[0] || (ia ? null : mesmos[0]); if (!alvo) return null;
   const ps = jparse_(alvo.Perguntas, []); return ps.length ? { perguntas: ps, fonte: alvo.Fonte, erro: '' } : null;
 }

@@ -59,4 +59,8 @@ call('saveAttendance', { celulaId: cel, data: dia3, presentes: [a], licaoId: lic
 e.run('CALLS.length = 0; IA = [1,2,3,4,5].map(i => ({ p: "Reuso " + i + "?", op: ["A"+i, "B"+i, "C"+i, "D"+i], c: i % 4, e: "x" }))'); e.run('enviaQuizzes()');
 assert.equal(JSON.parse(e.run('JSON.stringify(CALLS.filter(c=>/\\/ia$/.test(c.url)).length)')), 1, 'uma chamada à IA para duas células');
 const dois = JSON.parse(e.run('JSON.stringify(table_("Quizzes").rows.filter(r=>r.Titulo==="Fé e perseverança").map(r=>[r.Status,r.Fonte,r.Perguntas]))')); assert.equal(dois.length, 2); assert(dois.every(x => x[0] === 'enviado' && x[1] === 'ia') && dois[0][2] === dois[1][2]);
+// lição "Outra" (resumo livre) nunca reaproveita: cada reunião gera o próprio quiz a partir do resumo
+const dia4 = new Date(Date.now() - 864e5 * 4).toISOString().slice(0, 10), rs = 'Falamos sobre o perdão: perdoar como Cristo nos perdoou, deixando a mágoa e restaurando relacionamentos feridos';
+e.run('CALLS.length = 0'); call('saveAttendance', { celulaId: cel, data: dia4, presentes: [a], licaoId: '', licaoResumo: rs, confirmaDia: true }); call('saveAttendance', { celulaId: cel2, data: dia4, presentes: [], licaoId: '', licaoResumo: rs, confirmaDia: true });
+e.run('enviaQuizzes()'); assert.equal(JSON.parse(e.run('JSON.stringify(CALLS.filter(c=>/\\/ia$/.test(c.url)).length)')), 2, 'resumo livre: uma chamada por reunião'); assert.match(JSON.parse(e.run('JSON.stringify(CALLS.filter(c=>/\\/ia$/.test(c.url)).map(c=>JSON.parse(c.r.payload).prompt))'))[0], /perdão/);
 console.log('OK quiz');
