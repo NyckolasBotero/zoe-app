@@ -93,7 +93,9 @@ const SHEETS = {
   Assinaturas: ['MembroID', 'Tipo', 'Dado', 'Cargo', 'Atualizado', 'Fonte'],
   EventoFotos: ['FotoID', 'EventoID', 'Foto', 'Por', 'Data'],
   Noticias: ['NoticiaID', 'Titulo', 'Texto', 'Data', 'CriadoPor', 'Status'],
-  Licoes: ['LicaoID', 'Titulo', 'Resumo', 'Categoria', 'Url', 'Status'],
+  Licoes: ['LicaoID', 'Titulo', 'Resumo', 'Categoria', 'Url', 'Status', 'Conteudo'],
+  Quizzes: ['QuizID', 'ReuniaoID', 'CelulaID', 'Data', 'Titulo', 'Texto', 'Fonte', 'Perguntas', 'Status', 'EnviarEm', 'EnviadoEm', 'CriadoEm'],
+  QuizRespostas: ['QuizID', 'MembroID', 'Acertos', 'Total', 'Respostas', 'Data'],
   Dinamicas: ['DinamicaID', 'Titulo', 'Descricao', 'Minutos', 'MembroID', 'Data'],
   Produtos: ['ProdutoID', 'Nome', 'Categoria', 'Preco', 'Descricao', 'Foto', 'Opcoes', 'Ativo', 'Ordem', 'Disponivel', 'PromoPreco', 'PromoAte'],
   Pastores: ['PastorID', 'Nome', 'Cargo', 'Foto', 'Ordem', 'Ativo'],
@@ -656,6 +658,7 @@ function saveAttendance_(d, u) {
     if (ex) writeRow_(rt, ex._row, patch); else appendRow_(rt, Object.assign({ ReuniaoID: rid, CelulaID: id, Data: data }, patch));
     const pt2 = table_('Presencas'); pres.forEach(function (m) { appendRow_(pt2, { ReuniaoID: rid, CelulaID: id, Data: data, MembroID: m }); awardXp_(m, 'celula:' + id + ':' + data, 10, 'Presença na célula'); });
     membresiaCheck_(id, pres); exAutomatico_(id); const novas = [];
+    if (quer) { try { quizAgenda_(id, rid, data, licao); } catch (eq) { console.error(eq && eq.stack || eq); } }
     // visitantes da reunião: membro de outra célula (só visita, não muda de célula) ou pessoa nova (pré-cadastro)
     const pv = lazy_('PresVisitas'); for (let i = pv.rows.length - 1; i >= 0; i--) if (pv.rows[i].CelulaID === id && pv.rows[i].Data === data) delRow_(pv, pv.rows[i]._row);
     const mt2 = table_('Membros'), vt = table_('Visitantes'), pv2 = lazy_('PresVisitas'), vistos = {}; let nVis = 0;
@@ -1458,7 +1461,7 @@ function deleteMinistry_(d, u) { return withLock_(function () { const t = table_
 function listLessons_() { return table_('Licoes').rows.filter(function (l) { return l.Status !== 'Removida'; }).map(function (l) { return { id: l.LicaoID, titulo: l.Titulo, resumo: l.Resumo, categoria: l.Categoria, url: l.Url }; }); }
 function listDyn_() { return table_('Dinamicas').rows.map(function (x) { return { id: x.DinamicaID, titulo: x.Titulo, descricao: x.Descricao, minutos: Number(x.Minutos || 10), meu: false, membroId: x.MembroID }; }); }
 function addDyn_(d, u) { const t = clip_(d.titulo, 100); if (!t) throw new ApiError('VALIDATION', 'Dê um nome à dinâmica.'); appendRow_(table_('Dinamicas'), { DinamicaID: id_('D'), Titulo: t, Descricao: clip_(d.descricao, 800), Minutos: String(Math.max(1, Math.min(240, Number(d.minutos) || 10))), MembroID: u.membroId, Data: now_() }); return { ok: true }; }
-function saveLesson_(d, u) { const t = clip_(d.titulo, 120), url = clip_(d.url, 300); if (!t) throw new ApiError('VALIDATION', 'Informe o título da lição.'); if (url && !/^https:\/\//.test(url)) throw new ApiError('VALIDATION', 'O link precisa começar com https://.'); appendRow_(table_('Licoes'), { LicaoID: id_('L'), Titulo: t, Resumo: clip_(d.resumo, 400), Categoria: clip_(d.categoria, 40), Url: url, Status: 'Ativa' }); audit_(u.email, 'LICAO', t, 'OK'); return { ok: true }; }
+function saveLesson_(d, u) { const t = clip_(d.titulo, 120), url = clip_(d.url, 300); if (!t) throw new ApiError('VALIDATION', 'Informe o título da lição.'); if (url && !/^https:\/\//.test(url)) throw new ApiError('VALIDATION', 'O link precisa começar com https://.'); ensureCols_('Licoes', ['Conteudo']); appendRow_(table_('Licoes'), { LicaoID: id_('L'), Titulo: t, Resumo: clip_(d.resumo, 400), Categoria: clip_(d.categoria, 40), Url: url, Status: 'Ativa', Conteudo: clip_(d.conteudo, 4000) }); audit_(u.email, 'LICAO', t, 'OK'); return { ok: true }; }
 function listVideos_() { return table_('Videos').rows.filter(function (v) { return v.Status !== 'Removido'; }).sort(function (a, b) { return Number(a.Ordem) - Number(b.Ordem); }).map(function (v) { return { id: v.VideoID, titulo: v.Titulo, url: v.Url, tipo: v.Tipo === 'live' ? 'live' : 'video', aoVivo: v.AoVivo === '1', hls: v.AoVivo === '1' ? (v.Hls || '') : '', links: jparse_(v.Links, []) }; }); }
 function saveVideo_(d, u) { const t = clip_(d.titulo, 120), url = clip_(d.url, 300); if (!t || !/^https:\/\//.test(url)) throw new ApiError('VALIDATION', 'Informe título e link https.'); const v = table_('Videos'); appendRow_(v, { VideoID: id_('V'), Titulo: t, Url: url, Ordem: String(v.rows.length + 1), Status: 'Ativo', Tipo: d.tipo === 'live' ? 'live' : 'video', AoVivo: d.tipo === 'live' && d.aoVivo ? '1' : '0' }); audit_(u.email, 'VIDEO', t, 'OK'); return { ok: true }; }
 function updateVideo_(d, u) { return withLock_(function () { const t = table_('Videos'), r = t.rows.filter(function (x) { return x.VideoID === d.id && x.Status !== 'Removido'; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Vídeo não encontrado.'); const p = {}; if (d.titulo !== undefined) { p.Titulo = clip_(d.titulo, 120); if (!p.Titulo) throw new ApiError('VALIDATION', 'Informe o título.'); } if (d.tipo !== undefined) p.Tipo = d.tipo === 'live' ? 'live' : 'video'; if (d.aoVivo !== undefined) p.AoVivo = d.aoVivo ? '1' : '0'; if ((p.Tipo || r.Tipo) !== 'live') p.AoVivo = '0'; writeRow_(t, r._row, p); audit_(u.email, 'VIDEO_EDIT', r.Titulo, 'OK'); return { ok: true }; }); }
@@ -4111,6 +4114,7 @@ const ROUTES = {
   listScales: { auth: 'any', fn: listScales_ }, claimScale: { auth: 'any', write: 1, fn: claimScale_ }, saveScale: { auth: 'any', write: 1, fn: saveScale_ }, rescheduleScale: { auth: 'any', write: 1, fn: rescheduleScale_ }, deleteScale: { auth: 'any', write: 1, fn: deleteScale_ }, respondScale: { auth: 'any', write: 1, fn: respondScale_ }, requestSwap: { auth: 'any', write: 1, fn: requestSwap_ }, answerSwap: { auth: 'any', write: 1, fn: answerSwap_ }, markScale: { auth: 'any', write: 1, fn: markScale_ }, requestJoin: { auth: 'any', write: 1, fn: requestJoin_ }, decideJoin: { auth: 'any', write: 1, fn: decideJoin_ },
   listSongs: { auth: 'any', fn: listSongs_ }, saveSong: { auth: 'any', write: 1, fn: saveSong_ }, deleteSong: { auth: 'any', write: 1, fn: deleteSong_ }, saveSongDefault: { auth: 'any', write: 1, fn: saveSongDefault_ }, searchLyrics: { auth: 'any', fn: searchLyrics_ }, importLyrics: { auth: 'any', fn: importLyrics_ },
   boot: { auth: 'any', fn: boot_ },
+  myQuizzes: { auth: 'any', fn: myQuizzes_ }, getQuiz: { auth: 'any', fn: getQuiz_ }, answerQuiz: { auth: 'any', write: 1, fn: answerQuiz_ }, quizLider: { auth: 'any', fn: quizLider_ }, quizAcao: { auth: 'any', write: 1, fn: quizAcao_ }, getQuizCfg: { auth: 'config', fn: getQuizCfg_ }, saveQuizCfg: { auth: 'config', write: 1, fn: saveQuizCfg_ },
   getEntrega: { auth: 'config', fn: getEntrega_ }, saveEntrega: { auth: 'config', write: 1, fn: saveEntrega_ },
   getPushKey: { auth: 'any', fn: getPushKey_ }, pushDiag: { auth: 'any', fn: pushDiag_ }, savePushSub: { auth: 'any', write: 1, fn: savePushSub_ }, delPushSub: { auth: 'any', write: 1, fn: delPushSub_ },
   sodGet: { auth: 'any', write: 1, fn: sodGet_ }, sodAbrir: { auth: 'any', write: 1, fn: sodAbrir_ }, sodEquipar: { auth: 'any', write: 1, fn: sodEquipar_ }, sodDescartar: { auth: 'any', write: 1, fn: sodDescartar_ }, sodAparencia: { auth: 'any', write: 1, fn: sodAparencia_ }, sodOrar: { auth: 'any', write: 1, fn: sodOrar_ }, sodComprar: { auth: 'any', write: 1, fn: sodComprar_ },
@@ -4333,6 +4337,118 @@ function pushEnvia_(envios) {
   rs.forEach(function (r, i) { let st = 0, txt = ''; try { st = r.getResponseCode(); if (st >= 400) txt = String(r.getContentText()).slice(0, 120); } catch (e3) { /* sem resposta */ } out.push({ endpoint: eps[i], status: st, erro: txt }); });
   return out;
 }
+/* ===== Quiz da lição: perguntas geradas sozinhas a partir da lição ministrada e enviadas aos participantes da célula ===== */
+const QUIZ_N_ = 5;
+function quizAgenda_(celulaId, reuniaoId, data, licao) {
+  let titulo = licao.titulo || '', texto = licao.resumo || '';
+  if (licao.id) { const l = table_('Licoes').rows.filter(function (x) { return x.LicaoID === licao.id; })[0]; if (l) { texto = [l.Resumo, l.Conteudo].filter(String).join('\n'); titulo = l.Titulo; } }
+  if ((titulo + texto).length < 10) return;
+  const t = lazy_('Quizzes'), ex = t.rows.filter(function (q) { return q.ReuniaoID === reuniaoId; })[0], quando = addDias_(data, 1) > today_() ? addDias_(data, 1) : today_();
+  const v = { Titulo: clip_(titulo || 'Lição da célula', 120), Texto: clip_(texto, 4000) };
+  if (ex) { if (ex.Status === 'agendado' || ex.Status === 'sem') writeRow_(t, ex._row, Object.assign(v, { Status: 'agendado', Perguntas: '', EnviarEm: quando })); return; }
+  appendRow_(t, Object.assign({ QuizID: id_('QZ'), ReuniaoID: reuniaoId, CelulaID: celulaId, Data: data, Fonte: '', Perguntas: '', Status: 'agendado', EnviarEm: quando, CriadoEm: now_() }, v));
+}
+function quizSemente_(s) { let h = 7; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 2147483647; return h || 1; }
+function quizEmbaralha_(arr, seed) { const a = arr.slice(); let h = seed; for (let i = a.length - 1; i > 0; i--) { h = (h * 48271) % 2147483647; const j = h % (i + 1), x = a[i]; a[i] = a[j]; a[j] = x; } return a; }
+const QUIZ_STOP_ = ' para como mais mas pelo pela pelos pelas com sem sobre entre quando onde porque assim ainda também então muito muita todos todas cada seus suas esse essa isso este esta isto aquele aquela depois antes durante contra desde mesmo mesma outro outra outros outras fazer disse disseram tinha tinham foram sendo estar estava você vocês nosso nossa nossos nossas deles delas deus senhor ';
+function quizModelo_(titulo, texto, seed) {
+  // plano B (sem inteligência artificial): perguntas de completar a frase com palavras do próprio texto e de tema da lição
+  const out = [], frases = String(texto).replace(/\s+/g, ' ').split(/(?<=[.!?])\s+/).map(function (x) { return x.trim(); }).filter(function (x) { return x.length >= 35 && x.length <= 220; });
+  const pal = []; String(texto).toLowerCase().replace(/[^a-záàâãéêíóôõúç\s-]/g, ' ').split(/\s+/).forEach(function (w) { if (w.length >= 6 && QUIZ_STOP_.indexOf(' ' + w + ' ') < 0 && pal.indexOf(w) < 0) pal.push(w); });
+  const outros = table_('Licoes').rows.filter(function (l) { return l.Status !== 'Removida' && l.Titulo && norm_(l.Titulo) !== norm_(titulo); }).map(function (l) { return l.Titulo; });
+  if (titulo && outros.length >= 3) { const op = quizEmbaralha_([titulo].concat(quizEmbaralha_(outros, seed).slice(0, 3)), seed + 1); out.push({ p: 'Qual foi o tema da lição da célula?', op: op, c: op.indexOf(titulo), e: 'A lição foi: ' + titulo + '.' }); }
+  quizEmbaralha_(frases, seed + 2).forEach(function (f) {
+    if (out.length >= QUIZ_N_) return; const ws = f.toLowerCase().replace(/[^a-záàâãéêíóôõúç\s-]/g, ' ').split(/\s+/).filter(function (w) { return pal.indexOf(w) >= 0; }).sort(function (a, b) { return b.length - a.length; });
+    const alvo = ws[0]; if (!alvo) return; const dis = quizEmbaralha_(pal.filter(function (w) { return w !== alvo; }), seed + out.length).slice(0, 3); if (dis.length < 3) return;
+    const re = new RegExp('(^|[^a-záàâãéêíóôõúç])' + alvo + '(?![a-záàâãéêíóôõúç])', 'i'); if (!re.test(f)) return;
+    const op = quizEmbaralha_([alvo].concat(dis), seed + out.length + 5); out.push({ p: 'Complete: ' + f.replace(re, function (m, a) { return a + '_____'; }), op: op, c: op.indexOf(alvo), e: f });
+  });
+  return out;
+}
+function quizIa_(titulo, texto) {
+  const pr = PropertiesService.getScriptProperties(), key = String(pr.getProperty('QUIZ_API_KEY') || '').trim(); if (!key) return null;
+  const modelo = String(pr.getProperty('QUIZ_MODELO') || '').trim() || 'claude-haiku-5-5';
+  const prompt = 'Você prepara um quiz curto para os participantes de uma célula (pequeno grupo) de uma igreja cristã evangélica, feito depois da reunião, para fixar a lição.\n\nLição: ' + titulo + '\n\nConteúdo da lição:\n' + texto + '\n\nCrie exatamente ' + QUIZ_N_ + ' perguntas de múltipla escolha em português do Brasil, em linguagem simples, sobre o que foi ensinado. Use só o que está no conteúdo (se ele for curto, pergunte sobre o tema e as ideias principais) e não invente doutrina. Cada pergunta tem 4 alternativas curtas, só 1 correta, e as erradas devem parecer plausíveis. Varie a posição da correta. Inclua uma explicação de uma frase.\n\nResponda SOMENTE com um JSON, sem texto antes ou depois, neste formato:\n[{"p":"pergunta","op":["a","b","c","d"],"c":0,"e":"explicação"}]\nonde "c" é o índice (0 a 3) da alternativa correta.';
+  const r = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', { method: 'post', contentType: 'application/json', headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01' }, payload: JSON.stringify({ model: modelo, max_tokens: 2000, messages: [{ role: 'user', content: prompt }] }), muteHttpExceptions: true });
+  if (r.getResponseCode() !== 200) throw new Error('IA respondeu ' + r.getResponseCode());
+  const j = JSON.parse(r.getContentText()), tx = (j.content || []).map(function (b) { return b.text || ''; }).join(''), m = tx.match(/\[[\s\S]*\]/); if (!m) throw new Error('resposta sem JSON');
+  return quizValida_(JSON.parse(m[0]));
+}
+function quizValida_(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr.slice(0, 8).map(function (q) { if (!q || !Array.isArray(q.op)) return null; const op = q.op.map(function (x) { return clip_(x, 160); }).filter(String), c = Number(q.c); if (op.length !== 4 || !(c >= 0 && c < 4) || Math.floor(c) !== c || !clip_(q.p, 300)) return null; return { p: clip_(q.p, 300), op: op, c: c, e: clip_(q.e, 300) }; }).filter(Boolean);
+}
+function quizGera_(titulo, texto) {
+  let ps = [], fonte = 'modelo', erro = '';
+  try { const r = quizIa_(titulo, texto); if (r && r.length >= 2) { ps = r.slice(0, QUIZ_N_); fonte = 'ia'; } else if (r) erro = 'a IA não devolveu perguntas válidas'; } catch (e) { erro = String(e && e.message || e).slice(0, 80); }
+  if (!ps.length) ps = quizModelo_(titulo, texto, quizSemente_(titulo + texto)).slice(0, QUIZ_N_);
+  return { perguntas: ps, fonte: fonte, erro: erro };
+}
+// Gera as perguntas (se faltam) e envia o aviso aos participantes da célula. Seguro para rodar duas vezes.
+function quizEnvia_(quizId) {
+  const q0 = lazy_('Quizzes').rows.filter(function (q) { return q.QuizID === quizId; })[0]; if (!q0 || q0.Status !== 'agendado') return false;
+  const g = q0.Perguntas ? { perguntas: jparse_(q0.Perguntas, []), fonte: q0.Fonte } : quizGera_(q0.Titulo, q0.Texto);
+  return withLock_(function () {
+    const t = lazy_('Quizzes'), q = t.rows.filter(function (x) { return x.QuizID === quizId; })[0]; if (!q || q.Status !== 'agendado') return false;
+    if (!g.perguntas.length) { writeRow_(t, q._row, { Status: 'sem', Fonte: g.fonte || 'modelo' }); return false; }
+    writeRow_(t, q._row, { Perguntas: JSON.stringify(g.perguntas), Fonte: g.fonte, Status: 'enviado', EnviadoEm: now_() });
+    ativosDaCelula_(q.CelulaID).forEach(function (m) { notify_(m.MembroID, 'quiz', 'Quiz da lição 📖', 'Teste o que você aprendeu em “' + q.Titulo + '”: ' + g.perguntas.length + ' perguntas rápidas.', 'quiz:' + q.QuizID); });
+    return true;
+  });
+}
+function quizVencidos_(celulaId) { let t; try { t = lazy_('Quizzes'); } catch (e) { return; } t.rows.filter(function (q) { return q.Status === 'agendado' && q.EnviarEm && q.EnviarEm <= today_() && (!celulaId || q.CelulaID === celulaId); }).forEach(function (q) { try { quizEnvia_(q.QuizID); } catch (e) { console.error(e && e.stack || e); } }); }
+// Gatilho diário (9h)
+function enviaQuizzes() { quizVencidos_(''); pushFlush_(); }
+function quizMeu_(u, q) { return q.CelulaID === u.celulaId || table_('Membros').rows.some(function (m) { return m.MembroID === u.membroId && m.CelulaID === q.CelulaID; }); }
+function quizResp_(quizId, mid) { return lazy_('QuizRespostas').rows.filter(function (r) { return r.QuizID === quizId && r.MembroID === mid; })[0]; }
+function quizCard_(q, r) { return { id: q.QuizID, titulo: q.Titulo, data: q.Data, total: jparse_(q.Perguntas, []).length, feito: r ? { acertos: Number(r.Acertos), total: Number(r.Total) } : null }; }
+function myQuizzes_(d, u) {
+  quizVencidos_(u.celulaId || ''); if (!u.celulaId) return { itens: [], pendentes: 0 };
+  const t = lazy_('Quizzes'), feitos = {}; lazy_('QuizRespostas').rows.forEach(function (r) { if (r.MembroID === u.membroId) feitos[r.QuizID] = r; });
+  const itens = t.rows.filter(function (q) { return q.CelulaID === u.celulaId && q.Status === 'enviado'; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).slice(0, 8).map(function (q) { return quizCard_(q, feitos[q.QuizID]); });
+  return { itens: itens, pendentes: itens.filter(function (x) { return !x.feito; }).length };
+}
+function getQuiz_(d, u) {
+  const q = lazy_('Quizzes').rows.filter(function (x) { return x.QuizID === clip_(d.id, 30) && x.Status === 'enviado'; })[0]; if (!q || !quizMeu_(u, q)) throw new ApiError('NOT_FOUND', 'Quiz não encontrado.');
+  const r = quizResp_(q.QuizID, u.membroId), ps = jparse_(q.Perguntas, []), mine = r ? jparse_(r.Respostas, []) : null;
+  return { id: q.QuizID, titulo: q.Titulo, data: q.Data, fonte: q.Fonte, feito: !!r, acertos: r ? Number(r.Acertos) : 0, perguntas: ps.map(function (p, i) { const o = { p: p.p, op: p.op }; if (r) { o.c = p.c; o.e = p.e; o.r = mine[i]; } return o; }) };
+}
+function answerQuiz_(d, u) {
+  const id = clip_(d.id, 30), q0 = lazy_('Quizzes').rows.filter(function (x) { return x.QuizID === id && x.Status === 'enviado'; })[0]; if (!q0 || !quizMeu_(u, q0)) throw new ApiError('NOT_FOUND', 'Quiz não encontrado.');
+  const ps = jparse_(q0.Perguntas, []), rs = Array.isArray(d.respostas) ? d.respostas.map(function (x) { return Number(x); }) : [];
+  if (rs.length !== ps.length || rs.some(function (x) { return !(x >= 0 && x < 4) || Math.floor(x) !== x; })) throw new ApiError('VALIDATION', 'Responda todas as perguntas.');
+  return withLock_(function () {
+    if (quizResp_(id, u.membroId)) return getQuiz_({ id: id }, u);
+    const ac = ps.filter(function (p, i) { return p.c === rs[i]; }).length;
+    appendRow_(lazy_('QuizRespostas'), { QuizID: id, MembroID: u.membroId, Acertos: String(ac), Total: String(ps.length), Respostas: JSON.stringify(rs), Data: now_() });
+    awardXp_(u.membroId, 'quiz:' + id, 5 + ac * 3, 'Quiz da lição'); return getQuiz_({ id: id }, u);
+  });
+}
+function quizLider_(d, u) {
+  const id = cellOf_(u, d, 'ver', 'ind', 'ver'), mem = ativosDaCelula_(id), nome = {}; mem.forEach(function (m) { nome[m.MembroID] = m.Apelido || m.Simples || m.Nome; });
+  const resp = {}; lazy_('QuizRespostas').rows.forEach(function (r) { (resp[r.QuizID] = resp[r.QuizID] || []).push(r); });
+  return { ia: !!String(PropertiesService.getScriptProperties().getProperty('QUIZ_API_KEY') || '').trim(), itens: lazy_('Quizzes').rows.filter(function (q) { return q.CelulaID === id && q.Status !== 'cancelado'; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).slice(0, 10).map(function (q) {
+    const rs = resp[q.QuizID] || [], ps = jparse_(q.Perguntas, []), feitos = {}; rs.forEach(function (r) { feitos[r.MembroID] = Number(r.Acertos); });
+    return { id: q.QuizID, titulo: q.Titulo, data: q.Data, status: q.Status, fonte: q.Fonte, enviarEm: q.EnviarEm, perguntas: ps, total: ps.length, responderam: rs.length, participantes: mem.length, media: rs.length ? Math.round(rs.reduce(function (a, r) { return a + Number(r.Acertos); }, 0) / rs.length * 10) / 10 : 0, pessoas: mem.map(function (m) { return { nome: nome[m.MembroID], acertos: feitos[m.MembroID] === undefined ? null : feitos[m.MembroID] }; }) };
+  }) };
+}
+// d.acao: 'enviar' (envia agora) | 'refazer' (gera as perguntas de novo, só se ninguém respondeu) | 'cancelar'
+function quizAcao_(d, u) {
+  const q0 = lazy_('Quizzes').rows.filter(function (x) { return x.QuizID === clip_(d.id, 30); })[0]; if (!q0) throw new ApiError('NOT_FOUND', 'Quiz não encontrado.');
+  cellOf_(u, { celulaId: q0.CelulaID }, 'presenca', 'freq', 'editar'); const a = String(d.acao || '');
+  if (a === 'cancelar') { withLock_(function () { const t = lazy_('Quizzes'), q = t.rows.filter(function (x) { return x.QuizID === q0.QuizID; })[0]; writeRow_(t, q._row, { Status: 'cancelado' }); }); return { ok: true }; }
+  if (a === 'refazer') { if (lazy_('QuizRespostas').rows.some(function (r) { return r.QuizID === q0.QuizID; })) throw new ApiError('VALIDATION', 'Alguém já respondeu; não dá para refazer as perguntas.'); const g = quizGera_(q0.Titulo, q0.Texto); if (!g.perguntas.length) throw new ApiError('VALIDATION', 'O texto da lição é curto demais para gerar perguntas. Acrescente o conteúdo da lição.');
+    withLock_(function () { const t = lazy_('Quizzes'), q = t.rows.filter(function (x) { return x.QuizID === q0.QuizID; })[0]; writeRow_(t, q._row, { Perguntas: JSON.stringify(g.perguntas), Fonte: g.fonte }); }); return { ok: true, fonte: g.fonte, erro: g.erro }; }
+  if (a === 'enviar') { if (q0.Status !== 'agendado' && q0.Status !== 'sem') throw new ApiError('VALIDATION', 'Este quiz já foi enviado.'); withLock_(function () { const t = lazy_('Quizzes'), q = t.rows.filter(function (x) { return x.QuizID === q0.QuizID; })[0]; writeRow_(t, q._row, { Status: 'agendado', EnviarEm: today_() }); }); return { ok: quizEnvia_(q0.QuizID) }; }
+  throw new ApiError('VALIDATION', 'Ação inválida.');
+}
+function getQuizCfg_() { const pr = PropertiesService.getScriptProperties(); return { ia: !!String(pr.getProperty('QUIZ_API_KEY') || '').trim(), modelo: String(pr.getProperty('QUIZ_MODELO') || '') }; }
+function saveQuizCfg_(d) {
+  const pr = PropertiesService.getScriptProperties();
+  if (d.limpar) { pr.deleteProperty('QUIZ_API_KEY'); } else if (d.apiKey) { const k = String(d.apiKey).trim(); if (!/^[\w-]{20,300}$/.test(k)) throw new ApiError('VALIDATION', 'Chave inválida.'); pr.setProperty('QUIZ_API_KEY', k); }
+  if (d.modelo !== undefined) { const m = String(d.modelo).trim(); if (m && !/^[\w.-]{3,60}$/.test(m)) throw new ApiError('VALIDATION', 'Nome de modelo inválido.'); if (m) pr.setProperty('QUIZ_MODELO', m); else pr.deleteProperty('QUIZ_MODELO'); }
+  return getQuizCfg_();
+}
 /* ===== Entrega das notificações: Cloudflare Worker (Web Push) ===== */
 // Tudo o que é segredo fica nas Propriedades do script (nunca na planilha nem no app)
 function entregaProps_() {
@@ -4391,4 +4507,6 @@ function instalaGatilhos_() {
   if (typeof ScriptApp === 'undefined') return;
   const tem = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'lembreteMissoes'; });
   if (!tem) ScriptApp.newTrigger('lembreteMissoes').timeBased().everyDays(1).atHour(18).create();
+  const temQ = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'enviaQuizzes'; });
+  if (!temQ) ScriptApp.newTrigger('enviaQuizzes').timeBased().everyDays(1).atHour(9).create();
 }

@@ -1,5 +1,16 @@
 [
  {
+  "titulo": "Quiz da lição para a célula",
+  "melhorias": [
+   "Ao lançar a presença com a lição ministrada, o app monta sozinho um quiz de 5 perguntas sobre ela e envia um lembrete a todos da célula na manhã seguinte.",
+   "As perguntas são feitas por IA a partir do conteúdo da lição (chave da API em Definições); sem a chave, o app cria perguntas simples de completar frases.",
+   "Quem responde ganha XP e vê o gabarito com explicação. O líder vê quem respondeu, a média e pode enviar na hora, gerar de novo ou cancelar.",
+   "Ao publicar uma lição dá para colar o conteúdo, que melhora as perguntas."
+  ],
+  "v": "1.135",
+  "data": "07/11/2026"
+ },
+ {
   "titulo": "Meus Grupos abaixo da foto de perfil",
   "melhorias": [
    "Abaixo da sua foto há o botão Meus Grupos; ao tocar, a hierarquia desce: Igreja Zoe › Supervisão › Células que administro › Liderança › sua célula.",

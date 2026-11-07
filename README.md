@@ -440,6 +440,12 @@ Novas colunas em Membros (Crista, CongregaZoe, Parente) e aba Galhos: rode `setu
 ## v1.126 — Regras de presença das células
 Config PresencasParaParticipante (3) e FaltasParaExParticipante (6), editáveis em Administração. exAutomatico_ roda ao salvar a frequência. Testes: tests/regras_participante.mjs e e2e_regras_participante.py.
 
+## v1.133 — Quiz da lição
+- Ao lançar a presença com lição (ou resumo livre), `quizAgenda_` cria um quiz (`Quizzes`) para o dia seguinte. `enviaQuizzes` (gatilho diário 9h, criado em `instalaGatilhos_`; também roda sozinho quando alguém abre o app) gera as perguntas e avisa todos da célula.
+- Geração: IA (Anthropic, propriedades `QUIZ_API_KEY` e `QUIZ_MODELO`, padrão `claude-haiku-5-5`) com plano B sem IA (tema da lição e completar frases). Respostas em `QuizRespostas`, XP 5 + 3 por acerto.
+- Rotas: `myQuizzes`, `getQuiz`, `answerQuiz`, `quizLider`, `quizAcao`, `getQuizCfg`, `saveQuizCfg`. Lições ganharam a coluna `Conteudo`.
+- Testes: `node tests/quiz.mjs`, `tests/e2e_quiz.py`.
+
 ## v1.131 — Notificações com o app fechado (Cloudflare)
 - `push/worker_push.js`: Worker da Cloudflare que cifra e entrega o Web Push (secrets `SEGREDO`, `VAPID_PUBLICA`, `VAPID_PRIVADA`). Guia em `push/README.md`; teste: `node push/test_worker.mjs`.
 - Code.gs: `entregaProps_`, `pushViaWorker_` (lotes de 50), `exportaVapid`, `liberarPush`, rotas `getEntrega/saveEntrega`. Propriedades do script: `PUSH_URL`, `PUSH_SEGREDO`.
