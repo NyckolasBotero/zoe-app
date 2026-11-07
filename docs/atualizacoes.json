@@ -1,5 +1,13 @@
 [
  {
+  "titulo": "Árvore Zoe: nome do galho só com 'e filhos' quando há filhos",
+  "melhorias": [
+   "O galho de uma pessoa sozinha agora mostra só o nome (ex.: 'Nathan'). O 'e filhos' aparece apenas quando ela tem filhos cadastrados."
+  ],
+  "v": "1.129",
+  "data": "07/11/2026"
+ },
+ {
   "titulo": "Árvore Zoe: arrastar mais leve e responsivo",
   "melhorias": [
    "Ao clicar e arrastar a árvore, o movimento acompanha o mouse quadro a quadro e continua deslizando um pouco ao soltar, como no celular.",
