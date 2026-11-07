@@ -4387,7 +4387,7 @@ function quizGera_(titulo, texto) {
 // Gera as perguntas (se faltam) e envia o aviso aos participantes da célula. Seguro para rodar duas vezes.
 function quizEnvia_(quizId) {
   const q0 = lazy_('Quizzes').rows.filter(function (q) { return q.QuizID === quizId; })[0]; if (!q0 || q0.Status !== 'agendado') return false;
-  const g = q0.Perguntas ? { perguntas: jparse_(q0.Perguntas, []), fonte: q0.Fonte } : quizGera_(q0.Titulo, q0.Texto);
+  const g = q0.Perguntas ? { perguntas: jparse_(q0.Perguntas, []), fonte: q0.Fonte } : (quizReuso_(q0) || quizGera_(q0.Titulo, q0.Texto));
   return withLock_(function () {
     const t = lazy_('Quizzes'), q = t.rows.filter(function (x) { return x.QuizID === quizId; })[0]; if (!q || q.Status !== 'agendado') return false;
     if (!g.perguntas.length) { writeRow_(t, q._row, { Status: 'sem', Fonte: g.fonte || 'modelo' }); return false; }
@@ -4395,6 +4395,12 @@ function quizEnvia_(quizId) {
     ativosDaCelula_(q.CelulaID).forEach(function (m) { notify_(m.MembroID, 'quiz', 'Quiz da lição 📖', 'Teste o que você aprendeu em “' + q.Titulo + '”: ' + g.perguntas.length + ' perguntas rápidas.', 'quiz:' + q.QuizID); });
     return true;
   });
+}
+// Células que dão a mesma lição recebem o mesmo quiz: gera uma vez (1 chamada à IA) e reaproveita nas outras
+function quizReuso_(q0) {
+  const ia = !!entregaProps_().worker, mesmos = lazy_('Quizzes').rows.filter(function (q) { return q.QuizID !== q0.QuizID && q.Perguntas && q.Status !== 'cancelado' && q.Status !== 'sem' && norm_(q.Titulo) === norm_(q0.Titulo) && norm_(q.Texto) === norm_(q0.Texto); });
+  const alvo = mesmos.filter(function (q) { return q.Fonte === 'ia'; })[0] || (ia ? null : mesmos[0]); if (!alvo) return null;
+  const ps = jparse_(alvo.Perguntas, []); return ps.length ? { perguntas: ps, fonte: alvo.Fonte, erro: '' } : null;
 }
 function quizVencidos_(celulaId) { let t; try { t = lazy_('Quizzes'); } catch (e) { return; } t.rows.filter(function (q) { return q.Status === 'agendado' && q.EnviarEm && q.EnviarEm <= today_() && (!celulaId || q.CelulaID === celulaId); }).forEach(function (q) { try { quizEnvia_(q.QuizID); } catch (e) { console.error(e && e.stack || e); } }); }
 // Gatilho diário (9h)

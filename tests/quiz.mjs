@@ -52,4 +52,11 @@ e.run('IA = null'); call('saveAttendance', { celulaId: cel, data: new Date(Date.
 e.run('enviaQuizzes()'); assert.equal(JSON.parse(e.run('JSON.stringify(table_("Quizzes").rows.map(r=>r.Status))')).filter(s => s === 'enviado').length, 3);
 // cancelar
 call('saveAttendance', { celulaId: cel, data: new Date().toISOString().slice(0, 10), presentes: [a], licaoId: lic, confirmaDia: true }); const ult = JSON.parse(e.run('JSON.stringify(table_("Quizzes").rows.filter(r=>r.Status==="agendado"))'))[0]; if (ult) { call('quizAcao', { id: ult.QuizID, acao: 'cancelar' }); assert(!call('quizLider', { celulaId: cel }).itens.some(i => i.id === ult.QuizID)); }
+// mesma lição em várias células: uma só chamada à IA, mesmas perguntas
+const cel2 = call('createCell', { nome: 'Célula Sul', liderId: mk('carla'), dia: 'Quinta' }).id, dia3 = new Date(Date.now() - 864e5 * 3).toISOString().slice(0, 10);
+call('saveLesson', { titulo: 'Fé e perseverança', resumo: 'Perseverar na fé', conteudo: 'Tiago ensina que a prova da nossa fé produz perseverança. Quem persevera na provação recebe a coroa da vida. A fé verdadeira se mostra nas obras e na paciência diante das dificuldades da vida.' }); const lic2 = call('listLessons', {}).find(l => l.titulo === 'Fé e perseverança').id;
+call('saveAttendance', { celulaId: cel, data: dia3, presentes: [a], licaoId: lic2, confirmaDia: true }); call('saveAttendance', { celulaId: cel2, data: dia3, presentes: [], licaoId: lic2, confirmaDia: true });
+e.run('CALLS.length = 0; IA = [1,2,3,4,5].map(i => ({ p: "Reuso " + i + "?", op: ["A"+i, "B"+i, "C"+i, "D"+i], c: i % 4, e: "x" }))'); e.run('enviaQuizzes()');
+assert.equal(JSON.parse(e.run('JSON.stringify(CALLS.filter(c=>/\\/ia$/.test(c.url)).length)')), 1, 'uma chamada à IA para duas células');
+const dois = JSON.parse(e.run('JSON.stringify(table_("Quizzes").rows.filter(r=>r.Titulo==="Fé e perseverança").map(r=>[r.Status,r.Fonte,r.Perguntas]))')); assert.equal(dois.length, 2); assert(dois.every(x => x[0] === 'enviado' && x[1] === 'ia') && dois[0][2] === dois[1][2]);
 console.log('OK quiz');
