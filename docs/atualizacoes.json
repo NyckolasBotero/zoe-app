@@ -1,5 +1,30 @@
 [
  {
+  "titulo": "Meus Grupos abaixo da foto de perfil",
+  "melhorias": [
+   "Abaixo da sua foto há o botão Meus Grupos; ao tocar, a hierarquia desce: Igreja Zoe › Supervisão › Células que administro › Liderança › sua célula.",
+   "Toque numa célula da lista para abrir direto o painel dela."
+  ],
+  "v": "1.134",
+  "data": "07/11/2026"
+ },
+ {
+  "titulo": "Menu lateral: sua posição na igreja",
+  "melhorias": [
+   "Abaixo da foto de perfil aparece Igreja Zoe › Supervisão › Células que administro › Liderança, com o nome das suas células. Toque no nome para abrir a célula."
+  ],
+  "v": "1.133",
+  "data": "07/11/2026"
+ },
+ {
+  "titulo": "Perfil: Igreja Zoe e célula abaixo da foto",
+  "melhorias": [
+   "Abaixo da foto do perfil aparece 'Igreja Zoe' e, recuado logo abaixo, o nome da célula da pessoa (ou 'Sem célula')."
+  ],
+  "v": "1.132",
+  "data": "07/11/2026"
+ },
+ {
   "titulo": "Notificações com o app fechado pela Cloudflare",
   "melhorias": [
    "Os avisos passam por um Worker da Cloudflare (plano gratuito): chegam sem o site aberto e sem sobrecarregar o Apps Script.",
