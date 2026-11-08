@@ -59,7 +59,7 @@ async function ia(d, env){
   try{
     const r = await env.AI.run(env.IA_MODELO || '@cf/meta/llama-3.3-70b-instruct-fp8-fast', { messages:[{ role:'system', content:'Você responde sempre em português do Brasil e exatamente no formato pedido.' }, { role:'user', content:prompt }], max_tokens: Math.min(+d.max_tokens || 1500, 2500), temperature: 0.4 });
     const t = r && (typeof r.response === 'string' ? r.response : JSON.stringify(r.response || r));
-    return json({ ok:true, texto: String(t || '') });
+    return json({ ok:true, texto: String(t || ''), usage: r && r.usage ? { prompt_tokens: r.usage.prompt_tokens, completion_tokens: r.usage.completion_tokens } : undefined });
   }catch(e){ return json({ ok:false, erro:String(e && e.message || e).slice(0, 160) }, 502); }
 }
 export default {

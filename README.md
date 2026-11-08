@@ -440,6 +440,11 @@ Novas colunas em Membros (Crista, CongregaZoe, Parente) e aba Galhos: rode `setu
 ## v1.126 — Regras de presença das células
 Config PresencasParaParticipante (3) e FaltasParaExParticipante (6), editáveis em Administração. exAutomatico_ roda ao salvar a frequência. Testes: tests/regras_participante.mjs e e2e_regras_participante.py.
 
+## v1.143 — Capacidade restante de IA e notificações
+- Administração › Desempenho e capacidade: cartão com o que ainda cabe hoje (neurons da IA gratuita da Cloudflare e chamadas externas do Apps Script / pedidos do Worker). Rota `capacidade`; contadores diários (UTC, mesmo corte da Cloudflare) na aba `UsoDia`, gravados por `usoAdd_` em `quizIa_`, `pushViaWorker_` e `pushEnvia_`.
+- O Worker passou a devolver `usage` (tokens) na rota `/ia`; sem ele o app estima pelo tamanho do texto. Reimplante o `worker_push.js` para medir de verdade.
+- Teste: `node tests/capacidade.mjs`, `tests/e2e_capacidade.py`.
+
 ## v1.139 — Painel de células e multiplicação
 - Administração › Células: `cpCard` (resumo, indicador, lista, busca), seção Supervisão e assistente de multiplicar (`cpMult*`). Configurações de células (Regras Células, Regras Membro, Quiz) ficam no mesmo grupo.
 - Code.gs: `celPainel`, `multiplyCell`, `setSuperior`; tabela `Supervisao` (MembroID, SuperiorID = supervisor geral); config `CelulaMultiplicarAcima` (padrão 10, só indicador; conta quem não é líder nem líder em treinamento).

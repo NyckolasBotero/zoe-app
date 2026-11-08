@@ -2142,7 +2142,7 @@ admin(){const P=S.perm;const rolesN={admin:'Administrador',pastor:'Pastor',profe
  const gs=[['pub','Publicações',(canMod()?bibAdmCard():'')+(cc?lessonCard()+admBloco('licoes','Lições publicadas'):'')+(ce?feedAdmCard()+campAdmCard()+eventoCard()+checkinCard()+admBloco('eventos','Eventos publicados')+admBloco('corridas','Maratona Bíblica (programar)')+admBloco('noticias','Notícias publicadas'):'')+(cm?ministeriosCard()+(on?interestsCard():''):'')+(cc?videosCard()+admBloco('videos','Vídeos cadastrados')+admBloco('cursos','Cursos antigos (cadastro simples)')+admBloco('dinamicas','Dinâmicas publicadas'):'')+(cc?admBloco('pastores','Nossos Pastores (Família Zoe)')+admBloco('familia','Quem somos: fotos e vídeos'):'')],
   ['acc','Acessos',(on&&cc?usersNovoCard()+usersCard()+admBloco('membros','Membros cadastrados'):'')+(cc?niveisCard(ps,P,rolesN):'')],
   ['ind','Indicadores',on&&cc?usoCard():''],
-  ['des','Desempenho e capacidade',on&&cc?desempenhoCard():''],
+  ['des','Desempenho e capacidade',on&&cc?capacidadeCard()+desempenhoCard():''],
   ['cel','Células',(on&&cc?cpCard()+novaCelulaCard()+admBloco('celulas','Células cadastradas'):'')+(cc?regrasCelulasCard()+regraCard()+quizCfgCard():'')],
   ['def','Definições de Parâmetros',(cc?navCfgCard()+emailSenhaCard()+sodCard()+fotosDriveCard()+pushDiagCard()+entregaCard()+notifCfgCard()+colunasCard()+igrejaCard():'')],
   ['doc','Documentação',cc?docCard():''],
@@ -2567,6 +2567,22 @@ function cpMultMetade(){const cg=cpMultCargos(),r=CMU.c.membros.filter(m=>!cg.ha
 async function cpMultEnvia(){if((CMU.nome||'').trim().length<2)return toast('Dê um nome à nova célula','err');if(!CMU.lo||!CMU.ln)return toast('Escolha o líder das duas células','err');
  const d={celulaId:CMU.id,nome:CMU.nome.trim(),dia:CMU.dia,inicio:CMU.inicio,liderOrigId:CMU.lo,treinOrigId:CMU.to,liderNovaId:CMU.ln,treinNovaId:CMU.tn,membrosNova:[...CMU.vao].filter(x=>!cpMultCargos().has(x)),superiorId:CMU.ger||''};if(CMU.sup)d.supervisorId=CMU.sup;
  const r=await push('multiplyCell',d,'Célula multiplicada!');if(r===undefined)return;closeL();CMU=null;await cpCarga();toast(`Nova célula criada: ${r.foram} pessoa(s) foram, ${r.ficaram} ficaram`)}
+/* ===== Capacidade de IA e notificações ===== */
+let CAPC=null;
+async function capacidadeCarga(){CAPC={c:1};try{CAPC=await api('capacidade')}catch(e){CAPC={erro:e.message}}if(R.r==='admin')renderKeep()}
+function capacidadeCard(){if(!ONLINE)return '';if(isDesk()&&R.admg!=='des')return '';if(!CAPC)capacidadeCarga();
+ const c=CAPC,T='Capacidade restante hoje: IA e notificações';if(!c||c.c)return `<div class="card flat col"><h3>${T}</h3><p class="muted sm">Carregando…</p></div>`;if(c.erro)return `<div class="card flat col"><h3>${T}</h3><p class="muted sm">${esc(c.erro)}</p></div>`;
+ const n=v=>Math.round(v).toLocaleString('pt-BR'),pct=(a,b)=>Math.max(0,Math.min(100,Math.round(a/b*100))),cor=p=>p>=85?'var(--vermelho,#c0392b)':p>=60?'#C98A00':'var(--verde,#1f9d55)';
+ const barra=(usado,lim)=>{const p=pct(usado,lim);return `<div style="height:8px;border-radius:5px;background:var(--line);overflow:hidden;margin:4px 0"><div style="height:100%;width:${p}%;background:${cor(p)}"></div></div>`};
+ const i=c.ia,pu=c.push,max=Math.max(1,...c.semana.map(x=>x.neurons)),maxP=Math.max(1,...c.semana.map(x=>x.envios));
+ const mini=(k,mx,un)=>c.semana.length>1?`<div style="display:flex;gap:4px;align-items:flex-end;height:42px;margin-top:6px" aria-label="Últimos dias">${c.semana.map(x=>`<div title="${esc(fmt(x.dia))}: ${n(x[k])} ${un}" style="flex:1;background:var(--verde,#1f9d55);opacity:.75;border-radius:3px 3px 0 0;height:${Math.max(3,Math.round(x[k]/mx*100))}%"></div>`).join('')}</div><div class="muted sm">Últimos ${c.semana.length} dias</div>`:'';
+ return `<div class="card flat col"><h3>${T}</h3><p class="muted sm">O que ainda cabe nos limites gratuitos antes de zerar, às <b>${esc(c.zeraAs)}</b> (horário de Brasília). Os números são contados pelo próprio app; se você usar o mesmo Worker ou a mesma conta Cloudflare para outra coisa, esse uso não aparece aqui.</p>
+ <div class="grid"><div class="card"><b>Inteligência artificial (quiz das lições)</b> ${i.ligada?'':'<span class="chip r">Worker desligado</span>'}
+ <div class="stat"><b>${i.ligada?n(i.quizzesRestantes):'—'}</b><span>${i.ligada?'quizzes ainda cabem hoje':'ligue o Worker para usar a IA'}</span></div>${barra(i.neurons,i.limite)}<div class="muted sm">${n(i.neurons)} de ${n(i.limite)} neurons usados · ${n(i.restantes)} restantes</div><div class="muted sm">${n(i.chamadas)} chamada(s) hoje${i.erros?`, ${n(i.erros)} com erro`:''} · cerca de ${n(i.mediaPorQuiz)} neurons por quiz${i.estimado?' (estimativa; ainda sem medição)':''}</div>${mini('neurons',max,'neurons')}
+ <div class="muted sm">Passando do limite, o app não quebra: o quiz usa perguntas simples de completar frases.</div></div>
+ <div class="card"><b>Notificações</b> ${pu.worker?'':'<span class="chip y">Envio direto (sem Worker)</span>'}
+ <div class="stat"><b>${n(pu.enviosRestantes)}</b><span>envios ainda cabem hoje</span></div>${barra(pu.urlFetch,pu.limiteUrlFetch)}<div class="muted sm">${n(pu.urlFetch)} de ${n(pu.limiteUrlFetch)} chamadas externas do Apps Script usadas${pu.worker?` (cada chamada leva até ${pu.aparelhosPorChamada} aparelhos)`:''}</div><div class="muted sm">Hoje: ${n(pu.envios)} envio(s), ${n(pu.ok)} entregue(s)${pu.falhas?`, ${n(pu.falhas)} sem entrega (aparelhos antigos são removidos sozinhos)`:''}</div>${pu.worker?`<div class="muted sm">Worker da Cloudflare: ${n(pu.chamadasWorker)} de ${n(pu.limiteWorker)} pedidos por dia no plano gratuito.</div>`:''}${mini('envios',maxP,'envios')}</div></div>
+ <div class="row"><button class="btn sm ghost" onclick="CAPC=null;renderKeep()">Atualizar</button></div></div>`}
 /* ===== Quiz da lição ===== */
 let QZ={l:null,ld:null,cfg:null};
 function quizMembroCard(){if(!ONLINE||!S.celId&&!S.minhas)return '';if(!QZ.l){QZ.l={c:1};api('myQuizzes').then(r=>{QZ.l=r;render()}).catch(()=>{QZ.l={itens:[]}})}

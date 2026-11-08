@@ -44,6 +44,7 @@ const SHEETS = {
   Presencas: ['ReuniaoID', 'CelulaID', 'Data', 'MembroID'],
   Papeis: ['CelulaID', 'MembroID', 'Papel'],
   Supervisao: ['MembroID', 'SuperiorID'],
+  UsoDia: ['Dia', 'IACalls', 'IAErros', 'IANeurons', 'WorkerCalls', 'DiretoCalls', 'PushEnvios', 'PushOk', 'PushFalha'],
   PapeisLog: ['LogID', 'CelulaID', 'MembroID', 'Papel', 'Acao', 'Por', 'Data'],
   Oracoes: ['OracaoID', 'CelulaID', 'MembroID', 'Tema', 'Titulo', 'Texto', 'Data'],
   Eventos: ['EventoID', 'Titulo', 'Data', 'Hora', 'Local', 'Descricao', 'Programacao', 'Escopo', 'CelulaID', 'CriadoPor', 'Status', 'Foto', 'Insignia', 'DataOriginal', 'Remarcado', 'MotivoRemarca', 'FotosAvisoEm', 'PostID'],
@@ -4170,7 +4171,7 @@ const ROUTES = {
   listScales: { auth: 'any', fn: listScales_ }, claimScale: { auth: 'any', write: 1, fn: claimScale_ }, saveScale: { auth: 'any', write: 1, fn: saveScale_ }, rescheduleScale: { auth: 'any', write: 1, fn: rescheduleScale_ }, deleteScale: { auth: 'any', write: 1, fn: deleteScale_ }, respondScale: { auth: 'any', write: 1, fn: respondScale_ }, requestSwap: { auth: 'any', write: 1, fn: requestSwap_ }, answerSwap: { auth: 'any', write: 1, fn: answerSwap_ }, markScale: { auth: 'any', write: 1, fn: markScale_ }, requestJoin: { auth: 'any', write: 1, fn: requestJoin_ }, decideJoin: { auth: 'any', write: 1, fn: decideJoin_ },
   listSongs: { auth: 'any', fn: listSongs_ }, saveSong: { auth: 'any', write: 1, fn: saveSong_ }, deleteSong: { auth: 'any', write: 1, fn: deleteSong_ }, saveSongDefault: { auth: 'any', write: 1, fn: saveSongDefault_ }, searchLyrics: { auth: 'any', fn: searchLyrics_ }, importLyrics: { auth: 'any', fn: importLyrics_ },
   boot: { auth: 'any', fn: boot_ },
-  myQuizzes: { auth: 'any', fn: myQuizzes_ }, getQuiz: { auth: 'any', fn: getQuiz_ }, answerQuiz: { auth: 'any', write: 1, fn: answerQuiz_ }, quizLider: { auth: 'any', fn: quizLider_ }, quizAcao: { auth: 'any', write: 1, fn: quizAcao_ }, getQuizCfg: { auth: 'config', fn: getQuizCfg_ }, testQuizIa: { auth: 'config', fn: testQuizIa_ },
+  myQuizzes: { auth: 'any', fn: myQuizzes_ }, getQuiz: { auth: 'any', fn: getQuiz_ }, answerQuiz: { auth: 'any', write: 1, fn: answerQuiz_ }, quizLider: { auth: 'any', fn: quizLider_ }, quizAcao: { auth: 'any', write: 1, fn: quizAcao_ }, getQuizCfg: { auth: 'config', fn: getQuizCfg_ }, capacidade: { auth: 'config', fn: capacidade_ }, testQuizIa: { auth: 'config', fn: testQuizIa_ },
   getEntrega: { auth: 'config', fn: getEntrega_ }, saveEntrega: { auth: 'config', write: 1, fn: saveEntrega_ },
   getPushKey: { auth: 'any', fn: getPushKey_ }, pushDiag: { auth: 'any', fn: pushDiag_ }, savePushSub: { auth: 'any', write: 1, fn: savePushSub_ }, delPushSub: { auth: 'any', write: 1, fn: delPushSub_ },
   sodGet: { auth: 'any', write: 1, fn: sodGet_ }, sodAbrir: { auth: 'any', write: 1, fn: sodAbrir_ }, sodEquipar: { auth: 'any', write: 1, fn: sodEquipar_ }, sodDescartar: { auth: 'any', write: 1, fn: sodDescartar_ }, sodAparencia: { auth: 'any', write: 1, fn: sodAparencia_ }, sodOrar: { auth: 'any', write: 1, fn: sodOrar_ }, sodComprar: { auth: 'any', write: 1, fn: sodComprar_ },
@@ -4379,7 +4380,10 @@ function pushDiag_(d, u) {
   return out;
 }
 function pushEnvia_(envios) {
-  const E = entregaProps_(); if (E.worker) return pushViaWorker_(envios, E);
+  const E = entregaProps_(), r = E.worker ? pushViaWorker_(envios, E) : pushEnviaDireto_(envios), ok = r.filter(function (x) { return x.status >= 200 && x.status < 300; }).length;
+  usoAdd_({ DiretoCalls: E.worker ? 0 : envios.length, PushEnvios: r.length, PushOk: ok, PushFalha: r.length - ok }); return r;
+}
+function pushEnviaDireto_(envios) {
   const v = vapid_(), cache = CacheService.getScriptCache(), jw = {}, reqs = [], eps = [], out = [];
   envios.forEach(function (e) {
     try {
@@ -4425,8 +4429,9 @@ function quizIa_(titulo, texto) {
   const E = entregaProps_(); if (!E.worker) return null;
   const prompt = 'Você prepara um quiz curto para os participantes de uma célula (pequeno grupo) de uma igreja cristã evangélica, feito depois da reunião, para fixar a lição.\n\nLição: ' + titulo + '\n\nConteúdo da lição:\n' + texto + '\n\nCrie exatamente ' + QUIZ_N_ + ' perguntas de múltipla escolha em português do Brasil, em linguagem simples, sobre o que foi ensinado. Use só o que está no conteúdo (se ele for curto, pergunte sobre o tema e as ideias principais) e não invente doutrina. Cada pergunta tem 4 alternativas curtas, só 1 correta, e as erradas devem parecer plausíveis. Varie a posição da correta. Inclua uma explicação de uma frase.\n\nResponda SOMENTE com um JSON, sem texto antes ou depois, neste formato:\n[{"p":"pergunta","op":["a","b","c","d"],"c":0,"e":"explicação"}]\nonde "c" é o índice (0 a 3) da alternativa correta.';
   const r = UrlFetchApp.fetch(E.worker.url.replace(/\/+$/, '') + '/ia', { method: 'post', contentType: 'application/json', headers: { 'X-Segredo': E.worker.segredo }, payload: JSON.stringify({ prompt: prompt, max_tokens: 1800 }), muteHttpExceptions: true });
-  if (r.getResponseCode() !== 200) throw new Error('IA respondeu ' + r.getResponseCode());
-  const j = JSON.parse(r.getContentText()); if (!j.ok) throw new Error(String(j.erro || 'sem resposta').slice(0, 60));
+  if (r.getResponseCode() !== 200) { usoAdd_({ IACalls: 1, IAErros: 1 }); throw new Error('IA respondeu ' + r.getResponseCode()); }
+  const j = JSON.parse(r.getContentText()); if (!j.ok) { usoAdd_({ IACalls: 1, IAErros: 1 }); throw new Error(String(j.erro || 'sem resposta').slice(0, 60)); }
+  usoAdd_({ IACalls: 1, IANeurons: neuronsIa_(j, prompt) });
   const m = String(j.texto || '').match(/\[[\s\S]*\]/); if (!m) throw new Error('resposta sem JSON');
   return quizValida_(JSON.parse(m[0]));
 }
@@ -4513,6 +4518,35 @@ function testQuizIa_() {
   try { const r = quizIa_('Parábola do Semeador', 'O semeador saiu a semear e parte da semente caiu à beira do caminho. Jesus explicou que a semente é a palavra de Deus. A terra boa representa quem ouve a palavra e persevera.'); return { ok: !!(r && r.length >= 2), perguntas: r ? r.length : 0, msg: r && r.length >= 2 ? 'A IA gratuita respondeu e gerou ' + r.length + ' perguntas.' : 'A IA respondeu, mas sem perguntas válidas.' }; }
   catch (e) { return { ok: false, perguntas: 0, msg: 'Não funcionou: ' + String(e && e.message || e).slice(0, 100) + '. Confira se o vínculo AI foi adicionado ao Worker.' }; }
 }
+/* ===== Capacidade de IA e notificações (uso do dia, contado pelo próprio app) ===== */
+const LIM_NEURONS_ = 10000, LIM_URLFETCH_ = 20000, LIM_WORKER_REQ_ = 100000;
+function diaUtc_() { return Utilities.formatDate(new Date(), 'UTC', 'yyyy-MM-dd'); }
+// Neurons gastos numa chamada (Llama 3.3 70B: 26.668 por milhão de tokens lidos e 204.805 por milhão escritos). Usa os tokens que o Worker devolve; senão estima por tamanho do texto.
+function neuronsIa_(j, prompt) {
+  const u = j && j.usage, pt = u && Number(u.prompt_tokens) > 0 ? Number(u.prompt_tokens) : String(prompt || '').length / 3.5, ct = u && Number(u.completion_tokens) > 0 ? Number(u.completion_tokens) : String(j && j.texto || '').length / 3.5;
+  return Math.round(pt * 0.026668 + ct * 0.204805);
+}
+// Soma contadores no dia (UTC, que é quando a Cloudflare zera o limite). Nunca derruba a ação que chamou.
+function usoAdd_(inc) {
+  let got = false; const lk = LockService.getScriptLock();
+  try {
+    try { got = lk.tryLock(1500); } catch (e0) { got = false; }
+    const t = lazy_('UsoDia'), dia = diaUtc_(); let r = t.rows.filter(function (x) { return x.Dia === dia; })[0];
+    if (!r) { const o = { Dia: dia }; Object.keys(inc).forEach(function (k) { o[k] = String(Math.round(inc[k])); }); appendRow_(t, o); return; }
+    const p = {}; Object.keys(inc).forEach(function (k) { if (inc[k]) p[k] = String((Number(r[k]) || 0) + Math.round(inc[k])); }); if (Object.keys(p).length) writeRow_(t, r._row, p);
+  } catch (e) { console.error(e && e.stack || e); } finally { if (got) { try { lk.releaseLock(); } catch (e2) { /* ok */ } } }
+}
+function capacidade_() {
+  const t = lazy_('UsoDia'), hoje = diaUtc_(), n = function (r, k) { return r ? Number(r[k]) || 0 : 0; }, rows = t.rows.slice().sort(function (a, b) { return a.Dia < b.Dia ? -1 : 1; });
+  const h = rows.filter(function (r) { return r.Dia === hoje; })[0], E = entregaProps_();
+  const ult = rows.filter(function (r) { return n(r, 'IACalls') - n(r, 'IAErros') > 0; }).slice(-14), ok = ult.reduce(function (a, r) { return a + n(r, 'IACalls') - n(r, 'IAErros'); }, 0), nr = ult.reduce(function (a, r) { return a + n(r, 'IANeurons'); }, 0);
+  const medio = ok > 0 && nr > 0 ? Math.max(20, Math.round(nr / ok)) : 170, usados = n(h, 'IANeurons'), resta = Math.max(0, LIM_NEURONS_ - usados);
+  const fetchs = n(h, 'IACalls') + n(h, 'WorkerCalls') + n(h, 'DiretoCalls'), reset = new Date(); reset.setUTCHours(24, 0, 0, 0);
+  return { dia: hoje, zeraAs: Utilities.formatDate(reset, CFG.TZ, 'HH:mm'),
+    ia: { ligada: !!E.worker, chamadas: n(h, 'IACalls'), erros: n(h, 'IAErros'), neurons: usados, limite: LIM_NEURONS_, restantes: resta, mediaPorQuiz: medio, quizzesRestantes: Math.floor(resta / medio), estimado: !ult.length },
+    push: { worker: !!E.worker, envios: n(h, 'PushEnvios'), ok: n(h, 'PushOk'), falhas: n(h, 'PushFalha'), chamadasWorker: n(h, 'WorkerCalls'), urlFetch: fetchs, limiteUrlFetch: LIM_URLFETCH_, restantesUrlFetch: Math.max(0, LIM_URLFETCH_ - fetchs), limiteWorker: LIM_WORKER_REQ_, aparelhosPorChamada: 50, enviosRestantes: E.worker ? Math.max(0, LIM_URLFETCH_ - fetchs) * 50 : Math.max(0, LIM_URLFETCH_ - fetchs) },
+    semana: rows.slice(-7).map(function (r) { return { dia: r.Dia, neurons: n(r, 'IANeurons'), ia: n(r, 'IACalls'), envios: n(r, 'PushEnvios') }; }) };
+}
 /* ===== Entrega das notificações: Cloudflare Worker (Web Push) ===== */
 // Tudo o que é segredo fica nas Propriedades do script (nunca na planilha nem no app)
 function entregaProps_() {
@@ -4525,7 +4559,7 @@ function pushViaWorker_(envios, E) {
   for (let i = 0; i < envios.length; i += 50) {
     const lote = envios.slice(i, i + 50);
     try {
-      const r = UrlFetchApp.fetch(E.worker.url, { method: 'post', contentType: 'application/json', headers: { 'X-Segredo': E.worker.segredo }, payload: JSON.stringify({ itens: lote }), muteHttpExceptions: true });
+      usoAdd_({ WorkerCalls: 1 }); const r = UrlFetchApp.fetch(E.worker.url, { method: 'post', contentType: 'application/json', headers: { 'X-Segredo': E.worker.segredo }, payload: JSON.stringify({ itens: lote }), muteHttpExceptions: true });
       const st = r.getResponseCode(); let j = null; try { j = JSON.parse(r.getContentText()); } catch (e2) { j = null; }
       if (st === 200 && j && j.resultados) j.resultados.forEach(function (x) { out.push({ endpoint: x.endpoint, status: x.status, erro: x.erro || '' }); });
       else lote.forEach(function (e) { out.push({ endpoint: e.sub.endpoint, status: 0, erro: 'Worker respondeu ' + st + (st === 401 ? ' (segredo diferente)' : '') }); });

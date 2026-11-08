@@ -1,5 +1,14 @@
 [
  {
+  "titulo": "Capacidade restante de IA e notificações",
+  "melhorias": [
+   "Desempenho e capacidade ganhou um cartão com o que ainda cabe hoje nos limites gratuitos: quantos quizzes de IA (neurons da Cloudflare) e quantos envios de notificação (chamadas externas do Apps Script e pedidos do Worker).",
+   "Mostra a hora em que o limite zera (21h em Brasília), o consumo médio por quiz e o histórico dos últimos dias."
+  ],
+  "v": "1.142",
+  "data": "07/11/2026"
+ },
+ {
   "titulo": "Painel de células e multiplicação",
   "melhorias": [
    "Administração › Células ganhou um painel com todas as células: líder, líder em treinamento, supervisor, supervisor geral e quantas pessoas cada uma tem.",
