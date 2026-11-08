@@ -1,5 +1,13 @@
 [
  {
+  "titulo": "Chat pastoral arrastável, só no Studio Zoe",
+  "melhorias": [
+   "O botão de chat pastoral agora aparece somente nas telas do Studio Zoe e pode ser arrastado pela tela como a Zoe (a posição fica salva). A janela do chat abre junto do botão."
+  ],
+  "v": "1.154",
+  "data": "08/11/2026"
+ },
+ {
   "titulo": "Lições em texto: transcrever PDF",
   "melhorias": [
    "Líderes podem pedir para transcrever o PDF de uma lição (botão Transcrever PDF em Lições / Extras). O texto é extraído no próprio aparelho, fica salvo para todos os líderes e pode ser lido no celular em Ler no celular, sem abrir nem baixar o PDF.",
