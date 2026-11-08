@@ -64,4 +64,15 @@ const dois = JSON.parse(e.run('JSON.stringify(table_("Quizzes").rows.filter(r=>r
 const dia4 = hoje(4), rs = 'Falamos sobre o perdão: perdoar como Cristo nos perdoou, deixando a mágoa e restaurando relacionamentos feridos';
 e.run('CALLS.length = 0'); call('saveAttendance', { celulaId: cel, data: dia4, presentes: [a], licaoId: '', licaoResumo: rs, confirmaDia: true }); call('saveAttendance', { celulaId: cel2, data: dia4, presentes: [], licaoId: '', licaoResumo: rs, confirmaDia: true });
 e.run('enviaQuizzes()'); assert.equal(JSON.parse(e.run('JSON.stringify(CALLS.filter(c=>/\\/ia$/.test(c.url)).length)')), 2, 'resumo livre: uma chamada por reunião'); assert.match(JSON.parse(e.run('JSON.stringify(CALLS.filter(c=>/\\/ia$/.test(c.url)).map(c=>JSON.parse(c.r.payload).prompt))'))[0], /perdão/);
+// IA que devolve JSON torto: o app tolera, tenta de novo e, no pior caso, cai para o modelo
+const P = x => JSON.parse(e.run(`JSON.stringify(quizParse_(${JSON.stringify(x)}))`));
+const bom = { p: 'Qual a pergunta?', op: ['a', 'b', 'c', 'd'], c: 1, e: 'ok' };
+assert.equal(P('Claro! ' + JSON.stringify([bom, bom]) + ' espero ter ajudado').length, 2, 'texto antes e depois');
+assert.equal(P(JSON.stringify([bom, bom]).replace(/\]$/, ',]')).length, 2, 'vírgula sobrando');
+assert.equal(P('[{"p":"Quem disse “eu sou o caminho”?","op":["a","b","c","d"],"c":1,"e":"x"},{"p":"Outra?","op":["a","b","c","d"],"c":0,"e":"y"}]').length, 2, 'aspas curvas');
+const torto = '[{"p":"O que Jesus chamou de "semente"?","op":["a","b","c","d"],"c":1,"e":"x"},' + JSON.stringify(bom) + ',' + JSON.stringify(bom) + ']';
+assert(P(torto).length >= 2, 'aspas soltas: aproveita o que dá'); assert(P('[{"p":"cortado","op":["a","b"').length === 0);
+e.run('var BOM = ' + JSON.stringify(bom) + '; CALLS.length = 0; var SEQ = ["lixo sem json " + JSON.stringify(BOM), "[" + JSON.stringify(BOM) + "," + JSON.stringify(BOM) + "," + JSON.stringify(BOM) + "]"]; var SEQI = 0; UrlFetchApp.fetch = (u, r) => { CALLS.push({ url: u, r }); return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ ok: true, texto: SEQ[Math.min(SEQI++, 1)], usage: { prompt_tokens: 500, completion_tokens: 300 } }) }; }');
+assert.equal(JSON.parse(e.run('JSON.stringify(quizIa_("Tema", "Texto da lição sobre o semeador e a palavra"))')).length, 3, 'segunda tentativa deu certo'); assert.equal(e.run('CALLS.length'), 2);
+e.run('SEQI = 0; SEQ = ["nada", "nada de novo"]'); assert.throws(() => e.run('quizIa_("Tema", "Texto da lição sobre o semeador")'), /formato inválido/); const ts = call('testQuizIa', {}); assert.equal(ts.ok, false); assert.match(ts.msg, /fora do formato/); assert(!/vínculo AI/.test(ts.msg));
 console.log('OK quiz');

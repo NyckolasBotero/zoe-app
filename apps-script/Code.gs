@@ -4427,13 +4427,33 @@ function quizModelo_(titulo, texto, seed) {
 }
 function quizIa_(titulo, texto) {
   const E = entregaProps_(); if (!E.worker) return null;
-  const prompt = 'Você prepara um quiz curto para os participantes de uma célula (pequeno grupo) de uma igreja cristã evangélica, feito depois da reunião, para fixar a lição.\n\nLição: ' + titulo + '\n\nConteúdo da lição:\n' + texto + '\n\nCrie exatamente ' + QUIZ_N_ + ' perguntas de múltipla escolha em português do Brasil, em linguagem simples, sobre o que foi ensinado. Use só o que está no conteúdo (se ele for curto, pergunte sobre o tema e as ideias principais) e não invente doutrina. Cada pergunta tem 4 alternativas curtas, só 1 correta, e as erradas devem parecer plausíveis. Varie a posição da correta. Inclua uma explicação de uma frase.\n\nResponda SOMENTE com um JSON, sem texto antes ou depois, neste formato:\n[{"p":"pergunta","op":["a","b","c","d"],"c":0,"e":"explicação"}]\nonde "c" é o índice (0 a 3) da alternativa correta.';
-  const r = UrlFetchApp.fetch(E.worker.url.replace(/\/+$/, '') + '/ia', { method: 'post', contentType: 'application/json', headers: { 'X-Segredo': E.worker.segredo }, payload: JSON.stringify({ prompt: prompt, max_tokens: 1800 }), muteHttpExceptions: true });
-  if (r.getResponseCode() !== 200) { usoAdd_({ IACalls: 1, IAErros: 1 }); throw new Error('IA respondeu ' + r.getResponseCode()); }
-  const j = JSON.parse(r.getContentText()); if (!j.ok) { usoAdd_({ IACalls: 1, IAErros: 1 }); throw new Error(String(j.erro || 'sem resposta').slice(0, 60)); }
-  usoAdd_({ IACalls: 1, IANeurons: neuronsIa_(j, prompt) });
-  const m = String(j.texto || '').match(/\[[\s\S]*\]/); if (!m) throw new Error('resposta sem JSON');
-  return quizValida_(JSON.parse(m[0]));
+  const prompt = 'Você prepara um quiz curto para os participantes de uma célula (pequeno grupo) de uma igreja cristã evangélica, feito depois da reunião, para fixar a lição.\n\nLição: ' + titulo + '\n\nConteúdo da lição:\n' + texto + '\n\nCrie exatamente ' + QUIZ_N_ + ' perguntas de múltipla escolha em português do Brasil, em linguagem simples, sobre o que foi ensinado. Use só o que está no conteúdo (se ele for curto, pergunte sobre o tema e as ideias principais) e não invente doutrina. Cada pergunta tem 4 alternativas curtas, só 1 correta, e as erradas devem parecer plausíveis. Varie a posição da correta. Inclua uma explicação de uma frase. Nos textos nunca use aspas duplas nem quebras de linha (use aspas simples).\n\nResponda SOMENTE com um JSON, sem texto antes ou depois, neste formato:\n[{"p":"pergunta","op":["a","b","c","d"],"c":0,"e":"explicação"}]\nonde "c" é o índice (0 a 3) da alternativa correta.';
+  let ultimo = 'sem resposta';
+  for (let tent = 0; tent < 2; tent++) {   // a IA às vezes devolve um JSON torto: tenta de novo uma vez antes de desistir
+    const r = UrlFetchApp.fetch(E.worker.url.replace(/\/+$/, '') + '/ia', { method: 'post', contentType: 'application/json', headers: { 'X-Segredo': E.worker.segredo }, payload: JSON.stringify({ prompt: prompt, max_tokens: 1800 }), muteHttpExceptions: true });
+    if (r.getResponseCode() !== 200) { usoAdd_({ IACalls: 1, IAErros: 1 }); throw new Error('o Worker respondeu ' + r.getResponseCode() + (r.getResponseCode() === 401 ? ' (segredo diferente)' : '')); }
+    let j; try { j = JSON.parse(r.getContentText()); } catch (e) { usoAdd_({ IACalls: 1, IAErros: 1 }); throw new Error('resposta do Worker ilegível'); }
+    if (!j.ok) { usoAdd_({ IACalls: 1, IAErros: 1 }); throw new Error(String(j.erro || 'sem resposta').slice(0, 80)); }
+    usoAdd_({ IACalls: 1, IANeurons: neuronsIa_(j, prompt) });
+    const ps = quizValida_(quizParse_(j.texto)); if (ps.length >= 2) return ps;
+    ultimo = 'a IA respondeu em formato inválido';
+  }
+  throw new Error(ultimo);
+}
+// Lê o JSON da IA com tolerância: aspas curvas, vírgula sobrando, texto antes/depois e objetos com defeito (aproveita os que estiverem bons)
+function quizParse_(txt) {
+  let t = String(txt || ''); const i = t.indexOf('['), f = t.lastIndexOf(']'); t = i >= 0 ? t.slice(i, f > i ? f + 1 : t.length) : t;
+  const arruma = function (x) { return x.replace(/[“”«»]/g, '\\"').replace(/[‘’]/g, "'").replace(/,\s*([\]}])/g, '$1').replace(/[\u0000-\u001f]+/g, ' '); };
+  const tenta = function (x) { try { const v = JSON.parse(x); return Array.isArray(v) ? v : null; } catch (e) { return null; } };
+  let v = tenta(t) || tenta(arruma(t)); if (v) return v;
+  const out = []; (t.match(/\{[^{}]*\}/g) || []).forEach(function (o) { try { out.push(JSON.parse(arruma(o))); } catch (e) { /* objeto com defeito: ignora */ } });
+  if (out.length) return out;
+  // último recurso: campo a campo, aguentando aspas soltas dentro do texto
+  (t.match(/\{[\s\S]*?\}/g) || []).forEach(function (o) {
+    const p = /"p"\s*:\s*"([\s\S]*?)"\s*,\s*"op"/.exec(o), op = /"op"\s*:\s*\[([\s\S]*?)\]\s*,\s*"c"/.exec(o), c = /"c"\s*:\s*(\d)/.exec(o), e = /"e"\s*:\s*"([\s\S]*?)"\s*\}?\s*$/.exec(o);
+    if (p && op && c) { const a = op[1].split(/"\s*,\s*"/).map(function (x) { return x.replace(/^\s*"|"\s*$/g, ''); }); out.push({ p: p[1], op: a, c: Number(c[1]), e: e ? e[1] : '' }); }
+  });
+  return out;
 }
 function quizValida_(arr) {
   if (!Array.isArray(arr)) return [];
@@ -4516,7 +4536,7 @@ function getQuizCfg_() { return { ia: !!entregaProps_().worker }; }
 function testQuizIa_() {
   if (!entregaProps_().worker) throw new ApiError('VALIDATION', 'Ligue primeiro o Worker da Cloudflare (cartão acima).');
   try { const r = quizIa_('Parábola do Semeador', 'O semeador saiu a semear e parte da semente caiu à beira do caminho. Jesus explicou que a semente é a palavra de Deus. A terra boa representa quem ouve a palavra e persevera.'); return { ok: !!(r && r.length >= 2), perguntas: r ? r.length : 0, msg: r && r.length >= 2 ? 'A IA gratuita respondeu e gerou ' + r.length + ' perguntas.' : 'A IA respondeu, mas sem perguntas válidas.' }; }
-  catch (e) { return { ok: false, perguntas: 0, msg: 'Não funcionou: ' + String(e && e.message || e).slice(0, 100) + '. Confira se o vínculo AI foi adicionado ao Worker.' }; }
+  catch (e) { const m = String(e && e.message || e).slice(0, 120); return { ok: false, perguntas: 0, msg: 'Não funcionou: ' + m + (/AI|vínculo|binding/i.test(m) ? '. Confira se o vínculo AI foi adicionado ao Worker.' : /formato inválido/.test(m) ? '. A IA respondeu, mas fora do formato. Tente de novo; se repetir, o app usa as perguntas simples.' : '.') }; }
 }
 /* ===== Capacidade de IA e notificações (uso do dia, contado pelo próprio app) ===== */
 const LIM_NEURONS_ = 10000, LIM_URLFETCH_ = 20000, LIM_WORKER_REQ_ = 100000;
