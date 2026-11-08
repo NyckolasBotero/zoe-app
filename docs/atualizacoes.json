@@ -1,5 +1,17 @@
 [
  {
+  "titulo": "Painel de células e multiplicação",
+  "melhorias": [
+   "Administração › Células ganhou um painel com todas as células: líder, líder em treinamento, supervisor, supervisor geral e quantas pessoas cada uma tem.",
+   "Indicador de multiplicação: você define a partir de quantas pessoas (sem contar líder e líder em treinamento) a célula aparece como Precisa multiplicar. É só um aviso, não bloqueia nada.",
+   "Ao tocar numa célula: ver os detalhes, trocar o supervisor, editar ou multiplicar.",
+   "Multiplicar: crie a nova célula, escolha quais pessoas vão e quais ficam, quem é o líder e o líder em treinamento de cada uma (dá para mandar o líder em treinamento para a nova ou o líder e deixar o treinando), o supervisor das duas e a quem ele responde (supervisor geral).",
+   "Nova seção Supervisão: define o supervisor geral de cada supervisor."
+  ],
+  "v": "1.141",
+  "data": "07/11/2026"
+ },
+ {
   "titulo": "Configurações de células no painel Células",
   "melhorias": [
    "Regras Células (permissões por guia e parâmetros), Regras Membro (presenças para participante e faltas para ex-participante) e a IA do quiz das lições agora ficam em Administração › Células, junto com a lista de células.",

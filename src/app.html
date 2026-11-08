@@ -2143,7 +2143,7 @@ admin(){const P=S.perm;const rolesN={admin:'Administrador',pastor:'Pastor',profe
   ['acc','Acessos',(on&&cc?usersNovoCard()+usersCard()+admBloco('membros','Membros cadastrados'):'')+(cc?niveisCard(ps,P,rolesN):'')],
   ['ind','Indicadores',on&&cc?usoCard():''],
   ['des','Desempenho e capacidade',on&&cc?desempenhoCard():''],
-  ['cel','Células',(on&&cc?novaCelulaCard()+admBloco('celulas','Células cadastradas'):'')+(cc?regrasCelulasCard()+regraCard()+quizCfgCard():'')],
+  ['cel','Células',(on&&cc?cpCard()+novaCelulaCard()+admBloco('celulas','Células cadastradas'):'')+(cc?regrasCelulasCard()+regraCard()+quizCfgCard():'')],
   ['def','Definições de Parâmetros',(cc?navCfgCard()+emailSenhaCard()+sodCard()+fotosDriveCard()+pushDiagCard()+entregaCard()+notifCfgCard()+colunasCard()+igrejaCard():'')],
   ['doc','Documentação',cc?docCard():''],
   ['loja','Loja Zoe',cc?lojaContatoCard()+lojaNovoCard()+lojaPromoCard()+lojaListaCard():'']].filter(g=>g[2].trim());
@@ -2515,6 +2515,58 @@ const notifCfgCard=()=>`<div class="card flat col"><h3>Notificações do app</h3
 async function salvaNotifCfg(){const r=await push('saveConfig',{notifTipos:S.alerts},'Notificações atualizadas');if(r===undefined)return;save();renderKeepSuave()}
 function pushDiagCard(){return `<div class="card flat col"><h3>Notificações no aparelho</h3><p class="muted sm">Confere a chave, quantas pessoas já ativaram e envia uma notificação de teste para este celular. O envio é feito direto pelo Apps Script, sem servidor extra.</p><div class="row"><button class="btn sm" onclick="puDiag(true)">Verificar e enviar teste</button><button class="btn sm ghost" onclick="puDiag(false)">Só verificar</button></div></div>`}
 /* ===== Entrega das notificações (Cloudflare Worker) ===== */
+/* ===== Painel de células (Administração › Células) ===== */
+let CP={d:null,q:'',load:0};
+async function cpCarga(){CP.load=1;try{CP.d=await api('celPainel')}catch(e){CP.d={erro:e.message}}CP.load=0;render()}
+function cpCard(){if(!ONLINE)return '';if(!CP.d&&!CP.load)cpCarga();const d=CP.d;
+ if(!d||d.erro)return `<div class="card flat col"><h3>Painel de células</h3><p class="muted sm">${d&&d.erro?esc(d.erro):'Carregando…'}</p></div>`;
+ const q=zNorm(CP.q||''),L=d.celulas.filter(c=>!q||zNorm(c.nome+' '+c.lider+' '+c.supervisor).includes(q));
+ const tile=(n,l,cl)=>`<div class="opt" style="flex:1;min-width:110px;flex-direction:column;align-items:flex-start;gap:0"><b style="font-size:22px;${cl||''}">${n}</b><span class="muted sm">${l}</span></div>`;
+ return `<div class="card flat col"><h3>Painel de células</h3><p class="muted sm">Todas as células em um só lugar: crie, edite, troque a supervisão e veja quais já pedem multiplicação. Toque numa célula para ver os detalhes e multiplicá-la.</p>
+ <div class="row" style="gap:8px;flex-wrap:wrap">${tile(d.resumo.total,'células')}${tile(d.resumo.pessoas,'pessoas nas células')}${tile(d.resumo.precisam,'pedem multiplicação',d.resumo.precisam?'color:var(--vermelho,#c0392b)':'')}</div>
+ <div class="row" style="gap:8px;flex-wrap:wrap;align-items:flex-end"><label class="f" style="max-width:300px">Indicar multiplicação a partir de (pessoas)<input id="cp_lim" type="number" min="2" max="200" inputmode="numeric" value="${d.limite}"></label><button class="btn sm" onclick="cpLimite()">Salvar</button></div>
+ <p class="muted sm" style="margin:0">Conta só quem não é líder nem líder em treinamento (12 pessoas com 2 líderes = 10). É apenas um indicador: nunca impede a célula de continuar nem de multiplicar.</p>
+ <input id="cp_q" placeholder="Buscar célula, líder ou supervisor" value="${esc(CP.q||'')}" oninput="CP.q=this.value;cpFiltra()">
+ <div id="cp_l">${cpLista(L)}</div></div>
+ <div class="card flat col"><h3>Supervisão</h3><p class="muted sm">Cada supervisor responde a um <b>supervisor geral</b>. Defina aqui a quem cada supervisor está ligado.</p>${d.supervisores.length?d.supervisores.map(x=>`<div class="opt"><div style="flex:1;min-width:0"><b>${esc(x.nome)}</b><div class="muted sm">${x.celulas} célula(s)</div></div><select aria-label="Supervisor geral de ${esc(x.nome)}" onchange="cpSuperior('${esc(x.id)}',this.value)">${cpOpcoes(x.superiorId,'Sem supervisor geral',x.id)}</select></div>`).join(''):'<p class="muted sm">Nenhuma célula tem supervisor definido ainda.</p>'}</div>`}
+function cpOpcoes(sel,vazio,excluir){return `<option value="">${vazio}</option>`+CP.d.pessoas.filter(p=>p.id!==excluir).map(p=>`<option value="${esc(p.id)}" ${p.id===sel?'selected':''}>${esc(p.nome)}</option>`).join('')}
+function cpLista(L){if(!L.length)return '<p class="muted sm">Nenhuma célula encontrada.</p>';const lim=CP.d.limite;
+ return L.map(c=>`<button class="opt cp-c" style="width:100%;text-align:left;cursor:pointer" onclick="cpAbre('${esc(c.id)}')"><div style="flex:1;min-width:0"><b>${esc(c.nome)}</b> ${c.precisa?'<span class="chip r">Precisa multiplicar</span>':''}${c.mae?`<span class="chip">filha de ${esc(c.mae)}</span>`:''}<div class="muted sm">${esc([c.dia,c.inicio].filter(Boolean).join(' · ')||'Sem dia definido')} · Líder: ${esc(c.lider||'—')}${c.treinamento?' · Em treinamento: '+esc(c.treinamento):''}</div><div class="muted sm">Supervisor: ${esc(c.supervisor||'—')}${c.superior?' · Geral: '+esc(c.superior):''}</div><div style="height:6px;border-radius:4px;background:var(--line);margin-top:6px;overflow:hidden"><div style="height:100%;width:${Math.min(100,Math.round(c.contaveis/lim*100))}%;background:${c.precisa?'var(--vermelho,#c0392b)':'var(--verde,#1f9d55)'}"></div></div><div class="muted sm">${c.contaveis} de ${lim} pessoas (sem líder e líder em treinamento) · ${c.total} no total</div></div></button>`).join('')}
+function cpFiltra(){const d=CP.d,q=zNorm(CP.q||'');$('#cp_l').innerHTML=cpLista(d.celulas.filter(c=>!q||zNorm(c.nome+' '+c.lider+' '+c.supervisor).includes(q)))}
+async function cpLimite(){const n=Math.round(+$('#cp_lim').value);if(!(n>=2&&n<=200))return toast('Informe de 2 a 200 pessoas','err');const r=await push('saveConfig',{CelulaMultiplicarAcima:n},'Indicador salvo');if(r===undefined)return;await cpCarga()}
+async function cpSuperior(id,sup){const r=await push('setSuperior',{membroId:id,superiorId:sup},'Supervisor geral salvo');await cpCarga();return r}
+function cpAbre(id){const c=CP.d.celulas.find(x=>x.id===id);if(!c)return;
+ modal(`<h2>${esc(c.nome)}</h2><p class="muted sm">${esc([c.dia,c.inicio].filter(Boolean).join(' · ')||'Sem dia definido')}${c.mae?' · filha de '+esc(c.mae):''}</p>
+ <div class="row" style="gap:6px;flex-wrap:wrap">${c.precisa?'<span class="chip r">Precisa multiplicar</span>':'<span class="chip g">Dentro do limite</span>'}<span class="chip">${c.contaveis} de ${CP.d.limite} pessoas</span><span class="chip">${c.total} no total</span></div>
+ <p class="sm"><b>Líder:</b> ${esc(c.lider||'—')}<br><b>Líder em treinamento:</b> ${esc(c.treinamento||'—')}<br><b>Supervisor geral:</b> ${esc(c.superior||'—')}</p>
+ <label class="f">Supervisor da célula<select id="cp_sup">${cpOpcoes(c.supervisorId,'Sem supervisor')}</select></label>
+ <details><summary class="sm">Pessoas da célula (${c.total})</summary><div style="margin-top:6px">${c.membros.map(m=>`<span class="chip ${m.cargo?'g':''}" style="margin:2px">${esc(m.nome)}${m.cargo==='lider'?' · líder':m.cargo==='treinamento'?' · em treinamento':''}</span>`).join('')||'<span class="muted sm">Sem pessoas.</span>'}</div></details>
+ <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn" onclick="cpMultAbre('${esc(c.id)}')">Multiplicar esta célula</button><button class="btn ghost" onclick="cpSalvaSup('${esc(c.id)}')">Salvar supervisor</button><button class="btn ghost" onclick="closeL();admEditar('celulas','${esc(c.id)}')">${ic('pen',14)} Editar</button><button class="btn ghost" onclick="closeL()">Fechar</button></div>`)}
+async function cpSalvaSup(id){const r=await push('orgMove',{celulaId:id,supervisorId:$('#cp_sup').value},'Supervisor da célula salvo');if(r===undefined)return;closeL();await cpCarga()}
+/* multiplicar: assistente */
+let CMU=null;
+function cpMultAbre(id){const c=CP.d.celulas.find(x=>x.id===id);if(!c)return;
+ CMU={id,c,nome:'',dia:c.dia||'',inicio:c.inicio||'',lo:c.liderId,to:'',ln:c.treinamentoId||'',tn:'',vao:new Set(),sup:c.supervisorId,ger:c.superiorId};cpMultDesenha()}
+function cpMultCargos(){return new Set([CMU.lo,CMU.to,CMU.ln,CMU.tn].filter(Boolean))}
+function cpMultDesenha(){const c=CMU.c,cg=cpMultCargos(),resto=c.membros.filter(m=>!cg.has(m.id));
+ const sel=(k,t,vazio)=>`<label class="f">${t}<select onchange="CMU.${k}=this.value;CMU.vao.delete(this.value);cpMultDesenha()">${vazio?'<option value="">Nenhum</option>':'<option value="" disabled '+(CMU[k]?'':'selected')+'>Escolha…</option>'}${c.membros.map(m=>`<option value="${esc(m.id)}" ${CMU[k]===m.id?'selected':''}>${esc(m.nome)}</option>`).join('')}</select></label>`;
+ const vaoN=resto.filter(m=>CMU.vao.has(m.id)).length+[CMU.ln,CMU.tn].filter(Boolean).length,fica=c.membros.length-vaoN;
+ const nome=id=>(c.membros.find(m=>m.id===id)||{}).nome||'';
+ modal(`<h2>Multiplicar ${esc(c.nome)}</h2><p class="muted sm">Cria uma célula nova, filha desta, e reparte as pessoas e os cargos. Você pode mandar o líder em treinamento para a nova ou mandar o líder e deixar o líder em treinamento aqui.</p>
+ <div class="form"><label class="f full">Nome da nova célula<input id="cm_n" value="${esc(CMU.nome)}" oninput="CMU.nome=this.value" placeholder="Ex.: ${esc(c.nome)} 2"></label><label class="f">Dia<select onchange="CMU.dia=this.value">${['',...DIAS].map(x=>`<option ${x===CMU.dia?'selected':''} value="${x}">${x||'Mesmo da original'}</option>`).join('')}</select></label><label class="f">Início<input type="time" value="${esc(CMU.inicio)}" onchange="CMU.inicio=this.value"></label></div>
+ <div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn sm ghost" onclick="cpMultTroca(0)">Líder em treinamento vai para a nova</button><button class="btn sm ghost" onclick="cpMultTroca(1)">Líder vai para a nova, em treinamento fica</button></div>
+ <h4 style="margin:8px 0 0">Célula original (fica)</h4><div class="form">${sel('lo','Líder',0)}${sel('to','Líder em treinamento',1)}</div>
+ <h4 style="margin:8px 0 0">Célula nova (vai)</h4><div class="form">${sel('ln','Líder',0)}${sel('tn','Líder em treinamento',1)}</div>
+ <h4 style="margin:8px 0 0">Demais pessoas <span class="muted sm">· ficam ${fica} · vão ${vaoN}</span></h4><div class="row" style="gap:6px"><button class="btn sm ghost" onclick="cpMultMetade()">Mandar metade</button><button class="btn sm ghost" onclick="CMU.vao.clear();cpMultDesenha()">Todos ficam</button></div>
+ <div style="max-height:220px;overflow:auto;margin-top:6px">${resto.length?resto.map(m=>`<label class="opt" style="cursor:pointer"><input type="checkbox" ${CMU.vao.has(m.id)?'checked':''} onchange="cpMultVai('${esc(m.id)}',this.checked)"><span style="flex:1">${esc(m.nome)}</span><span class="chip ${CMU.vao.has(m.id)?'y':''}">${CMU.vao.has(m.id)?'vai para a nova':'fica'}</span></label>`).join(''):'<p class="muted sm">Todas as pessoas já têm cargo.</p>'}</div>
+ <h4 style="margin:8px 0 0">Supervisão das duas células</h4><div class="form"><label class="f">Supervisor novo (das duas)<select onchange="CMU.sup=this.value">${cpOpcoes(CMU.sup,'Manter o atual')}</select></label><label class="f">Supervisor geral dele<select onchange="CMU.ger=this.value">${cpOpcoes(CMU.ger,'Sem supervisor geral')}</select></label></div>
+ <div class="row" style="gap:8px;margin-top:10px"><button class="btn" onclick="cpMultEnvia()">Multiplicar</button><button class="btn ghost" onclick="cpAbre('${esc(c.id)}')">Voltar</button></div>`)}
+function cpMultTroca(lidera){const c=CMU.c;if(lidera){CMU.lo=c.treinamentoId||c.liderId;CMU.ln=c.liderId;CMU.to='';CMU.tn=''}else{CMU.lo=c.liderId;CMU.ln=c.treinamentoId||'';CMU.to='';CMU.tn=''}[CMU.lo,CMU.ln].forEach(x=>CMU.vao.delete(x));cpMultDesenha()}
+function cpMultVai(id,on){on?CMU.vao.add(id):CMU.vao.delete(id);cpMultDesenha()}
+function cpMultMetade(){const cg=cpMultCargos(),r=CMU.c.membros.filter(m=>!cg.has(m.id));CMU.vao=new Set(r.slice(0,Math.floor(r.length/2)).map(m=>m.id));cpMultDesenha()}
+async function cpMultEnvia(){if((CMU.nome||'').trim().length<2)return toast('Dê um nome à nova célula','err');if(!CMU.lo||!CMU.ln)return toast('Escolha o líder das duas células','err');
+ const d={celulaId:CMU.id,nome:CMU.nome.trim(),dia:CMU.dia,inicio:CMU.inicio,liderOrigId:CMU.lo,treinOrigId:CMU.to,liderNovaId:CMU.ln,treinNovaId:CMU.tn,membrosNova:[...CMU.vao].filter(x=>!cpMultCargos().has(x)),superiorId:CMU.ger||''};if(CMU.sup)d.supervisorId=CMU.sup;
+ const r=await push('multiplyCell',d,'Célula multiplicada!');if(r===undefined)return;closeL();CMU=null;await cpCarga();toast(`Nova célula criada: ${r.foram} pessoa(s) foram, ${r.ficaram} ficaram`)}
 /* ===== Quiz da lição ===== */
 let QZ={l:null,ld:null,cfg:null};
 function quizMembroCard(){if(!ONLINE||!S.celId&&!S.minhas)return '';if(!QZ.l){QZ.l={c:1};api('myQuizzes').then(r=>{QZ.l=r;render()}).catch(()=>{QZ.l={itens:[]}})}

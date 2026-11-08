@@ -43,6 +43,7 @@ const SHEETS = {
   BibMarcas: ['MembroID', 'Ref', 'Cor', 'Tipo', 'Comentario', 'Publico', 'Data'],
   Presencas: ['ReuniaoID', 'CelulaID', 'Data', 'MembroID'],
   Papeis: ['CelulaID', 'MembroID', 'Papel'],
+  Supervisao: ['MembroID', 'SuperiorID'],
   PapeisLog: ['LogID', 'CelulaID', 'MembroID', 'Papel', 'Acao', 'Por', 'Data'],
   Oracoes: ['OracaoID', 'CelulaID', 'MembroID', 'Tema', 'Titulo', 'Texto', 'Data'],
   Eventos: ['EventoID', 'Titulo', 'Data', 'Hora', 'Local', 'Descricao', 'Programacao', 'Escopo', 'CelulaID', 'CriadoPor', 'Status', 'Foto', 'Insignia', 'DataOriginal', 'Remarcado', 'MotivoRemarca', 'FotosAvisoEm', 'PostID'],
@@ -526,7 +527,7 @@ function notifTipos_(c) { const o = jparse_((c || cfgMap_()).NotifTipos, {}), r 
 function saveConfig_(d, u) {
   return withLock_(function () {
     const t = table_('Config'), allow = { NomeIgreja: 120, WhatsApp: 20, LojaWhatsApp: 20, LocalNome: 120, LocalEndereco: 250, LinkMapa: 300 };
-    [['FrequentadorPct', 1, 100, 'O limite de presença precisa estar entre 1 e 100.'], ['FrequentadorJanela', 1, 52, 'Informe de 1 a 52 reuniões.'], ['CelulasParaSupervisor', 0, 50, 'Informe de 0 a 50 células.'], ['PresencasParaParticipante', 1, 50, 'Informe de 1 a 50 presenças.'], ['FaltasParaExParticipante', 1, 50, 'Informe de 1 a 50 faltas seguidas.']].forEach(function (q) {
+    [['FrequentadorPct', 1, 100, 'O limite de presença precisa estar entre 1 e 100.'], ['FrequentadorJanela', 1, 52, 'Informe de 1 a 52 reuniões.'], ['CelulasParaSupervisor', 0, 50, 'Informe de 0 a 50 células.'], ['PresencasParaParticipante', 1, 50, 'Informe de 1 a 50 presenças.'], ['FaltasParaExParticipante', 1, 50, 'Informe de 1 a 50 faltas seguidas.'], ['CelulaMultiplicarAcima', 2, 200, 'Informe de 2 a 200 pessoas.']].forEach(function (q) {
       if (d[q[0]] === undefined) return; const n = Number(d[q[0]]); if (!isFinite(n) || n < q[1] || n > q[2] || Math.round(n) !== n) throw new ApiError('VALIDATION', q[3]);
       const r0 = t.rows.filter(function (x) { return x.Chave === q[0]; })[0]; if (r0) writeRow_(t, r0._row, { Valor: String(n) }); else appendRow_(t, { Chave: q[0], Valor: String(n) });
     });
@@ -733,6 +734,61 @@ function addPrayer_(d, u) {
 }
 function prayerCell_(u, d, acao) { const id = clip_(d.celulaId, 30) || u.celulaId || celulaAtiva_(u); if (id) cellAccess_(u, id, 'ver', 'oracao', acao || 'ver'); return id; }
 function listPrayers_(d, u) { const id = prayerCell_(u, d); if (!id) return []; return table_('Oracoes').rows.filter(function (o) { return o.CelulaID === id; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).slice(0, 50).map(function (o) { return { tema: o.Tema, titulo: o.Titulo, texto: o.Texto, data: o.Data }; }); }
+/* ===== Painel de células (Administração › Células): visão geral, indicador de multiplicação, multiplicar, supervisão ===== */
+// Quantas pessoas (sem contar líder e líder em treinamento) a célula comporta antes de pedir multiplicação. É só um indicador: nunca bloqueia.
+function multLimite_() { return cfgInt_('CelulaMultiplicarAcima', 10, 2, 200); }
+function superiorDe_() { const o = {}; lazy_('Supervisao').rows.forEach(function (r) { if (r.MembroID && r.SuperiorID) o[r.MembroID] = r.SuperiorID; }); return o; }
+function celPainel_() {
+  const nome = {}; table_('Membros').rows.forEach(function (m) { nome[m.MembroID] = m.Apelido || m.Simples || m.Nome; });
+  const lim = multLimite_(), sup = superiorDe_(), por = {}; table_('Membros').rows.forEach(function (m) { if (m.CelulaID && m.Status !== 'Inativo') (por[m.CelulaID] = por[m.CelulaID] || []).push(m.MembroID); });
+  const cs = table_('Celulas').rows.filter(function (c) { return c.Status !== 'Inativa'; }), mae = {}; cs.forEach(function (c) { mae[c.CelulaID] = c.Nome; });
+  const celulas = cs.map(function (c) {
+    const ids = por[c.CelulaID] || [], cont = ids.filter(function (m) { return m !== c.LiderID && m !== c.TreinamentoID; }).length;
+    return { id: c.CelulaID, nome: c.Nome, dia: c.Dia || '', inicio: c.Inicio || '', liderId: c.LiderID || '', lider: nome[c.LiderID] || '', treinamentoId: c.TreinamentoID || '', treinamento: nome[c.TreinamentoID] || '', supervisorId: c.SupervisorID || '', supervisor: nome[c.SupervisorID] || '', superiorId: sup[c.SupervisorID] || '', superior: nome[sup[c.SupervisorID]] || '', total: ids.length, contaveis: cont, precisa: cont >= lim, maeId: c.MaeID || '', mae: mae[c.MaeID] || '', membros: ids.map(function (m) { return { id: m, nome: nome[m] || '?', cargo: m === c.LiderID ? 'lider' : m === c.TreinamentoID ? 'treinamento' : '' }; }) };
+  }).sort(function (a, b) { return (b.precisa - a.precisa) || (a.nome < b.nome ? -1 : 1); });
+  const sups = {}; celulas.forEach(function (c) { if (c.supervisorId) sups[c.supervisorId] = (sups[c.supervisorId] || 0) + 1; }); Object.keys(sup).forEach(function (k) { if (!sups[k]) sups[k] = 0; });
+  const pessoas = table_('Usuarios').rows.filter(function (x) { return x.Status !== 'Inativo' && x.MembroID; }).map(function (x) { return { id: x.MembroID, nome: nome[x.MembroID] || x.Email }; }).sort(function (a, b) { return a.nome < b.nome ? -1 : 1; });
+  return { limite: lim, celulas: celulas, pessoas: pessoas, resumo: { total: celulas.length, precisam: celulas.filter(function (c) { return c.precisa; }).length, pessoas: celulas.reduce(function (a, c) { return a + c.total; }, 0) },
+    supervisores: Object.keys(sups).map(function (k) { return { id: k, nome: nome[k] || '?', celulas: sups[k], superiorId: sup[k] || '', superior: nome[sup[k]] || '' }; }).sort(function (a, b) { return a.nome < b.nome ? -1 : 1; }) };
+}
+// Define a quem um supervisor responde (supervisor geral). Vazio remove. Não aceita laços (A acima de B acima de A).
+function setSuperior_(d) {
+  const mid = clip_(d.membroId, 30), sup = clip_(d.superiorId, 30); getMember_(mid); if (sup) getMember_(sup);
+  if (sup && sup === mid) throw new ApiError('VALIDATION', 'Ninguém pode ser o próprio supervisor geral.');
+  return withLock_(function () {
+    const t = lazy_('Supervisao'), m = superiorDe_(); let k = sup, n = 0; while (k && n < 60) { if (k === mid) throw new ApiError('VALIDATION', 'Isso criaria um ciclo na hierarquia de supervisão.'); k = m[k]; n++; }
+    const r = t.rows.filter(function (x) { return x.MembroID === mid; })[0];
+    if (r) { if (sup) writeRow_(t, r._row, { SuperiorID: sup }); else delRow_(t, r._row); } else if (sup) appendRow_(t, { MembroID: mid, SuperiorID: sup });
+    return { ok: true };
+  });
+}
+// Multiplica uma célula: cria a nova (filha), reparte as pessoas e os cargos e define a supervisão das duas.
+function multiplyCell_(d, u) {
+  return withLock_(function () {
+    const ct = table_('Celulas'), c = ct.rows.filter(function (x) { return x.CelulaID === clip_(d.celulaId, 30) && x.Status !== 'Inativa'; })[0]; if (!c) throw new ApiError('NOT_FOUND', 'Célula não encontrada.');
+    const nome = clip_(d.nome, 100); if (nome.length < 2) throw new ApiError('VALIDATION', 'Dê um nome à nova célula.');
+    const mt = table_('Membros'), noCel = mt.rows.filter(function (m) { return m.CelulaID === c.CelulaID && m.Status !== 'Inativo'; }).map(function (m) { return m.MembroID; });
+    const pool = noCel.concat([c.LiderID, c.TreinamentoID].filter(function (x) { return x && noCel.indexOf(x) < 0; }));
+    const lo = clip_(d.liderOrigId, 30), to = clip_(d.treinOrigId, 30), ln = clip_(d.liderNovaId, 30), tn = clip_(d.treinNovaId, 30);
+    if (!lo || !ln) throw new ApiError('VALIDATION', 'Escolha o líder de cada uma das duas células.');
+    const cargos = [lo, to, ln, tn].filter(String); if (cargos.some(function (x, i) { return cargos.indexOf(x) !== i; })) throw new ApiError('VALIDATION', 'A mesma pessoa não pode ter dois cargos. Escolha pessoas diferentes para líder e líder em treinamento.');
+    cargos.forEach(function (x) { if (pool.indexOf(x) < 0) throw new ApiError('VALIDATION', 'Os líderes precisam ser pessoas desta célula.'); });
+    const vao = (Array.isArray(d.membrosNova) ? d.membrosNova : []).map(function (x) { return clip_(x, 30); }).filter(function (x) { return noCel.indexOf(x) >= 0 && x !== lo && x !== to; });
+    [ln, tn].filter(String).forEach(function (x) { if (vao.indexOf(x) < 0) vao.push(x); });
+    const sid = d.supervisorId !== undefined && clip_(d.supervisorId, 30) ? clip_(d.supervisorId, 30) : (c.SupervisorID || ''); if (sid) getMember_(sid);
+    if (sid && sid !== c.SupervisorID) checarSupervisor_(sid, d, u, c.CelulaID);
+    const sup = d.superiorId !== undefined && sid ? clip_(d.superiorId, 30) : undefined;
+    if (sup !== undefined) setSuperior_({ membroId: sid, superiorId: sup });
+    const nid = id_('C'), dia = clip_(d.dia, 20) || c.Dia || '', ini = clip_(d.inicio, 5) || c.Inicio || '', fim = clip_(d.fim, 5) || c.Fim || '';
+    appendRow_(ct, { CelulaID: nid, Nome: nome, Descricao: '', LiderID: ln, SupervisorID: sid, TreinamentoID: tn, MaeID: c.CelulaID, Dia: dia, Inicio: ini, Fim: fim, Categoria: c.Categoria || '', Faixa: c.Faixa || '', Bairro: c.Bairro || '', Cidade: c.Cidade || '', UF: c.UF || '', Endereco: '', PrivGrupo: '1', PrivTel: '0', PrivEmail: '0', PrivEnd: '0', Status: 'Ativa', Lat: '', Lng: '' });
+    writeRow_(ct, c._row, { LiderID: lo, TreinamentoID: to, SupervisorID: sid });
+    const pt = table_('Papeis'); for (let i = pt.rows.length - 1; i >= 0; i--) if (pt.rows[i].CelulaID === c.CelulaID && vao.indexOf(pt.rows[i].MembroID) >= 0) delRow_(pt, pt.rows[i]._row);
+    vao.forEach(function (m) { const g = getMember_(m); writeRow_(g.t, g.m._row, { CelulaID: nid }); });
+    [lo, to].filter(String).forEach(function (m) { const g = getMember_(m); if (g.m.CelulaID !== c.CelulaID) writeRow_(g.t, g.m._row, { CelulaID: c.CelulaID }); });
+    audit_(u.email, 'CELULA_MULTIPLICADA', c.CelulaID + ' -> ' + nid + ' (' + vao.length + ' pessoas)', 'OK');
+    return { ok: true, novaId: nid, ficaram: noCel.filter(function (m) { return vao.indexOf(m) < 0; }).length, foram: vao.length };
+  });
+}
 function multiplicadas_(membroId, maeId) {
   const cs = table_('Celulas').rows.filter(function (c) { return c.Status !== 'Inativa'; }), minhas = cs.filter(function (c) { return c.LiderID === membroId; }).map(function (c) { return c.CelulaID; });
   return cs.filter(function (c) { return c.MaeID && minhas.indexOf(c.MaeID) >= 0; }).length + (maeId && minhas.indexOf(maeId) >= 0 ? 1 : 0);
@@ -4135,7 +4191,7 @@ const ROUTES = {
   saveConfig: { auth: 'config', write: 1, fn: saveConfig_ }, fotosDriveStatus: { auth: 'config', fn: fotosDriveStatus_ }, fotosDriveSet: { auth: 'config', write: 1, fn: fotosDriveSet_ }, fotosDriveMigra: { auth: 'config', write: 1, fn: fotosDriveMigra_ }, saveHomeLayout: { auth: 'config', write: 1, fn: saveHomeLayout_ }, saveNavConfig: { auth: 'config', write: 1, fn: saveNavConfig_ }, saveMural: { auth: 'config', write: 1, fn: saveMural_ }, getTelao: { auth: 'any', cond: 60000, fn: getTelao_ }, setTelao: { auth: 'any', write: 1, fn: setTelao_ }, saveTelaoPausa: { auth: 'any', write: 1, fn: saveTelaoPausa_ }, listMidias: { auth: 'any', fn: listMidias_ }, getMidia: { auth: 'any', fn: getMidia_ }, saveMidia: { auth: 'any', write: 1, fn: saveMidia_ }, deleteMidia: { auth: 'any', write: 1, fn: deleteMidia_ }, listAgendas: { auth: 'any', fn: listAgendas_ }, saveAgenda: { auth: 'any', write: 1, fn: saveAgenda_ }, deleteAgenda: { auth: 'any', write: 1, fn: deleteAgenda_ }, addAgendaItem: { auth: 'any', write: 1, fn: addAgendaItem_ }, getAccessRules: { auth: 'config', fn: accessRules_ }, saveAccessRules: { auth: 'config', write: 1, fn: saveAccessRules_ }, saveVideo: { auth: 'config', write: 1, fn: saveVideo_ }, deleteVideo: { auth: 'config', write: 1, fn: deleteVideo_ }, updateVideo: { auth: 'config', write: 1, fn: updateVideo_ },
   listUsers: { auth: 'config', fn: listUsers_ }, createUser: { auth: 'config', write: 1, fn: createUser_ }, setUser: { auth: 'config', write: 1, fn: setUser_ }, viewPasswords: { auth: 'config', fn: viewPasswords_ }, savePerms: { auth: 'config', write: 1, fn: savePerms_ },
   saveLesson: { auth: 'config', write: 1, fn: saveLesson_ }, getPerms: { auth: 'config', fn: function () { return permMatrix_(); } },
-  createCell: { auth: 'celulas', write: 1, fn: createCell_ },
+  createCell: { auth: 'celulas', write: 1, fn: createCell_ }, celPainel: { auth: 'celulas', fn: celPainel_ }, multiplyCell: { auth: 'celulas', write: 1, fn: multiplyCell_ }, setSuperior: { auth: 'celulas', write: 1, fn: setSuperior_ },
   adminList: { auth: 'any', fn: adminList_ }, adminSave: { auth: 'any', write: 1, fn: adminSave_ }, adminRemove: { auth: 'any', write: 1, fn: adminRemove_ }
 };
 function doGet() { return json_({ ok: true, data: { servico: 'Zoe API', status: 'online' } }); }

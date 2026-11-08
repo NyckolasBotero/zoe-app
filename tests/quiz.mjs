@@ -1,4 +1,5 @@
 // Quiz da lição: agenda ao lançar a presença, gera perguntas (IA ou modelo), envia aos participantes e guarda respostas
+const hoje = n => new Date(Date.now() - 3 * 36e5 - 864e5 * n).toISOString().slice(0, 10); // data de Brasília
 import { makeEnv } from './mock_env.mjs'; import assert from 'node:assert';
 const e = makeEnv(); e.run(`criarAdmin('admin@zoe.com','SenhaForte123','Pastor Admin')`);
 const adm = e.call('login', { email: 'admin@zoe.com', senha: 'SenhaForte123' }).data.token, call = (a, d, t) => { const r = e.call(a, d, t || adm); assert(r.ok !== false, a + ' ' + JSON.stringify(r)); return r.data !== undefined ? r.data : r; };
@@ -12,7 +13,7 @@ const texto = 'O semeador saiu a semear e parte da semente caiu à beira do cami
 call('saveLesson', { titulo: 'Parábola do Semeador', resumo: 'Os tipos de coração', conteudo: texto }); const lic = call('listLessons', {}).find(l => l.titulo === 'Parábola do Semeador').id;
 e.run('var CALLS = []; var IA = null; UrlFetchApp = { fetchAll: rs => rs.map(r => ({ getResponseCode: () => 200, getContentText: () => "" })), fetch: (u, r) => { CALLS.push({ url: u, r }); return { getResponseCode: () => 200, getContentText: () => "" }; } }');
 // presença com lição cria quiz agendado para o dia seguinte; sem lição/resumo não cria
-const ontem = new Date(Date.now() - 864e5 * 2).toISOString().slice(0, 10);
+const ontem = hoje(2);
 call('saveAttendance', { celulaId: cel, data: ontem, presentes: [a], licaoId: lic, confirmaDia: true });
 let qs = e.run('JSON.stringify(table_("Quizzes").rows)'); qs = JSON.parse(qs); assert.equal(qs.length, 1); assert.equal(qs[0].Status, 'agendado'); assert.equal(qs[0].Titulo, 'Parábola do Semeador'); assert(qs[0].Texto.includes('semeador'), 'texto da lição vira a base');
 assert.equal(call('myQuizzes', {}, aT).itens.length, 1, 'data de envio já passou: aparece (e é gerado/enviado na hora)');
@@ -41,26 +42,26 @@ call('saveEntrega', { workerUrl: 'https://worker.exemplo.workers.dev', workerSeg
 e.run(`UrlFetchApp.fetch = (u, r) => { CALLS.push({ url: u, r }); if (/\\/ia$/.test(u)) { if (IA === "erro") return { getResponseCode: () => 502, getContentText: () => "{}" }; return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ ok: true, texto: "Claro! Aqui está:\\n" + JSON.stringify(IA) }) }; } return { getResponseCode: () => 200, getContentText: () => "" }; };
 IA = [1,2,3,4,5].map(i => ({ p: 'Pergunta ' + i + '?', op: ['A'+i, 'B'+i, 'C'+i, 'D'+i], c: i % 4, e: 'porque sim' })); CALLS.length = 0`);
 assert.equal(call('testQuizIa', {}).ok, true);
-call('saveAttendance', { celulaId: cel, data: new Date().toISOString().slice(0, 10), presentes: [a, b], licaoId: '', licaoResumo: 'Estudamos a oração do Pai Nosso e a importância de orar com fé e perseverança todos os dias', confirmaDia: true });
-let ag = JSON.parse(e.run('JSON.stringify(table_("Quizzes").rows.filter(r=>r.Status==="agendado"))')); assert.equal(ag.length, 1, 'resumo livre também gera quiz'); assert.equal(ag[0].EnviarEm, new Date(Date.now() + 864e5).toISOString().slice(0, 10), 'enviado só no dia seguinte');
+call('saveAttendance', { celulaId: cel, data: hoje(0), presentes: [a, b], licaoId: '', licaoResumo: 'Estudamos a oração do Pai Nosso e a importância de orar com fé e perseverança todos os dias', confirmaDia: true });
+let ag = JSON.parse(e.run('JSON.stringify(table_("Quizzes").rows.filter(r=>r.Status==="agendado"))')); assert.equal(ag.length, 1, 'resumo livre também gera quiz'); assert.equal(ag[0].EnviarEm, hoje(-1), 'enviado só no dia seguinte');
 assert.equal(call('myQuizzes', {}, aT).itens.length, 1, 'ainda não venceu');
 e.run('CALLS.length = 0'); let ac = call('quizAcao', { id: ag[0].QuizID, acao: 'enviar' }, adm); assert.equal(ac.ok, true); const ca = e.run('JSON.stringify(CALLS.filter(c=>/\\/ia$/.test(c.url)).map(c=>({h:c.r.headers,b:JSON.parse(c.r.payload)})))'); const cj = JSON.parse(ca); assert.equal(cj.length, 1); assert.equal(cj[0].h['X-Segredo'], 's3'); assert.match(cj[0].b.prompt, /oração do Pai Nosso/);
 lq = call('quizLider', { celulaId: cel }); assert.equal(lq.itens[0].fonte, 'ia'); assert.equal(lq.itens[0].total, 5); assert.equal(lq.itens[0].perguntas[0].p, 'Pergunta 1?');
 e.run('IA = "erro"'); call('saveAttendance', { celulaId: cel, data: ontem, presentes: [a], licaoId: lic, confirmaDia: true });
 // gatilho diário
-e.run('IA = null'); call('saveAttendance', { celulaId: cel, data: new Date(Date.now() - 864e5).toISOString().slice(0, 10), presentes: [b], licaoId: '', licaoResumo: 'A importância de perseverar na fé mesmo diante das dificuldades da vida', confirmaDia: true });
+e.run('IA = null'); call('saveAttendance', { celulaId: cel, data: hoje(1), presentes: [b], licaoId: '', licaoResumo: 'A importância de perseverar na fé mesmo diante das dificuldades da vida', confirmaDia: true });
 e.run('enviaQuizzes()'); assert.equal(JSON.parse(e.run('JSON.stringify(table_("Quizzes").rows.map(r=>r.Status))')).filter(s => s === 'enviado').length, 3);
 // cancelar
-call('saveAttendance', { celulaId: cel, data: new Date().toISOString().slice(0, 10), presentes: [a], licaoId: lic, confirmaDia: true }); const ult = JSON.parse(e.run('JSON.stringify(table_("Quizzes").rows.filter(r=>r.Status==="agendado"))'))[0]; if (ult) { call('quizAcao', { id: ult.QuizID, acao: 'cancelar' }); assert(!call('quizLider', { celulaId: cel }).itens.some(i => i.id === ult.QuizID)); }
+call('saveAttendance', { celulaId: cel, data: hoje(0), presentes: [a], licaoId: lic, confirmaDia: true }); const ult = JSON.parse(e.run('JSON.stringify(table_("Quizzes").rows.filter(r=>r.Status==="agendado"))'))[0]; if (ult) { call('quizAcao', { id: ult.QuizID, acao: 'cancelar' }); assert(!call('quizLider', { celulaId: cel }).itens.some(i => i.id === ult.QuizID)); }
 // mesma lição em várias células: uma só chamada à IA, mesmas perguntas
-const cel2 = call('createCell', { nome: 'Célula Sul', liderId: mk('carla'), dia: 'Quinta' }).id, dia3 = new Date(Date.now() - 864e5 * 3).toISOString().slice(0, 10);
+const cel2 = call('createCell', { nome: 'Célula Sul', liderId: mk('carla'), dia: 'Quinta' }).id, dia3 = hoje(3);
 call('saveLesson', { titulo: 'Fé e perseverança', resumo: 'Perseverar na fé', conteudo: 'Tiago ensina que a prova da nossa fé produz perseverança. Quem persevera na provação recebe a coroa da vida. A fé verdadeira se mostra nas obras e na paciência diante das dificuldades da vida.' }); const lic2 = call('listLessons', {}).find(l => l.titulo === 'Fé e perseverança').id;
 call('saveAttendance', { celulaId: cel, data: dia3, presentes: [a], licaoId: lic2, confirmaDia: true }); call('saveAttendance', { celulaId: cel2, data: dia3, presentes: [], licaoId: lic2, confirmaDia: true });
 e.run('CALLS.length = 0; IA = [1,2,3,4,5].map(i => ({ p: "Reuso " + i + "?", op: ["A"+i, "B"+i, "C"+i, "D"+i], c: i % 4, e: "x" }))'); e.run('enviaQuizzes()');
 assert.equal(JSON.parse(e.run('JSON.stringify(CALLS.filter(c=>/\\/ia$/.test(c.url)).length)')), 1, 'uma chamada à IA para duas células');
 const dois = JSON.parse(e.run('JSON.stringify(table_("Quizzes").rows.filter(r=>r.Titulo==="Fé e perseverança").map(r=>[r.Status,r.Fonte,r.Perguntas]))')); assert.equal(dois.length, 2); assert(dois.every(x => x[0] === 'enviado' && x[1] === 'ia') && dois[0][2] === dois[1][2]);
 // lição "Outra" (resumo livre) nunca reaproveita: cada reunião gera o próprio quiz a partir do resumo
-const dia4 = new Date(Date.now() - 864e5 * 4).toISOString().slice(0, 10), rs = 'Falamos sobre o perdão: perdoar como Cristo nos perdoou, deixando a mágoa e restaurando relacionamentos feridos';
+const dia4 = hoje(4), rs = 'Falamos sobre o perdão: perdoar como Cristo nos perdoou, deixando a mágoa e restaurando relacionamentos feridos';
 e.run('CALLS.length = 0'); call('saveAttendance', { celulaId: cel, data: dia4, presentes: [a], licaoId: '', licaoResumo: rs, confirmaDia: true }); call('saveAttendance', { celulaId: cel2, data: dia4, presentes: [], licaoId: '', licaoResumo: rs, confirmaDia: true });
 e.run('enviaQuizzes()'); assert.equal(JSON.parse(e.run('JSON.stringify(CALLS.filter(c=>/\\/ia$/.test(c.url)).length)')), 2, 'resumo livre: uma chamada por reunião'); assert.match(JSON.parse(e.run('JSON.stringify(CALLS.filter(c=>/\\/ia$/.test(c.url)).map(c=>JSON.parse(c.r.payload).prompt))'))[0], /perdão/);
 console.log('OK quiz');
