@@ -23,7 +23,7 @@ with sync_playwright() as p:
     sup.click('button:has-text("Voltar à tabela")'); sup.wait_for_selector('table tr.svr')
     # aprovações dentro da área
     sup.locator('button[role=tab]:has-text("Aprovações")').dispatch_event('click'); sup.wait_for_timeout(800); assert sup.locator('h1:has-text("Área da supervisão")').count()==1
-    sup.locator('button[role=tab]:has-text("Álbum")').dispatch_event('click'); sup.wait_for_selector('text=Álbum da supervisão',timeout=8000)
+    sup.locator('button[role=tab]:has-text("Murais de Fotos")').dispatch_event('click'); sup.wait_for_selector('text=Murais de Fotos 📸',timeout=8000)
     sup.evaluate("go('aprovacoes')"); sup.wait_for_timeout(500); assert sup.evaluate("R.r==='supervisao'&&R.sub.supervisao==='aprov'"),'aprovações redireciona'
     # menu: Área da supervisão logo abaixo de Meus Grupos, ícones sem repetição
     ic=sup.evaluate("[...document.querySelectorAll('#side .nav > .nv, #side .nav .mt-btn')].map(b=>b.querySelector('svg')?b.querySelector('svg').innerHTML:'')")

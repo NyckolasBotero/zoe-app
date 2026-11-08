@@ -50,6 +50,12 @@ test('células: líder só na própria; presença; transferência com aprovaçã
   const att = e.call('saveAttendance', { data: '2026-10-22', presentes: mems.map(m => m.id), deus: true }, L1); assert.equal(att.data.presentes, 2);
   e.call('saveAttendance', { data: '2026-10-22', presentes: [mems[0].id], deus: false }, L1);
   const h = e.call('history', {}, L1).data; assert.equal(h.reunioes.length, 1); assert.equal(h.reunioes[0].presentes, 1); assert.equal(h.indicadores.presencaDeDeus, 0);
+  { const px = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    const sv = e.call('saveAttendance', { data: '2026-10-22', presentes: [mems[0].id], fotos: [{ foto: px }, { foto: px + '' }, { foto: px, principal: true }, { foto: px }] }, L1); assert.ok(sv.ok, JSON.stringify(sv));
+    let rf = e.call('reuniaoFotos', { data: '2026-10-22' }, L1).data.fotos; assert.equal(rf.length, 3, 'máximo 3'); assert.equal(rf.filter(x => x.principal).length, 1); assert.equal(rf[2].principal, true);
+    assert.equal(e.call('history', {}, L1).data.reunioes[0].nf, 3);
+    e.call('saveAttendance', { data: '2026-10-22', presentes: [mems[0].id], fotos: [{ id: rf[0].id }, { id: rf[1].id }] }, L1); rf = e.call('reuniaoFotos', { data: '2026-10-22' }, L1).data.fotos; assert.equal(rf.length, 2); assert.equal(rf[0].principal, true, 'sem escolha vale a primeira');
+    e.call('saveAttendance', { data: '2026-10-22', presentes: [mems[0].id] }, L1); assert.equal(e.call('reuniaoFotos', { data: '2026-10-22' }, L1).data.fotos.length, 2, 'sem o campo fotos nada muda'); }
   const f = e.call('lookup', { nome: 'carlos' }, L2).data; assert.equal(f[0].situacao, 'outra'); assert.equal(f[0].celula, 'Semeadores');
   assert.equal(e.call('requestTransfer', { membroId: f[0].id }, L2).data.status, 'pendente');
   assert.equal(e.call('requestTransfer', { membroId: f[0].id }, L2).error.code, 'VALIDATION');
@@ -160,14 +166,16 @@ test('cargos de célula são independentes do nível de acesso: admin pode ser l
   // membro comum sem cargo não acessa dados da célula
   assert.equal(e.call('cellMembers', { celulaId: cB }, X).error.code, 'FORBIDDEN');
   // líder pede (a pessoa X está sem célula: entra direto; para testar o pedido, X entra na célula A primeiro)
-  assert.equal(e.call('requestTransfer', { membroId: x }, L2).data.status, 'incluido');
+  assert.equal(e.call('requestTransfer', { membroId: x }, L2).data.status, 'pendente', 'quem está sem célula também depende do supervisor');
+  assert.equal(e.call('cellMembers', { celulaId: cB }, L2).data.some(m => m.id === x), false, 'não entra sozinho');
+  { const l0 = e.call('listTransfers', {}, adm).data; assert.equal(e.call('decideTransfer', { id: l0[0].id, decisao: 'autorizado' }, adm).data.status, 'autorizado'); }
   assert.equal(e.call('requestTransfer', { membroId: x, celulaId: cB }, tok('sup@zoe.com', 'Temp12345')).error.code, 'FORBIDDEN'); // supervisor não é quem pede
   const y = mk('outro@zoe.com', 'membro'); e.call('adminSave', { tipo: 'membros', id: y, valores: { Nome: 'Outro', CelulaID: cA } }, adm);
   assert.equal(e.call('requestTransfer', { membroId: y }, L2).data.status, 'pendente');   // de A para B
   // o supervisor da origem/destino decide; quem pediu e o treinamento não
-  const lista = e.call('listTransfers', {}, adm).data; assert.equal(lista.length, 1);           // admin é supervisor de B (destino)
+  const lista = e.call('listTransfers', {}, adm).data.filter(t => t.status === 'pendente'); assert.equal(lista.length, 1);           // admin é supervisor de B (destino)
   assert.equal(e.call('listTransfers', {}, T).error.code, 'FORBIDDEN');
-  assert.equal(e.call('listTransfers', {}, S).data.length, 1);                                 // sup é supervisor de A (origem)
+  assert.equal(e.call('listTransfers', {}, S).data.filter(t => t.status === 'pendente').length, 1);                                 // sup é supervisor de A (origem)
   assert.equal(e.call('decideTransfer', { id: lista[0].id, decisao: 'autorizado' }, L2).error.code, 'FORBIDDEN');
   assert.equal(e.call('decideTransfer', { id: lista[0].id, decisao: 'autorizado' }, S).data.status, 'autorizado');
   assert.equal(e.call('cellMembers', { celulaId: cB }, adm).data.some(m => m.id === y), true);
@@ -1433,6 +1441,9 @@ test('Mural da célula: compartilhado por quem é da célula, visível a todos; 
   assert.equal(e.call('saveMuralItem', { item: { t: 'p', x: 1, y: 1 } }, A).error.code, 'VALIDATION', 'foto obrigatória');
   assert.equal(e.call('delMuralItem', { itemId: novo.data.id }, A).ok, true); assert.equal(e.call('getCellMural', { celulaId: c }, adm).data.itens.length, 1);
   assert.equal(e.call('getCellMural', { celulaId: 'nada' }, X).error.code, 'NOT_FOUND');
+  /* fita e giro */
+  { const f1 = e.call('saveMuralBatch', { celulaId: c, itens: [{ t: 'p', x: 1, y: 1, w: 150, r: 120, f: 'washi-rosa', img: png }, { t: 'p', x: 2, y: 2, f: 'inventada', r: 0, img: png }] }, A); const mi = e.call('getCellMural', { celulaId: c }, adm).data.itens;
+    assert.equal(mi.find(i => i.id === f1.data.ids[0]).f, 'washi-rosa'); assert.equal(mi.find(i => i.id === f1.data.ids[0]).r, 120); assert.equal(mi.find(i => i.id === f1.data.ids[1]).f, ''); e.call('saveMuralBatch', { celulaId: c, apagar: f1.data.ids }, A); }
   /* lote: cria 2, edita 1 e apaga 1 de uma vez; quem não é da célula não mexe */
   const antes = e.call('getCellMural', { celulaId: c }, adm).data.itens.length;
   const lote = e.call('saveMuralBatch', { celulaId: c, itens: [{ t: 'p', x: 5, y: 6, w: 170, r: 0, l: 'A', img: png }, { t: 's', k: 'star', x: 9, y: 9 }] }, A); assert.ok(lote.ok, JSON.stringify(lote)); assert.equal(lote.data.ids.length, 2);

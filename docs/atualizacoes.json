@@ -1,5 +1,19 @@
 [
   {
+    "titulo": "Fotos da chamada, Histórico de células, fitas no mural e Início reorganizável",
+    "melhorias": [
+      "Chamada: agora dá para subir até 3 fotos do dia e marcar uma como principal. Sem marcação, vale a primeira.",
+      "A foto principal aparece para a supervisão em “Murais de Fotos” (antigo Álbum) e vai para o mural da célula.",
+      "Histórico virou “Histórico de células”: lição, papéis, resumo, presença de Deus, presentes e ausentes, com as fotos do dia ao lado e a barra de presença de Deus abaixo de cada foto. Entradas, saídas e transferências também ficam ali.",
+      "A guia Presença saiu da célula. Quem está sem célula só entra na célula com a aprovação do supervisor (antes o botão incluía a pessoa direto).",
+      "Mural: botão de girar a polaroid e 7 tipos de fita adesiva (washi verde, rosa e azul, listrada, transparente, jornal e bolinhas).",
+      "Início: o Devocional da Zoe agora é um bloco que você move; cada bloco tem um número de ordem (1 = primeiro) no modo Personalizar.",
+      "Feed de ponta a ponta no Início e em Família Zoe > Notícias, sem o efeito de deslizar para o lado ao rolar."
+    ],
+    "v": "1.164",
+    "data": "08/11/2026"
+  },
+  {
     "titulo": "Mural da célula com botão Salvar",
     "melhorias": [
       "Mural de fotos da célula agora funciona como rascunho: suba fotos, adesivos, mova, redimensione, renomeie e remova à vontade, sem salvar a cada movimento.",

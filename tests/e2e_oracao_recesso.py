@@ -23,7 +23,7 @@ with sync_playwright() as p:
         n=pg.evaluate("api('listNotifications').then(r=>r.itens.filter(n=>n.tipo==='oracao').length)"); assert n>=1,'aviso de oração'
     # álbum: só supervisor
     assert sup.evaluate("temAreaSup()")
-    sup.evaluate("go('supervisao','album')"); sup.wait_for_selector('text=Álbum da supervisão 📸',timeout=8000)
+    sup.evaluate("go('supervisao','album')"); sup.wait_for_selector('text=Murais de Fotos 📸',timeout=8000)
     assert lid.evaluate("!(cg().supervisor)"), 'líder comum sem álbum'
     # chamada exige a visita da supervisão
     lid.evaluate("go('celula','freq')"); lid.wait_for_selector('#fvs',timeout=8000)
