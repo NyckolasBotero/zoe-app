@@ -810,13 +810,74 @@ function prayFor_(d, u) {
 }
 
 // ===== Álbum da supervisão: as fotos que os líderes mandam na chamada, de todas as células supervisionadas =====
-function albumSupervisao_(d, u) {
+// Células que a pessoa acompanha na Área da Supervisão: as que supervisiona, ou todas (administração/pastor)
+function supCelulas_(u) {
   const todas = u.papel === 'admin' || u.papel === 'pastor' || can_(u, 'celulas'), mine = u.supervisiona || [];
-  if (!todas && !mine.length) throw new ApiError('FORBIDDEN', 'O álbum é para supervisores.');
-  const cels = table_('Celulas').rows.filter(function (c) { return c.Status !== 'Inativa' && (todas || mine.indexOf(c.CelulaID) >= 0 || c.SupervisorID === u.membroId); }), cn = {}, nm = nomes_(); cels.forEach(function (c) { cn[c.CelulaID] = c; });
+  if (!todas && !mine.length) throw new ApiError('FORBIDDEN', 'Esta área é para supervisores.');
+  return table_('Celulas').rows.filter(function (c) { return c.Status !== 'Inativa' && (todas || mine.indexOf(c.CelulaID) >= 0 || c.SupervisorID === u.membroId); });
+}
+function albumSupervisao_(d, u) {
+  const cels = supCelulas_(u), cn = {}, nm = nomes_(); cels.forEach(function (c) { cn[c.CelulaID] = c; });
   const filtro = clip_(d.celulaId, 30), off = Math.max(0, Number(d.off) || 0), lim = 12;
   const l = table_('Reunioes').rows.filter(function (r) { return r.Foto && cn[r.CelulaID] && (!filtro || r.CelulaID === filtro); }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; });
   return { total: l.length, off: off, celulas: cels.map(function (c) { return { id: c.CelulaID, nome: c.Nome }; }), itens: l.slice(off, off + lim).map(function (r) { const c = cn[r.CelulaID]; return { id: r.ReuniaoID, celulaId: c.CelulaID, celula: c.Nome, lider: nm[c.LiderID] || '', data: r.Data, dia: r.Data ? diaDe_(r.Data) : '', visitaSup: r.VisitaSup === '1', foto: r.Foto }; }) };
+}
+
+// ===== Área da Supervisão: tabela das células supervisionadas e o detalhamento de cada uma =====
+const SUP_JANELA_ = 12;
+function pct_(a, b) { return b > 0 ? Math.round(a / b * 100) : null; }
+function supCelulas2_(d, u) {
+  const cels = supCelulas_(u), nm = nomes_(), oft = ofertaAtiva_(), mem = table_('Membros').rows.filter(function (m) { return m.CelulaID && m.Status !== 'Inativo'; }), porC = {};
+  mem.forEach(function (m) { (porC[m.CelulaID] = porC[m.CelulaID] || []).push(m); });
+  const evIgreja = {}; table_('Eventos').rows.forEach(function (e) { if (e.Escopo !== 'celula' && e.Status !== 'Cancelado') evIgreja[e.EventoID] = 1; });
+  const insc = {}; table_('Inscricoes').rows.forEach(function (r) { if (evIgreja[r.EventoID]) insc[r.MembroID] = 1; });
+  const minM = {}; table_('Interesses').rows.forEach(function (r) { if (stN_(r.Status) === 'autorizado') minM[r.MembroID] = 1; });
+  const dec = {}; table_('Posts').rows.forEach(function (p) { if (p.Tipo === 'decisao' && p.Status !== 'removido' && p.CelulaID) dec[p.CelulaID] = (dec[p.CelulaID] || 0) + 1; });
+  const reun = {}; table_('Reunioes').rows.forEach(function (r) { (reun[r.CelulaID] = reun[r.CelulaID] || []).push(r); });
+  const vis = {}; lazy_('PresVisitas').rows.forEach(function (x) { (vis[x.CelulaID] = vis[x.CelulaID] || []).push(x); });
+  const pray = {}; table_('Oracoes').rows.forEach(function (o) { const q = pray[o.CelulaID] = pray[o.CelulaID] || { n: 0, r: 0 }; q.n++; q.r += String(o.Oraram || '').split(',').filter(String).length; });
+  const vm = votosMapa_(), linhas = cels.map(function (c) {
+    const pessoas = porC[c.CelulaID] || [], rs = (reun[c.CelulaID] || []).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }), jan = rs.slice(0, SUP_JANELA_), datas = {}; jan.forEach(function (r) { datas[r.Data] = 1; });
+    let somaP = 0, somaT = 0, somaD = 0, of = 0; jan.forEach(function (r) { const el = r.Elenco ? String(r.Elenco).split(',').filter(String).length : pessoas.length; somaP += Number(r.Presentes) || 0; somaT += Math.max(1, el, Number(r.Presentes) || 0); somaD += termMedia_(r, vm).media; of += Number(r.Oferta) || 0; });
+    const vv = {}; (vis[c.CelulaID] || []).forEach(function (x) { if (datas[x.Data]) vv[x.VisitanteID || x.MembroID || norm_(x.Nome)] = 1; });
+    const membros = pessoas.filter(function (m) { return m.EhMembro === '1'; });
+    return { id: c.CelulaID, nome: c.Nome, foto: c.Foto || '', lider: nm[c.LiderID] || '', supervisor: nm[c.SupervisorID] || '', dia: c.Dia || '', reunioes: rs.length, janela: jan.length,
+      presenca: pct_(somaP, somaT), deus: jan.length ? Math.round(somaD / jan.length) : null, aceitaram: dec[c.CelulaID] || 0, visitasSup: rs.filter(function (r) { return r.VisitaSup === '1'; }).length,
+      pessoas: pessoas.length, visitantes: Object.keys(vv).length, membros: membros.length, frequentadores: pessoas.length - membros.length, oferta: oft ? Math.round(of * 100) / 100 : null,
+      env105: pessoas.filter(function (m) { return insc[m.MembroID]; }).length, envMin: pessoas.filter(function (m) { return minM[m.MembroID]; }).length,
+      batizados: pessoas.filter(function (m) { return m.Batizado === 'sim' || m.Batizado === '1' || m.DataBatismo; }).length, oracoes: (pray[c.CelulaID] || { n: 0 }).n, reacoes: (pray[c.CelulaID] || { r: 0 }).r };
+  }).sort(function (a, b) { return a.nome < b.nome ? -1 : 1; });
+  return { janela: SUP_JANELA_, oferta: oft, celulas: linhas };
+}
+function supCelulaDetalhe_(d, u) {
+  const id = clip_(d.celulaId, 30), c = supCelulas_(u).filter(function (x) { return x.CelulaID === id; })[0]; if (!c) throw new ApiError('FORBIDDEN', 'Você não acompanha esta célula.');
+  const nm = nomes_(), oft = ofertaAtiva_(), pessoas = ativosDaCelula_(id), cn = {}; table_('Cursos').rows.forEach(function (x) { cn[x.CursoID] = x.Nome; });
+  const mi = {}; table_('Ministerios').rows.forEach(function (x) { mi[x.MinisterioID] = x.Nome; });
+  const evI = {}; table_('Eventos').rows.forEach(function (e) { if (e.Escopo !== 'celula') evI[e.EventoID] = e.Titulo; });
+  const matr = {}, insc = {}, minS = {}; table_('Matriculas').rows.forEach(function (r) { if (cn[r.CursoID]) (matr[r.MembroID] = matr[r.MembroID] || []).push({ curso: cn[r.CursoID], status: stN_(r.Status) }); });
+  table_('Inscricoes').rows.forEach(function (r) { if (evI[r.EventoID]) insc[r.MembroID] = (insc[r.MembroID] || 0) + 1; });
+  table_('Interesses').rows.forEach(function (r) { if (stN_(r.Status) === 'autorizado' && mi[r.MinisterioID]) (minS[r.MembroID] = minS[r.MembroID] || []).push(mi[r.MinisterioID]); });
+  const h = history_({ celulaId: id }, u), pres = {}; table_('Presencas').rows.forEach(function (p) { if (p.CelulaID === id) { const q = pres[p.MembroID] = pres[p.MembroID] || { n: 0, ult: '' }; q.n++; if (p.Data > q.ult) q.ult = p.Data; } });
+  const nReun = h.reunioes.length;
+  const membros = pessoas.map(function (m) { const q = pres[m.MembroID] || { n: 0, ult: '' }; return { id: m.MembroID, nome: m.Apelido || m.Simples || m.Nome, foto: m.Foto || '', entrada: dia10_(m.DataEntrada) || dia10_(m.CriadoEm), decisao: dia10_(m.DataDecisao), batizado: !!(m.Batizado === 'sim' || m.Batizado === '1' || m.DataBatismo), dataBatismo: dia10_(m.DataBatismo), membroIgreja: m.EhMembro === '1', cursos: matr[m.MembroID] || [], ministerios: minS[m.MembroID] || [], eventos: insc[m.MembroID] || 0, presencas: q.n, presencaPct: pct_(q.n, nReun), ultima: q.ult }; }).sort(function (a, b) { return a.nome < b.nome ? -1 : 1; });
+  const ev = table_('Eventos').rows.filter(function (e) { return e.Escopo === 'celula' && e.CelulaID === id && e.Status !== 'Cancelado'; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).slice(0, 30).map(function (e) { return { data: e.Data, hora: e.Hora, titulo: e.Titulo, local: e.Local }; });
+  const or = table_('Oracoes').rows.filter(function (o) { return o.CelulaID === id; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }), orR = or.reduce(function (a, o) { return a + String(o.Oraram || '').split(',').filter(String).length; }, 0);
+  let quiz = null; try { const qc = quizCelula_({ celulaId: id }, u), tt = qc.ranking.tudo; let ac = 0, to = 0; tt.forEach(function (x) { ac += x.acertos; to += x.total; }); quiz = { acertoPct: pct_(ac, to), ranking: tt.slice(0, 20).map(function (x) { return { nome: x.nome, pontos: x.pontos, jogos: x.jogos, acertos: x.acertos, total: x.total }; }) }; } catch (e) { quiz = null; }
+  const cursosCel = {}; membros.forEach(function (m) { m.cursos.forEach(function (x) { cursosCel[x.curso] = (cursosCel[x.curso] || 0) + 1; }); });
+  const dec = table_('Posts').rows.filter(function (p) { return p.Tipo === 'decisao' && p.Status !== 'removido' && p.CelulaID === id; }).length;
+  return { id: id, nome: c.Nome, foto: c.Foto || '', descricao: c.Descricao || '', dia: c.Dia || '', inicio: c.Inicio || '', endereco: c.Endereco || '', bairro: c.Bairro || '', cidade: c.Cidade || '', lider: nm[c.LiderID] || '', treinamento: nm[c.TreinamentoID] || '', supervisor: nm[c.SupervisorID] || '', oferta: oft,
+    membros: membros, batizados: membros.filter(function (m) { return m.batizado; }).length, aceitaram: dec,
+    reunioes: h.reunioes.map(function (r) { return { data: r.data, dia: r.dia, presentes: r.presentes, total: r.total, presencaPct: pct_(r.presentes, r.total), deusPct: r.termometro, visitantes: (r.visitantes || []).length, visitaSup: r.visitaSup, oferta: r.oferta, licao: r.licao || r.licaoOutra || '', licaoResumo: '', papeis: r.papeis || [], obs: r.obs || '' }; }), semReuniao: h.semReuniao,
+    agenda: ev, oracoes: { total: or.length, reacoes: orR, itens: or.slice(0, 30).map(function (o) { return { autor: nm[o.MembroID] || '—', titulo: o.Titulo || clip_(o.Texto, 60), data: dia10_(o.Data), reacoes: String(o.Oraram || '').split(',').filter(String).length }; }) },
+    quiz: quiz, cursos: Object.keys(cursosCel).map(function (k) { return { curso: k, pessoas: cursosCel[k] }; }).sort(function (a, b) { return b.pessoas - a.pessoas; }) };
+}
+// Fotos da célula (foto da chamada + mural), paginadas porque são pesadas
+function supCelulaFotos_(d, u) {
+  const id = clip_(d.celulaId, 30); if (!supCelulas_(u).some(function (x) { return x.CelulaID === id; })) throw new ApiError('FORBIDDEN', 'Você não acompanha esta célula.');
+  const off = Math.max(0, Number(d.off) || 0), lim = 12, fo = [];
+  table_('Reunioes').rows.forEach(function (r) { if (r.CelulaID === id && r.Foto) fo.push({ origem: 'chamada', data: r.Data, legenda: 'Célula ' + String(r.Data).split('-').reverse().join('/'), foto: r.Foto }); });
+  lazy_('MuralCelula').rows.forEach(function (r) { if (r.CelulaID === id && r.Foto && String(r.ItemID).indexOf('MF') !== 0) fo.push({ origem: 'mural', data: dia10_(r.CriadoEm), legenda: r.Legenda || '', foto: r.Foto }); });
+  fo.sort(function (a, b) { return a.data < b.data ? 1 : -1; }); return { total: fo.length, off: off, itens: fo.slice(off, off + lim) };
 }
 
 // ===== Recesso: da igreja (Config) e da célula (definido pelo líder no perfil do pequeno grupo) =====
@@ -4647,6 +4708,7 @@ const ROUTES = {
   zoePergunta: { auth: 'any', fn: zoePergunta_ }, devocional: { auth: 'any', fn: devocional_ }, cuidadoLider: { auth: 'any', fn: cuidadoLider_ }, cuidadoMsg: { auth: 'any', fn: cuidadoMsg_ },
   studioAcessos: { auth: 'any', fn: studioAcessosLista_ }, saveStudioAcesso: { auth: 'any', write: 1, fn: saveStudioAcesso_ }, studioPresenca: { auth: 'any', fn: studioPresenca_ },
   getLessonPdf: { auth: 'any', fn: getLessonPdf_ }, saveLessonText: { auth: 'any', write: 1, fn: saveLessonText_ }, getLessonText: { auth: 'any', fn: getLessonText_ },
+  supCelulas: { auth: 'any', fn: supCelulas2_ }, supCelulaDetalhe: { auth: 'any', fn: supCelulaDetalhe_ }, supCelulaFotos: { auth: 'any', fn: supCelulaFotos_ },
   prayFor: { auth: 'any', write: 1, fn: prayFor_ }, albumSupervisao: { auth: 'any', fn: albumSupervisao_ }, getCellRecess: { auth: 'any', fn: getCellRecess_ }, setCellRecess: { auth: 'any', write: 1, fn: setCellRecess_ },
   pingPastoral: { auth: 'any', fn: pingPastoral_ }, pastoralCiente: { auth: 'any', write: 1, fn: pastoralCiente_ },
   celTime: { auth: 'any', fn: celTime_ }, saveCelTime: { auth: 'any', write: 1, fn: saveCelTime_ }, discipuladoCel: { auth: 'any', fn: discipuladoCel_ }, setDiscipulador: { auth: 'any', write: 1, fn: setDiscipulador_ }, meusAcomp: { auth: 'any', fn: meusAcomp_ }, saveEncontro: { auth: 'any', write: 1, fn: saveEncontro_ }, listEncontros: { auth: 'any', fn: listEncontros_ }, listRecursosConsol: { auth: 'any', fn: listRecursosConsol_ }, saveRecursoConsol: { auth: 'any', write: 1, fn: saveRecursoConsol_ }, deleteRecursoConsol: { auth: 'any', write: 1, fn: deleteRecursoConsol_ },

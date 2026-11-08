@@ -1,0 +1,27 @@
+// Área da Supervisão: tabela das células supervisionadas, detalhamento e fotos
+import { makeEnv } from './mock_env.mjs'; import assert from 'node:assert';
+const dia = n => new Date(Date.now() - 3 * 36e5 + 864e5 * n).toISOString().slice(0, 10);
+const e = makeEnv(); e.run(`criarAdmin('admin@zoe.com','SenhaForte123','Pastor Admin')`);
+const adm = e.call('login', { email: 'admin@zoe.com', senha: 'SenhaForte123' }).data.token, call = (a, d, t) => { const r = e.call(a, d, t || adm); assert(r.ok !== false, a + ' ' + JSON.stringify(r)); return r.data !== undefined ? r.data : r; };
+const mk = n => call('createUser', { email: n + '@zoe.com', nome: n[0].toUpperCase() + n.slice(1) + ' Teste', senha: 'Temp12345', papel: 'membro' }).membroId;
+const lid = mk('lider'), sup = mk('super'), ana = mk('ana'), beto = mk('beto'), lid2 = mk('lider2'), sup2 = mk('super2');
+const c1 = call('createCell', { nome: 'Célula Norte', liderId: lid, supervisorId: sup, dia: 'Quinta', inicio: '20:00', descricao: 'Jovens' }).id;
+const c2 = call('createCell', { nome: 'Célula Sul', liderId: lid2, supervisorId: sup2, dia: 'Sexta', inicio: '20:00' }).id;
+const poe = (m, k) => e.run(`(function(){const t=table_('Membros');t.rows.forEach(function(x){if(x.MembroID==='${m}')writeRow_(t,x._row,{CelulaID:'${k}'})})})()`); [lid, ana, beto].forEach(m => poe(m, c1)); poe(lid2, c2);
+e.run(`(function(){const t=table_('Membros');t.rows.forEach(function(x){if(x.MembroID==='${ana}')writeRow_(t,x._row,{EhMembro:'1',Batizado:'sim',DataBatismo:'2024-05-01'});else writeRow_(t,x._row,{EhMembro:'0'})})})()`);
+const tk = n => e.call('login', { email: n + '@zoe.com', senha: 'Temp12345' }).data.token, T = { lid: tk('lider'), sup: tk('super'), ana: tk('ana') };
+call('saveConfig', { OfertaAtiva: true }, adm);
+const foto = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ==';
+call('saveAttendance', { celulaId: c1, data: dia(-8), presentes: [lid, ana], confirmaDia: true, foto, visitaSup: true, oferta: '100,50', termometro: 80 }, T.lid);
+call('saveAttendance', { celulaId: c1, data: dia(-1), presentes: [lid, ana, beto], confirmaDia: true, visitaSup: false, oferta: '50', termometro: 60, visitas: [{ nome: 'Carla Souza', telefone: '61999990000' }] }, T.lid);
+call('addPrayer', { titulo: 'Saúde', texto: 'Orem' }, T.ana); const pid = call('listPrayers', {}, T.lid)[0].id; call('prayFor', { id: pid }, T.lid);
+const tb = call('supCelulas', {}, T.sup); assert.equal(tb.celulas.length, 1); const l = tb.celulas[0];
+assert.equal(l.nome, 'Célula Norte'); assert.equal(l.pessoas, 3); assert.equal(l.membros, 1); assert.equal(l.frequentadores, 2); assert.equal(l.visitasSup, 1); assert.equal(l.oferta, 150.5); assert.equal(l.visitantes, 1);
+assert.equal(l.presenca, Math.round(5 / 6 * 100)); assert.ok(l.deus >= 60 && l.deus <= 80); assert.equal(l.batizados, 1); assert.equal(l.oracoes, 1); assert.equal(l.reacoes, 1);
+assert.equal(call('supCelulas', {}, adm).celulas.length, 2, 'admin vê todas'); assert.equal(e.call('supCelulas', {}, T.ana).ok, false, 'membro não acessa');
+const dt = call('supCelulaDetalhe', { celulaId: c1 }, T.sup); assert.equal(dt.descricao, 'Jovens'); assert.equal(dt.membros.length, 3); assert.equal(dt.reunioes.length, 2); assert.equal(dt.oracoes.reacoes, 1); assert.equal(dt.batizados, 1);
+assert.ok(dt.membros.find(m => m.nome.startsWith('Ana')).batizado); assert.equal(dt.reunioes[0].visitaSup, false); assert.equal(dt.reunioes[1].oferta, 100.5);
+assert.equal(e.call('supCelulaDetalhe', { celulaId: c2 }, T.sup).ok, false, 'outra supervisão não');
+const ft = call('supCelulaFotos', { celulaId: c1 }, T.sup); assert.equal(ft.total, 1);
+call('saveConfig', { OfertaAtiva: false }, adm); assert.equal(call('supCelulas', {}, T.sup).celulas[0].oferta, null);
+console.log('OK supervisao');

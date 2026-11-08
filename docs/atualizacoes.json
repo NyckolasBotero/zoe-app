@@ -1,5 +1,17 @@
 [
   {
+    "titulo": "Área da supervisão",
+    "melhorias": [
+      "Nova área “Área da supervisão” no menu (supervisores e administração). Dentro dela ficam as abas Células supervisionadas, Aprovações e Álbum.",
+      "Células supervisionadas: tabela com % de presença, % de presença de Deus, quantos aceitaram Jesus, visitas da supervisão, pessoas, visitantes, membros, frequentadores, oferta (quando o campo está ligado), envolvimento 10/5 (pessoas em eventos da igreja) e envolvimento em ministérios.",
+      "Ao tocar numa célula: foto, descrição e dados gerais no topo, roadmap de cada membro em linha (entrada, decisão, batismo, membro, cursos, ministérios, eventos, presença), histórico por data com % de presença e de Deus, lição ministrada e papéis do dia, agenda planejada, fotos da chamada e do mural, pedidos de oração com reações, aproveitamento e ranking do quiz, cursos e quantos são batizados.",
+      "No Álbum, cada foto tem o botão “Ver detalhamento da célula”.",
+      "Aprovações passou para dentro da Área da supervisão para quem é supervisor; os atalhos e notificações antigas continuam levando para o lugar certo."
+    ],
+    "v": "1.160",
+    "data": "08/11/2026"
+  },
+  {
     "titulo": "Recesso institucional, palestrantes nos eventos e oferta na chamada",
     "melhorias": [
       "Recesso institucional: a administração define o período em Dados da igreja. Os líderes recebem uma notificação quando o recesso começa, os lembretes da chamada ficam pausados e, no dia de cada reunião, o app registra automaticamente “Não houve reunião · Recesso institucional”.",
