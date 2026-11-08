@@ -1,5 +1,14 @@
 [
  {
+  "titulo": "Lições em texto: transcrever PDF",
+  "melhorias": [
+   "Líderes podem pedir para transcrever o PDF de uma lição (botão Transcrever PDF em Lições / Extras). O texto é extraído no próprio aparelho, fica salvo para todos os líderes e pode ser lido no celular em Ler no celular, sem abrir nem baixar o PDF.",
+   "Funciona com PDFs que tenham texto (link direto ou do Google Drive compartilhado, até 8 MB); PDF escaneado como imagem não é transcrito. O texto transcrito também ajuda o quiz da lição a gerar perguntas melhores."
+  ],
+  "v": "1.153",
+  "data": "08/11/2026"
+ },
+ {
   "titulo": "Studio Zoe por pessoa e chat pastoral",
   "melhorias": [
    "Studio Zoe agora tem permissão por pessoa e por área (Lives, Projeção, Configurações). Estar na mídia não libera tudo: a administração escolhe em Studio Zoe › Configurações › Acessos e chat. A administração sempre vê tudo. Enquanto ninguém for configurado vale a regra antiga; ao liberar a primeira pessoa, passa a valer a lista.",

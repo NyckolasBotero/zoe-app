@@ -1,0 +1,11 @@
+import { makeEnv } from './mock_env.mjs'; import assert from 'node:assert'; import fs from 'node:fs';
+const e = makeEnv(); e.run(`criarAdmin('admin@zoe.com','SenhaForte123','Pastor Admin')`);
+const adm = e.call('login', { email: 'admin@zoe.com', senha: 'SenhaForte123' }).data.token, call = (a, d, t) => { const r = e.call(a, d, t || adm); assert(r.ok !== false, a + ' ' + JSON.stringify(r)); return r.data !== undefined ? r.data : r; };
+const mem = call('createUser', { email: 'm@zoe.com', nome: 'Maria Souza', senha: 'Temp12345', papel: 'membro' }); const tm = e.call('login', { email: 'm@zoe.com', senha: 'Temp12345' }).data.token;
+call('saveLesson', { titulo: 'Bom samaritano', url: 'https://drive.google.com/file/d/ABC123/view?usp=sharing' }); const id = call('listLessons', {}).find(l => l.titulo === 'Bom samaritano').id;
+const pdf = fs.readFileSync(process.env.PDF || '/tmp/mini.pdf'); e.run(`var __u=[];UrlFetchApp={fetch:function(u){__u.push(u);return {getResponseCode:function(){return 200},getContent:function(){return ${JSON.stringify([...pdf])}}}}}`);
+assert.equal(e.call('getLessonPdf', { id }, tm.token || tm).ok, false, 'membro comum não'); 
+const r = call('getLessonPdf', { id });  assert(r.pdf.length > 100); assert.equal(JSON.parse(e.run('JSON.stringify(__u)'))[0], 'https://drive.google.com/uc?export=download&id=ABC123', 'link do Drive convertido');
+call('saveLessonText', { id, texto: 'Lição: O bom samaritano\nAme o próximo como a si mesmo. '.repeat(3) }); assert.equal(call('listLessons', {}).find(l => l.id === id).temTexto, true);
+assert(/samaritano/.test(call('getLessonText', { id }).texto)); assert.equal(e.call('saveLessonText', { id, texto: 'curto' }).ok, false);
+console.log('OK licao_pdf');

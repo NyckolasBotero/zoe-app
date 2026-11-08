@@ -98,7 +98,7 @@ const SHEETS = {
   Assinaturas: ['MembroID', 'Tipo', 'Dado', 'Cargo', 'Atualizado', 'Fonte'],
   EventoFotos: ['FotoID', 'EventoID', 'Foto', 'Por', 'Data'],
   Noticias: ['NoticiaID', 'Titulo', 'Texto', 'Data', 'CriadoPor', 'Status'],
-  Licoes: ['LicaoID', 'Titulo', 'Resumo', 'Categoria', 'Url', 'Status', 'Conteudo'],
+  Licoes: ['LicaoID', 'Titulo', 'Resumo', 'Categoria', 'Url', 'Status', 'Conteudo', 'Transcricao', 'TranscritoPor', 'TranscritoEm'],
   Quizzes: ['QuizID', 'ReuniaoID', 'CelulaID', 'Data', 'Titulo', 'Texto', 'Fonte', 'Perguntas', 'Status', 'EnviarEm', 'EnviadoEm', 'CriadoEm', 'LicaoID', 'LembreteEm'],
   QuizRespostas: ['QuizID', 'MembroID', 'Acertos', 'Total', 'Respostas', 'Data', 'Pontos', 'Tempo'],
   Dinamicas: ['DinamicaID', 'Titulo', 'Descricao', 'Minutos', 'MembroID', 'Data'],
@@ -1602,7 +1602,24 @@ function saveMinistry_(d, u) {
   });
 }
 function deleteMinistry_(d, u) { return withLock_(function () { const t = table_('Ministerios'), r = t.rows.filter(function (x) { return x.MinisterioID === d.id; })[0]; if (r) writeRow_(t, r._row, { Ativo: '0' }); audit_(u.email, 'MINISTERIO_REMOVIDO', d.id, 'OK'); return { ok: true }; }); }
-function listLessons_() { return table_('Licoes').rows.filter(function (l) { return l.Status !== 'Removida'; }).map(function (l) { return { id: l.LicaoID, titulo: l.Titulo, resumo: l.Resumo, categoria: l.Categoria, url: l.Url }; }); }
+function listLessons_() { return table_('Licoes').rows.filter(function (l) { return l.Status !== 'Removida'; }).map(function (l) { return { id: l.LicaoID, titulo: l.Titulo, resumo: l.Resumo, categoria: l.Categoria, url: l.Url, temTexto: !!l.Transcricao }; }); }
+// Transcrição do PDF da lição: o servidor só entrega o PDF (o aparelho extrai o texto) e guarda o resultado para todos os líderes lerem sem abrir o PDF
+function lessonLider_(u) { const cg = cargos_(u.membroId); if (!(podeCurar_(u) || cg.lidera.length || cg.treina.length || cg.supervisiona.length)) throw new ApiError('FORBIDDEN', 'Só líderes acessam o material de apoio.'); }
+function lessonRow_(id) { const l = table_('Licoes').rows.filter(function (x) { return x.LicaoID === clip_(id, 30) && x.Status !== 'Removida'; })[0]; if (!l) throw new ApiError('NOT_FOUND', 'Lição não encontrada.'); return l; }
+function getLessonPdf_(d, u) {
+  lessonLider_(u); const l = lessonRow_(d.id); if (!l.Url) throw new ApiError('VALIDATION', 'Esta lição não tem link de PDF.');
+  const m = /drive\.google\.com\/file\/d\/([\w-]+)/.exec(l.Url) || (/drive\.google\.com/.test(l.Url) ? /[?&]id=([\w-]+)/.exec(l.Url) : null), url = m ? 'https://drive.google.com/uc?export=download&id=' + m[1] : l.Url;
+  let r; try { r = UrlFetchApp.fetch(url, { followRedirects: true, muteHttpExceptions: true }); } catch (e) { throw new ApiError('VALIDATION', 'Não consegui abrir o link da lição.'); }
+  if (r.getResponseCode() !== 200) throw new ApiError('VALIDATION', 'Não consegui baixar o PDF (o link precisa estar compartilhado para qualquer pessoa com o link).');
+  const b = r.getContent(); if (b.length > 8 * 1024 * 1024) throw new ApiError('VALIDATION', 'PDF grande demais para transcrever (máximo 8 MB).');
+  if (String.fromCharCode(b[0], b[1], b[2], b[3]) !== '%PDF') throw new ApiError('VALIDATION', 'O link não é um PDF direto. Use o link de compartilhamento do arquivo PDF.');
+  return { pdf: Utilities.base64Encode(b) };
+}
+function saveLessonText_(d, u) {
+  lessonLider_(u); const l = lessonRow_(d.id), txt = clip_(String(d.texto || '').replace(/\r/g, ''), 45000).trim(); if (txt.length < 40) throw new ApiError('VALIDATION', 'Não encontrei texto neste PDF (parece ser uma imagem escaneada).');
+  return withLock_(function () { ensureCols_('Licoes', ['Transcricao', 'TranscritoPor', 'TranscritoEm']); const t = table_('Licoes'), r = t.rows.filter(function (x) { return x.LicaoID === l.LicaoID; })[0]; writeRow_(t, r._row, { Transcricao: txt, TranscritoPor: u.membroId, TranscritoEm: now_() }); audit_(u.email, 'LICAO_TRANSCRITA', l.LicaoID, 'OK'); return { ok: true, tam: txt.length }; });
+}
+function getLessonText_(d, u) { lessonLider_(u); const l = lessonRow_(d.id); return { titulo: l.Titulo, texto: l.Transcricao || '', url: l.Url || '', por: (nomes_()[l.TranscritoPor] || ''), em: String(l.TranscritoEm || '').slice(0, 10) }; }
 function listDyn_() { return table_('Dinamicas').rows.map(function (x) { return { id: x.DinamicaID, titulo: x.Titulo, descricao: x.Descricao, minutos: Number(x.Minutos || 10), meu: false, membroId: x.MembroID }; }); }
 function addDyn_(d, u) { const t = clip_(d.titulo, 100); if (!t) throw new ApiError('VALIDATION', 'Dê um nome à dinâmica.'); appendRow_(table_('Dinamicas'), { DinamicaID: id_('D'), Titulo: t, Descricao: clip_(d.descricao, 800), Minutos: String(Math.max(1, Math.min(240, Number(d.minutos) || 10))), MembroID: u.membroId, Data: now_() }); return { ok: true }; }
 function saveLesson_(d, u) { const t = clip_(d.titulo, 120), url = clip_(d.url, 300); if (!t) throw new ApiError('VALIDATION', 'Informe o título da lição.'); if (url && !/^https:\/\//.test(url)) throw new ApiError('VALIDATION', 'O link precisa começar com https://.'); ensureCols_('Licoes', ['Conteudo']); appendRow_(table_('Licoes'), { LicaoID: id_('L'), Titulo: t, Resumo: clip_(d.resumo, 400), Categoria: clip_(d.categoria, 40), Url: url, Status: 'Ativa', Conteudo: clip_(d.conteudo, 4000) }); audit_(u.email, 'LICAO', t, 'OK'); return { ok: true }; }
@@ -4336,6 +4353,7 @@ const ROUTES = {
   boot: { auth: 'any', fn: boot_ },
   zoePergunta: { auth: 'any', fn: zoePergunta_ }, devocional: { auth: 'any', fn: devocional_ }, cuidadoLider: { auth: 'any', fn: cuidadoLider_ }, cuidadoMsg: { auth: 'any', fn: cuidadoMsg_ },
   studioAcessos: { auth: 'any', fn: studioAcessosLista_ }, saveStudioAcesso: { auth: 'any', write: 1, fn: saveStudioAcesso_ }, studioPresenca: { auth: 'any', fn: studioPresenca_ }, studioChatEnvia: { auth: 'any', write: 1, fn: studioChatEnvia_ }, studioChat: { auth: 'any', fn: studioChatLista2_ },
+  getLessonPdf: { auth: 'any', fn: getLessonPdf_ }, saveLessonText: { auth: 'any', write: 1, fn: saveLessonText_ }, getLessonText: { auth: 'any', fn: getLessonText_ },
   myQuizzes: { auth: 'any', fn: myQuizzes_ }, getQuiz: { auth: 'any', fn: getQuiz_ }, answerQuiz: { auth: 'any', write: 1, fn: answerQuiz_ }, quizLider: { auth: 'any', fn: quizLider_ }, quizCelula: { auth: 'any', fn: quizCelula_ }, quizPrepara: { auth: 'any', write: 1, fn: quizPrepara_ }, quizAcao: { auth: 'any', write: 1, fn: quizAcao_ }, getQuizCfg: { auth: 'config', fn: getQuizCfg_ }, capacidade: { auth: 'config', fn: capacidade_ }, testQuizIa: { auth: 'config', fn: testQuizIa_ },
   getEntrega: { auth: 'config', fn: getEntrega_ }, saveEntrega: { auth: 'config', write: 1, fn: saveEntrega_ },
   getPushKey: { auth: 'any', fn: getPushKey_ }, pushDiag: { auth: 'any', fn: pushDiag_ }, savePushSub: { auth: 'any', write: 1, fn: savePushSub_ }, delPushSub: { auth: 'any', write: 1, fn: delPushSub_ },
@@ -4600,7 +4618,7 @@ function pushEnviaDireto_(envios) {
 const QUIZ_N_ = 5;
 function quizAgenda_(celulaId, reuniaoId, data, licao) {
   let titulo = licao.titulo || '', texto = licao.resumo || '';
-  if (licao.id) { const l = table_('Licoes').rows.filter(function (x) { return x.LicaoID === licao.id; })[0]; if (l) { texto = [l.Resumo, l.Conteudo].filter(String).join('\n'); titulo = l.Titulo; } }
+  if (licao.id) { const l = table_('Licoes').rows.filter(function (x) { return x.LicaoID === licao.id; })[0]; if (l) { texto = [l.Resumo, l.Conteudo || clip_(l.Transcricao, 3500)].filter(String).join('\n'); titulo = l.Titulo; } }
   if ((titulo + texto).length < 10) return;
   lazy_('Quizzes'); ensureCols_('Quizzes', ['LicaoID']); const t = table_('Quizzes'), ex = t.rows.filter(function (q) { return q.ReuniaoID === reuniaoId; })[0], quando = today_();   // fica disponível logo depois que a presença é registrada
   const v = { Titulo: clip_(titulo || 'Lição da célula', 120), Texto: clip_(texto, 4000), LicaoID: licao.id || '' };
