@@ -1,5 +1,13 @@
 [
  {
+  "titulo": "Correção no cartão do quiz",
+  "melhorias": [
+   "Ao salvar o Worker da Cloudflare, o cartão do Quiz das lições passa a mostrar o estado certo na hora, sem recarregar a página."
+  ],
+  "v": "1.138",
+  "data": "07/11/2026"
+ },
+ {
   "titulo": "Quiz único por lição escolhida",
   "melhorias": [
    "Quando a lição ministrada é escolhida na lista, todas as células recebem o mesmo quiz: as perguntas são geradas uma vez só (pelo nome da lição).",
