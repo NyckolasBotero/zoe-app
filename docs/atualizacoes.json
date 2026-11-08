@@ -1,5 +1,14 @@
 [
  {
+  "titulo": "Studio Zoe por pessoa e chat pastoral",
+  "melhorias": [
+   "Studio Zoe agora tem permissão por pessoa e por área (Lives, Projeção, Configurações). Estar na mídia não libera tudo: a administração escolhe em Studio Zoe › Configurações › Acessos e chat. A administração sempre vê tudo. Enquanto ninguém for configurado vale a regra antiga; ao liberar a primeira pessoa, passa a valer a lista.",
+   "Chat pastoral: pessoas liberadas ganham um botão flutuante de chat para falar direto com quem está transmitindo ou projetando no momento. Quem opera recebe a mensagem (e notificação) e responde pelo mesmo botão."
+  ],
+  "v": "1.152",
+  "data": "08/11/2026"
+ },
+ {
   "titulo": "Pré-cadastro, aprovação de mudanças da célula e tela sem célula",
   "melhorias": [
    "Nome simplificado automático: primeiro + último nome (ex.: Fabio Nyckolas Figueiredo Botero → Fabio Botero). Pode ser editado.",

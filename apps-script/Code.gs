@@ -46,6 +46,7 @@ const SHEETS = {
   Supervisao: ['MembroID', 'SuperiorID'],
   Devocionais: ['Dia', 'Seg', 'Ref', 'Livro', 'Cap', 'Vers', 'Texto'],
   CelMudancas: ['MudancaID', 'CelulaID', 'Patch', 'Status', 'SolicitadoPor', 'Data', 'DecididoPor', 'DataDecisao'],
+  StudioChat: ['MsgID', 'De', 'Para', 'Texto', 'Data', 'Lida'],
   UsoDia: ['Dia', 'IACalls', 'IAErros', 'IANeurons', 'WorkerCalls', 'DiretoCalls', 'PushEnvios', 'PushOk', 'PushFalha'],
   PapeisLog: ['LogID', 'CelulaID', 'MembroID', 'Papel', 'Acao', 'Por', 'Data'],
   Oracoes: ['OracaoID', 'CelulaID', 'MembroID', 'Tema', 'Titulo', 'Texto', 'Data'],
@@ -352,7 +353,7 @@ function me_(d, u) {
   const nivelCel = !cel ? '' : (full || (cel.LiderID === u.membroId) ? 'lider' : cel.SupervisorID === u.membroId ? 'supervisor' : cel.TreinamentoID === u.membroId ? 'treinamento' : 'membro');
   const tef = tipoEf_(u), abas = abasPorTipo_()[tef] || {}, cp = cel ? (full ? allCelPerm_() : celPermMap_(u, cel)) : null;
   const urow = table_('Usuarios').rows.filter(function (r) { return String(r.Email).toLowerCase() === u.email; })[0] || {};
-  return { multimidia: multiOk_(u), artes: { cria: artesCria_(u), aprova: artesAprova_(u) }, xp: xpResumo_(u.membroId), guiaVisto: urow.GuiaVisto !== '0', usuario: { email: u.email, papel: u.papel, tipo: tef }, abas: abas, permCelula: cp, membro: memberFull_(mm), celula: cel ? cellOut_(cel, nivelCel !== 'membro') : null, nivelCelula: nivelCel, cargos: cg, minhasCelulas: minhas, permissoes: permMatrix_()[tef], config: publicConfig_(), interesses: interessesDe_(u.membroId), membresia: membresiaDe_(u.membroId) };
+  return { multimidia: multiOk_(u), studio: studioAreas_(u), studioChat: studioChatOk_(u), artes: { cria: artesCria_(u), aprova: artesAprova_(u) }, xp: xpResumo_(u.membroId), guiaVisto: urow.GuiaVisto !== '0', usuario: { email: u.email, papel: u.papel, tipo: tef }, abas: abas, permCelula: cp, membro: memberFull_(mm), celula: cel ? cellOut_(cel, nivelCel !== 'membro') : null, nivelCelula: nivelCel, cargos: cg, minhasCelulas: minhas, permissoes: permMatrix_()[tef], config: publicConfig_(), interesses: interessesDe_(u.membroId), membresia: membresiaDe_(u.membroId) };
 }
 function saveMember_(d, u) {
   return withLock_(function () {
@@ -3405,7 +3406,7 @@ function purgePessoa_(d, u) {
    espectadores do site e comentários. As chaves de transmissão só são lidas por quem usa o Multimídia. */
 const LIVE_PLAT_TIPOS = ['youtube', 'facebook', 'twitch', 'instagram', 'tiktok', 'rtmp'];
 function liveCfgLer_() { const o = jparse_(cfgMap_().LiveCfg, {}); return { relay: { url: String((o.relay || {}).url || ''), token: String((o.relay || {}).token || '') }, plats: Array.isArray(o.plats) ? o.plats : [], q: { res: Number((o.q || {}).res) || 720, fps: Number((o.q || {}).fps) || 30, kbps: Number((o.q || {}).kbps) || 2500 } }; }
-function getLiveCfg_(d, u) { multiExige_(u); return liveCfgLer_(); }
+function getLiveCfg_(d, u) { multiExige_(u, 'live'); return liveCfgLer_(); }
 function saveLiveCfg_(d, u) {
   return withLock_(function () {
     const ant = liveCfgLer_(), old = {}; ant.plats.forEach(function (p) { old[p.id] = p; });
@@ -3426,7 +3427,7 @@ function saveLiveCfg_(d, u) {
 function liveEstado_() { const o = jparse_(cfgMap_().LiveState, {}); return { ativa: !!o.ativa, inicio: Number(o.inicio) || 0, titulo: String(o.titulo || ''), videoId: String(o.videoId || ''), hls: String(o.hls || ''), links: Array.isArray(o.links) ? o.links : [], by: String(o.by || '') }; }
 function liveGravaEstado_(o) { const t = table_('Config'), r = t.rows.filter(function (x) { return x.Chave === 'LiveState'; })[0], val = JSON.stringify(o); if (r) writeRow_(t, r._row, { Valor: val }); else appendRow_(t, { Chave: 'LiveState', Valor: val }); }
 function liveStart_(d, u) {
-  multiExige_(u);
+  multiExige_(u, 'live');
   return withLock_(function () {
     const titulo = clip_(d.titulo, 120) || 'Transmissão ao vivo', hls = clip_(d.hls, 300); if (hls && !/^(https:\/\/|http:\/\/(localhost|127\.0\.0\.1)[:\/])/.test(hls)) throw new ApiError('VALIDATION', 'O endereço HLS deve começar com https://.');
     const links = (Array.isArray(d.links) ? d.links : []).slice(0, 12).filter(function (l) { return l && /^https:\/\//.test(String(l.url || '')); }).map(function (l) { return { nome: clip_(l.nome, 40), url: clip_(l.url, 300) }; });
@@ -3439,7 +3440,7 @@ function liveStart_(d, u) {
   });
 }
 function liveStop_(d, u) {
-  multiExige_(u);
+  multiExige_(u, 'live');
   return withLock_(function () {
     const est = liveEstado_(), tv = table_('Videos'), r = est.videoId && tv.rows.filter(function (x) { return x.VideoID === est.videoId; })[0]; if (r) writeRow_(tv, r._row, { AoVivo: '0', Hls: '' });
     liveGravaEstado_({ ativa: false, inicio: 0, titulo: est.titulo, videoId: est.videoId, hls: '', links: est.links, by: u.membroId }); CacheService.getScriptCache().remove('lvs');
@@ -3899,16 +3900,79 @@ function mmLayout_(l) {
   ['cores', 'luzesCores'].forEach(function (k) { if (Array.isArray(l[k])) { const a = l[k].filter(function (c) { return /^#[0-9a-fA-F]{6}$/.test(String(c)); }).slice(0, k === 'cores' ? 3 : 5); if (a.length >= (k === 'cores' ? 2 : 1)) o[k] = a; } });
   return o;
 }
-function multiOk_(u) {
+// Studio Zoe por área e por pessoa: Config.StudioAcessos = { membroId: ['live','proj','cfg'] }. Administração vê tudo.
+// Enquanto a administração nunca configurou, vale a regra antiga (liderança e ministério Som), para ninguém ficar sem acesso de uma hora para outra.
+const STUDIO_AREAS_ = ['live', 'proj', 'cfg'];
+function studioCfg_() { const v = cfgMap_().StudioAcessos; return v === undefined || v === '' ? null : jparse_(v, {}); }
+function multiLegado_(u) {
   if (podeCurar_(u)) return true;
   const som = table_('Ministerios').rows.filter(function (m) { return norm_(m.Nome) === 'som' && m.Ativo !== '0'; }).map(function (m) { return m.MinisterioID; });
   return table_('Interesses').rows.some(function (i) { return i.MembroID === u.membroId && stN_(i.Status) === 'autorizado' && som.indexOf(i.MinisterioID) >= 0; });
 }
-function multiExige_(u) { if (!multiOk_(u)) throw new ApiError('FORBIDDEN', 'A Área do Multimídia é do ministério Som.'); }
+function studioAreas_(u) {
+  if (u.papel === 'admin' || can_(u, 'config')) return STUDIO_AREAS_.slice();
+  const cfg = studioCfg_(); if (!cfg) return multiLegado_(u) ? STUDIO_AREAS_.slice() : [];
+  return (cfg[u.membroId] || []).filter(function (a) { return STUDIO_AREAS_.indexOf(a) >= 0; });
+}
+function multiOk_(u) { return studioAreas_(u).length > 0; }
+function multiExige_(u, area) {
+  const as = studioAreas_(u), qs = [].concat(area || STUDIO_AREAS_);
+  if (!qs.some(function (a) { return as.indexOf(a) >= 0; })) throw new ApiError('FORBIDDEN', 'Você não tem acesso a esta área do Studio Zoe. Peça à administração.');
+}
+// ----- Chat pastoral do Studio Zoe: pessoas liberadas falam direto com quem está transmitindo ou projetando -----
+function studioChatLista_() { return jparse_(cfgMap_().StudioChat, []).filter(String); }
+function studioChatOk_(u) { return studioChatLista_().indexOf(u.membroId) >= 0 || studioAreas_(u).length > 0; }
+function studioAcessosLista_(d, u) {
+  if (!(u.papel === 'admin' || can_(u, 'config'))) throw new ApiError('FORBIDDEN', 'Só a administração vê os acessos do Studio Zoe.');
+  const cfg = studioCfg_() || {}, chat = studioChatLista_(), nm = nomes_(), ids = {}; Object.keys(cfg).forEach(function (k) { ids[k] = 1; }); chat.forEach(function (k) { ids[k] = 1; });
+  const q = norm_(clip_(d.q, 60)), cand = q.length < 2 ? [] : table_('Membros').rows.filter(function (m) { return m.Status !== 'Inativo' && norm_(m.Nome + ' ' + (m.Apelido || '')).indexOf(q) >= 0; }).slice(0, 12).map(function (m) { return { id: m.MembroID, nome: m.Nome }; });
+  return { configurado: studioAcessos_(), itens: Object.keys(ids).map(function (k) { return { id: k, nome: nm[k] || '—', areas: cfg[k] || [], chat: chat.indexOf(k) >= 0 }; }), candidatos: cand };
+}
+function studioAcessos_() { return studioCfg_() !== null; }
+function saveStudioAcesso_(d, u) {
+  if (!(u.papel === 'admin' || can_(u, 'config'))) throw new ApiError('FORBIDDEN', 'Só a administração define os acessos do Studio Zoe.');
+  return withLock_(function () {
+    const mid = clip_(d.membroId, 30); if (!table_('Membros').rows.some(function (m) { return m.MembroID === mid; })) throw new ApiError('NOT_FOUND', 'Pessoa não encontrada.');
+    const t = table_('Config'), set = function (k, v) { const r0 = t.rows.filter(function (x) { return x.Chave === k; })[0]; if (r0) writeRow_(t, r0._row, { Valor: v }); else appendRow_(t, { Chave: k, Valor: v }); };
+    let cfg = studioCfg_(); if (!cfg) { cfg = {}; table_('Membros'); /* ao configurar pela 1ª vez, quem já tinha acesso pelo ministério Som é mantido */ table_('Usuarios').rows.forEach(function (x) { if (x.MembroID && x.MembroID !== mid) { try { const uu = { membroId: x.MembroID, papel: x.Papel, supervisiona: cargos_(x.MembroID).supervisiona, permissoes: {} }; if (!podeCurar_(uu) && multiLegado_(uu)) cfg[x.MembroID] = ['proj']; } catch (e) { /* ignora */ } } }); }
+    const areas = (Array.isArray(d.areas) ? d.areas : []).filter(function (a) { return STUDIO_AREAS_.indexOf(a) >= 0; }); if (areas.length) cfg[mid] = areas; else delete cfg[mid];
+    set('StudioAcessos', JSON.stringify(cfg));
+    if (d.chat !== undefined) { let ch = studioChatLista_().filter(function (x) { return x !== mid; }); if (d.chat) ch.push(mid); set('StudioChat', JSON.stringify(ch)); }
+    audit_(u.email, 'STUDIO_ACESSO', mid + ' ' + areas.join(','), 'OK'); return studioAcessosLista_({}, u);
+  });
+}
+// quem está operando agora: a tela de transmissão/projeção avisa a cada ~30 s (vale 90 s)
+function studioPresenca_(d, u) {
+  const area = String(d.area || ''); if (['live', 'proj'].indexOf(area) < 0) throw new ApiError('VALIDATION', 'Área inválida.'); multiExige_(u, area);
+  try { CacheService.getScriptCache().put('sp:' + area, JSON.stringify({ m: u.membroId, t: Date.now() }), 90); } catch (e) { /* ok */ } return { ok: true };
+}
+function studioOperadores_() {
+  const out = [], nm = nomes_(); ['live', 'proj'].forEach(function (a) { try { const v = JSON.parse(CacheService.getScriptCache().get('sp:' + a) || 'null'); if (v && v.m) out.push({ area: a, id: v.m, nome: nm[v.m] || '—' }); } catch (e) { /* ok */ } }); return out;
+}
+function studioChatEnvia_(d, u) {
+  if (!studioChatOk_(u)) throw new ApiError('FORBIDDEN', 'O chat do Studio Zoe não está liberado para você.');
+  const texto = clip_(d.texto, 400).trim(); if (!texto) throw new ApiError('VALIDATION', 'Escreva a mensagem.');
+  let para = clip_(d.para, 30); const ops = studioOperadores_();
+  if (!para) { const a = ops.filter(function (o) { return o.area === clip_(d.area, 10); })[0] || ops[0]; para = a ? a.id : ''; }
+  if (!para) throw new ApiError('VALIDATION', 'Ninguém está transmitindo ou projetando agora. Tente de novo em instantes.');
+  if (para === u.membroId) throw new ApiError('VALIDATION', 'Você é quem está operando.');
+  const alvoOk = ops.some(function (o) { return o.id === para; }) || studioChatLista_().indexOf(para) >= 0 || table_('StudioChat').rows.some(function (m) { return m.De === para && m.Para === u.membroId; });
+  if (!alvoOk) throw new ApiError('FORBIDDEN', 'Essa pessoa não está no chat do Studio.');
+  const id = id_('SC'); appendRow_(table_('StudioChat'), { MsgID: id, De: u.membroId, Para: para, Texto: texto, Data: now_(), Lida: '0' });
+  notify_(para, 'studiochat', (nomes_()[u.membroId] || 'Alguém') + ' no chat do Studio 💬', clip_(texto, 120), 'studiochat'); return { id: id };
+}
+function studioChatLista2_(d, u) {
+  if (!studioChatOk_(u)) return { ok: false, msgs: [], operadores: [] };
+  const nm = nomes_(), me = u.membroId, desde = clip_(d.desde, 25), t = lazy_('StudioChat');
+  const msgs = t.rows.filter(function (m) { return (m.De === me || m.Para === me) && (!desde || m.Data > desde); }).slice(-60).map(function (m) { return { id: m.MsgID, de: m.De, nome: nm[m.De] || '—', para: m.Para, texto: m.Texto, data: m.Data, minha: m.De === me }; });
+  if (d.lido) t.rows.forEach(function (m) { if (m.Para === me && m.Lida !== '1') writeRow_(t, m._row, { Lida: '1' }); });
+  const nao = t.rows.filter(function (m) { return m.Para === me && m.Lida !== '1'; }).length;
+  return { ok: true, msgs: msgs, nao: nao, operadores: studioOperadores_().filter(function (o) { return o.id !== me; }) };
+}
 // Controle remoto do telão: o estado (item da agenda, slide, pausa) fica no servidor; o celular escreve e o computador do projetor acompanha
 // item = 'm:ID' (música) · 'i:ID' (imagem da biblioteca) · 'e:ID' (evento da igreja)
 function telaoLer_() { const o = jparse_(cfgMap_().Telao, {}), it = String(o.item || (o.songId ? 'm:' + o.songId : '')); return { v: Number(o.v) || 0, item: it, songId: it.indexOf('m:') === 0 ? it.slice(2) : '', agendaId: String(o.agendaId || ''), i: Math.max(0, Number(o.i) || 0), pausado: !!o.pausado, ativa: !!o.ativa, by: String(o.by || ''), em: o.em || '' }; }
-function getTelao_(d, u) { multiExige_(u); return telaoLer_(); }
+function getTelao_(d, u) { multiExige_(u, 'proj'); return telaoLer_(); }
 function itemOk_(it) {
   if (/^v:(AL|ARC|ARA|NTLH|NVT)_\d{1,2}_\d{1,3}_\d{1,3}(-\d{1,3})?$/.test(String(it))) return true; // versículo: v:VERSÃO_livro_capítulo_verso[-verso]
   const m = /^([mie]):([A-Za-z0-9_-]{1,30})$/.exec(String(it)); if (!m) return false;
@@ -3917,7 +3981,7 @@ function itemOk_(it) {
   return table_('Eventos').rows.some(function (r) { return r.EventoID === m[2] && r.Status !== 'Cancelado'; });
 }
 function setTelao_(d, u) {
-  multiExige_(u);
+  multiExige_(u, 'proj');
   return withLock_(function () {
     const st = telaoLer_(); let item = d.item;
     if (item === undefined && d.songId !== undefined) item = d.songId ? 'm:' + clip_(d.songId, 30) : '';
@@ -3940,17 +4004,17 @@ function pausaLimpa_(v) {
   if (r.imagem && (!/^data:image\/(jpeg|png|webp);base64,/.test(r.imagem) || r.imagem.length > 44000)) throw new ApiError('VALIDATION', 'Imagem de fundo inválida ou muito grande.'); return r;
 }
 function saveTelaoPausa_(d, u) {
-  multiExige_(u);
+  multiExige_(u, 'cfg');
   return withLock_(function () {
     const r = d.reset ? PAUSA_PAD : pausaLimpa_(d.pausa), t = table_('Config'), x = t.rows.filter(function (q) { return q.Chave === 'TelaoPausa'; })[0], val = d.reset ? '' : JSON.stringify(r);
     if (x) writeRow_(t, x._row, { Valor: val }); else appendRow_(t, { Chave: 'TelaoPausa', Valor: val }); audit_(u.email, 'TELAO_PAUSA', d.reset ? 'padrão' : 'salva', 'OK'); return { pausa: r };
   });
 }
 // Biblioteca de imagens para transmitir (cada imagem fica salva e pode entrar em qualquer agenda)
-function listMidias_(d, u) { multiExige_(u); return table_('MidiasTelao').rows.filter(function (r) { return r.Ativo !== '0'; }).sort(function (a, b) { return a._row < b._row ? 1 : -1; }).slice(0, 200).map(function (r) { return { id: r.MidiaID, titulo: r.Titulo, mini: r.Mini || '' }; }); }
-function getMidia_(d, u) { multiExige_(u); const r = table_('MidiasTelao').rows.filter(function (x) { return x.MidiaID === d.id && x.Ativo !== '0'; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Imagem não encontrada.'); return { id: r.MidiaID, titulo: r.Titulo, foto: r.Foto }; }
+function listMidias_(d, u) { multiExige_(u, ['proj', 'cfg']); return table_('MidiasTelao').rows.filter(function (r) { return r.Ativo !== '0'; }).sort(function (a, b) { return a._row < b._row ? 1 : -1; }).slice(0, 200).map(function (r) { return { id: r.MidiaID, titulo: r.Titulo, mini: r.Mini || '' }; }); }
+function getMidia_(d, u) { multiExige_(u, ['proj', 'cfg']); const r = table_('MidiasTelao').rows.filter(function (x) { return x.MidiaID === d.id && x.Ativo !== '0'; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Imagem não encontrada.'); return { id: r.MidiaID, titulo: r.Titulo, foto: r.Foto }; }
 function saveMidia_(d, u) {
-  multiExige_(u);
+  multiExige_(u, 'cfg');
   return withLock_(function () {
     const f = String(d.foto || ''), mini = String(d.mini || ''), titulo = clip_(d.titulo, 60) || 'Imagem';
     if (!/^data:image\/(jpeg|png|webp);base64,/.test(f) || f.length > 45000) throw new ApiError('VALIDATION', 'Imagem inválida ou muito grande.');
@@ -3958,7 +4022,7 @@ function saveMidia_(d, u) {
     const t = table_('MidiasTelao'), id = id_('MI'); appendRow_(t, { MidiaID: id, Titulo: titulo, Foto: f, Mini: mini, Ativo: '1', CriadoPor: u.membroId, CriadoEm: now_() }); return { id: id };
   });
 }
-function deleteMidia_(d, u) { multiExige_(u); return withLock_(function () { const t = table_('MidiasTelao'), r = t.rows.filter(function (x) { return x.MidiaID === d.id; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Imagem não encontrada.'); writeRow_(t, r._row, { Ativo: '0' }); return { ok: true }; }); }
+function deleteMidia_(d, u) { multiExige_(u, 'cfg'); return withLock_(function () { const t = table_('MidiasTelao'), r = t.rows.filter(function (x) { return x.MidiaID === d.id; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Imagem não encontrada.'); writeRow_(t, r._row, { Ativo: '0' }); return { ok: true }; }); }
 // Agendas de transmissão: sequência de músicas, imagens e eventos de um dia de culto
 function itensAgenda_(arr) {
   if (!Array.isArray(arr)) return []; if (arr.length > 150) throw new ApiError('VALIDATION', 'Itens demais na agenda.'); const seen = {}, out = [];
@@ -3966,9 +4030,9 @@ function itensAgenda_(arr) {
   return out;
 }
 function agOut_(r) { return { id: r.AgendaID, data: r.Data, nome: r.Nome, itens: jparse_(r.Itens, []), atualizadoEm: r.AtualizadoEm || r.CriadoEm || '' }; }
-function listAgendas_(d, u) { multiExige_(u); return table_('Agendas').rows.sort(function (a, b) { return a.Data < b.Data ? 1 : a.Data > b.Data ? -1 : (a._row < b._row ? 1 : -1); }).slice(0, 400).map(agOut_); }
+function listAgendas_(d, u) { multiExige_(u, ['proj', 'cfg']); return table_('Agendas').rows.sort(function (a, b) { return a.Data < b.Data ? 1 : a.Data > b.Data ? -1 : (a._row < b._row ? 1 : -1); }).slice(0, 400).map(agOut_); }
 function saveAgenda_(d, u) {
-  multiExige_(u);
+  multiExige_(u, 'cfg');
   return withLock_(function () {
     const data = String(d.data || ''); if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) throw new ApiError('VALIDATION', 'Informe a data da agenda.');
     const nome = clip_(d.nome, 60) || 'Culto', t = table_('Agendas'), ex = d.id ? t.rows.filter(function (r) { return r.AgendaID === d.id; })[0] : null; if (d.id && !ex) throw new ApiError('NOT_FOUND', 'Agenda não encontrada.');
@@ -3977,10 +4041,10 @@ function saveAgenda_(d, u) {
     audit_(u.email, 'AGENDA', id + ' ' + data + ' ' + itens.length, 'OK'); return { id: id, n: itens.length };
   });
 }
-function deleteAgenda_(d, u) { multiExige_(u); return withLock_(function () { const t = table_('Agendas'), r = t.rows.filter(function (x) { return x.AgendaID === d.id; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Agenda não encontrada.'); delRow_(t, r._row); audit_(u.email, 'AGENDA_DEL', r.AgendaID, 'OK'); return { ok: true }; }); }
+function deleteAgenda_(d, u) { multiExige_(u, 'cfg'); return withLock_(function () { const t = table_('Agendas'), r = t.rows.filter(function (x) { return x.AgendaID === d.id; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Agenda não encontrada.'); delRow_(t, r._row); audit_(u.email, 'AGENDA_DEL', r.AgendaID, 'OK'); return { ok: true }; }); }
 // transmitir uma imagem/evento na hora: entra na agenda do dia (cria se preciso) e fica salvo lá
 function addAgendaItem_(d, u) {
-  multiExige_(u);
+  multiExige_(u, 'cfg');
   return withLock_(function () {
     const it = { t: d.t, id: String(d.id || '') }, ok = itensAgenda_([it]); if (!ok.length) throw new ApiError('NOT_FOUND', 'Item não encontrado.');
     const t = table_('Agendas'), hoje = today_(); let r = d.agendaId ? t.rows.filter(function (x) { return x.AgendaID === d.agendaId; })[0] : null;
@@ -3993,12 +4057,12 @@ function addAgendaItem_(d, u) {
 function ytOk_(v) { v = clip_(v, 200); if (v && !/^https:\/\/(www\.|m\.)?(youtube\.com|youtu\.be)\//.test(v)) throw new ApiError('VALIDATION', 'O link do YouTube precisa começar com https://youtube.com ou https://youtu.be.'); return v; }
 function songOut_(r, nm) { return { id: r.MusicaID, titulo: r.Titulo, artista: r.Artista, youtube: r.Youtube, letra: r.Letra, layout: jparse_(r.Layout, null), criadoPor: nm[r.CriadoPor] || '', atualizadoPor: nm[r.AtualizadoPor] || '', atualizadoEm: r.AtualizadoEm }; }
 function listSongs_(d, u) {
-  multiExige_(u); const nm = nomes_(), rows = table_('Musicas').rows.filter(function (r) { return r.Ativo !== '0'; });
+  multiExige_(u, ['proj', 'cfg']); const nm = nomes_(), rows = table_('Musicas').rows.filter(function (r) { return r.Ativo !== '0'; });
   const pad = rows.filter(function (r) { return r.MusicaID === 'PADRAO'; })[0];
   return { pausa: Object.assign({}, PAUSA_PAD, jparse_(cfgMap_().TelaoPausa, {})), itens: rows.filter(function (r) { return r.MusicaID !== 'PADRAO'; }).sort(function (a, b) { return norm_(a.Titulo) < norm_(b.Titulo) ? -1 : 1; }).map(function (r) { return songOut_(r, nm); }), padrao: pad ? jparse_(pad.Layout, {}) : {}, layoutVers: jparse_(cfgMap_().LayoutVers, {}) };
 }
 function saveSong_(d, u) {
-  multiExige_(u);
+  multiExige_(u, 'proj');
   return withLock_(function () {
     const t = table_('Musicas'), titulo = clip_(d.titulo, 120), letra = String(d.letra || '').replace(/\r/g, '').slice(0, 20000);
     if (!titulo) throw new ApiError('VALIDATION', 'Informe o nome da música.'); if (!letra.trim()) throw new ApiError('VALIDATION', 'A letra está vazia.');
@@ -4008,11 +4072,11 @@ function saveSong_(d, u) {
   });
 }
 function deleteSong_(d, u) {
-  multiExige_(u);
+  multiExige_(u, 'proj');
   return withLock_(function () { const t = table_('Musicas'), r = t.rows.filter(function (x) { return x.MusicaID === d.id && x.MusicaID !== 'PADRAO'; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Música não encontrada.'); writeRow_(t, r._row, { Ativo: '0', AtualizadoPor: u.membroId, AtualizadoEm: now_() }); audit_(u.email, 'deleteSong', r.Titulo); return { ok: true }; });
 }
 function saveSongDefault_(d, u) {
-  multiExige_(u);
+  multiExige_(u, 'cfg');
   return withLock_(function () {
     const t = table_('Musicas'), lay = JSON.stringify(mmLayout_(d.layout)), r = t.rows.filter(function (x) { return x.MusicaID === 'PADRAO'; })[0];
     if (r) writeRow_(t, r._row, { Layout: lay, AtualizadoPor: u.membroId, AtualizadoEm: now_() }); else appendRow_(t, { MusicaID: 'PADRAO', Titulo: '(layout padrão)', Layout: lay, CriadoPor: u.membroId, CriadoEm: now_(), AtualizadoPor: u.membroId, AtualizadoEm: now_(), Ativo: '1' });
@@ -4020,7 +4084,7 @@ function saveSongDefault_(d, u) {
   });
 }
 function saveLayoutVers_(d, u) {
-  multiExige_(u);
+  multiExige_(u, 'cfg');
   return withLock_(function () {
     const val = JSON.stringify(mmLayout_(d.layout)), t = table_('Config'), r = t.rows.filter(function (x) { return x.Chave === 'LayoutVers'; })[0]; if (r) writeRow_(t, r._row, { Valor: val }); else appendRow_(t, { Chave: 'LayoutVers', Valor: val });
     audit_(u.email, 'LAYOUT_VERSICULO', 'salvo', 'OK'); return { ok: true };
@@ -4028,7 +4092,7 @@ function saveLayoutVers_(d, u) {
 }
 function lyricsGet_(url) { const r = UrlFetchApp.fetch(url, { muteHttpExceptions: true, followRedirects: true }); if (r.getResponseCode() !== 200) return null; try { return JSON.parse(r.getContentText()); } catch (e) { return null; } }
 function searchLyrics_(d, u) {
-  multiExige_(u); const q = clip_(d.q, 100); if (q.length < 2) throw new ApiError('VALIDATION', 'Digite o nome da música ou do cantor.');
+  multiExige_(u, ['proj', 'cfg']); const q = clip_(d.q, 100); if (q.length < 2) throw new ApiError('VALIDATION', 'Digite o nome da música ou do cantor.');
   const j = lyricsGet_('https://api.lyrics.ovh/suggest/' + encodeURIComponent(q)); if (!j || !Array.isArray(j.data)) throw new ApiError('UPSTREAM', 'A busca de letras não respondeu agora. Tente de novo ou cole a letra.');
   const vistos = {}, out = []; j.data.forEach(function (x) { const t = clip_(x.title_short || x.title, 120), a = clip_(x.artist && x.artist.name, 120), k = norm_(t + '|' + a); if (t && a && !vistos[k] && out.length < 12) { vistos[k] = 1; out.push({ titulo: t, artista: a }); } });
   return { itens: out };
@@ -4038,7 +4102,7 @@ function limpaLetra_(t) {
   return t.slice(0, 20000);
 }
 function importLyrics_(d, u) {
-  multiExige_(u); const a = clip_(d.artista, 120), t = clip_(d.titulo, 120); if (!a || !t) throw new ApiError('VALIDATION', 'Escolha uma música da lista.');
+  multiExige_(u, ['proj', 'cfg']); const a = clip_(d.artista, 120), t = clip_(d.titulo, 120); if (!a || !t) throw new ApiError('VALIDATION', 'Escolha uma música da lista.');
   const j = lyricsGet_('https://api.lyrics.ovh/v1/' + encodeURIComponent(a) + '/' + encodeURIComponent(t)); if (!j || !j.lyrics) throw new ApiError('NOT_FOUND', 'Não achei a letra dessa música. Cole manualmente.');
   return { titulo: t, artista: a, letra: limpaLetra_(j.lyrics) };
 }
@@ -4271,6 +4335,7 @@ const ROUTES = {
   listSongs: { auth: 'any', fn: listSongs_ }, saveSong: { auth: 'any', write: 1, fn: saveSong_ }, deleteSong: { auth: 'any', write: 1, fn: deleteSong_ }, saveSongDefault: { auth: 'any', write: 1, fn: saveSongDefault_ }, searchLyrics: { auth: 'any', fn: searchLyrics_ }, importLyrics: { auth: 'any', fn: importLyrics_ },
   boot: { auth: 'any', fn: boot_ },
   zoePergunta: { auth: 'any', fn: zoePergunta_ }, devocional: { auth: 'any', fn: devocional_ }, cuidadoLider: { auth: 'any', fn: cuidadoLider_ }, cuidadoMsg: { auth: 'any', fn: cuidadoMsg_ },
+  studioAcessos: { auth: 'any', fn: studioAcessosLista_ }, saveStudioAcesso: { auth: 'any', write: 1, fn: saveStudioAcesso_ }, studioPresenca: { auth: 'any', fn: studioPresenca_ }, studioChatEnvia: { auth: 'any', write: 1, fn: studioChatEnvia_ }, studioChat: { auth: 'any', fn: studioChatLista2_ },
   myQuizzes: { auth: 'any', fn: myQuizzes_ }, getQuiz: { auth: 'any', fn: getQuiz_ }, answerQuiz: { auth: 'any', write: 1, fn: answerQuiz_ }, quizLider: { auth: 'any', fn: quizLider_ }, quizCelula: { auth: 'any', fn: quizCelula_ }, quizPrepara: { auth: 'any', write: 1, fn: quizPrepara_ }, quizAcao: { auth: 'any', write: 1, fn: quizAcao_ }, getQuizCfg: { auth: 'config', fn: getQuizCfg_ }, capacidade: { auth: 'config', fn: capacidade_ }, testQuizIa: { auth: 'config', fn: testQuizIa_ },
   getEntrega: { auth: 'config', fn: getEntrega_ }, saveEntrega: { auth: 'config', write: 1, fn: saveEntrega_ },
   getPushKey: { auth: 'any', fn: getPushKey_ }, pushDiag: { auth: 'any', fn: pushDiag_ }, savePushSub: { auth: 'any', write: 1, fn: savePushSub_ }, delPushSub: { auth: 'any', write: 1, fn: delPushSub_ },
