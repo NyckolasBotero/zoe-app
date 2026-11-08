@@ -1,5 +1,15 @@
 [
   {
+    "titulo": "Mensagem pastoral direto nas Conversas, com 👍",
+    "melhorias": [
+      "O botão flutuante de chat do Studio saiu. Agora a mensagem pastoral chega pelo ícone de Conversas de quem está transmitindo ou projetando: o painel abre sozinho, mostra a mensagem em destaque numa faixa vermelha separada das conversas normais, toca o aviso e vibra.",
+      "O painel não fecha (nem pelo X, nem pelo Esc, nem pelo ícone) enquanto o operador não tocar em “👍 Entendi”. O som se repete a cada 12 segundos até o 👍, e o pastor vê “👍 Visto” na própria conversa.",
+      "Mais rápido: dentro do Studio o aparelho do operador confere a cada ~1 segundo uma rota leve que lê só a memória do servidor (sem planilha). Quem tem liberação pastoral vê, no topo das Conversas, quem está transmitindo/projetando agora e toca para falar."
+    ],
+    "v": "1.156",
+    "data": "08/11/2026"
+  },
+  {
     "titulo": "Consolidação completa e Discipulado",
     "melhorias": [
       "Visitantes agora exigem e-mail, sexo, pino no mapa e se vieram por convite (e de quem). Quem já participa de uma célula vai direto ao líder certo: líder único, ou o líder do mesmo sexo, sem passar pela triagem, e o histórico do visitante recebe uma nota automática.",

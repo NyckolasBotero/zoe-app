@@ -12,12 +12,24 @@ assert.equal(e.call('getLiveCfg', {}, T.nic).ok, false, 'sem Lives'); assert.equ
 assert.equal(e.call('saveStudioAcesso', { membroId: fan, areas: ['proj'] }, T.nic).ok, false, 'só admin define'); assert.equal(e.call('studioAcessos', {}, T.nic).ok, false);
 // chat pastoral: liberado ao "fan"; mensagem vai para quem está projetando
 call('saveStudioAcesso', { membroId: fan, areas: [], chat: true }); assert.equal(call('me', {}, T.fan).studioChat, true); assert.equal(call('me', {}, T.pro).studioChat, false);
-assert.equal(e.call('studioChatEnvia', { texto: 'oi' }, T.fan).ok, false, 'ninguém operando');
-call('studioPresenca', { area: 'proj' }, T.nic); assert.equal(call('studioChat', {}, T.fan).operadores[0].id, nic);
-call('studioChatEnvia', { texto: 'Pode passar o slide 3?' }, T.fan);
-const n = call('studioChat', {}, T.nic); assert.equal(n.msgs.length, 1); assert.equal(n.nao, 1); assert(call('listNotifications', {}, T.nic).itens.some(x => x.tipo === 'studiochat'));
-call('studioChatEnvia', { texto: 'Já passei!', para: fan }, T.nic); assert.equal(call('studioChat', { lido: true }, T.fan).msgs.length, 2); call('studioChat', { lido: true }, T.nic); assert.equal(call('studioChat', {}, T.nic).nao, 0, 'lida ao abrir');
-assert.equal(e.call('studioChatEnvia', { texto: 'oi', para: nic }, T.pro).ok, false, 'sem liberação não envia');
+// mensagem comum (ninguém operando) não é pastoral
+call('sendChat', { para: nic, texto: 'Paz!' }, T.fan); assert.equal(call('pingPastoral', {}, T.nic).pa.length, 0); assert.equal(call('listChats', {}, T.nic).pastoral.length, 0);
+call('studioPresenca', { area: 'proj' }, T.nic); assert.equal(call('listChats', {}, T.fan).operadores[0].id, nic); assert.deepEqual(call('listChats', {}, T.nic).operadores, [], 'operador não vê a si');
+const r1 = call('sendChat', { para: nic, texto: 'Pode passar o slide 3?' }, T.fan); assert.equal(r1.pastoral, true);
+// aviso rápido (só cache) e lista autoritativa
+let pg = call('pingPastoral', {}, T.nic); assert.equal(pg.pa.length, 1); assert.equal(pg.pa[0].texto, 'Pode passar o slide 3?'); assert.match(pg.pa[0].nome, /^Fan/);
+assert.equal(call('listChats', {}, T.nic).pastoral.length, 1);
+// abrir a conversa (lida) NÃO libera: só o joinha
+call('chatRead', { com: fan }, T.nic); assert.equal(call('pingPastoral', {}, T.nic).pa.length, 1); assert.equal(call('listChats', {}, T.nic).pastoral.length, 1);
+assert.equal(e.call('pastoralCiente', { id: r1.id }, T.pro).ok, false, 'só o destinatário dá ciente');
+// o pastor vê a conversa sem ciente
+assert.deepEqual(call('getChat', { com: nic }, T.fan).cientes, {});
+call('pastoralCiente', { id: r1.id }, T.nic); assert.equal(call('pingPastoral', {}, T.nic).pa.length, 0); assert.equal(call('listChats', {}, T.nic).pastoral.length, 0);
+assert.ok(call('getChat', { com: nic }, T.fan).cientes[r1.id] > 0, 'pastor vê o 👍');
+// quem não tem liberação pastoral manda mensagem comum
+assert.equal(call('sendChat', { para: nic, texto: 'oi' }, T.pro).pastoral, false); assert.equal(call('pingPastoral', {}, T.nic).pa.length, 0);
+// operador respondendo ao pastor não é pastoral
+assert.equal(call('sendChat', { para: fan, texto: 'Já passei!' }, T.nic).pastoral, false);
 // remover acesso
 call('saveStudioAcesso', { membroId: nic, areas: [] }); assert.deepEqual(call('me', {}, T.nic).studio, []);
 console.log('OK studio');

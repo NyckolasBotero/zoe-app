@@ -96,7 +96,7 @@ const SHEETS = {
   PerfilVisitas: ['MembroID', 'AlvoID', 'Visitas', 'Data'],
   Elogios: ['ElogioID', 'De', 'Para', 'Texto', 'Data'],
   Servicos: ['Atividade', 'MembroID', 'Mes', 'RegistradoPor'],
-  ChatMsgs: ['MsgID', 'ConvID', 'De', 'Para', 'Texto', 'Ts', 'Lida'],
+  ChatMsgs: ['MsgID', 'ConvID', 'De', 'Para', 'Texto', 'Ts', 'Lida', 'Pastoral', 'Ciente'],
   PerfilFotos: ['MembroID', 'FotoID', 'Foto', 'Legenda', 'Ordem'],
   Assinaturas: ['MembroID', 'Tipo', 'Dado', 'Cargo', 'Atualizado', 'Fonte'],
   EventoFotos: ['FotoID', 'EventoID', 'Foto', 'Por', 'Data'],
@@ -356,7 +356,7 @@ function me_(d, u) {
   const nivelCel = !cel ? '' : (full || (cel.LiderID === u.membroId) ? 'lider' : cel.SupervisorID === u.membroId ? 'supervisor' : cel.TreinamentoID === u.membroId ? 'treinamento' : 'membro');
   const tef = tipoEf_(u), abas = abasPorTipo_()[tef] || {}, cp = cel ? (full ? allCelPerm_() : celPermMap_(u, cel)) : null;
   const urow = table_('Usuarios').rows.filter(function (r) { return String(r.Email).toLowerCase() === u.email; })[0] || {};
-  return { multimidia: multiOk_(u), studio: studioAreas_(u), studioChat: studioChatOk_(u), acompanha: acompanha_(u), artes: { cria: artesCria_(u), aprova: artesAprova_(u) }, xp: xpResumo_(u.membroId), guiaVisto: urow.GuiaVisto !== '0', usuario: { email: u.email, papel: u.papel, tipo: tef }, abas: abas, permCelula: cp, membro: memberFull_(mm), celula: cel ? cellOut_(cel, nivelCel !== 'membro') : null, nivelCelula: nivelCel, cargos: cg, minhasCelulas: minhas, permissoes: permMatrix_()[tef], config: publicConfig_(), interesses: interessesDe_(u.membroId), membresia: membresiaDe_(u.membroId) };
+  return { multimidia: multiOk_(u), studio: studioAreas_(u), studioChat: studioChatLista_().indexOf(u.membroId) >= 0, acompanha: acompanha_(u), artes: { cria: artesCria_(u), aprova: artesAprova_(u) }, xp: xpResumo_(u.membroId), guiaVisto: urow.GuiaVisto !== '0', usuario: { email: u.email, papel: u.papel, tipo: tef }, abas: abas, permCelula: cp, membro: memberFull_(mm), celula: cel ? cellOut_(cel, nivelCel !== 'membro') : null, nivelCelula: nivelCel, cargos: cg, minhasCelulas: minhas, permissoes: permMatrix_()[tef], config: publicConfig_(), interesses: interessesDe_(u.membroId), membresia: membresiaDe_(u.membroId) };
 }
 function saveMember_(d, u) {
   return withLock_(function () {
@@ -3207,18 +3207,37 @@ function sendChat_(d, u) {
     if (para === u.membroId) throw new ApiError('VALIDATION', 'Você não pode conversar consigo mesmo.'); if (!usuarioAtivo_(para)) throw new ApiError('NOT_FOUND', 'Essa pessoa não está disponível para conversar.');
     const t = table_('ChatMsgs'), agora = Date.now(); let n = 0; for (let i = t.rows.length - 1; i >= 0 && i > t.rows.length - 200; i--) { const r = t.rows[i]; if (r.De === u.membroId && agora - Number(r.Ts) < 60000) n++; }
     if (n >= CHAT_POR_MIN) throw new ApiError('RATE', 'Muitas mensagens seguidas. Espere um minuto.');
-    CacheService.getScriptCache().remove('t:' + u.membroId + ':' + para); const id = id_('MS'); appendRow_(t, { MsgID: id, ConvID: convId_(u.membroId, para), De: u.membroId, Para: para, Texto: texto, Ts: String(agora), Lida: '0' });
-    { const eu = table_('Membros').rows.filter(function (x) { return x.MembroID === u.membroId; })[0]; PUSHQ_.push({ m: para, t: (eu && (eu.Simples || eu.Apelido || eu.Nome)) || 'Nova mensagem', b: texto.length > 90 ? texto.slice(0, 90) + '…' : texto, k: 'chat' }); }
-    return { id: id, ts: agora };
+    CacheService.getScriptCache().remove('t:' + u.membroId + ':' + para); const id = id_('MS');
+    // mensagem pastoral: de quem tem a liberação do Studio para quem está transmitindo/projetando agora; fica na tela até o "joinha"
+    const ops = studioOperadores_(), past = studioChatLista_().indexOf(u.membroId) >= 0 && ops.some(function (o) { return o.id === para; }) && !ops.some(function (o) { return o.id === u.membroId; });
+    ensureCols_('ChatMsgs', ['Pastoral', 'Ciente']);
+    appendRow_(table_('ChatMsgs'), { MsgID: id, ConvID: convId_(u.membroId, para), De: u.membroId, Para: para, Texto: texto, Ts: String(agora), Lida: '0', Pastoral: past ? '1' : '', Ciente: '' });
+    { const eu = table_('Membros').rows.filter(function (x) { return x.MembroID === u.membroId; })[0], nome = (eu && (eu.Simples || eu.Apelido || eu.Nome)) || 'Nova mensagem';
+      if (past) paPush_(para, { id: id, de: u.membroId, nome: nome, texto: texto, ts: agora }); PUSHQ_.push({ m: para, t: past ? '🔔 Pastoral: ' + nome : nome, b: texto.length > 90 ? texto.slice(0, 90) + '…' : texto, k: 'chat' }); }
+    return { id: id, ts: agora, pastoral: past };
   });
 }
-function msgOut_(r, eu) { return { id: r.MsgID, minha: r.De === eu, texto: r.Texto, ts: Number(r.Ts), lida: r.Lida === '1' }; }
+function msgOut_(r, eu) { return { id: r.MsgID, minha: r.De === eu, texto: r.Texto, ts: Number(r.Ts), lida: r.Lida === '1', pastoral: r.Pastoral === '1', ciente: Number(r.Ciente) || 0 }; }
+/* Mensagem pastoral: a lista de pendentes de cada operador fica no cache, então o aviso rápido (pingPastoral) não lê nenhuma planilha */
+function paLista_(id) { try { return JSON.parse(CacheService.getScriptCache().get('pa:' + id) || '[]'); } catch (e) { return []; } }
+function paPush_(id, m) { const l = paLista_(id).filter(function (x) { return x.id !== m.id; }); l.push(m); try { CacheService.getScriptCache().put('pa:' + id, JSON.stringify(l.slice(-8)), 21600); } catch (e) { /* ok */ } }
+function paTira_(id, mid) { const l = paLista_(id).filter(function (x) { return x.id !== mid; }); try { if (l.length) CacheService.getScriptCache().put('pa:' + id, JSON.stringify(l), 21600); else CacheService.getScriptCache().remove('pa:' + id); } catch (e) { /* ok */ } }
+function pendentesPast_(me) { const nm = nomes_(); return table_('ChatMsgs').rows.filter(function (r) { return r.Para === me && r.Pastoral === '1' && !r.Ciente; }).slice(-8).map(function (r) { return { id: r.MsgID, de: r.De, nome: nm[r.De] || '—', texto: r.Texto, ts: Number(r.Ts) }; }); }
+function pingPastoral_(d, u) { return { pa: paLista_(u.membroId) }; }
+function pastoralCiente_(d, u) {
+  return withLock_(function () {
+    const t = table_('ChatMsgs'), r = t.rows.filter(function (x) { return x.MsgID === clip_(d.id, 30) && x.Para === u.membroId && x.Pastoral === '1'; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Mensagem não encontrada.');
+    if (!r.Ciente) { writeRow_(t, r._row, { Ciente: String(Date.now()), Lida: '1' }); const nm = nomes_(); PUSHQ_.push({ m: r.De, t: '👍 ' + (nm[u.membroId] || 'O operador') + ' viu sua mensagem', b: String(r.Texto).slice(0, 80), k: 'chat' }); }
+    paTira_(u.membroId, r.MsgID); return { ok: true };
+  });
+}
 function getChat_(d, u) {
   const com = clip_(d.com, 30), cid = convId_(u.membroId, com), depois = Number(d.depois) || 0; presTouch_(u, d);
   const m = table_('Membros').rows.filter(function (x) { return x.MembroID === com; })[0]; if (!m) throw new ApiError('NOT_FOUND', 'Pessoa não encontrada.');
   const ms = table_('ChatMsgs').rows.filter(function (r) { return r.ConvID === cid && Number(r.Ts) > depois; }).slice(-100).map(function (r) { return msgOut_(r, u.membroId); });
   const pr = presDe_(com, d), dg = !(d && d.inv) && Date.now() - Number(CacheService.getScriptCache().get('t:' + com + ':' + u.membroId) || 0) < DIG_MS;
-  return { com: { id: com, nome: m.Simples || m.Apelido || m.Nome }, msgs: ms, online: pr.online, visto: pr.visto, digitando: dg };
+  const cientes = {}; table_('ChatMsgs').rows.forEach(function (r) { if (r.ConvID === cid && r.Pastoral === '1' && r.Ciente) cientes[r.MsgID] = Number(r.Ciente); });
+  return { com: { id: com, nome: m.Simples || m.Apelido || m.Nome }, msgs: ms, online: pr.online, visto: pr.visto, digitando: dg, cientes: cientes };
 }
 function chatRead_(d, u) {
   return withLock_(function () { const t = table_('ChatMsgs'), cid = convId_(u.membroId, clip_(d.com, 30)); let n = 0; t.rows.forEach(function (r) { if (r.ConvID === cid && r.Para === u.membroId && r.Lida !== '1') { writeRow_(t, r._row, { Lida: '1' }); n++; } }); return { n: n }; });
@@ -3227,7 +3246,8 @@ function listChats_(d, u) {
   const por = {}, nome = nomes_(); let nao = 0; presTouch_(u, d);
   table_('ChatMsgs').rows.forEach(function (r) { if (r.De !== u.membroId && r.Para !== u.membroId) return; const outro = r.De === u.membroId ? r.Para : r.De, c = por[outro] || (por[outro] = { id: outro, nome: nome[outro] || '—', ultima: '', ts: 0, minha: false, naoLidas: 0 });
     if (Number(r.Ts) >= c.ts) { c.ts = Number(r.Ts); c.ultima = String(r.Texto).slice(0, 80); c.minha = r.De === u.membroId; } if (r.Para === u.membroId && r.Lida !== '1') { c.naoLidas++; nao++; } });
-  return { naoLidas: nao, conversas: Object.keys(por).map(function (k) { return por[k]; }).sort(function (a, b) { return b.ts - a.ts; }).slice(0, 40).map(function (c) { const p = presDe_(c.id, d); c.online = p.online; c.visto = p.visto; return c; }) };
+  const elegivel = studioChatLista_().indexOf(u.membroId) >= 0, ops = elegivel ? studioOperadores_().filter(function (o) { return o.id !== u.membroId; }) : [];
+  return { pastoral: pendentesPast_(u.membroId), operadores: ops, naoLidas: nao, conversas: Object.keys(por).map(function (k) { return por[k]; }).sort(function (a, b) { return b.ts - a.ts; }).slice(0, 40).map(function (c) { const p = presDe_(c.id, d); c.online = p.online; c.visto = p.visto; return c; }) };
 }
 
 /* ============================== USUÁRIOS / PERMISSÕES ============================== */
@@ -4097,26 +4117,6 @@ function studioPresenca_(d, u) {
 function studioOperadores_() {
   const out = [], nm = nomes_(); ['live', 'proj'].forEach(function (a) { try { const v = JSON.parse(CacheService.getScriptCache().get('sp:' + a) || 'null'); if (v && v.m) out.push({ area: a, id: v.m, nome: nm[v.m] || '—' }); } catch (e) { /* ok */ } }); return out;
 }
-function studioChatEnvia_(d, u) {
-  if (!studioChatOk_(u)) throw new ApiError('FORBIDDEN', 'O chat do Studio Zoe não está liberado para você.');
-  const texto = clip_(d.texto, 400).trim(); if (!texto) throw new ApiError('VALIDATION', 'Escreva a mensagem.');
-  let para = clip_(d.para, 30); const ops = studioOperadores_();
-  if (!para) { const a = ops.filter(function (o) { return o.area === clip_(d.area, 10); })[0] || ops[0]; para = a ? a.id : ''; }
-  if (!para) throw new ApiError('VALIDATION', 'Ninguém está transmitindo ou projetando agora. Tente de novo em instantes.');
-  if (para === u.membroId) throw new ApiError('VALIDATION', 'Você é quem está operando.');
-  const alvoOk = ops.some(function (o) { return o.id === para; }) || studioChatLista_().indexOf(para) >= 0 || table_('StudioChat').rows.some(function (m) { return m.De === para && m.Para === u.membroId; });
-  if (!alvoOk) throw new ApiError('FORBIDDEN', 'Essa pessoa não está no chat do Studio.');
-  const id = id_('SC'); appendRow_(table_('StudioChat'), { MsgID: id, De: u.membroId, Para: para, Texto: texto, Data: now_(), Lida: '0' });
-  notify_(para, 'studiochat', (nomes_()[u.membroId] || 'Alguém') + ' no chat do Studio 💬', clip_(texto, 120), 'studiochat'); return { id: id };
-}
-function studioChatLista2_(d, u) {
-  if (!studioChatOk_(u)) return { ok: false, msgs: [], operadores: [] };
-  const nm = nomes_(), me = u.membroId, desde = clip_(d.desde, 25), t = lazy_('StudioChat');
-  const msgs = t.rows.filter(function (m) { return (m.De === me || m.Para === me) && (!desde || m.Data > desde); }).slice(-60).map(function (m) { return { id: m.MsgID, de: m.De, nome: nm[m.De] || '—', para: m.Para, texto: m.Texto, data: m.Data, minha: m.De === me }; });
-  if (d.lido) t.rows.forEach(function (m) { if (m.Para === me && m.Lida !== '1') writeRow_(t, m._row, { Lida: '1' }); });
-  const nao = t.rows.filter(function (m) { return m.Para === me && m.Lida !== '1'; }).length;
-  return { ok: true, msgs: msgs, nao: nao, operadores: studioOperadores_().filter(function (o) { return o.id !== me; }) };
-}
 // Controle remoto do telão: o estado (item da agenda, slide, pausa) fica no servidor; o celular escreve e o computador do projetor acompanha
 // item = 'm:ID' (música) · 'i:ID' (imagem da biblioteca) · 'e:ID' (evento da igreja)
 function telaoLer_() { const o = jparse_(cfgMap_().Telao, {}), it = String(o.item || (o.songId ? 'm:' + o.songId : '')); return { v: Number(o.v) || 0, item: it, songId: it.indexOf('m:') === 0 ? it.slice(2) : '', agendaId: String(o.agendaId || ''), i: Math.max(0, Number(o.i) || 0), pausado: !!o.pausado, ativa: !!o.ativa, by: String(o.by || ''), em: o.em || '' }; }
@@ -4483,8 +4483,9 @@ const ROUTES = {
   listSongs: { auth: 'any', fn: listSongs_ }, saveSong: { auth: 'any', write: 1, fn: saveSong_ }, deleteSong: { auth: 'any', write: 1, fn: deleteSong_ }, saveSongDefault: { auth: 'any', write: 1, fn: saveSongDefault_ }, searchLyrics: { auth: 'any', fn: searchLyrics_ }, importLyrics: { auth: 'any', fn: importLyrics_ },
   boot: { auth: 'any', fn: boot_ },
   zoePergunta: { auth: 'any', fn: zoePergunta_ }, devocional: { auth: 'any', fn: devocional_ }, cuidadoLider: { auth: 'any', fn: cuidadoLider_ }, cuidadoMsg: { auth: 'any', fn: cuidadoMsg_ },
-  studioAcessos: { auth: 'any', fn: studioAcessosLista_ }, saveStudioAcesso: { auth: 'any', write: 1, fn: saveStudioAcesso_ }, studioPresenca: { auth: 'any', fn: studioPresenca_ }, studioChatEnvia: { auth: 'any', write: 1, fn: studioChatEnvia_ }, studioChat: { auth: 'any', fn: studioChatLista2_ },
+  studioAcessos: { auth: 'any', fn: studioAcessosLista_ }, saveStudioAcesso: { auth: 'any', write: 1, fn: saveStudioAcesso_ }, studioPresenca: { auth: 'any', fn: studioPresenca_ },
   getLessonPdf: { auth: 'any', fn: getLessonPdf_ }, saveLessonText: { auth: 'any', write: 1, fn: saveLessonText_ }, getLessonText: { auth: 'any', fn: getLessonText_ },
+  pingPastoral: { auth: 'any', fn: pingPastoral_ }, pastoralCiente: { auth: 'any', write: 1, fn: pastoralCiente_ },
   celTime: { auth: 'any', fn: celTime_ }, saveCelTime: { auth: 'any', write: 1, fn: saveCelTime_ }, discipuladoCel: { auth: 'any', fn: discipuladoCel_ }, setDiscipulador: { auth: 'any', write: 1, fn: setDiscipulador_ }, meusAcomp: { auth: 'any', fn: meusAcomp_ }, saveEncontro: { auth: 'any', write: 1, fn: saveEncontro_ }, listEncontros: { auth: 'any', fn: listEncontros_ }, listRecursosConsol: { auth: 'any', fn: listRecursosConsol_ }, saveRecursoConsol: { auth: 'any', write: 1, fn: saveRecursoConsol_ }, deleteRecursoConsol: { auth: 'any', write: 1, fn: deleteRecursoConsol_ },
   myQuizzes: { auth: 'any', fn: myQuizzes_ }, getQuiz: { auth: 'any', fn: getQuiz_ }, answerQuiz: { auth: 'any', write: 1, fn: answerQuiz_ }, quizLider: { auth: 'any', fn: quizLider_ }, quizCelula: { auth: 'any', fn: quizCelula_ }, quizPrepara: { auth: 'any', write: 1, fn: quizPrepara_ }, quizAcao: { auth: 'any', write: 1, fn: quizAcao_ }, getQuizCfg: { auth: 'config', fn: getQuizCfg_ }, capacidade: { auth: 'config', fn: capacidade_ }, testQuizIa: { auth: 'config', fn: testQuizIa_ },
   getEntrega: { auth: 'config', fn: getEntrega_ }, saveEntrega: { auth: 'config', write: 1, fn: saveEntrega_ },
