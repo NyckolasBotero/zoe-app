@@ -1395,14 +1395,14 @@ test('Presença de Deus: média do líder com os votos de quem votou; visitantes
   const L = tok('lid@zoe.com', 'Temp12345'), A = tok('ana@zoe.com', 'Temp12345'), B = tok('bia@zoe.com', 'Temp12345');
   const data = e.run('today_()');
   // fora do dia da célula: confirma
-  const r = e.call('saveAttendance', { data, confirmaDia: true, presentes: [a, b], termometro: 40, visitas: [{ membroId: o }, { nome: 'Visitante Novo' }, { nome: 'visitante novo' }, { membroId: a }] }, L);
+  const r = e.call('saveAttendance', { data, confirmaDia: true, presentes: [a, b], termometro: 40, visitas: [{ membroId: o }, { nome: 'Visitante Novo', telefone: '61999990000' }, { nome: 'visitante novo', telefone: '61999990000' }, { membroId: a }] }, L);
   assert.equal(r.ok, true, JSON.stringify(r)); assert.equal(r.data.visitantes, 2);
   let h = e.call('history', {}, L).data.reunioes[0]; assert.equal(h.presentes, 2); assert.equal(h.visitantes.length, 2);
   assert.equal(h.visitantes.find(v => !v.novo).de, 'Sul'); assert.equal(h.visitantes.find(v => v.novo).nome, 'Visitante Novo'); assert.equal(h.termometro, 40);
   assert.equal(e.sheets.Visitantes.rows.filter(x => x.includes('Visitante Novo')).length, 1);
   assert.equal(e.call('cellMembers', {}, L).data.length, 3, 'visitante de outra célula não entra na célula'); assert.equal(e.call('cellMembers', { celulaId: c2 }, adm).data.length, 1);
   // regravar a chamada não duplica
-  e.call('saveAttendance', { data, confirmaDia: true, presentes: [a, b], termometro: 40, visitas: [{ membroId: o }, { nome: 'Visitante Novo' }] }, L); assert.equal(e.call('history', {}, L).data.reunioes[0].visitantes.length, 2); assert.equal(e.sheets.Visitantes.rows.filter(x => x.includes('Visitante Novo')).length, 1);
+  e.call('saveAttendance', { data, confirmaDia: true, presentes: [a, b], termometro: 40, visitas: [{ membroId: o }, { nome: 'Visitante Novo', telefone: '61999990000' }] }, L); assert.equal(e.call('history', {}, L).data.reunioes[0].visitantes.length, 2); assert.equal(e.sheets.Visitantes.rows.filter(x => x.includes('Visitante Novo')).length, 1);
   // votos
   let vi = e.call('getVoteInfo', {}, A).data; assert.equal(vi.podeVotar, true); assert.equal(vi.media, 40); assert.equal(vi.meu, null);
   assert.equal(e.call('voteGod', { data, valor: 100 }, A).data.media, 70);

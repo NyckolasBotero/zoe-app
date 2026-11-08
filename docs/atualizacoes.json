@@ -1,5 +1,17 @@
 [
  {
+  "titulo": "Pré-cadastro, aprovação de mudanças da célula e tela sem célula",
+  "melhorias": [
+   "Nome simplificado automático: primeiro + último nome (ex.: Fabio Nyckolas Figueiredo Botero → Fabio Botero). Pode ser editado.",
+   "Ministérios: a troca de foto saiu da tela de Ministérios; só em Administração › Ministérios.",
+   "Chamada da célula: o pré-cadastro de visitante novo exige nome e sobrenome e o WhatsApp. Uma hora depois o líder recebe um aviso para chamar a pessoa, com mensagem pronta e acolhedora que apresenta o app e o quiz.",
+   "Mudanças bruscas da célula feitas pelo líder (nome, dia, horário, endereço e localização) vão para aprovação do supervisor em Aprovações. Descrição, foto e faixa continuam diretas.",
+   "Quem ainda não tem célula vê uma tela própria: usar a localização (salva a casa) ou marcar no mapa, buscar a célula mais perto e pedir ajuda à Zoe."
+  ],
+  "v": "1.151",
+  "data": "08/11/2026"
+ },
+ {
   "titulo": "Zoe mais inteligente: devocional, perguntas e cuidado com a célula",
   "melhorias": [
    "Devocional da Zoe: todo dia um versículo (Almeida) com uma reflexão curta feita para o seu momento (novo na igreja, líder, quem serve num ministério ou membro), no topo do feed e em notificação.",

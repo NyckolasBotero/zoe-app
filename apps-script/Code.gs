@@ -39,12 +39,13 @@ const SHEETS = {
   Reunioes: ['ReuniaoID', 'CelulaID', 'Data', 'Presentes', 'PresencaDeDeus', 'Obs', 'ForaDoDia', 'Elenco', 'Termometro', 'Foto', 'LicaoID', 'LicaoTitulo', 'LicaoResumo', 'Papeis'],
   Posts: ['PostID', 'Tipo', 'Escopo', 'CelulaID', 'AutorID', 'Titulo', 'Texto', 'Foto', 'Meta', 'Data', 'Status'],
   Comentarios: ['ComentID', 'PostID', 'MembroID', 'Texto', 'Data'],
-  Visitantes: ['VisitanteID', 'Nome', 'Apelido', 'Telefone', 'Email', 'Nascimento', 'Endereco', 'Bairro', 'Cidade', 'UF', 'Lat', 'Lng', 'Data', 'RegistradoPor', 'CelulaID', 'Distancia', 'Contatado', 'ContatadoPor', 'ContatoData', 'Msg', 'Obs', 'Decisao', 'Status', 'SupervisorID', 'LiderID', 'ConsolidadorID', 'TriagemPor', 'EncaminhadoEm', 'AceitoEm', 'AceitoPor', 'MembroID', 'CelulaProximaID'],
+  Visitantes: ['VisitanteID', 'Nome', 'Apelido', 'Telefone', 'Email', 'Nascimento', 'Endereco', 'Bairro', 'Cidade', 'UF', 'Lat', 'Lng', 'Data', 'RegistradoPor', 'CelulaID', 'Distancia', 'Contatado', 'ContatadoPor', 'ContatoData', 'Msg', 'Obs', 'Decisao', 'Status', 'SupervisorID', 'LiderID', 'ConsolidadorID', 'TriagemPor', 'EncaminhadoEm', 'AceitoEm', 'AceitoPor', 'MembroID', 'CelulaProximaID', 'AvisarEm', 'AvisoEm'],
   BibMarcas: ['MembroID', 'Ref', 'Cor', 'Tipo', 'Comentario', 'Publico', 'Data'],
   Presencas: ['ReuniaoID', 'CelulaID', 'Data', 'MembroID'],
   Papeis: ['CelulaID', 'MembroID', 'Papel'],
   Supervisao: ['MembroID', 'SuperiorID'],
   Devocionais: ['Dia', 'Seg', 'Ref', 'Livro', 'Cap', 'Vers', 'Texto'],
+  CelMudancas: ['MudancaID', 'CelulaID', 'Patch', 'Status', 'SolicitadoPor', 'Data', 'DecididoPor', 'DataDecisao'],
   UsoDia: ['Dia', 'IACalls', 'IAErros', 'IANeurons', 'WorkerCalls', 'DiretoCalls', 'PushEnvios', 'PushOk', 'PushFalha'],
   PapeisLog: ['LogID', 'CelulaID', 'MembroID', 'Papel', 'Acao', 'Por', 'Data'],
   Oracoes: ['OracaoID', 'CelulaID', 'MembroID', 'Tema', 'Titulo', 'Texto', 'Data'],
@@ -158,7 +159,7 @@ function criarAdminInicial() {
 function criarAdmin(email, senha, nome) {
   email = String(email || '').trim().toLowerCase(); if (!email || String(senha || '').length < 8) throw new Error('Informe e-mail e senha com 8+ caracteres.');
   const u = table_('Usuarios'); if (u.rows.some(function (r) { return String(r.Email).toLowerCase() === email; })) throw new Error('Usuário já existe.');
-  const mid = id_('M'); appendRow_(table_('Membros'), { MembroID: mid, Nome: nome || email, Simples: nome || email, Apelido: String(nome || email).split(' ')[0], Email: email, EhMembro: '1', Status: 'Ativo', CriadoEm: now_() });
+  const mid = id_('M'); appendRow_(table_('Membros'), { MembroID: mid, Nome: nome || email, Simples: simples_(nome) || email, Apelido: String(nome || email).split(' ')[0], Email: email, EhMembro: '1', Status: 'Ativo', CriadoEm: now_() });
   const salt = Utilities.getUuid();
   appendRow_(ensureCols_('Usuarios', ['SenhaVis']), { Email: email, SenhaVis: pwEnc_(String(senha), salt), SenhaHash: hash_(salt, String(senha)), Salt: salt, Papel: 'admin', Status: 'Ativo', GuiaVisto: '0', MembroID: mid, TrocarSenha: '', CriadoEm: now_() });
   Logger.log('Administrador criado: ' + email);
@@ -216,6 +217,8 @@ function ensureCols_(name, cols) {
   if (TMEMO_) delete TMEMO_[name]; tvTouch_(name); return table_(name);
 }
 function id_(p) { return p + Utilities.getUuid().replace(/-/g, '').slice(0, 10).toUpperCase(); }
+function simples_(nome) { const p = String(nome || '').trim().split(/\s+/).filter(String); return p.length > 2 ? p[0] + ' ' + p[p.length - 1] : p.join(' '); }
+function maisHoras_(h) { return Utilities.formatDate(new Date(Date.now() + h * 3600000), CFG.TZ, 'yyyy-MM-dd HH:mm:ss'); }
 function now_() { return Utilities.formatDate(new Date(), CFG.TZ, 'yyyy-MM-dd HH:mm:ss'); }
 function today_() { return Utilities.formatDate(new Date(), CFG.TZ, 'yyyy-MM-dd'); }
 function clip_(s, n) { return String(s === undefined || s === null ? '' : s).trim().slice(0, n || 200); }
@@ -358,6 +361,7 @@ function saveMember_(d, u) {
     if (p.Nome !== undefined && !p.Nome) throw new ApiError('VALIDATION', 'O nome completo não pode ficar vazio.');
     ['Nascimento', 'DataDecisao', 'DataBatismo', 'DataCasamento'].forEach(function (k) { if (p[k] !== undefined && !dateOk_(p[k])) throw new ApiError('VALIDATION', 'Data inválida em ' + k + '.'); });
     if (p.DataBatismo) p.Batizado = 'sim';
+    if (p.Nome && (p.Simples === undefined ? !g.m.Simples : !p.Simples)) p.Simples = simples_(p.Nome);   // nome simplificado vazio: primeiro + último nome
     if (p.Email !== undefined) delete p.Email; // e-mail de acesso só muda pelo administrador
     if (src.Filhos !== undefined) p.Filhos = JSON.stringify((src.Filhos || []).slice(0, 15).map(function (f) { return { n: clip_(f.n, 120), idade: clip_(f.idade, 30) }; }));
     writeRow_(g.t, g.m._row, p); audit_(u.email, 'MEMBRO_SALVO', u.membroId, 'OK'); const novo = Object.assign({}, g.m, p); conquistasMembro_(novo); return memberFull_(novo);
@@ -575,7 +579,19 @@ function saveCell_(d, u) {
     const co = parseCoord_(d.coordenadas); if (co) { p.Lat = co.Lat; p.Lng = co.Lng; }
     if (d.priv) { p.PrivGrupo = d.priv.grupo ? '1' : '0'; p.PrivTel = d.priv.tel ? '1' : '0'; p.PrivEmail = d.priv.email ? '1' : '0'; p.PrivEnd = d.priv.end ? '1' : '0'; }
     if (p.Nome === '') throw new ApiError('VALIDATION', 'Dê um nome à célula.');
-    writeRow_(t, c._row, p); audit_(u.email, 'CELULA_SALVA', id, 'OK'); return cellOut_(Object.assign({}, c, p), true);
+    // mudanças bruscas (nome, dia/horário, endereço/localização) feitas pelo líder precisam da aprovação do supervisor
+    const BR = ['Nome', 'Dia', 'Inicio', 'Endereco', 'Bairro', 'Cidade', 'UF', 'Lat', 'Lng'], livre = can_(u, 'celulas') || (c.SupervisorID && c.SupervisorID === u.membroId); let pendKeys = [];
+    if (!livre) {
+      const pend = {}; BR.forEach(function (k) { if (p[k] !== undefined && String(p[k]) !== String(c[k] || '')) { pend[k] = p[k]; delete p[k]; } });
+      if (Object.keys(pend).length) {
+        const mt = lazy_('CelMudancas'), ex = mt.rows.filter(function (r) { return r.CelulaID === id && r.Status === 'pendente'; })[0];
+        if (ex) writeRow_(mt, ex._row, { Patch: JSON.stringify(Object.assign(jparse_(ex.Patch, {}), pend)), Data: now_(), SolicitadoPor: u.membroId });
+        else appendRow_(mt, { MudancaID: id_('CM'), CelulaID: id, Patch: JSON.stringify(pend), Status: 'pendente', SolicitadoPor: u.membroId, Data: now_() });
+        if (c.SupervisorID) notify_(c.SupervisorID, 'aprovacao', 'Mudança na célula ' + (c.Nome || '') + ' 🔔', (nomes_()[u.membroId] || 'O líder') + ' pediu para alterar: ' + Object.keys(pend).map(celMudRot_).join(', ') + '. Veja em Aprovações.', 'celmud:' + id);
+        audit_(u.email, 'CELULA_MUDANCA_PEDIDA', id, 'OK'); pendKeys = Object.keys(pend);
+      }
+    }
+    writeRow_(t, c._row, p); audit_(u.email, 'CELULA_SALVA', id, 'OK'); return Object.assign(cellOut_(Object.assign({}, c, p), true), pendKeys.length ? { aguardaAprovacao: pendKeys.map(celMudRot_) } : {});
   });
 }
 function createCell_(d, u) {
@@ -647,6 +663,11 @@ function saveAttendance_(d, u) {
       if (lc) licao = { id: lc.LicaoID, titulo: clip_(lc.Titulo, 120), resumo: '' };
       else { const rs = clip_(d.licaoResumo, 600).trim(); if (rs.length < 10) throw new ApiError('VALIDATION', 'Escolha a lição que foi ministrada ou escreva um breve resumo do que você ministrou (mínimo de 10 letras).'); licao = { id: '', titulo: '', resumo: rs }; }
     }
+    (Array.isArray(d.visitas) ? d.visitas : []).forEach(function (x) {   // pré-cadastro: nome e sobrenome + WhatsApp, para o líder poder chamar
+      if (!x || clip_(x.membroId, 30)) return; const nv = clip_(x.nome, 80).trim(); if (nv.length < 2) return;
+      if (nv.split(/\s+/).filter(String).length < 2) throw new ApiError('VALIDATION', 'Informe nome e sobrenome do visitante (ex.: Alberto Fagundes), não só “' + nv + '”.');
+      if (String(x.telefone || '').replace(/\D/g, '').length < 10) throw new ApiError('VALIDATION', 'Informe o WhatsApp (com DDD) de ' + nv + ' para o líder poder entrar em contato.');
+    });
     const mem = ativosDaCelula_(id).map(function (m) { return m.MembroID; });
     const pres = (d.presentes || []).filter(function (x) { return mem.indexOf(x) >= 0; });
     const pt = table_('Presencas'); for (let i = pt.rows.length - 1; i >= 0; i--) if (pt.rows[i].CelulaID === id && pt.rows[i].Data === data) delRow_(pt, pt.rows[i]._row);
@@ -664,14 +685,14 @@ function saveAttendance_(d, u) {
     if (quer) { try { quizAgenda_(id, rid, data, licao); } catch (eq) { console.error(eq && eq.stack || eq); } }
     // visitantes da reunião: membro de outra célula (só visita, não muda de célula) ou pessoa nova (pré-cadastro)
     const pv = lazy_('PresVisitas'); for (let i = pv.rows.length - 1; i >= 0; i--) if (pv.rows[i].CelulaID === id && pv.rows[i].Data === data) delRow_(pv, pv.rows[i]._row);
-    const mt2 = table_('Membros'), vt = table_('Visitantes'), pv2 = lazy_('PresVisitas'), vistos = {}; let nVis = 0;
+    ensureCols_('Visitantes', ['AvisarEm', 'AvisoEm']); const mt2 = table_('Membros'), vt = table_('Visitantes'), pv2 = lazy_('PresVisitas'), vistos = {}; let nVis = 0;
     (Array.isArray(d.visitas) ? d.visitas : []).slice(0, 30).forEach(function (x) {
       const mid = clip_(x && x.membroId, 30);
       if (mid) { const m = mt2.rows.filter(function (r) { return r.MembroID === mid; })[0]; if (!m || m.CelulaID === id || vistos[mid]) return; vistos[mid] = 1;
         appendRow_(pv2, { PVID: id_('PV'), ReuniaoID: rid, CelulaID: id, Data: data, MembroID: mid, Nome: m.Apelido || m.Simples || m.Nome, DeCelulaID: m.CelulaID || '', Tipo: 'membro' }); nVis++; return; }
       const nome = clip_(x && x.nome, 80); if (nome.length < 2 || vistos['n' + norm_(nome)]) return; vistos['n' + norm_(nome)] = 1;
       let v = vt.rows.filter(function (r) { return r.CelulaID === id && norm_(r.Nome) === norm_(nome); })[0], vid = v ? v.VisitanteID : '';
-      if (!v) { vid = id_('V'); const ap = nome.split(' ')[0]; appendRow_(vt, { VisitanteID: vid, Nome: nome, Apelido: ap, Telefone: clip_(x.telefone, 25), Data: data, RegistradoPor: u.membroId, CelulaID: id, CelulaProximaID: id, LiderID: cel.LiderID || '', Status: 'encaminhado', EncaminhadoEm: now_(), Contatado: '0', Decisao: '0', Msg: msgPadrao_(ap), Obs: 'Pré-cadastro feito na chamada da célula ' + (cel.Nome || '') + ' em ' + data + '. Completa os dados ao entrar no app.' }); vt.rows.push({ VisitanteID: vid, CelulaID: id, Nome: nome }); }
+      if (!v) { vid = id_('V'); const ap = nome.split(' ')[0]; appendRow_(vt, { VisitanteID: vid, Nome: nome, Apelido: ap, Telefone: clip_(x.telefone, 25), Data: data, RegistradoPor: u.membroId, CelulaID: id, CelulaProximaID: id, LiderID: cel.LiderID || '', Status: 'encaminhado', EncaminhadoEm: now_(), Contatado: '0', Decisao: '0', AvisarEm: maisHoras_(1), AvisoEm: '', Msg: msgVisitaCel_(ap, cel, u), Obs: 'Pré-cadastro feito na chamada da célula ' + (cel.Nome || '') + ' em ' + data + '. Completa os dados ao entrar no app.' }); vt.rows.push({ VisitanteID: vid, CelulaID: id, Nome: nome }); }
       appendRow_(pv2, { PVID: id_('PV'), ReuniaoID: rid, CelulaID: id, Data: data, VisitanteID: vid, Nome: nome, Tipo: 'novo' }); nVis++;
     });
     // a foto da chamada vai sozinha para o mural da célula (uma por reunião)
@@ -884,6 +905,10 @@ function aprovItens_(u) {
     if (!(adm || meu(cel[t.ParaCelulaID]) || meu(cel[t.DeCelulaID]))) return;
     add({ tipo: 'transferencia', id: t.TransfID, pessoaId: t.MembroID, titulo: 'Transferência de ' + nm(t.MembroID), detalhe: ((cel[t.DeCelulaID] || {}).Nome || '?') + ' para ' + ((cel[t.ParaCelulaID] || {}).Nome || '?'), status: t.Status, data: t.Data, solicitante: nm(t.SolicitadoPor), decididoPorId: t.DecididoPor, decididoPor: nm(t.DecididoPor), dataDecisao: t.DataDecisao, pode: adm || t.SolicitadoPor !== u.membroId, admOk: adm, ctxCel: t.DeCelulaID, ctx: { de: (cel[t.DeCelulaID] || {}).Nome || '', para: (cel[t.ParaCelulaID] || {}).Nome || '', motivo: t.Motivo || '' } });
   });
+  lazy_('CelMudancas').rows.forEach(function (x) {
+    if (!(adm || meu(cel[x.CelulaID]))) return; const pt = jparse_(x.Patch, {}), c0 = cel[x.CelulaID] || {};
+    add({ tipo: 'celmud', id: x.MudancaID, pessoaId: x.SolicitadoPor, titulo: 'Mudança na célula ' + (c0.Nome || ''), detalhe: Object.keys(pt).map(function (k) { return celMudRot_(k) + ': ' + (c0[k] || '—') + ' → ' + pt[k]; }).join(' · '), status: x.Status, data: String(x.Data || '').slice(0, 10), solicitante: nm(x.SolicitadoPor), decididoPorId: x.DecididoPor, decididoPor: nm(x.DecididoPor), dataDecisao: x.DataDecisao, pode: adm || x.SolicitadoPor !== u.membroId, semDesfazer: true, ctxCel: x.CelulaID, ctx: { de: c0.Nome || '', motivo: '' } });
+  });
   table_('Saidas').rows.forEach(function (x) {
     if (!(adm || meu(cel[x.CelulaID]))) return;
     add({ tipo: 'saida', id: x.SaidaID, pessoaId: x.MembroID, titulo: nm(x.MembroID) + ' saiu da congregação', detalhe: 'Célula ' + ((cel[x.CelulaID] || {}).Nome || '?') + (x.Motivo ? ' · ' + x.Motivo : ''), status: x.Status, data: x.Data, solicitante: nm(x.SolicitadoPor), decididoPorId: x.DecididoPor, decididoPor: nm(x.DecididoPor), dataDecisao: x.DataDecisao, pode: adm || x.SolicitadoPor !== u.membroId, admOk: adm, ctxCel: x.CelulaID, ctx: { de: (cel[x.CelulaID] || {}).Nome || '', motivo: x.Motivo || '' } });
@@ -959,6 +984,7 @@ function notifyDecisao_(tipo, id, status, motivo, u) {
   else if (tipo === 'interesse') { const r = table_('Interesses').rows.filter(function (x) { return x.InteresseID === id; })[0]; if (!r) return; const g = table_('Membros').rows.filter(function (x) { return x.MembroID === r.MembroID; })[0] || {}; pessoa = nome(r.MembroID); rot = 'Ministério de ' + pessoa; dest = [r.MembroID, lider(g.CelulaID)]; }
   else if (tipo === 'membresia') { const r = table_('Membresias').rows.filter(function (x) { return x.MembresiaID === id; })[0]; if (!r) return; pessoa = nome(r.MembroID); rot = 'Cadastro de membro de ' + pessoa; dest = [lider(r.CelulaID)]; }
   else if (tipo === 'curso' || tipo === 'inicio') { const r = table_('Cursos').rows.filter(function (x) { return x.CursoID === id; })[0]; if (!r) return; pessoa = r.Nome; rot = (tipo === 'curso' ? 'Curso ' : 'Início das aulas de ') + r.Nome; dest = [r.ProfessorID]; }
+  else if (tipo === 'celmud') { const r = table_('CelMudancas').rows.filter(function (x) { return x.MudancaID === id; })[0]; if (!r) return; rot = 'Mudança na célula'; dest = [r.SolicitadoPor]; }
   else if (tipo === 'matricula') { const r = table_('Matriculas').rows.filter(function (x) { return x.MatriculaID === id; })[0]; if (!r) return; const c = table_('Cursos').rows.filter(function (x) { return x.CursoID === r.CursoID; })[0] || {}; rot = 'Matrícula no curso ' + (c.Nome || ''); dest = [r.MembroID]; }
   const seen = {}; dest.forEach(function (m) { if (!m || m === u.membroId || seen[m]) return; seen[m] = 1; notify_(m, 'aprovacao', rot + (status === 'autorizado' ? ' aprovada' : ' recusada'), (motivo ? 'Motivo: ' + motivo : 'Sem motivo informado.') + ' · por ' + nome(u.membroId), tipo + ':' + id); });
 }
@@ -982,10 +1008,21 @@ function decideMembership_(d, u) {
     audit_(u.email, 'MEMBRESIA_' + st.toUpperCase(), r.MembresiaID, 'OK'); return { status: st };
   });
 }
+function celMudRot_(k) { return { Nome: 'nome', Dia: 'dia', Inicio: 'horário', Endereco: 'endereço', Bairro: 'bairro', Cidade: 'cidade', UF: 'estado', Lat: 'localização no mapa', Lng: 'localização no mapa' }[k] || k; }
+function decideCelMud_(d, u) {
+  return withLock_(function () {
+    const t = table_('CelMudancas'), r = t.rows.filter(function (x) { return x.MudancaID === d.id; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Pedido não encontrado.'); if (r.Status !== 'pendente') throw new ApiError('VALIDATION', 'Esse pedido já foi decidido.');
+    const ct = table_('Celulas'), c = ct.rows.filter(function (x) { return x.CelulaID === r.CelulaID; })[0]; if (!c) throw new ApiError('NOT_FOUND', 'Célula não encontrada.');
+    if (!(can_(u, 'transf') || (c.SupervisorID && c.SupervisorID === u.membroId))) throw new ApiError('FORBIDDEN', 'Só o supervisor da célula decide.');
+    const st = d.decisao === 'autorizado' ? 'autorizado' : 'negado'; writeRow_(t, r._row, { Status: st, DecididoPor: u.membroId, DataDecisao: now_() });
+    if (st === 'autorizado') { const pt = jparse_(r.Patch, {}), ok = {}; Object.keys(pt).forEach(function (k) { if (['Nome', 'Dia', 'Inicio', 'Endereco', 'Bairro', 'Cidade', 'UF', 'Lat', 'Lng'].indexOf(k) >= 0) ok[k] = pt[k]; }); if (ok.Nome === '') delete ok.Nome; writeRow_(ct, c._row, ok); }
+    audit_(u.email, 'CELULA_MUDANCA_' + st.toUpperCase(), r.MudancaID, 'OK'); return { status: st };
+  });
+}
 function decideApproval_(d, u) {
   const tipo = String(d.tipo || ''), mot = clip_(d.motivo, 300); let r;
   if (d.decisao !== 'autorizado' && !mot) throw new ApiError('VALIDATION', 'Informe o motivo da recusa. Ele é enviado ao líder como notificação.');
-  if (tipo === 'transferencia') r = decideTransfer_(d, u); else if (tipo === 'saida') r = decideExit_(d, u); else if (tipo === 'interesse') r = decideInterest_(d, u); else if (tipo === 'membresia') r = decideMembership_(d, u); else if (tipo === 'curso') r = decideCourse_(d, u); else if (tipo === 'inicio') r = decideStart_(d, u); else if (tipo === 'matricula') r = decideEnroll_(d, u); else throw new ApiError('VALIDATION', 'Tipo de pedido inválido.');
+  if (tipo === 'transferencia') r = decideTransfer_(d, u); else if (tipo === 'saida') r = decideExit_(d, u); else if (tipo === 'interesse') r = decideInterest_(d, u); else if (tipo === 'membresia') r = decideMembership_(d, u); else if (tipo === 'curso') r = decideCourse_(d, u); else if (tipo === 'inicio') r = decideStart_(d, u); else if (tipo === 'celmud') r = decideCelMud_(d, u); else if (tipo === 'matricula') r = decideEnroll_(d, u); else throw new ApiError('VALIDATION', 'Tipo de pedido inválido.');
   logAprov_(tipo, d.id, r.status, u, mot);
   try { notifyDecisao_(tipo, d.id, r.status, mot, u); } catch (e) { /* a decisão já foi gravada */ }
   return r;
@@ -1392,7 +1429,7 @@ function addNewMember_(d, u) {
   return withLock_(function () {
     const id = cellOf_(u, d, 'presenca', 'pres', 'editar'), nome = clip_(d.nome, 150); if (!nome) throw new ApiError('VALIDATION', 'Informe o nome.');
     const colunas = jparse_(cfgMap_().ColunasExtras, []), ex = {}; colunas.forEach(function (c) { if (d.extras && d.extras[c] !== undefined) ex[c] = clip_(d.extras[c], 150); });
-    const mid = id_('M'); appendRow_(table_('Membros'), { MembroID: mid, Nome: nome, Simples: nome, Apelido: nome.split(' ')[0], Endereco: clip_(d.endereco, 200), Telefone: clip_(d.celular, 25), CelulaID: id, EhMembro: '0', Status: 'Ativo', Extras: JSON.stringify(ex), CriadoEm: now_() });
+    const mid = id_('M'); appendRow_(table_('Membros'), { MembroID: mid, Nome: nome, Simples: simples_(nome), Apelido: nome.split(' ')[0], Endereco: clip_(d.endereco, 200), Telefone: clip_(d.celular, 25), CelulaID: id, EhMembro: '0', Status: 'Ativo', Extras: JSON.stringify(ex), CriadoEm: now_() });
     audit_(u.email, 'MEMBRO_NOVO', mid, 'OK'); return { id: mid };
   });
 }
@@ -3187,7 +3224,7 @@ function createUser_(d, u) {
     if (mid && t.rows.some(function (r) { return r.MembroID === mid; })) throw new ApiError('VALIDATION', 'Esta pessoa já tem um acesso. Cada pessoa tem um só acesso.');
     if (mid) { const g = getMember_(mid); if (!g.m.Email) writeRow_(g.t, g.m._row, { Email: email }); }
     if (!mid) { mid = id_('M'); novo = true; }
-    if (novo) appendRow_(table_('Membros'), { MembroID: mid, Nome: nome || email, Simples: nome || email, Apelido: (nome || email).split(' ')[0], Email: email, CelulaID: clip_(d.celulaId, 30), EhMembro: '1', Status: 'Ativo', CriadoEm: now_() });
+    if (novo) appendRow_(table_('Membros'), { MembroID: mid, Nome: nome || email, Simples: simples_(nome) || email, Apelido: (nome || email).split(' ')[0], Email: email, CelulaID: clip_(d.celulaId, 30), EhMembro: '1', Status: 'Ativo', CriadoEm: now_() });
     const salt = Utilities.getUuid(); appendRow_(ensureCols_('Usuarios', ['SenhaVis']), { Email: email, SenhaVis: pwEnc_(pw, salt), SenhaHash: hash_(salt, pw), Salt: salt, Papel: papel, Status: 'Ativo', GuiaVisto: '0', MembroID: mid, TrocarSenha: '1', CriadoEm: now_() }); audit_(u.email, 'USUARIO_CRIADO', email + ':' + papel, 'OK'); return { ok: true, membroId: mid };
   });
 }
@@ -3495,6 +3532,19 @@ function registerDecision_(d, u) {
 function kmEntre_(la1, lo1, la2, lo2) { const R = 6371, rad = Math.PI / 180, dl = (la2 - la1) * rad, dn = (lo2 - lo1) * rad, a = Math.sin(dl / 2) * Math.sin(dl / 2) + Math.cos(la1 * rad) * Math.cos(la2 * rad) * Math.sin(dn / 2) * Math.sin(dn / 2); return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); }
 function celulaProxima_(lat, lng) {
   let best = null; table_('Celulas').rows.forEach(function (c) { if (c.Status === 'Inativa' || c.Lat === '' || c.Lat === undefined || c.Lng === '' || c.Lng === undefined) return; const km = kmEntre_(lat, lng, Number(c.Lat), Number(c.Lng)); if (isFinite(km) && (!best || km < best.km)) best = { cel: c, km: km }; }); return best;
+}
+function msgVisitaCel_(ap, cel, u) {
+  const eu = (nomes_()[u.membroId] || '').split(' ')[0];
+  return 'Oi, ' + ap + '! Aqui é ' + (eu ? 'o(a) ' + eu : 'da') + ' célula' + (cel && cel.Nome ? ' ' + cel.Nome : '') + ' do Ministério Zoe. 💛 Fiquei muito feliz de você ter ido! Posso conversar um pouquinho com você? Queria te conhecer melhor e te mostrar o nosso app: lá você acompanha a célula, joga o quiz da lição e fica por dentro de tudo. Sem pressa, quando puder me responder!';
+}
+// a cada 15 min: 1 hora depois da chamada, pede ao líder para chamar o visitante novo no WhatsApp (mensagem já pronta em Visitantes › Msg)
+function lembreteVisitantes() {
+  let t; try { lazy_('Visitantes'); ensureCols_('Visitantes', ['AvisarEm', 'AvisoEm']); t = table_('Visitantes'); } catch (e) { return; } const agora = now_();
+  t.rows.filter(function (v) { return v.AvisarEm && !v.AvisoEm && v.AvisarEm <= agora && v.Contatado !== '1'; }).forEach(function (v) {
+    withLock_(function () { writeRow_(t, v._row, { AvisoEm: agora }); });
+    if (v.LiderID) notify_(v.LiderID, 'visita', 'Fale com ' + (v.Apelido || v.Nome) + ' 💛', 'Faz 1 hora que ' + (v.Apelido || v.Nome) + ' visitou a célula. Chame no WhatsApp: a mensagem já está pronta, é só revisar e enviar.', 'visita:' + v.VisitanteID);
+  });
+  pushFlush_();
 }
 function msgPadrao_(apelido) { return 'Paz, ' + apelido + '! Aqui é da Igreja Ministério Zoe. Ficamos muito alegres com a sua presença no culto! Que Deus te abençoe. Quando quiser, tem uma célula pertinho de você e vamos adorar te receber. 🙏'; }
 function saveVisitor_(d, u) {
@@ -4862,4 +4912,6 @@ function instalaGatilhos_() {
   if (!tem) ScriptApp.newTrigger('lembreteMissoes').timeBased().everyDays(1).atHour(18).create();
   const temQ = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'enviaQuizzes'; });
   if (!temQ) ScriptApp.newTrigger('enviaQuizzes').timeBased().everyDays(1).atHour(9).create();
+  const temV = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'lembreteVisitantes'; });
+  if (!temV) ScriptApp.newTrigger('lembreteVisitantes').timeBased().everyMinutes(15).create();
 }
