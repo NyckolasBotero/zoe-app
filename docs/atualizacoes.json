@@ -1,5 +1,18 @@
 [
  {
+  "titulo": "Quiz com pontos, ranking e histórico",
+  "melhorias": [
+   "Nova aba Quiz na área da célula: sua pontuação, ranking da célula (sempre ou do mês), os quizzes da célula com quem jogou e quem faltou, e o seu histórico.",
+   "O quiz fica disponível logo depois que a presença é registrada e todos da célula recebem o aviso na hora.",
+   "Pontos pela rapidez: 100 por acerto mais até 100 de bônus. Cada pessoa joga cada quiz uma única vez e, no final, vê a pontuação junto com as respostas.",
+   "Botão Desafiar no WhatsApp: abre o WhatsApp com a mensagem e o link do quiz para mandar no grupo da célula.",
+   "Às 9h do dia seguinte o app lembra só quem ainda não jogou.",
+   "O teste de notificações agora explica o motivo quando o aviso não é entregue (chave, Worker, aparelho)."
+  ],
+  "v": "1.147",
+  "data": "07/11/2026"
+ },
+ {
   "titulo": "Responsáveis por ministério",
   "melhorias": [
    "Administração › Ministérios: o administrador define os responsáveis de cada ministério.",

@@ -16,11 +16,4 @@ with sync_playwright() as p:
     pg.evaluate(f"S.celId='{r}';save&&save();hydrate().then(()=>{{shell();go('celula','hist')}})"); pg.wait_for_timeout(2500)
     pg.evaluate("QZ.ld=null;go('celula','hist')"); pg.wait_for_selector("h2:has-text('Quiz das lições')",timeout=8000)
     assert 'Parábola do Semeador' in pg.inner_text('#view')
-    # abre o quiz como participante pela API de membro (admin lidera mas pode não estar na célula): usa o líder
-    # janela do quiz do participante (api simulada)
-    pg.evaluate("""()=>{const o=window.api;window.__o=o;let feito=false;window.api=async(a,d)=>{if(a==='getQuiz'||a==='answerQuiz'){const ps=[{p:'Qual o tema?',op:['A','B','C','D'],c:1,e:'Porque sim'},{p:'Segunda?',op:['a','b','c','d'],c:2,e:'ok'}];if(a==='answerQuiz')feito=true;return{id:'Q1',titulo:'Parábola do Semeador',data:'2026-11-05',fonte:'ia',feito,acertos:feito?1:0,perguntas:ps.map((x,i)=>feito?Object.assign({},x,{r:[1,0][i]}):{p:x.p,op:x.op})}}return o(a,d)};quizAbre('Q1')}""")
-    pg.wait_for_selector('.modal button.opc'); pg.click('.modal button.opc >> nth=1'); pg.click('.modal button:has-text("Enviar respostas")'); pg.wait_for_timeout(300)
-    assert 'Responda todas' in pg.inner_text('body') or pg.is_visible('.toast.err')
-    pg.click('.modal .card >> nth=0 >> button >> nth=1'); pg.click('.modal .card >> nth=1 >> button >> nth=2'); pg.click('.modal button:has-text("Enviar respostas")'); pg.wait_for_selector('.modal :text("Você acertou")')
-    assert '1 de 2' in pg.inner_text('.modal') and 'Porque sim' in pg.inner_text('.modal')
     print('ERROS:',errs); assert not errs; print('E2E QUIZ LIDER OK')

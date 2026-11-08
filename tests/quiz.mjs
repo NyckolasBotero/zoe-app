@@ -27,7 +27,7 @@ assert.equal(call('myQuizzes', {}, aT).itens.length, 1); assert.equal(nt(aT), 1,
 // quem é de fora não abre
 const id = lq.itens[0].id; assert.equal(e.call('getQuiz', { id }, zT).error.code, 'NOT_FOUND'); assert.equal(e.call('answerQuiz', { id, respostas: [0, 0, 0, 0, 0] }, zT).error.code, 'NOT_FOUND');
 // abrir: sem gabarito
-let q = call('getQuiz', { id }, aT); assert.equal(q.feito, false); assert(q.perguntas.every(p => p.c === undefined && p.e === undefined), 'gabarito não vai antes de responder');
+let q = call('getQuiz', { id, inicia: true }, aT); assert.equal(q.feito, false); assert(q.perguntas.every(p => p.c === undefined && p.e === undefined), 'gabarito não vai antes de responder');
 assert.equal(e.call('answerQuiz', { id, respostas: [0] }, aT).error.code, 'VALIDATION');
 const cert = lq.itens[0].perguntas.map(p => p.c); let r = call('answerQuiz', { id, respostas: cert }, aT); assert.equal(r.acertos, cert.length); assert.equal(r.feito, true); assert(r.perguntas.every(p => p.c !== undefined));
 const xp = () => Number(e.run(`table_('XpLog').rows.filter(r=>r.MembroID==='${a}'&&r.Ref==='quiz:${id}').map(r=>r.Pontos)[0]`)); assert.equal(xp(), 5 + cert.length * 3);
@@ -43,9 +43,9 @@ e.run(`UrlFetchApp.fetch = (u, r) => { CALLS.push({ url: u, r }); if (/\\/ia$/.t
 IA = [1,2,3,4,5].map(i => ({ p: 'Pergunta ' + i + '?', op: ['A'+i, 'B'+i, 'C'+i, 'D'+i], c: i % 4, e: 'porque sim' })); CALLS.length = 0`);
 assert.equal(call('testQuizIa', {}).ok, true);
 call('saveAttendance', { celulaId: cel, data: hoje(0), presentes: [a, b], licaoId: '', licaoResumo: 'Estudamos a oração do Pai Nosso e a importância de orar com fé e perseverança todos os dias', confirmaDia: true });
-let ag = JSON.parse(e.run('JSON.stringify(table_("Quizzes").rows.filter(r=>r.Status==="agendado"))')); assert.equal(ag.length, 1, 'resumo livre também gera quiz'); assert.equal(ag[0].EnviarEm, hoje(-1), 'enviado só no dia seguinte');
-assert.equal(call('myQuizzes', {}, aT).itens.length, 1, 'ainda não venceu');
-e.run('CALLS.length = 0'); let ac = call('quizAcao', { id: ag[0].QuizID, acao: 'enviar' }, adm); assert.equal(ac.ok, true); const ca = e.run('JSON.stringify(CALLS.filter(c=>/\\/ia$/.test(c.url)).map(c=>({h:c.r.headers,b:JSON.parse(c.r.payload)})))'); const cj = JSON.parse(ca); assert.equal(cj.length, 1); assert.equal(cj[0].h['X-Segredo'], 's3'); assert.match(cj[0].b.prompt, /oração do Pai Nosso/);
+let ag = JSON.parse(e.run('JSON.stringify(table_("Quizzes").rows.filter(r=>r.Status==="agendado"))')); assert.equal(ag.length, 1, 'resumo livre também gera quiz'); assert.equal(ag[0].EnviarEm, hoje(0), 'liberado logo após a presença');
+e.run('CALLS.length = 0'); assert.equal(call('myQuizzes', {}, aT).itens.length, 2, 'liberado na hora, sem esperar o dia seguinte');
+assert.equal(e.call('quizAcao', { id: ag[0].QuizID, acao: 'enviar' }, adm).error.code, 'VALIDATION', 'já enviado'); const ca = e.run('JSON.stringify(CALLS.filter(c=>/\\/ia$/.test(c.url)).map(c=>({h:c.r.headers,b:JSON.parse(c.r.payload)})))'); const cj = JSON.parse(ca); assert.equal(cj.length, 1); assert.equal(cj[0].h['X-Segredo'], 's3'); assert.match(cj[0].b.prompt, /oração do Pai Nosso/);
 lq = call('quizLider', { celulaId: cel }); assert.equal(lq.itens[0].fonte, 'ia'); assert.equal(lq.itens[0].total, 5); assert.equal(lq.itens[0].perguntas[0].p, 'Pergunta 1?');
 e.run('IA = "erro"'); call('saveAttendance', { celulaId: cel, data: ontem, presentes: [a], licaoId: lic, confirmaDia: true });
 // gatilho diário

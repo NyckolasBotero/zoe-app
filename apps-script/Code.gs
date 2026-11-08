@@ -22,7 +22,7 @@ const PAPEIS_BASE = PAPEIS;
 const ROTULOS_TIPO = { admin: 'Administrador', pastor: 'Pastor', professor: 'Professor', membro: 'Membro', frequentador: 'Frequentador' };
 // guias do menu que o administrador pode esconder por tipo de acesso (Início, Editar perfil, Aprovações e Administração seguem regras próprias)
 const ABAS_APP = ['membro', 'biblioteca', 'celula', 'familia', 'ministerios', 'buscar', 'licoes', 'dinamicas', 'cursos', 'eventos', 'aniversarios', 'tutoriais', 'loja', 'aulas'];
-const GUIAS_CEL = ['freq', 'plan', 'papeis', 'oracao', 'ind', 'membros', 'perfilc', 'priv', 'pres', 'hist', 'mural', 'org'];
+const GUIAS_CEL = ['freq', 'plan', 'papeis', 'oracao', 'ind', 'membros', 'perfilc', 'priv', 'pres', 'hist', 'mural', 'org', 'quiz'];
 const PERMS = ['eventos', 'transf', 'celulas', 'min', 'config', 'prof', 'cursos'];
 const DEFAULT_PERMS = {
   admin: { eventos: 1, transf: 1, celulas: 1, min: 1, config: 1, prof: 1, cursos: 1 },
@@ -96,8 +96,8 @@ const SHEETS = {
   EventoFotos: ['FotoID', 'EventoID', 'Foto', 'Por', 'Data'],
   Noticias: ['NoticiaID', 'Titulo', 'Texto', 'Data', 'CriadoPor', 'Status'],
   Licoes: ['LicaoID', 'Titulo', 'Resumo', 'Categoria', 'Url', 'Status', 'Conteudo'],
-  Quizzes: ['QuizID', 'ReuniaoID', 'CelulaID', 'Data', 'Titulo', 'Texto', 'Fonte', 'Perguntas', 'Status', 'EnviarEm', 'EnviadoEm', 'CriadoEm', 'LicaoID'],
-  QuizRespostas: ['QuizID', 'MembroID', 'Acertos', 'Total', 'Respostas', 'Data'],
+  Quizzes: ['QuizID', 'ReuniaoID', 'CelulaID', 'Data', 'Titulo', 'Texto', 'Fonte', 'Perguntas', 'Status', 'EnviarEm', 'EnviadoEm', 'CriadoEm', 'LicaoID', 'LembreteEm'],
+  QuizRespostas: ['QuizID', 'MembroID', 'Acertos', 'Total', 'Respostas', 'Data', 'Pontos', 'Tempo'],
   Dinamicas: ['DinamicaID', 'Titulo', 'Descricao', 'Minutos', 'MembroID', 'Data'],
   Produtos: ['ProdutoID', 'Nome', 'Categoria', 'Preco', 'Descricao', 'Foto', 'Opcoes', 'Ativo', 'Ordem', 'Disponivel', 'PromoPreco', 'PromoAte'],
   Pastores: ['PastorID', 'Nome', 'Cargo', 'Foto', 'Ordem', 'Ativo'],
@@ -302,8 +302,8 @@ function allCelPerm_() { const o = {}; GUIAS_CEL.forEach(function (g) { o[g] = {
 function defRegras_() {
   const all = function (v, e) { const o = {}; GUIAS_CEL.forEach(function (g) { o[g] = { v: v, e: e }; }); return o; };
   const so = function (ver, ed) { const o = all(0, 0); ver.forEach(function (g) { o[g].v = 1; }); ed.forEach(function (g) { o[g].e = 1; o[g].v = 1; }); return o; };
-  const base = so(['plan', 'oracao', 'membros', 'perfilc', 'mural', 'org'], ['oracao']);
-  const d = { supervisor: all(1, 1), lider: all(1, 1), treinamento: so(['freq', 'plan', 'oracao', 'ind', 'membros', 'pres', 'hist', 'mural'], ['freq', 'pres', 'oracao']), pastor: all(1, 1), professor: JSON.parse(JSON.stringify(base)), membro: base, frequentador: JSON.parse(JSON.stringify(base)) };
+  const base = so(['plan', 'oracao', 'membros', 'perfilc', 'mural', 'org', 'quiz'], ['oracao']);
+  const d = { supervisor: all(1, 1), lider: all(1, 1), treinamento: so(['freq', 'plan', 'oracao', 'ind', 'membros', 'pres', 'hist', 'mural', 'quiz'], ['freq', 'pres', 'oracao']), pastor: all(1, 1), professor: JSON.parse(JSON.stringify(base)), membro: base, frequentador: JSON.parse(JSON.stringify(base)) };
   tiposCustom_().forEach(function (t) { d[t.id] = JSON.parse(JSON.stringify(base)); });
   return d;
 }
@@ -4219,7 +4219,7 @@ const ROUTES = {
   listScales: { auth: 'any', fn: listScales_ }, claimScale: { auth: 'any', write: 1, fn: claimScale_ }, saveScale: { auth: 'any', write: 1, fn: saveScale_ }, rescheduleScale: { auth: 'any', write: 1, fn: rescheduleScale_ }, deleteScale: { auth: 'any', write: 1, fn: deleteScale_ }, respondScale: { auth: 'any', write: 1, fn: respondScale_ }, requestSwap: { auth: 'any', write: 1, fn: requestSwap_ }, answerSwap: { auth: 'any', write: 1, fn: answerSwap_ }, markScale: { auth: 'any', write: 1, fn: markScale_ }, requestJoin: { auth: 'any', write: 1, fn: requestJoin_ }, decideJoin: { auth: 'any', write: 1, fn: decideJoin_ },
   listSongs: { auth: 'any', fn: listSongs_ }, saveSong: { auth: 'any', write: 1, fn: saveSong_ }, deleteSong: { auth: 'any', write: 1, fn: deleteSong_ }, saveSongDefault: { auth: 'any', write: 1, fn: saveSongDefault_ }, searchLyrics: { auth: 'any', fn: searchLyrics_ }, importLyrics: { auth: 'any', fn: importLyrics_ },
   boot: { auth: 'any', fn: boot_ },
-  myQuizzes: { auth: 'any', fn: myQuizzes_ }, getQuiz: { auth: 'any', fn: getQuiz_ }, answerQuiz: { auth: 'any', write: 1, fn: answerQuiz_ }, quizLider: { auth: 'any', fn: quizLider_ }, quizAcao: { auth: 'any', write: 1, fn: quizAcao_ }, getQuizCfg: { auth: 'config', fn: getQuizCfg_ }, capacidade: { auth: 'config', fn: capacidade_ }, testQuizIa: { auth: 'config', fn: testQuizIa_ },
+  myQuizzes: { auth: 'any', fn: myQuizzes_ }, getQuiz: { auth: 'any', fn: getQuiz_ }, answerQuiz: { auth: 'any', write: 1, fn: answerQuiz_ }, quizLider: { auth: 'any', fn: quizLider_ }, quizCelula: { auth: 'any', fn: quizCelula_ }, quizPrepara: { auth: 'any', write: 1, fn: quizPrepara_ }, quizAcao: { auth: 'any', write: 1, fn: quizAcao_ }, getQuizCfg: { auth: 'config', fn: getQuizCfg_ }, capacidade: { auth: 'config', fn: capacidade_ }, testQuizIa: { auth: 'config', fn: testQuizIa_ },
   getEntrega: { auth: 'config', fn: getEntrega_ }, saveEntrega: { auth: 'config', write: 1, fn: saveEntrega_ },
   getPushKey: { auth: 'any', fn: getPushKey_ }, pushDiag: { auth: 'any', fn: pushDiag_ }, savePushSub: { auth: 'any', write: 1, fn: savePushSub_ }, delPushSub: { auth: 'any', write: 1, fn: delPushSub_ },
   sodGet: { auth: 'any', write: 1, fn: sodGet_ }, sodAbrir: { auth: 'any', write: 1, fn: sodAbrir_ }, sodEquipar: { auth: 'any', write: 1, fn: sodEquipar_ }, sodDescartar: { auth: 'any', write: 1, fn: sodDescartar_ }, sodAparencia: { auth: 'any', write: 1, fn: sodAparencia_ }, sodOrar: { auth: 'any', write: 1, fn: sodOrar_ }, sodComprar: { auth: 'any', write: 1, fn: sodComprar_ },
@@ -4447,7 +4447,15 @@ function pushDiag_(d, u) {
       try {
         const res = pushEnvia_(meus.map(function (sb) { return { sub: { endpoint: sb.Endpoint, keys: { p256dh: sb.P256dh, auth: sb.Auth } }, payload: { title: 'Teste da Zoe 🔔', body: 'Se você está lendo isto, as notificações funcionam neste aparelho.', tag: 'teste', url: './' } }; }));
         const ok = res.filter(function (x) { return x.status >= 200 && x.status < 300; }).length, st = res.map(function (x) { return x.status + (x.erro ? ' ' + x.erro : ''); });
-        out.teste = { enviados: res.length, ok: ok, status: st, msg: ok ? 'Enviada. Ela deve chegar em alguns segundos.' : 'O serviço de entrega recusou o envio (' + st.join('; ') + '). Desative e ative as notificações de novo neste celular.' }; pushMortos_(res);
+        const cods = res.map(function (x) { return x.status; }), tem = function (f) { return cods.some(f); }, host = function (x) { try { return /apple/.test(x) ? 'iPhone/Safari' : /google|fcm/.test(x) ? 'Android/Chrome' : /mozilla/.test(x) ? 'Firefox' : /windows|notify\.windows/.test(x) ? 'Edge' : 'outro'; } catch (e) { return 'outro'; } };
+        const aparelhos = meus.map(function (sb) { return host(String(sb.Endpoint)); }).filter(function (x, i, a) { return a.indexOf(x) === i; }).join(', ');
+        let dica = '';
+        if (ok) dica = 'O serviço de entrega aceitou. Se não aparecer em alguns segundos: ' + (/iPhone/.test(aparelhos) ? 'no iPhone o app precisa estar instalado na tela de início (Compartilhar › Adicionar à Tela de Início) e aberto por esse ícone, e o modo Foco/Não Perturbe pode esconder o aviso.' : 'confira se o celular não está em modo silencioso/economia de bateria e se as notificações do navegador estão liberadas nas configurações do aparelho.');
+        else if (tem(function (c) { return c === 0; })) dica = 'O app não conseguiu falar com o Worker da Cloudflare: ' + res.map(function (x) { return x.erro; }).filter(String)[0] + '. Confira o endereço e o segredo em Definições de Parâmetros › Notificações pela Cloudflare.';
+        else if (tem(function (c) { return c === 401 || c === 403 || c === 400; })) dica = 'O serviço de entrega recusou a assinatura (código ' + cods.filter(function (c) { return c >= 400; })[0] + '). Isso quase sempre é chave diferente entre o app e o Worker: rode exportaVapid no Apps Script e cole VAPID_PUBLICA e VAPID_PRIVADA de novo no Worker (tipo Secret), faça Deploy e depois desative e ative as notificações neste celular.';
+        else if (tem(function (c) { return c === 404 || c === 410; })) dica = 'Este aparelho foi desinscrito pelo serviço de entrega. Desative e ative as notificações de novo neste celular.';
+        else dica = 'O serviço de entrega recusou o envio. Desative e ative as notificações de novo neste celular.';
+        out.teste = { enviados: res.length, ok: ok, status: st, aparelhos: aparelhos, msg: (ok ? 'Enviada para ' + (aparelhos || 'o aparelho') + '. ' : 'Não enviada (' + st.join('; ') + '). ') + dica }; pushMortos_(res);
       } catch (e) { out.teste = { enviados: 0, ok: 0, msg: 'Falha no envio: ' + String(e && e.message || e).slice(0, 120) }; }
     }
   }
@@ -4477,7 +4485,7 @@ function quizAgenda_(celulaId, reuniaoId, data, licao) {
   let titulo = licao.titulo || '', texto = licao.resumo || '';
   if (licao.id) { const l = table_('Licoes').rows.filter(function (x) { return x.LicaoID === licao.id; })[0]; if (l) { texto = [l.Resumo, l.Conteudo].filter(String).join('\n'); titulo = l.Titulo; } }
   if ((titulo + texto).length < 10) return;
-  lazy_('Quizzes'); ensureCols_('Quizzes', ['LicaoID']); const t = table_('Quizzes'), ex = t.rows.filter(function (q) { return q.ReuniaoID === reuniaoId; })[0], quando = addDias_(data, 1) > today_() ? addDias_(data, 1) : today_();
+  lazy_('Quizzes'); ensureCols_('Quizzes', ['LicaoID']); const t = table_('Quizzes'), ex = t.rows.filter(function (q) { return q.ReuniaoID === reuniaoId; })[0], quando = today_();   // fica disponível logo depois que a presença é registrada
   const v = { Titulo: clip_(titulo || 'Lição da célula', 120), Texto: clip_(texto, 4000), LicaoID: licao.id || '' };
   if (ex) { if (ex.Status === 'agendado' || ex.Status === 'sem') writeRow_(t, ex._row, Object.assign(v, { Status: 'agendado', Perguntas: '', EnviarEm: quando })); return; }
   appendRow_(t, Object.assign({ QuizID: id_('QZ'), ReuniaoID: reuniaoId, CelulaID: celulaId, Data: data, Fonte: '', Perguntas: '', Status: 'agendado', EnviarEm: quando, CriadoEm: now_() }, v));
@@ -4547,7 +4555,7 @@ function quizEnvia_(quizId) {
     const t = lazy_('Quizzes'), q = t.rows.filter(function (x) { return x.QuizID === quizId; })[0]; if (!q || q.Status !== 'agendado') return false;
     if (!g.perguntas.length) { writeRow_(t, q._row, { Status: 'sem', Fonte: g.fonte || 'modelo' }); return false; }
     writeRow_(t, q._row, { Perguntas: JSON.stringify(g.perguntas), Fonte: g.fonte, Status: 'enviado', EnviadoEm: now_() });
-    ativosDaCelula_(q.CelulaID).forEach(function (m) { notify_(m.MembroID, 'quiz', 'Quiz da lição 📖', 'Teste o que você aprendeu em “' + q.Titulo + '”: ' + g.perguntas.length + ' perguntas rápidas.', 'quiz:' + q.QuizID); });
+    ativosDaCelula_(q.CelulaID).forEach(function (m) { notify_(m.MembroID, 'quiz', 'Quiz da lição 📖', 'Já está liberado: “' + q.Titulo + '”. ' + g.perguntas.length + ' perguntas; quanto mais rápido responder, mais pontos!', 'quiz:' + q.QuizID); });
     return true;
   });
 }
@@ -4561,32 +4569,86 @@ function quizReuso_(q0) {
 }
 function quizVencidos_(celulaId) { let t; try { t = lazy_('Quizzes'); } catch (e) { return; } t.rows.filter(function (q) { return q.Status === 'agendado' && q.EnviarEm && q.EnviarEm <= today_() && (!celulaId || q.CelulaID === celulaId); }).forEach(function (q) { try { quizEnvia_(q.QuizID); } catch (e) { console.error(e && e.stack || e); } }); }
 // Gatilho diário (9h)
-function enviaQuizzes() { quizVencidos_(''); pushFlush_(); }
+function enviaQuizzes() { quizVencidos_(''); try { quizLembrete_(); } catch (e) { console.error(e && e.stack || e); } pushFlush_(); }
+// 9h do dia seguinte: lembra só quem ainda não jogou (uma vez por quiz)
+function quizLembrete_() {
+  const hj = today_(), t = lazy_('Quizzes'), feitos = {}; lazy_('QuizRespostas').rows.forEach(function (r) { feitos[r.QuizID + '|' + r.MembroID] = 1; });
+  t.rows.filter(function (q) { return q.Status === 'enviado' && !q.LembreteEm && q.EnviadoEm && String(q.EnviadoEm).slice(0, 10) < hj && q.Data >= addDias_(hj, -4); }).forEach(function (q) {
+    withLock_(function () { writeRow_(t, q._row, { LembreteEm: now_() }); });
+    ativosDaCelula_(q.CelulaID).forEach(function (m) { if (!feitos[q.QuizID + '|' + m.MembroID]) notify_(m.MembroID, 'quiz', 'Você ainda não fez o quiz 📖', 'O quiz “' + q.Titulo + '” está esperando você. Quanto mais rápido, mais pontos!', 'quiz:' + q.QuizID); });
+  });
+}
 function quizMeu_(u, q) { return q.CelulaID === u.celulaId || table_('Membros').rows.some(function (m) { return m.MembroID === u.membroId && m.CelulaID === q.CelulaID; }); }
 function quizResp_(quizId, mid) { return lazy_('QuizRespostas').rows.filter(function (r) { return r.QuizID === quizId && r.MembroID === mid; })[0]; }
-function quizCard_(q, r) { return { id: q.QuizID, titulo: q.Titulo, data: q.Data, total: jparse_(q.Perguntas, []).length, feito: r ? { acertos: Number(r.Acertos), total: Number(r.Total) } : null }; }
+function quizCard_(q, r) { return { id: q.QuizID, titulo: q.Titulo, data: q.Data, total: jparse_(q.Perguntas, []).length, feito: r ? { acertos: Number(r.Acertos), total: Number(r.Total), pontos: quizPts_(r) } : null }; }
 function myQuizzes_(d, u) {
   quizVencidos_(u.celulaId || ''); if (!u.celulaId) return { itens: [], pendentes: 0 };
   const t = lazy_('Quizzes'), feitos = {}; lazy_('QuizRespostas').rows.forEach(function (r) { if (r.MembroID === u.membroId) feitos[r.QuizID] = r; });
   const itens = t.rows.filter(function (q) { return q.CelulaID === u.celulaId && q.Status === 'enviado'; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).slice(0, 8).map(function (q) { return quizCard_(q, feitos[q.QuizID]); });
   return { itens: itens, pendentes: itens.filter(function (x) { return !x.feito; }).length };
 }
+const QUIZ_T_ = 20000;   // em 20 s ou mais a rapidez não rende bônus
+function quizPts_(r) { return r.Pontos !== undefined && r.Pontos !== '' ? Number(r.Pontos) : Number(r.Acertos || 0) * 100; }
+// 100 pontos por acerto + até 100 de bônus pela rapidez (ms gastos na pergunta)
+function quizPtsPergunta_(ok, ms) { return ok ? 100 + Math.round(100 * Math.max(0, 1 - ms / QUIZ_T_)) : 0; }
+function quizPosicao_(quizId, mid) {
+  const rs = lazy_('QuizRespostas').rows.filter(function (r) { return r.QuizID === quizId; }).sort(function (a, b) { return quizPts_(b) - quizPts_(a) || Number(a.Tempo || 0) - Number(b.Tempo || 0); });
+  const i = rs.findIndex(function (r) { return r.MembroID === mid; }); return { pos: i < 0 ? 0 : i + 1, de: rs.length };
+}
 function getQuiz_(d, u) {
   const q = lazy_('Quizzes').rows.filter(function (x) { return x.QuizID === clip_(d.id, 30) && x.Status === 'enviado'; })[0]; if (!q || !quizMeu_(u, q)) throw new ApiError('NOT_FOUND', 'Quiz não encontrado.');
   const r = quizResp_(q.QuizID, u.membroId), ps = jparse_(q.Perguntas, []), mine = r ? jparse_(r.Respostas, []) : null;
-  return { id: q.QuizID, titulo: q.Titulo, data: q.Data, fonte: q.Fonte, feito: !!r, acertos: r ? Number(r.Acertos) : 0, perguntas: ps.map(function (p, i) { const o = { p: p.p, op: p.op }; if (r) { o.c = p.c; o.e = p.e; o.r = mine[i]; } return o; }) };
+  if (!r && d.inicia) { try { const cc = CacheService.getScriptCache(), k = 'qs:' + q.QuizID + ':' + u.membroId; if (!cc.get(k)) cc.put(k, String(Date.now()), 21600); } catch (e) { /* sem cronômetro do servidor */ } }   // o relógio começa na 1ª abertura
+  const pos = r ? quizPosicao_(q.QuizID, u.membroId) : null, mostra = !!r || !!d.inicia;   // antes de começar não mostra as perguntas (o relógio só corre depois)
+  return { n: ps.length, id: q.QuizID, titulo: q.Titulo, data: q.Data, fonte: q.Fonte, feito: !!r, acertos: r ? Number(r.Acertos) : 0, pontos: r ? quizPts_(r) : 0, tempo: r ? Number(r.Tempo || 0) : 0, posicao: pos ? pos.pos : 0, de: pos ? pos.de : 0, limite: QUIZ_T_, perguntas: mostra ? ps.map(function (p, i) { const o = { p: p.p, op: p.op }; if (r) { o.c = p.c; o.e = p.e; o.r = mine[i]; } return o; }) : [] };
 }
 function answerQuiz_(d, u) {
   const id = clip_(d.id, 30), q0 = lazy_('Quizzes').rows.filter(function (x) { return x.QuizID === id && x.Status === 'enviado'; })[0]; if (!q0 || !quizMeu_(u, q0)) throw new ApiError('NOT_FOUND', 'Quiz não encontrado.');
   const ps = jparse_(q0.Perguntas, []), rs = Array.isArray(d.respostas) ? d.respostas.map(function (x) { return Number(x); }) : [];
-  if (rs.length !== ps.length || rs.some(function (x) { return !(x >= 0 && x < 4) || Math.floor(x) !== x; })) throw new ApiError('VALIDATION', 'Responda todas as perguntas.');
+  if (rs.length !== ps.length || rs.some(function (x) { return !(x >= -1 && x < 4) || Math.floor(x) !== x; })) throw new ApiError('VALIDATION', 'Responda todas as perguntas.');   // -1 = o tempo acabou
+  // tempos por pergunta (ms) medidos no aparelho; o servidor não deixa o total ficar menor que o tempo real desde a abertura (menos uma folga)
+  let tp = (Array.isArray(d.tempos) ? d.tempos : []).slice(0, ps.length).map(function (x) { x = Number(x); return isFinite(x) ? Math.max(1000, Math.min(QUIZ_T_, x)) : QUIZ_T_; }); while (tp.length < ps.length) tp.push(QUIZ_T_);
+  let ini = 0; try { ini = Number(CacheService.getScriptCache().get('qs:' + id + ':' + u.membroId)) || 0; } catch (e) { ini = 0; }
+  const soma = tp.reduce(function (a, x) { return a + x; }, 0), real = ini ? Date.now() - ini - 4000 : 0;
+  if (!ini) tp = tp.map(function () { return QUIZ_T_; });   // sem abertura registrada: sem bônus de rapidez
+  else if (real > soma && soma > 0) tp = tp.map(function (x) { return x * real / soma; });
   return withLock_(function () {
     if (quizResp_(id, u.membroId)) return getQuiz_({ id: id }, u);
-    const ac = ps.filter(function (p, i) { return p.c === rs[i]; }).length;
-    appendRow_(lazy_('QuizRespostas'), { QuizID: id, MembroID: u.membroId, Acertos: String(ac), Total: String(ps.length), Respostas: JSON.stringify(rs), Data: now_() });
+    const ac = ps.filter(function (p, i) { return p.c === rs[i]; }).length, pts = ps.reduce(function (a, p, i) { return a + quizPtsPergunta_(p.c === rs[i], tp[i]); }, 0), tempo = Math.round(tp.reduce(function (a, x) { return a + x; }, 0));
+    appendRow_(lazy_('QuizRespostas'), { QuizID: id, MembroID: u.membroId, Acertos: String(ac), Total: String(ps.length), Respostas: JSON.stringify(rs), Data: now_(), Pontos: String(pts), Tempo: String(tempo) });
     awardXp_(u.membroId, 'quiz:' + id, 5 + ac * 3, 'Quiz da lição'); return getQuiz_({ id: id }, u);
   });
 }
+// Aba Quiz da célula: ranking, histórico da célula e histórico de quem pergunta
+function quizCelula_(d, u) {
+  const cid = clip_(d.celulaId, 30) || u.celulaId; if (!cid) throw new ApiError('VALIDATION', 'Você ainda não está em uma célula.');
+  if (cid !== u.celulaId) cellOf_(u, { celulaId: cid }, 'ver', 'quiz', 'ver');
+  const cel = table_('Celulas').rows.filter(function (c) { return c.CelulaID === cid; })[0] || {}, nm = nomes_(), mem = ativosDaCelula_(cid), ids = {}; mem.forEach(function (m) { ids[m.MembroID] = 1; });
+  const qs = lazy_('Quizzes').rows.filter(function (q) { return q.CelulaID === cid && q.Status === 'enviado'; }).sort(function (a, b) { return a.Data < b.Data ? 1 : a.Data > b.Data ? -1 : (a.EnviadoEm < b.EnviadoEm ? 1 : -1); });
+  const porQ = {}; lazy_('QuizRespostas').rows.forEach(function (r) { (porQ[r.QuizID] = porQ[r.QuizID] || []).push(r); });
+  const ord = function (a, b) { return b.pontos - a.pontos || a.tempo - b.tempo; }, mes = today_().slice(0, 7);
+  const rank = function (filtro) {
+    const ag = {}; qs.filter(filtro).forEach(function (q) { (porQ[q.QuizID] || []).forEach(function (r) { const k = r.MembroID; ag[k] = ag[k] || { id: k, nome: nm[k] || '—', pontos: 0, jogos: 0, acertos: 0, total: 0, tempo: 0 }; ag[k].pontos += quizPts_(r); ag[k].jogos++; ag[k].acertos += Number(r.Acertos || 0); ag[k].total += Number(r.Total || 0); ag[k].tempo += Number(r.Tempo || 0); }); });
+    mem.forEach(function (m) { if (!ag[m.MembroID]) ag[m.MembroID] = { id: m.MembroID, nome: nm[m.MembroID] || '—', pontos: 0, jogos: 0, acertos: 0, total: 0, tempo: 0 }; });
+    const n = qs.filter(filtro).length;
+    return Object.keys(ag).map(function (k) { const x = ag[k]; return { id: x.id, nome: x.nome, pontos: x.pontos, jogos: x.jogos, quizzes: n, acertos: x.acertos, total: x.total, tempoMedio: x.jogos ? Math.round(x.tempo / x.jogos) : 0, eu: x.id === u.membroId, ativo: !!ids[x.id], tempo: x.tempo }; }).filter(function (x) { return x.ativo || x.jogos; }).sort(function (a, b) { return b.pontos - a.pontos || (a.jogos ? a.tempo / a.jogos : 1e9) - (b.jogos ? b.tempo / b.jogos : 1e9); });
+  };
+  const quizzes = qs.slice(0, 40).map(function (q) {
+    const rs = porQ[q.QuizID] || [], feitos = {}; rs.forEach(function (r) { feitos[r.MembroID] = r; });
+    const jog = rs.map(function (r) { return { id: r.MembroID, nome: nm[r.MembroID] || '—', acertos: Number(r.Acertos || 0), pontos: quizPts_(r), tempo: Number(r.Tempo || 0) }; }).sort(ord); jog.forEach(function (x, i) { x.pos = i + 1; });
+    const falta = mem.filter(function (m) { return !feitos[m.MembroID]; }).map(function (m) { return { id: m.MembroID, nome: nm[m.MembroID] || '—' }; });
+    const meu = jog.filter(function (x) { return x.id === u.membroId; })[0] || null;
+    return { id: q.QuizID, titulo: q.Titulo, data: q.Data, total: jparse_(q.Perguntas, []).length, meu: meu, jogaram: jog, faltam: falta };
+  });
+  const meus = []; table_('Celulas'); const todos = {}; lazy_('Quizzes').rows.forEach(function (q) { todos[q.QuizID] = q; });
+  lazy_('QuizRespostas').rows.filter(function (r) { return r.MembroID === u.membroId && todos[r.QuizID]; }).forEach(function (r) { const q = todos[r.QuizID], p = quizPosicao_(r.QuizID, u.membroId); meus.push({ id: q.QuizID, titulo: q.Titulo, data: q.Data, acertos: Number(r.Acertos || 0), total: Number(r.Total || 0), pontos: quizPts_(r), tempo: Number(r.Tempo || 0), pos: p.pos, de: p.de }); });
+  meus.sort(function (a, b) { return a.data < b.data ? 1 : -1; });
+  const pend = qs.filter(function (q) { return !(porQ[q.QuizID] || []).some(function (r) { return r.MembroID === u.membroId; }); }).slice(0, 3).map(function (q) { return { id: q.QuizID, titulo: q.Titulo, data: q.Data, total: jparse_(q.Perguntas, []).length }; });
+  const rt = rank(function () { return true; }), rm = rank(function (q) { return q.Data.slice(0, 7) === mes; }), eu = rt.filter(function (x) { return x.eu; })[0];
+  return { celulaId: cid, celula: cel.Nome || '', limite: QUIZ_T_, pendentes: pend, eu: eu ? { pontos: eu.pontos, jogos: eu.jogos, quizzes: eu.quizzes, pos: rt.indexOf(eu) + 1, de: rt.length } : null, ranking: { tudo: rt.slice(0, 60), mes: rm.slice(0, 60) }, quizzes: quizzes, meus: meus.slice(0, 80) };
+}
+// Depois de lançar a presença: monta e envia o quiz na hora (a tela chama em segundo plano, sem travar o registro)
+function quizPrepara_(d, u) { const id = cellOf_(u, d, 'presenca', 'freq', 'editar'); quizVencidos_(id); return { ok: true }; }
 function quizLider_(d, u) {
   const id = cellOf_(u, d, 'ver', 'ind', 'ver'), mem = ativosDaCelula_(id), nome = {}; mem.forEach(function (m) { nome[m.MembroID] = m.Apelido || m.Simples || m.Nome; });
   const resp = {}; lazy_('QuizRespostas').rows.forEach(function (r) { (resp[r.QuizID] = resp[r.QuizID] || []).push(r); });

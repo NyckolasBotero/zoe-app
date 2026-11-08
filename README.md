@@ -440,6 +440,9 @@ Novas colunas em Membros (Crista, CongregaZoe, Parente) e aba Galhos: rode `setu
 ## v1.126 — Regras de presença das células
 Config PresencasParaParticipante (3) e FaltasParaExParticipante (6), editáveis em Administração. exAutomatico_ roda ao salvar a frequência. Testes: tests/regras_participante.mjs e e2e_regras_participante.py.
 
+## v1.147 — Quiz com pontos, ranking e histórico
+- Guia `quiz` (nova guia de célula, visível a todos por padrão). Rotas `quizCelula` (ranking, quizzes da célula, histórico pessoal) e `quizPrepara` (libera o quiz logo após a presença). `QuizRespostas.Pontos/Tempo`; pontos = 100 por acerto + até 100 pela rapidez (20 s); o servidor só começa o relógio em `getQuiz{inicia:true}` e não aceita tempo menor que o real. Lembrete 9h (`quizLembrete_`, só quem não jogou, uma vez). Link de desafio: `?quiz=ID`. Testes: `tests/quiz_pontos.mjs`, `tests/e2e_quiz_aba.py`.
+
 ## v1.146 — Responsáveis por ministério
 - `Ministerios.Responsaveis` (ids) e `Ministerios.Autonomia` (JSON {responsável:[supervisores que deram autonomia]}). Decide o pedido: supervisor da célula da pessoa + responsáveis com autonomia dada por ele (+ quem tem a permissão `min`). Sem autonomia o responsável só recebe aviso quando a pessoa entra. Rotas `minResp`, `saveMinResp` (admin), `saveMinAutonomia` (supervisor). Testes: `tests/ministerio_resp.mjs`, `tests/e2e_ministerio_resp.py`.
 
