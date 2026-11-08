@@ -1,5 +1,15 @@
 [
   {
+    "titulo": "Mural da célula com botão Salvar",
+    "melhorias": [
+      "Mural de fotos da célula agora funciona como rascunho: suba fotos, adesivos, mova, redimensione, renomeie e remova à vontade, sem salvar a cada movimento.",
+      "A foto aparece na hora que você a envia e nada volta para a posição anterior enquanto você mexe.",
+      "Só depois de tocar em “Salvar mural” tudo é gravado para a célula; “Descartar” desfaz o que foi mexido desde o último salvamento."
+    ],
+    "v": "1.163",
+    "data": "08/11/2026"
+  },
+  {
     "titulo": "Ajustes na Área da supervisão e no menu",
     "melhorias": [
       "A coluna “Envolvimento 10/5” passou a se chamar “Envolvimento Eventos”.",

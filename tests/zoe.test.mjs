@@ -1433,6 +1433,12 @@ test('Mural da célula: compartilhado por quem é da célula, visível a todos; 
   assert.equal(e.call('saveMuralItem', { item: { t: 'p', x: 1, y: 1 } }, A).error.code, 'VALIDATION', 'foto obrigatória');
   assert.equal(e.call('delMuralItem', { itemId: novo.data.id }, A).ok, true); assert.equal(e.call('getCellMural', { celulaId: c }, adm).data.itens.length, 1);
   assert.equal(e.call('getCellMural', { celulaId: 'nada' }, X).error.code, 'NOT_FOUND');
+  /* lote: cria 2, edita 1 e apaga 1 de uma vez; quem não é da célula não mexe */
+  const antes = e.call('getCellMural', { celulaId: c }, adm).data.itens.length;
+  const lote = e.call('saveMuralBatch', { celulaId: c, itens: [{ t: 'p', x: 5, y: 6, w: 170, r: 0, l: 'A', img: png }, { t: 's', k: 'star', x: 9, y: 9 }] }, A); assert.ok(lote.ok, JSON.stringify(lote)); assert.equal(lote.data.ids.length, 2);
+  const lote2 = e.call('saveMuralBatch', { celulaId: c, itens: [{ id: lote.data.ids[0], t: 'p', x: 77, y: 6, l: 'B' }], apagar: [lote.data.ids[1]] }, A); assert.ok(lote2.ok);
+  const mm = e.call('getCellMural', { celulaId: c }, adm).data.itens; assert.equal(mm.length, antes + 1); assert.equal(mm.find(i => i.id === lote.data.ids[0]).x, 77);
+  assert.equal(e.call('saveMuralBatch', { celulaId: c, itens: [{ t: 's', k: 'star', x: 1, y: 1 }] }, X).error.code, 'FORBIDDEN');
 });
 test('admin vê as senhas (cifradas na planilha), com confirmação e só o admin', () => {
   const { e, adm, tok, mk } = boot(); mk('joao@zoe.com', 'membro'); mk('lider@zoe.com', 'membro');
