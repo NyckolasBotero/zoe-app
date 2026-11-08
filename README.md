@@ -440,6 +440,11 @@ Novas colunas em Membros (Crista, CongregaZoe, Parente) e aba Galhos: rode `setu
 ## v1.126 — Regras de presença das células
 Config PresencasParaParticipante (3) e FaltasParaExParticipante (6), editáveis em Administração. exAutomatico_ roda ao salvar a frequência. Testes: tests/regras_participante.mjs e e2e_regras_participante.py.
 
+## v1.145 — Ver como e botões de teste
+- Menu lateral (só administradores): **Ver como…** acima do Sair. Escolhe uma pessoa e mostra o app como ela vê, somente leitura (escritas bloqueadas com VERCOMO; registros passivos ignorados). Rota `verComoLista`; o app manda `as` em cada pedido e o servidor só aceita de administrador real. Testes: `tests/vercomo.mjs`, `tests/e2e_vercomo.py`.
+- Capacidade: botões **Testar a IA** e **Testar notificações**.
+- Quiz: `quizParse_` tolera JSON torto da IA e tenta de novo uma vez.
+
 ## v1.143 — Capacidade restante de IA e notificações
 - Administração › Desempenho e capacidade: cartão com o que ainda cabe hoje (neurons da IA gratuita da Cloudflare e chamadas externas do Apps Script / pedidos do Worker). Rota `capacidade`; contadores diários (UTC, mesmo corte da Cloudflare) na aba `UsoDia`, gravados por `usoAdd_` em `quizIa_`, `pushViaWorker_` e `pushEnvia_`.
 - O Worker passou a devolver `usage` (tokens) na rota `/ia`; sem ele o app estima pelo tamanho do texto. Reimplante o `worker_push.js` para medir de verdade.

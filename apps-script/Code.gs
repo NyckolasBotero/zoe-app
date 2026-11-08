@@ -4158,7 +4158,7 @@ const ROUTES = {
   ping: { fn: function () { return { servico: 'Zoe API', status: 'online' }; } },
   login: { fn: login_ }, pwdForgot: { fn: pwdForgot_ }, pwdReset: { fn: pwdReset_ }, pwdHelp: { fn: pwdHelp_ }, pwdHelpReset: { auth: 'any', write: 1, fn: pwdHelpReset_ }, getEmailSenha: { auth: 'config', fn: getEmailSenha_ }, saveEmailSenha: { auth: 'config', write: 1, fn: saveEmailSenha_ }, testEmailSenha: { auth: 'config', fn: testEmailSenha_ },
   logout: { auth: 'any', fn: function (d, u) { bumpVer_(u.email); return { ok: true }; } },
-  me: { auth: 'any', fn: me_ }, changePassword: { auth: 'any', write: 1, fn: changePassword_ },
+  me: { auth: 'any', fn: me_ }, verComoLista: { auth: 'any', fn: verComoLista_ }, changePassword: { auth: 'any', write: 1, fn: changePassword_ },
   saveMember: { auth: 'any', write: 1, fn: saveMember_ }, acceptLegal: { auth: 'any', write: 1, fn: acceptLegal_ }, birthdays: { auth: 'any', fn: birthdays_ },
   rescheduleEvent: { auth: 'eventos', write: 1, fn: rescheduleEvent_ }, saveEventoFotos: { auth: 'any', write: 1, fn: saveEventoFotos_ }, listEventoFotos: { auth: 'any', fn: listEventoFotos_ }, delEventoFoto: { auth: 'any', write: 1, fn: delEventoFoto_ }, getFeedFontes: { auth: 'any', fn: getFeedFontes_ }, saveFeedFontes: { auth: 'config', write: 1, fn: saveFeedFontes_ },
   listEvents: { auth: 'any', fn: listEvents_ }, enroll: { auth: 'any', write: 1, fn: enroll_ }, listNews: { auth: 'any', fn: listNews_ },
@@ -4204,7 +4204,7 @@ function doPost(e) {
     if (raw.length > 1500000 && action !== 'saveBook') throw new ApiError('BAD_REQUEST', 'Requisição grande demais.'); route = Object.prototype.hasOwnProperty.call(ROUTES, action) ? ROUTES[action] : null; if (!route) throw new ApiError('NOT_FOUND', 'Ação desconhecida.');
     // as abas lidas na identificação do usuário já servem para a rota (antes eram lidas duas vezes)
     TMEMO_ = /^(list|get|search|boot|me$|birthdays|orgTree|cellMembers|history|indicators|profileView|lookup|track|usageReport|fotos|certData|courseDetail|aulaFeedback)/.test(action) ? {} : null;
-    if (route.auth) { user = auth_(req.token); if (route.auth !== 'any' && !can_(user, route.auth)) { audit_(user.email, 'NEGADO:' + action, '', 'NEGADO'); throw new ApiError('FORBIDDEN', 'Você não tem permissão para esta operação.'); } }
+    if (route.auth) { user = auth_(req.token); if (req.as && user.papel === 'admin' && action !== 'verComoLista') user = verComo_(user, action, route, String(req.as).slice(0, 40)); if (route.auth !== 'any' && !can_(user, route.auth)) { audit_(user.email, 'NEGADO:' + action, '', 'NEGADO'); throw new ApiError('FORBIDDEN', 'Você não tem permissão para esta operação.'); } }
     /* Rota "sem mudança": se a versão que o aparelho já tem (req.ver) for a mesma de agora, nem executa a rota; responde só "sem mudança" (nunca revela dados).
        A versão junta as marcas das abas que a rota leu da última vez, quem está pedindo, o dia e uma janela de tempo (segurança contra edição manual na planilha). */
     const cond = route.cond ? Number(route.cond) || 300000 : 0; let ver = '', dep = null, pronto = false; const cc = CacheService.getScriptCache();
@@ -4226,7 +4226,8 @@ function doPost(e) {
     }
   } catch (err) {
     DEPREC_ = null;
-    if (err instanceof ApiError) out = { ok: false, error: { code: err.code, message: err.message } };
+    if (err instanceof ApiError && err.code === 'VC_SOFT') out = { ok: true, data: {} };
+    else if (err instanceof ApiError) out = { ok: false, error: { code: err.code, message: err.message } };
     else { console.error(err && err.stack || err); out = { ok: false, error: { code: 'ERROR', message: 'Erro inesperado. Tente novamente.' } }; }
   }
   TMEMO_ = null;
@@ -4360,6 +4361,31 @@ function savePushSub_(d, u) {
 }
 function delPushSub_(d, u) { return withLock_(function () { const t = table_('PushSubs'), r = t.rows.filter(function (x) { return x.Endpoint === String(d.endpoint || '') && x.MembroID === u.membroId; })[0]; if (r) writeRow_(t, r._row, { MembroID: '', Endpoint: '' }); return { ok: true }; }); }
 // Diagnóstico das notificações: confere o servidor relay, a chave e as inscrições; com d.teste envia uma notificação de teste aos aparelhos de quem pediu
+/* ===== "Ver como": o administrador enxerga o app como outra pessoa (somente leitura) para conferir o que cada tipo de usuário vê ===== */
+const VC_SOFT_ = { track: 1, metricsReport: 1, chatTyping: 1, profileSeen: 1, bookProgress: 1, videoWatched: 1, corridaLer: 1, chatRead: 1, readNotifications: 1, guideDone: 1, ping: 1, savePushSub: 1, delPushSub: 1, logout: 1 };
+const VC_NEG_ = { decideApproval: 1, undoApproval: 1, importLyrics: 1, testEmailSenha: 1, pushDiag: 1, testQuizIa: 1, viewPasswords: 1 };
+function verComo_(real, action, route, membroId) {
+  if (VC_SOFT_[action]) throw new ApiError('VC_SOFT', '');   // registros passivos (acesso, métricas) não contam para a pessoa vista
+  if ((route.write && action !== 'sodGet') || VC_NEG_[action]) throw new ApiError('VERCOMO', 'Você está no modo "Ver como": só dá para olhar, não alterar. Saia do modo para fazer mudanças.');
+  const u = table_('Usuarios').rows.filter(function (r) { return r.MembroID === membroId; })[0]; if (!u || u.Status === 'Inativo') throw new ApiError('VERCOMO', 'Essa pessoa não tem acesso ativo ao app.');
+  const m = table_('Membros').rows.filter(function (r) { return r.MembroID === membroId; })[0] || {}, cg = cargos_(membroId);
+  if (action === 'me') audit_(real.email, 'VERCOMO', membroId, 'OK');
+  return { email: String(u.Email).toLowerCase(), papel: papelValido_(u.Papel) ? u.Papel : 'membro', membroId: membroId, celulaId: m.CelulaID || '', lidera: cg.lidera, treina: cg.treina, supervisiona: cg.supervisiona, token: real.token, vcReal: real.email };
+}
+function verComoLista_(d, u) {
+  if (u.papel !== 'admin') throw new ApiError('FORBIDDEN', 'Só administradores podem usar o "Ver como".');
+  const mem = {}; table_('Membros').rows.forEach(function (r) { mem[r.MembroID] = r; });
+  const cels = {}; table_('Celulas').rows.forEach(function (c) { if (c.Status !== 'Inativa') cels[c.CelulaID] = c; });
+  const tipos = {}; tiposOut_().forEach(function (t) { tipos[t.id] = t.nome; });
+  const itens = table_('Usuarios').rows.filter(function (r) { return r.MembroID && r.Status !== 'Inativo' && mem[r.MembroID]; }).map(function (r) {
+    const cg = cargos_(r.MembroID), m = mem[r.MembroID], papel = papelValido_(r.Papel) ? r.Papel : 'membro', cargos = [];
+    if (cg.supervisiona.length) cargos.push('Supervisor'); if (cg.lidera.length) cargos.push('Líder'); if (cg.treina.length) cargos.push('Líder em treinamento');
+    const cel = cels[m.CelulaID];
+    return { id: r.MembroID, nome: String(m.Apelido || m.Simples || m.Nome || ''), papel: papel, tipo: tipos[papel] || papel, cargos: cargos, celula: cel ? cel.Nome : '' };
+  }).filter(function (x) { return x.id !== u.membroId; });
+  itens.sort(function (a, b) { return a.nome < b.nome ? -1 : 1; });
+  return { itens: itens.slice(0, 800) };
+}
 // Diagnóstico das notificações: confere a chave, as inscrições e, com d.teste, envia uma notificação de teste aos aparelhos de quem pediu
 function pushDiag_(d, u) {
   const out = { chave: false, subs: 0, pessoas: 0, meus: 0, teste: null };

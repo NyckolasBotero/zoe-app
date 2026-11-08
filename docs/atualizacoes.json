@@ -1,5 +1,16 @@
 [
  {
+  "titulo": "Ver como e botões de teste",
+  "melhorias": [
+   "Administradores ganharam o botão “Ver como…” no menu lateral, acima do Sair: escolha uma pessoa (com busca e filtro por Supervisor, Líder, Líder em treinamento, Pastor, Membro) e veja o app do jeito que ela vê. Uma faixa avisa o tempo todo e o botão “Voltar a ser eu” sai do modo.",
+   "O modo é somente leitura: nada é salvo em nome da pessoa e o uso dela não é registrado.",
+   "Em Desempenho e capacidade, o cartão de capacidade agora tem os botões “Testar a IA” e “Testar notificações”.",
+   "O quiz com IA agora tolera respostas malformadas do modelo (leitura tolerante e nova tentativa automática)."
+  ],
+  "v": "1.145",
+  "data": "07/11/2026"
+ },
+ {
   "titulo": "Capacidade restante de IA e notificações",
   "melhorias": [
    "Desempenho e capacidade ganhou um cartão com o que ainda cabe hoje nos limites gratuitos: quantos quizzes de IA (neurons da Cloudflare) e quantos envios de notificação (chamadas externas do Apps Script e pedidos do Worker).",
