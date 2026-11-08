@@ -35,11 +35,11 @@ const PERMS_ZERO = { eventos: 0, transf: 0, celulas: 0, min: 0, config: 0, prof:
 const SHEETS = {
   Usuarios: ['Email', 'SenhaHash', 'Salt', 'Papel', 'Status', 'MembroID', 'TrocarSenha', 'CriadoEm', 'UltimoAcesso', 'GuiaVisto', 'SenhaVis'],
   Membros: ['MembroID', 'Nome', 'Simples', 'Apelido', 'Sexo', 'Nascimento', 'Nacionalidade', 'Naturalidade', 'Sangue', 'Doador', 'Profissao', 'Telefone', 'Email', 'CEP', 'UF', 'Cidade', 'Endereco', 'Bairro', 'DataDecisao', 'Batizado', 'DataBatismo', 'IgrejaBatismo', 'Mae', 'Pai', 'EstadoCivil', 'Conjuge', 'DataCasamento', 'Filhos', 'Foto', 'CelulaID', 'EhMembro', 'Status', 'DataSaida', 'Extras', 'AceitePrivacidade', 'AceiteTermos', 'CriadoEm', 'DataEntrada', 'Lat', 'Lng', 'SodOff', 'Crista', 'CongregaZoe', 'Parente'],
-  Celulas: ['CelulaID', 'Nome', 'Descricao', 'Foto', 'LiderID', 'SupervisorID', 'Dia', 'Inicio', 'Fim', 'Categoria', 'Faixa', 'Bairro', 'Cidade', 'UF', 'Endereco', 'TreinamentoID', 'MaeID', 'PrivGrupo', 'PrivTel', 'PrivEmail', 'PrivEnd', 'Status', 'Lat', 'Lng'],
+  Celulas: ['CelulaID', 'Nome', 'Descricao', 'Foto', 'LiderID', 'SupervisorID', 'Dia', 'Inicio', 'Fim', 'Categoria', 'Faixa', 'Bairro', 'Cidade', 'UF', 'Endereco', 'TreinamentoID', 'MaeID', 'PrivGrupo', 'PrivTel', 'PrivEmail', 'PrivEnd', 'Status', 'Lat', 'Lng', 'Consolidadores', 'Equipe'],
   Reunioes: ['ReuniaoID', 'CelulaID', 'Data', 'Presentes', 'PresencaDeDeus', 'Obs', 'ForaDoDia', 'Elenco', 'Termometro', 'Foto', 'LicaoID', 'LicaoTitulo', 'LicaoResumo', 'Papeis'],
   Posts: ['PostID', 'Tipo', 'Escopo', 'CelulaID', 'AutorID', 'Titulo', 'Texto', 'Foto', 'Meta', 'Data', 'Status'],
   Comentarios: ['ComentID', 'PostID', 'MembroID', 'Texto', 'Data'],
-  Visitantes: ['VisitanteID', 'Nome', 'Apelido', 'Telefone', 'Email', 'Nascimento', 'Endereco', 'Bairro', 'Cidade', 'UF', 'Lat', 'Lng', 'Data', 'RegistradoPor', 'CelulaID', 'Distancia', 'Contatado', 'ContatadoPor', 'ContatoData', 'Msg', 'Obs', 'Decisao', 'Status', 'SupervisorID', 'LiderID', 'ConsolidadorID', 'TriagemPor', 'EncaminhadoEm', 'AceitoEm', 'AceitoPor', 'MembroID', 'CelulaProximaID', 'AvisarEm', 'AvisoEm'],
+  Visitantes: ['VisitanteID', 'Nome', 'Apelido', 'Telefone', 'Email', 'Nascimento', 'Endereco', 'Bairro', 'Cidade', 'UF', 'Lat', 'Lng', 'Data', 'RegistradoPor', 'CelulaID', 'Distancia', 'Contatado', 'ContatadoPor', 'ContatoData', 'Msg', 'Obs', 'Decisao', 'Status', 'SupervisorID', 'LiderID', 'ConsolidadorID', 'TriagemPor', 'EncaminhadoEm', 'AceitoEm', 'AceitoPor', 'MembroID', 'CelulaProximaID', 'AvisarEm', 'AvisoEm', 'Sexo', 'Convite', 'ConviteQuem', 'Notas'],
   BibMarcas: ['MembroID', 'Ref', 'Cor', 'Tipo', 'Comentario', 'Publico', 'Data'],
   Presencas: ['ReuniaoID', 'CelulaID', 'Data', 'MembroID'],
   Papeis: ['CelulaID', 'MembroID', 'Papel'],
@@ -47,6 +47,9 @@ const SHEETS = {
   Devocionais: ['Dia', 'Seg', 'Ref', 'Livro', 'Cap', 'Vers', 'Texto'],
   CelMudancas: ['MudancaID', 'CelulaID', 'Patch', 'Status', 'SolicitadoPor', 'Data', 'DecididoPor', 'DataDecisao'],
   StudioChat: ['MsgID', 'De', 'Para', 'Texto', 'Data', 'Lida'],
+  Encontros: ['EncID', 'Tipo', 'PessoaID', 'ResponsavelID', 'CelulaID', 'Data', 'Obs', 'Criado'],
+  Discipulado: ['DiscID', 'CelulaID', 'DiscipuloID', 'DiscipuladorID', 'Desde', 'Status'],
+  ConsolRecursos: ['RecursoID', 'Titulo', 'Tipo', 'Texto', 'Url', 'Ordem', 'Status'],
   UsoDia: ['Dia', 'IACalls', 'IAErros', 'IANeurons', 'WorkerCalls', 'DiretoCalls', 'PushEnvios', 'PushOk', 'PushFalha'],
   PapeisLog: ['LogID', 'CelulaID', 'MembroID', 'Papel', 'Acao', 'Por', 'Data'],
   Oracoes: ['OracaoID', 'CelulaID', 'MembroID', 'Tema', 'Titulo', 'Texto', 'Data'],
@@ -353,7 +356,7 @@ function me_(d, u) {
   const nivelCel = !cel ? '' : (full || (cel.LiderID === u.membroId) ? 'lider' : cel.SupervisorID === u.membroId ? 'supervisor' : cel.TreinamentoID === u.membroId ? 'treinamento' : 'membro');
   const tef = tipoEf_(u), abas = abasPorTipo_()[tef] || {}, cp = cel ? (full ? allCelPerm_() : celPermMap_(u, cel)) : null;
   const urow = table_('Usuarios').rows.filter(function (r) { return String(r.Email).toLowerCase() === u.email; })[0] || {};
-  return { multimidia: multiOk_(u), studio: studioAreas_(u), studioChat: studioChatOk_(u), artes: { cria: artesCria_(u), aprova: artesAprova_(u) }, xp: xpResumo_(u.membroId), guiaVisto: urow.GuiaVisto !== '0', usuario: { email: u.email, papel: u.papel, tipo: tef }, abas: abas, permCelula: cp, membro: memberFull_(mm), celula: cel ? cellOut_(cel, nivelCel !== 'membro') : null, nivelCelula: nivelCel, cargos: cg, minhasCelulas: minhas, permissoes: permMatrix_()[tef], config: publicConfig_(), interesses: interessesDe_(u.membroId), membresia: membresiaDe_(u.membroId) };
+  return { multimidia: multiOk_(u), studio: studioAreas_(u), studioChat: studioChatOk_(u), acompanha: acompanha_(u), artes: { cria: artesCria_(u), aprova: artesAprova_(u) }, xp: xpResumo_(u.membroId), guiaVisto: urow.GuiaVisto !== '0', usuario: { email: u.email, papel: u.papel, tipo: tef }, abas: abas, permCelula: cp, membro: memberFull_(mm), celula: cel ? cellOut_(cel, nivelCel !== 'membro') : null, nivelCelula: nivelCel, cargos: cg, minhasCelulas: minhas, permissoes: permMatrix_()[tef], config: publicConfig_(), interesses: interessesDe_(u.membroId), membresia: membresiaDe_(u.membroId) };
 }
 function saveMember_(d, u) {
   return withLock_(function () {
@@ -386,7 +389,7 @@ function greet_(d, u) {
 }
 /* ============================== CONFIG PÚBLICA ============================== */
 function cfgMap_() { const o = {}; table_('Config').rows.forEach(function (r) { o[r.Chave] = r.Valor; }); return o; }
-function publicConfig_() { const c = cfgMap_(); return { sodXp: sodXpCfg_(), nomeIgreja: c.NomeIgreja, whatsapp: c.WhatsApp, localNome: c.LocalNome, localEndereco: c.LocalEndereco, zoeInfo: c.ZoeInfo || '', linkMapa: c.LinkMapa || '', colunasExtras: jparse_(c.ColunasExtras, []), canalYoutube: c.CanalYoutube || '', lojaWhatsapp: c.LojaWhatsApp || '', frequentadorPct: Number(c.FrequentadorPct) || 70, frequentadorJanela: Number(c.FrequentadorJanela) || 8, celulasParaSupervisor: Math.max(0, Number(c.CelulasParaSupervisor) || 0), frequenciasParaMembro: freqMembro_(), presencasParticipante: presPart_(), faltasExParticipante: faltasEx_(), sodAtivo: c.SodAtivo !== '0', notifTipos: notifTipos_(c), homeLayout: homeLayoutOk_(jparse_(c.HomeLayout, null)), navCfg: navCfgOk_(jparse_(c.NavCfg, null)), mapa: mapaCfg_(c) }; }
+function publicConfig_() { const c = cfgMap_(); return { sodXp: sodXpCfg_(), nomeIgreja: c.NomeIgreja, whatsapp: c.WhatsApp, localNome: c.LocalNome, localEndereco: c.LocalEndereco, zoeInfo: c.ZoeInfo || '', discPolitica: c.DiscPolitica || 'todos', discEncontros: Number(c.DiscEncontros) || 6, consolEncontros: Number(c.ConsolEncontros) || 4, linkMapa: c.LinkMapa || '', colunasExtras: jparse_(c.ColunasExtras, []), canalYoutube: c.CanalYoutube || '', lojaWhatsapp: c.LojaWhatsApp || '', frequentadorPct: Number(c.FrequentadorPct) || 70, frequentadorJanela: Number(c.FrequentadorJanela) || 8, celulasParaSupervisor: Math.max(0, Number(c.CelulasParaSupervisor) || 0), frequenciasParaMembro: freqMembro_(), presencasParticipante: presPart_(), faltasExParticipante: faltasEx_(), sodAtivo: c.SodAtivo !== '0', notifTipos: notifTipos_(c), homeLayout: homeLayoutOk_(jparse_(c.HomeLayout, null)), navCfg: navCfgOk_(jparse_(c.NavCfg, null)), mapa: mapaCfg_(c) }; }
 function mapaCfg_(c) { c = c || cfgMap_(); const n = function (k, d) { const v = Number(c[k]); return isFinite(v) && c[k] !== '' && c[k] !== undefined ? v : d; }; return { vis: n('MapaVisitanteVezes', 1), freq: n('MapaFrequentadorVezes', 3), raio: n('MapaRaioKm', 10), longe: n('MapaLongeKm', 10), alerta: n('MapaAlertaPct', 50), sedeLat: c.SedeLat === '' || c.SedeLat === undefined ? null : Number(c.SedeLat), sedeLng: c.SedeLng === '' || c.SedeLng === undefined ? null : Number(c.SedeLng) }; }
 const HOME_BLOCOS = ['hero', 'escalas', 'eventos', 'corrida', 'mural', 'proxevento', 'celula', 'aniv', 'domingo', 'cultos', 'testemunhos', 'feed', 'noticias']; // v1.100: o 'feed' faltava e era descartado ao salvar, voltando sempre para o meio da tela
 /* Layout do Início definido pelo administrador: lista de blocos {id,on,w (2-12 colunas),h (3-80 linhas)} */
@@ -533,7 +536,7 @@ const NOTIF_CATS = ['aniv', 'celula', 'eventos', 'oracao', 'cursos', 'transf', '
 function notifTipos_(c) { const o = jparse_((c || cfgMap_()).NotifTipos, {}), r = {}; NOTIF_CATS.forEach(function (k) { r[k] = o[k] !== false; }); return r; }
 function saveConfig_(d, u) {
   return withLock_(function () {
-    const t = table_('Config'), allow = { NomeIgreja: 120, WhatsApp: 20, LojaWhatsApp: 20, LocalNome: 120, LocalEndereco: 250, LinkMapa: 300, ZoeInfo: 1500 };
+    const t = table_('Config'), allow = { NomeIgreja: 120, WhatsApp: 20, LojaWhatsApp: 20, LocalNome: 120, LocalEndereco: 250, LinkMapa: 300, ZoeInfo: 1500, DiscPolitica: 10, DiscEncontros: 3, ConsolEncontros: 3 };
     [['FrequentadorPct', 1, 100, 'O limite de presença precisa estar entre 1 e 100.'], ['FrequentadorJanela', 1, 52, 'Informe de 1 a 52 reuniões.'], ['CelulasParaSupervisor', 0, 50, 'Informe de 0 a 50 células.'], ['PresencasParaParticipante', 1, 50, 'Informe de 1 a 50 presenças.'], ['FaltasParaExParticipante', 1, 50, 'Informe de 1 a 50 faltas seguidas.'], ['CelulaMultiplicarAcima', 2, 200, 'Informe de 2 a 200 pessoas.']].forEach(function (q) {
       if (d[q[0]] === undefined) return; const n = Number(d[q[0]]); if (!isFinite(n) || n < q[1] || n > q[2] || Math.round(n) !== n) throw new ApiError('VALIDATION', q[3]);
       const r0 = t.rows.filter(function (x) { return x.Chave === q[0]; })[0]; if (r0) writeRow_(t, r0._row, { Valor: String(n) }); else appendRow_(t, { Chave: q[0], Valor: String(n) });
@@ -3570,10 +3573,15 @@ function saveVisitor_(d, u) {
   return withLock_(function () {
     const nome = clip_(d.nome, 80); if (nome.length < 2) throw new ApiError('VALIDATION', 'Informe o nome do visitante.');
     const tel = clip_(d.telefone, 25).replace(/[^\d+()\s-]/g, ''); if (tel.replace(/\D/g, '').length < 10) throw new ApiError('VALIDATION', 'Informe o celular com DDD.');
+    const email = clip_(d.email, 80).trim().toLowerCase(); if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new ApiError('VALIDATION', 'Informe um e-mail válido do visitante.');
+    const sexo = d.sexo === 'F' ? 'F' : d.sexo === 'M' ? 'M' : ''; if (!sexo) throw new ApiError('VALIDATION', 'Informe o sexo do visitante (usamos para encaminhar à pessoa certa).');
+    const convite = d.convite === 'sim' ? 'sim' : d.convite === 'nao' ? 'nao' : '', quem = clip_(d.conviteQuem, 80).trim(); if (!convite) throw new ApiError('VALIDATION', 'Informe se veio por convite de alguém da igreja.'); if (convite === 'sim' && quem.length < 2) throw new ApiError('VALIDATION', 'Diga quem convidou.');
     const lat = Number(d.lat), lng = Number(d.lng); if (!isFinite(lat) || !isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180 || (lat === 0 && lng === 0)) throw new ApiError('VALIDATION', 'Marque no mapa onde o visitante mora.');
+    ensureCols_('Visitantes', ['Sexo', 'Convite', 'ConviteQuem', 'Notas']);
     const ap = clip_(d.apelido, 40) || nome.split(' ')[0], pr = celulaProxima_(lat, lng), id = id_('V');
-    appendRow_(table_('Visitantes'), { VisitanteID: id, Nome: nome, Apelido: ap, Telefone: tel, Email: clip_(d.email, 80), Nascimento: clip_(d.nascimento, 10), Endereco: clip_(d.endereco, 200), Bairro: clip_(d.bairro, 80), Cidade: clip_(d.cidade, 80), UF: clip_(d.uf, 2), Lat: String(Math.round(lat * 1e6) / 1e6), Lng: String(Math.round(lng * 1e6) / 1e6), Data: today_(), RegistradoPor: u.membroId, CelulaID: pr ? pr.cel.CelulaID : '', Distancia: pr ? String(Math.round(pr.km * 10) / 10) : '', Contatado: '0', Msg: msgPadrao_(ap), Obs: clip_(d.obs, 300), Decisao: '0' });
-    if (pr) {
+    appendRow_(table_('Visitantes'), { VisitanteID: id, Nome: nome, Apelido: ap, Telefone: tel, Email: email, Sexo: sexo, Convite: convite, ConviteQuem: convite === 'sim' ? quem : '', Nascimento: clip_(d.nascimento, 10), Endereco: clip_(d.endereco, 200), Bairro: clip_(d.bairro, 80), Cidade: clip_(d.cidade, 80), UF: clip_(d.uf, 2), Lat: String(Math.round(lat * 1e6) / 1e6), Lng: String(Math.round(lng * 1e6) / 1e6), Data: today_(), RegistradoPor: u.membroId, CelulaID: pr ? pr.cel.CelulaID : '', Distancia: pr ? String(Math.round(pr.km * 10) / 10) : '', Contatado: '0', Msg: msgPadrao_(ap), Obs: clip_(d.obs, 300), Decisao: '0' });
+    const auto = autoEncaminha_(id, tel, email, sexo, u);   // quem já faz parte de uma célula vai direto ao líder, sem passar pela triagem
+    if (!auto && pr) {
       const km = Math.round(pr.km * 10) / 10, nomes = nomes_(), sup = pr.cel.SupervisorID || '', t = table_('Visitantes'), vr = t.rows.filter(function (x) { return x.VisitanteID === id; })[0];
       if (sup) { // o supervisor decide para quem o visitante vai; o líder só é avisado depois do encaminhamento
         writeRow_(t, vr._row, { Status: 'triagem', SupervisorID: sup, LiderID: pr.cel.LiderID || '', CelulaProximaID: pr.cel.CelulaID });
@@ -3583,8 +3591,129 @@ function saveVisitor_(d, u) {
         if (pr.cel.LiderID && pr.cel.LiderID !== u.membroId) notify_(pr.cel.LiderID, 'visitante', 'Novo visitante perto da sua célula: ' + nome, ap + ' esteve no culto e mora a ' + km + ' km. Abra Consolidação para aceitar e chamar no WhatsApp.', 'visitante:' + id);
       }
     }
-    audit_(u.email, 'VISITANTE', id + ' ' + nome, 'OK'); return { id: id, celula: pr ? { id: pr.cel.CelulaID, nome: pr.cel.Nome, km: Math.round(pr.km * 10) / 10 } : null, avisados: pr ? [pr.cel.SupervisorID || pr.cel.LiderID].filter(String).length : 0 };
+    audit_(u.email, 'VISITANTE', id + ' ' + nome, 'OK'); return { auto: auto || undefined, id: id, celula: pr ? { id: pr.cel.CelulaID, nome: pr.cel.Nome, km: Math.round(pr.km * 10) / 10 } : null, avisados: pr ? [pr.cel.SupervisorID || pr.cel.LiderID].filter(String).length : 0 };
   });
+}
+// ===== Consolidação (direção automática, notas, estatísticas), Discipulado, Encontros e Recursos =====
+function lideresDe_(c) { return [c.LiderID, c.TreinamentoID].filter(String); }
+function direcionaLider_(c, sexo) {
+  const L = lideresDe_(c); if (!L.length) return ''; if (L.length === 1) return L[0];
+  const sx = {}; table_('Membros').rows.forEach(function (m) { sx[m.MembroID] = m.Sexo; });
+  const mesmo = L.filter(function (i) { return sx[i] === sexo; }); return mesmo.length === 1 ? mesmo[0] : '';
+}
+function membroPorContato_(tel, email) {
+  const t = String(tel || '').replace(/\D/g, '').slice(-10), e = String(email || '').toLowerCase();
+  return table_('Membros').rows.filter(function (m) { return m.Status !== 'Inativo' && ((t.length >= 10 && String(m.Telefone || '').replace(/\D/g, '').slice(-10) === t) || (e && String(m.Email || '').toLowerCase() === e)); })[0] || null;
+}
+function notaAdd_(t, v, txt, por) { const n = jparse_(v.Notas, []); n.push({ d: now_(), t: clip_(txt, 220), p: por || '' }); writeRow_(t, v._row, { Notas: JSON.stringify(n.slice(-40)) }); }
+function autoEncaminha_(id, tel, email, sexo, u) {
+  const ex = membroPorContato_(tel, email); if (!ex || !ex.CelulaID) return false;
+  const cel = table_('Celulas').rows.filter(function (c) { return c.CelulaID === ex.CelulaID && c.Status !== 'Inativa'; })[0]; if (!cel) return false;
+  const lid = direcionaLider_(cel, sexo), nm = nomes_(), t = table_('Visitantes'), v = t.rows.filter(function (x) { return x.VisitanteID === id; })[0];
+  if (!lid || !v) { if (v) notaAdd_(t, v, 'Já participa da célula ' + cel.Nome + ', mas não deu para escolher o líder automaticamente (vários líderes do mesmo sexo ou nenhum). Segue para o supervisor.', ''); return false; }
+  writeRow_(t, v._row, { Status: 'encaminhado', CelulaID: cel.CelulaID, CelulaProximaID: cel.CelulaID, LiderID: lid, SupervisorID: cel.SupervisorID || '', EncaminhadoEm: now_(), MembroID: ex.MembroID });
+  notaAdd_(t, table_('Visitantes').rows.filter(function (x) { return x.VisitanteID === id; })[0], 'Encaminhado automaticamente para ' + (nm[lid] || 'o líder') + ': já participa da célula ' + cel.Nome + ' (' + (lideresDe_(cel).length > 1 ? 'líder do mesmo sexo' : 'único líder') + ').', '');
+  if (lid !== u.membroId) notify_(lid, 'visitante', 'Novo para consolidar: ' + v.Nome, v.Nome + ' já participa da sua célula e foi lançado no culto. Abra Consolidação para aceitar e chamar no WhatsApp.', 'visitante:' + id);
+  return true;
+}
+function metaEnc_(tipo) { const c = cfgMap_(), n = Number(tipo === 'discipulado' ? c.DiscEncontros : c.ConsolEncontros); return n >= 1 && n <= 52 ? Math.round(n) : (tipo === 'discipulado' ? 6 : 4); }
+function encContagem_() { const m = {}; lazy_('Encontros').rows.forEach(function (e) { const k = e.Tipo + '|' + e.PessoaID; m[k] = (m[k] || 0) + 1; }); return m; }
+function consolStats_() {
+  const cont = encContagem_(), meta = metaEnc_('consolidacao'), st = {};
+  table_('Visitantes').rows.forEach(function (v) { if (v.Status === 'triagem') return; const dst = v.ConsolidadorID || v.LiderID; if (!dst) return; const o = st[dst] || (st[dst] = { recebeu: 0, andamento: 0 }); o.recebeu++; if (v.Status === 'aceito' && (cont['consolidacao|' + v.VisitanteID] || 0) < meta) o.andamento++; });
+  return st;
+}
+function celTime_(d, u) {
+  const id = clip_(d.celulaId, 30) || celulaAtiva_(u); cellAccess_(u, id, 'ver', 'plan', 'ver');
+  const c = table_('Celulas').rows.filter(function (r) { return r.CelulaID === id; })[0]; if (!c) throw new ApiError('NOT_FOUND', 'Célula não encontrada.');
+  return { celulaId: id, consolidadores: csv_(c.Consolidadores), equipe: csv_(c.Equipe), membros: ativosDaCelula_(id).map(function (m) { return { id: m.MembroID, nome: m.Nome }; }), politica: discPolitica_() };
+}
+function csv_(s) { return String(s || '').split(',').filter(String); }
+function saveCelTime_(d, u) {
+  return withLock_(function () {
+    const id = clip_(d.celulaId, 30) || celulaAtiva_(u); cellAccess_(u, id, 'gerir', 'plan', 'editar'); ensureCols_('Celulas', ['Consolidadores', 'Equipe']);
+    const t = table_('Celulas'), c = t.rows.filter(function (r) { return r.CelulaID === id; })[0]; if (!c) throw new ApiError('NOT_FOUND', 'Célula não encontrada.');
+    const ok = {}; ativosDaCelula_(id).forEach(function (m) { ok[m.MembroID] = 1; }); lideresDe_(c).forEach(function (i) { ok[i] = 1; });
+    const lim = function (a) { return (Array.isArray(a) ? a : []).map(function (x) { return clip_(x, 30); }).filter(function (x) { return ok[x]; }).filter(function (x, i, arr) { return arr.indexOf(x) === i; }).slice(0, 30).join(','); };
+    const antes = csv_(c.Consolidadores), novos = lim(d.consolidadores);
+    writeRow_(t, c._row, { Consolidadores: novos, Equipe: lim(d.equipe) });
+    csv_(novos).filter(function (x) { return antes.indexOf(x) < 0; }).forEach(function (x) { notify_(x, 'visitante', 'Você é consolidador da ' + c.Nome + ' 🤝', 'Quando um visitante for encaminhado para você, ele aparece em Consolidação. Lá também ficam os materiais de apoio.', 'consolidacao'); }); audit_(u.email, 'CELULA_TIME', id, 'OK'); return celTime_({ celulaId: id }, u);
+  });
+}
+function discPolitica_() { const p = cfgMap_().DiscPolitica; return ['membros', 'equipe', 'todos'].indexOf(p) >= 0 ? p : 'todos'; }
+function discCandidatos_(c) {
+  const pol = discPolitica_(), eq = csv_(c.Equipe).concat(lideresDe_(c)); const mem = ativosDaCelula_(c.CelulaID);
+  return mem.filter(function (m) { return pol === 'todos' || (pol === 'membros' ? m.EhMembro === '1' : eq.indexOf(m.MembroID) >= 0); });
+}
+function discipuladoCel_(d, u) {
+  const id = clip_(d.celulaId, 30) || celulaAtiva_(u); cellAccess_(u, id, 'ver', 'plan', 'ver');
+  const c = table_('Celulas').rows.filter(function (r) { return r.CelulaID === id; })[0]; if (!c) throw new ApiError('NOT_FOUND', 'Célula não encontrada.');
+  const nm = nomes_(), cont = encContagem_(), meta = metaEnc_('discipulado'), at = {}; lazy_('Discipulado').rows.forEach(function (r) { if (r.CelulaID === id && r.Status === 'ativo') at[r.DiscipuloID] = r; });
+  const itens = ativosDaCelula_(id).map(function (m) { const r = at[m.MembroID], n = r ? (cont['discipulado|' + m.MembroID] || 0) : 0; return { id: m.MembroID, nome: m.Nome, discipuladorId: r ? r.DiscipuladorID : '', discipulador: r ? (nm[r.DiscipuladorID] || '—') : '', enc: n, meta: meta, concluido: n >= meta }; });
+  return { celulaId: id, politica: discPolitica_(), meta: meta, candidatos: discCandidatos_(c).map(function (m) { return { id: m.MembroID, nome: m.Nome }; }), itens: itens, sozinhos: itens.filter(function (x) { return !x.discipuladorId; }).length };
+}
+function setDiscipulador_(d, u) {
+  return withLock_(function () {
+    const id = clip_(d.celulaId, 30) || celulaAtiva_(u); cellAccess_(u, id, 'gerir', 'plan', 'editar');
+    const c = table_('Celulas').rows.filter(function (r) { return r.CelulaID === id; })[0]; if (!c) throw new ApiError('NOT_FOUND', 'Célula não encontrada.');
+    const disc = clip_(d.discipuloId, 30), por = clip_(d.discipuladorId, 30); if (!ativosDaCelula_(id).some(function (m) { return m.MembroID === disc; })) throw new ApiError('VALIDATION', 'Essa pessoa não está na célula.');
+    if (por && (por === disc || !discCandidatos_(c).some(function (m) { return m.MembroID === por; }))) throw new ApiError('VALIDATION', 'Pela regra da igreja, essa pessoa não pode discipular.');
+    const t = lazy_('Discipulado'), ativo = t.rows.filter(function (r) { return r.CelulaID === id && r.DiscipuloID === disc && r.Status === 'ativo'; })[0];
+    if (ativo && ativo.DiscipuladorID === por) return discipuladoCel_({ celulaId: id }, u);
+    if (ativo) writeRow_(t, ativo._row, { Status: 'encerrado' });
+    if (por) { appendRow_(t, { DiscID: id_('DS'), CelulaID: id, DiscipuloID: disc, DiscipuladorID: por, Desde: today_(), Status: 'ativo' }); notify_(por, 'discipulado', 'Você vai discipular ' + (nomes_()[disc] || 'alguém') + ' 🌱', 'Abra “Meus acompanhamentos” para registrar cada encontro.', 'discipulado'); }
+    audit_(u.email, 'DISCIPULADOR', disc + '>' + por, 'OK'); return discipuladoCel_({ celulaId: id }, u);
+  });
+}
+function meusAcomp_(d, u) {
+  const nm = nomes_(), cont = encContagem_(), out = [], mD = metaEnc_('discipulado'), mC = metaEnc_('consolidacao');
+  lazy_('Discipulado').rows.forEach(function (r) { if (r.DiscipuladorID === u.membroId && r.Status === 'ativo') { const n = cont['discipulado|' + r.DiscipuloID] || 0; out.push({ tipo: 'discipulado', pessoaId: r.DiscipuloID, nome: nm[r.DiscipuloID] || '—', desde: r.Desde, enc: n, meta: mD, concluido: n >= mD }); } });
+  table_('Visitantes').rows.forEach(function (v) { if (v.Status === 'aceito' && (v.ConsolidadorID || v.LiderID) === u.membroId) { const n = cont['consolidacao|' + v.VisitanteID] || 0; out.push({ tipo: 'consolidacao', pessoaId: v.VisitanteID, nome: v.Nome, desde: dia10_(v.AceitoEm), enc: n, meta: mC, concluido: n >= mC }); } });
+  return { itens: out };
+}
+function encAcesso_(u, tipo, pessoaId, escrita) {
+  if (tipo === 'consolidacao') {
+    const v = table_('Visitantes').rows.filter(function (x) { return x.VisitanteID === pessoaId; })[0]; if (!v) throw new ApiError('NOT_FOUND', 'Visitante não encontrado.');
+    if (!(destinoPode_(u, v) || (!escrita && triagemPode_(u, v)))) throw new ApiError('FORBIDDEN', 'Só quem consolida esta pessoa registra os encontros.'); if (escrita && v.Status !== 'aceito') throw new ApiError('VALIDATION', 'Aceite a consolidação antes de registrar encontros.');
+    return { celulaId: v.CelulaID || '' };
+  }
+  const r = lazy_('Discipulado').rows.filter(function (x) { return x.DiscipuloID === pessoaId && x.Status === 'ativo'; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Essa pessoa não está sendo discipulada.');
+  const lid = (u.lidera || []).indexOf(r.CelulaID) >= 0 || (u.supervisiona || []).indexOf(r.CelulaID) >= 0 || can_(u, 'celulas');
+  if (!(r.DiscipuladorID === u.membroId || (!escrita && lid))) throw new ApiError('FORBIDDEN', 'Só quem discipula esta pessoa registra os encontros.'); return { celulaId: r.CelulaID };
+}
+function saveEncontro_(d, u) {
+  return withLock_(function () {
+    const tipo = d.tipo === 'discipulado' ? 'discipulado' : 'consolidacao', pid = clip_(d.pessoaId, 30), ac = encAcesso_(u, tipo, pid, true), data = clip_(d.data, 10) || today_();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data) || data > today_()) throw new ApiError('VALIDATION', 'Informe a data do encontro (não pode ser no futuro).');
+    appendRow_(lazy_('Encontros'), { EncID: id_('EN'), Tipo: tipo, PessoaID: pid, ResponsavelID: u.membroId, CelulaID: ac.celulaId, Data: data, Obs: clip_(d.obs, 500), Criado: now_() });
+    if (tipo === 'consolidacao') { const vt = table_('Visitantes'), v = vt.rows.filter(function (x) { return x.VisitanteID === pid; })[0]; if (v) notaAdd_(vt, v, 'Encontro de consolidação registrado em ' + data.split('-').reverse().join('/') + (d.obs ? ': ' + clip_(d.obs, 120) : ''), u.membroId); }
+    const n = lazy_('Encontros').rows.filter(function (e) { return e.Tipo === tipo && e.PessoaID === pid; }).length, meta = metaEnc_(tipo); audit_(u.email, 'ENCONTRO', tipo + ' ' + pid, 'OK'); return { n: n, meta: meta, concluido: n >= meta };
+  });
+}
+function listEncontros_(d, u) {
+  const tipo = d.tipo === 'discipulado' ? 'discipulado' : 'consolidacao', pid = clip_(d.pessoaId, 30); encAcesso_(u, tipo, pid, false); const nm = nomes_();
+  const itens = lazy_('Encontros').rows.filter(function (e) { return e.Tipo === tipo && e.PessoaID === pid; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).map(function (e) { return { data: e.Data, obs: e.Obs, por: nm[e.ResponsavelID] || '—' }; });
+  return { itens: itens, n: itens.length, meta: metaEnc_(tipo), concluido: itens.length >= metaEnc_(tipo) };
+}
+// Recursos de apoio para quem consolida (textos, vídeos e anexos)
+function acompanha_(u) {
+  const id = u.membroId; if (!id) return false;
+  return table_('Visitantes').rows.some(function (v) { return v.ConsolidadorID === id; }) || csv_(table_('Celulas').rows.map(function (c) { return c.Consolidadores; }).join(',')).indexOf(id) >= 0 || lazy_('Discipulado').rows.some(function (r) { return r.DiscipuladorID === id && r.Status === 'ativo'; });
+}
+function recursoPodeVer_(u) { return ehLider_(u) || acompanha_(u); }
+function listRecursosConsol_(d, u) { if (!recursoPodeVer_(u)) throw new ApiError('FORBIDDEN', 'Os recursos são para líderes e consolidadores.'); return { itens: lazy_('ConsolRecursos').rows.filter(function (r) { return r.Status !== 'Removido'; }).sort(function (a, b) { return Number(a.Ordem) - Number(b.Ordem); }).map(function (r) { return { id: r.RecursoID, titulo: r.Titulo, tipo: r.Tipo, texto: r.Texto, url: r.Url }; }), admin: u.papel === 'admin' || can_(u, 'celulas') }; }
+function saveRecursoConsol_(d, u) {
+  if (!(u.papel === 'admin' || can_(u, 'celulas'))) throw new ApiError('FORBIDDEN', 'Só a administração cadastra recursos.');
+  return withLock_(function () {
+    const tit = clip_(d.titulo, 120).trim(); if (!tit) throw new ApiError('VALIDATION', 'Dê um título ao recurso.'); const tipo = ['texto', 'video', 'anexo'].indexOf(d.tipo) >= 0 ? d.tipo : 'texto', url = clip_(d.url, 400).trim();
+    if ((tipo !== 'texto') && !/^https:\/\//.test(url)) throw new ApiError('VALIDATION', 'Vídeo e anexo precisam de um link https://.'); if (tipo === 'texto' && clip_(d.texto, 20).trim().length < 1) throw new ApiError('VALIDATION', 'Escreva o texto do recurso.');
+    const t = lazy_('ConsolRecursos'), ex = d.id ? t.rows.filter(function (r) { return r.RecursoID === clip_(d.id, 30); })[0] : null, v = { Titulo: tit, Tipo: tipo, Texto: clip_(d.texto, 6000), Url: tipo === 'texto' ? '' : url };
+    if (ex) writeRow_(t, ex._row, v); else appendRow_(t, Object.assign({ RecursoID: id_('RC'), Ordem: String(t.rows.length + 1), Status: 'Ativo' }, v)); audit_(u.email, 'RECURSO_CONSOL', tit, 'OK'); return { ok: true };
+  });
+}
+function deleteRecursoConsol_(d, u) {
+  if (!(u.papel === 'admin' || can_(u, 'celulas'))) throw new ApiError('FORBIDDEN', 'Só a administração remove recursos.');
+  return withLock_(function () { const t = lazy_('ConsolRecursos'), r = t.rows.filter(function (x) { return x.RecursoID === clip_(d.id, 30); })[0]; if (r) writeRow_(t, r._row, { Status: 'Removido' }); return { ok: true }; });
 }
 function nearCell_(d, u) {
   if (!ehLider_(u)) throw new ApiError('FORBIDDEN', 'Só líderes usam a consolidação.');
@@ -3592,18 +3721,19 @@ function nearCell_(d, u) {
   const pr = celulaProxima_(lat, lng); if (!pr) return { celula: null };
   const nm = nomes_(); return { celula: { id: pr.cel.CelulaID, nome: pr.cel.Nome, km: Math.round(pr.km * 10) / 10, dia: pr.cel.Dia || '', inicio: pr.cel.Inicio || '', bairro: pr.cel.Bairro || '', lider: nm[pr.cel.LiderID] || '', supervisor: nm[pr.cel.SupervisorID] || '' } };
 }
-function visitorOut_(v, cn, nm) { const dest = v.ConsolidadorID || v.LiderID || ''; return { id: v.VisitanteID, nome: v.Nome, apelido: v.Apelido, telefone: v.Telefone, email: v.Email || '', endereco: [v.Endereco, v.Bairro, v.Cidade].filter(String).join(', '), lat: v.Lat === '' ? null : Number(v.Lat), lng: v.Lng === '' ? null : Number(v.Lng), data: v.Data, celulaId: v.CelulaID, celula: cn[v.CelulaID] || '', km: v.Distancia === '' ? null : Number(v.Distancia), contatado: v.Contatado === '1', contatadoEm: v.ContatoData || '', msg: v.Msg || msgPadrao_(v.Apelido || v.Nome), obs: v.Obs || '', decisao: v.Decisao === '1',
+function visitorOut_(v, cn, nm) { const dest = v.ConsolidadorID || v.LiderID || ''; return { sexo: v.Sexo || '', convite: v.Convite || '', conviteQuem: v.ConviteQuem || '', notas: jparse_(v.Notas, []).slice(-20).reverse(), id: v.VisitanteID, nome: v.Nome, apelido: v.Apelido, telefone: v.Telefone, email: v.Email || '', endereco: [v.Endereco, v.Bairro, v.Cidade].filter(String).join(', '), lat: v.Lat === '' ? null : Number(v.Lat), lng: v.Lng === '' ? null : Number(v.Lng), data: v.Data, celulaId: v.CelulaID, celula: cn[v.CelulaID] || '', km: v.Distancia === '' ? null : Number(v.Distancia), contatado: v.Contatado === '1', contatadoEm: v.ContatoData || '', msg: v.Msg || msgPadrao_(v.Apelido || v.Nome), obs: v.Obs || '', decisao: v.Decisao === '1',
     proximaId: v.CelulaProximaID || v.CelulaID, proxima: cn[v.CelulaProximaID || v.CelulaID] || '', status: v.Status || 'encaminhado', supervisorId: v.SupervisorID || '', supervisor: nm[v.SupervisorID] || '', liderId: v.LiderID || '', lider: nm[v.LiderID] || '', consolidadorId: v.ConsolidadorID || '', consolidador: nm[v.ConsolidadorID] || '', destinoId: dest, destino: nm[dest] || '', registradoPor: nm[v.RegistradoPor] || '', encaminhadoEm: v.EncaminhadoEm || '', aceitoEm: v.AceitoEm || '', aceitoPor: nm[v.AceitoPor] || '' }; }
 function triagemPode_(u, v) { return u.papel === 'admin' || u.papel === 'pastor' || can_(u, 'celulas') || (!!v.SupervisorID && v.SupervisorID === u.membroId) || (!!v.CelulaID && (u.supervisiona || []).indexOf(v.CelulaID) >= 0); }
 function destinoPode_(u, v) { return u.papel === 'admin' || triagemPode_(u, v) || (v.ConsolidadorID || v.LiderID) === u.membroId || (!v.ConsolidadorID && !!v.CelulaID && (u.lidera || []).indexOf(v.CelulaID) >= 0); }
 function listVisitors_(d, u) {
   const rows = table_('Visitantes').rows;
-  if (!ehLider_(u) && !rows.some(function (v) { return v.ConsolidadorID === u.membroId; })) throw new ApiError('FORBIDDEN', 'Só líderes e consolidadores veem a consolidação.');
+  if (!ehLider_(u) && !acompanha_(u)) throw new ApiError('FORBIDDEN', 'Só líderes e consolidadores veem a consolidação.');
   const cn = {}, cels = table_('Celulas').rows, nm = nomes_(); cels.forEach(function (c) { cn[c.CelulaID] = c.Nome; });
   const todos = u.papel === 'admin' || u.papel === 'pastor' || can_(u, 'celulas'), lid = u.lidera || [];
   const vis = function (v) { return todos || v.RegistradoPor === u.membroId || v.ConsolidadorID === u.membroId || triagemPode_(u, v) || (v.Status !== 'triagem' && !!v.CelulaID && lid.indexOf(v.CelulaID) >= 0); };
-  const itens = rows.filter(vis).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).slice(0, 200).map(function (v) { const o = visitorOut_(v, cn, nm); o.podeEncaminhar = triagemPode_(u, v); o.souDestino = destinoPode_(u, v); return o; });
-  return { itens: itens, celulas: cels.filter(function (c) { return c.Status !== 'Inativa'; }).map(function (c) { return { id: c.CelulaID, nome: c.Nome, lider: nm[c.LiderID] || '', supId: c.SupervisorID || '', cor: supCores_()[c.SupervisorID] || '', lat: c.Lat === '' || c.Lat === undefined ? null : Number(c.Lat), lng: c.Lng === '' || c.Lng === undefined ? null : Number(c.Lng) }; }), pessoas: itens.some(function (o) { return o.podeEncaminhar; }) ? table_('Membros').rows.filter(function (m) { return m.Status !== 'Inativo'; }).map(function (m) { return { id: m.MembroID, nome: m.Nome }; }).sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome)); }) : [], msgPadrao: msgPadrao_('{apelido}') };
+  const cont = encContagem_(), metaC = metaEnc_('consolidacao'), stats = consolStats_();
+  const itens = rows.filter(vis).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).slice(0, 200).map(function (v) { const o = visitorOut_(v, cn, nm); o.podeEncaminhar = triagemPode_(u, v); o.souDestino = destinoPode_(u, v); const ex = membroPorContato_(v.Telefone, v.Email); o.grupos = ex && ex.CelulaID ? [cn[ex.CelulaID] || ex.CelulaID] : []; o.enc = cont['consolidacao|' + v.VisitanteID] || 0; o.meta = metaC; o.concluido = o.enc >= metaC; return o; });
+  return { itens: itens, celulas: cels.filter(function (c) { return c.Status !== 'Inativa'; }).map(function (c) { return { id: c.CelulaID, nome: c.Nome, lider: nm[c.LiderID] || '', liderId: c.LiderID || '', treinaId: c.TreinamentoID || '', consolidadores: csv_(c.Consolidadores), supId: c.SupervisorID || '', cor: supCores_()[c.SupervisorID] || '', lat: c.Lat === '' || c.Lat === undefined ? null : Number(c.Lat), lng: c.Lng === '' || c.Lng === undefined ? null : Number(c.Lng) }; }), pessoas: itens.some(function (o) { return o.podeEncaminhar; }) ? table_('Membros').rows.filter(function (m) { return m.Status !== 'Inativo'; }).map(function (m) { return { id: m.MembroID, nome: m.Nome, recebeu: (stats[m.MembroID] || {}).recebeu || 0, andamento: (stats[m.MembroID] || {}).andamento || 0 }; }).sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome)); }) : [], msgPadrao: msgPadrao_('{apelido}'), recursos: recursoPodeVer_(u) };
 }
 function routeVisitor_(d, u) {
   return withLock_(function () {
@@ -3621,6 +3751,7 @@ function routeVisitor_(d, u) {
     writeRow_(t, v._row, { CelulaID: cid, CelulaProximaID: v.CelulaProximaID || v.CelulaID, LiderID: lider, SupervisorID: v.SupervisorID || (u.membroId || ''), ConsolidadorID: cons && cons !== lider ? cons : '', Status: 'encaminhado', TriagemPor: u.membroId || '', EncaminhadoEm: now_(), AceitoEm: '', AceitoPor: '' });
     notify_(dest, 'visitante', 'Visitante encaminhado para você: ' + v.Nome, (cons && cons !== lider ? 'O supervisor ' + (nm[u.membroId] || '') + ' escolheu você para consolidar ' + ap + '. ' : ap + ' foi encaminhado para a sua célula. ') + 'Abra Consolidação para aceitar e chamar no WhatsApp.', 'visitante:' + v.VisitanteID);
     if (cons && cons !== lider && lider) notify_(lider, 'visitante', 'Visitante na sua célula com consolidador definido', ap + ' será acompanhado por ' + (nm[cons] || 'outra pessoa') + ' e fica registrado na sua célula, porque o consolidador escolhido é da sua célula.', 'visitante:' + v.VisitanteID);
+    notaAdd_(table_('Visitantes'), table_('Visitantes').rows.filter(function (x) { return x.VisitanteID === v.VisitanteID; })[0], 'Encaminhado por ' + (nm[u.membroId] || 'a administração') + ' para ' + (nm[dest] || 'o destino') + (cons && cons !== lider ? ' (consolidador)' : ' (líder)') + '.', u.membroId);
     audit_(u.email, 'VISITANTE_ENCAMINHADO', v.VisitanteID + ' -> ' + dest, 'OK'); return { ok: true, destino: nm[dest] || '', celula: cel.Nome };
   });
 }
@@ -3630,7 +3761,7 @@ function acceptVisitor_(d, u) {
     if (v.Status === 'triagem' || !destinoPode_(u, v)) throw new ApiError('FORBIDDEN', 'Esse visitante não foi encaminhado para você.');
     const nm = nomes_();
     if (d.aceitar === false) { writeRow_(t, v._row, { Status: 'triagem', ConsolidadorID: '', EncaminhadoEm: '' }); if (v.SupervisorID) notify_(v.SupervisorID, 'visitante', 'Visitante devolvido: ' + v.Nome, (nm[u.membroId] || 'O destino') + ' não pôde aceitar. Escolha outra pessoa para consolidar.', 'visitante:' + v.VisitanteID); audit_(u.email, 'VISITANTE_RECUSADO', v.VisitanteID, 'OK'); return { ok: true, status: 'triagem' }; }
-    writeRow_(t, v._row, { Status: 'aceito', AceitoEm: now_(), AceitoPor: u.membroId || '' });
+    writeRow_(t, v._row, { Status: 'aceito', AceitoEm: now_(), AceitoPor: u.membroId || '' }); notaAdd_(t, v, (nm[u.membroId] || 'O consolidador') + ' aceitou consolidar.', u.membroId);
     if (v.SupervisorID && v.SupervisorID !== u.membroId) notify_(v.SupervisorID, 'visitante', 'Visitante aceito: ' + v.Nome, (nm[u.membroId] || 'O consolidador') + ' aceitou consolidar ' + (v.Apelido || v.Nome) + '.', 'visitante:' + v.VisitanteID);
     audit_(u.email, 'VISITANTE_ACEITO', v.VisitanteID, 'OK'); return { ok: true, status: 'aceito' };
   });
@@ -4354,6 +4485,7 @@ const ROUTES = {
   zoePergunta: { auth: 'any', fn: zoePergunta_ }, devocional: { auth: 'any', fn: devocional_ }, cuidadoLider: { auth: 'any', fn: cuidadoLider_ }, cuidadoMsg: { auth: 'any', fn: cuidadoMsg_ },
   studioAcessos: { auth: 'any', fn: studioAcessosLista_ }, saveStudioAcesso: { auth: 'any', write: 1, fn: saveStudioAcesso_ }, studioPresenca: { auth: 'any', fn: studioPresenca_ }, studioChatEnvia: { auth: 'any', write: 1, fn: studioChatEnvia_ }, studioChat: { auth: 'any', fn: studioChatLista2_ },
   getLessonPdf: { auth: 'any', fn: getLessonPdf_ }, saveLessonText: { auth: 'any', write: 1, fn: saveLessonText_ }, getLessonText: { auth: 'any', fn: getLessonText_ },
+  celTime: { auth: 'any', fn: celTime_ }, saveCelTime: { auth: 'any', write: 1, fn: saveCelTime_ }, discipuladoCel: { auth: 'any', fn: discipuladoCel_ }, setDiscipulador: { auth: 'any', write: 1, fn: setDiscipulador_ }, meusAcomp: { auth: 'any', fn: meusAcomp_ }, saveEncontro: { auth: 'any', write: 1, fn: saveEncontro_ }, listEncontros: { auth: 'any', fn: listEncontros_ }, listRecursosConsol: { auth: 'any', fn: listRecursosConsol_ }, saveRecursoConsol: { auth: 'any', write: 1, fn: saveRecursoConsol_ }, deleteRecursoConsol: { auth: 'any', write: 1, fn: deleteRecursoConsol_ },
   myQuizzes: { auth: 'any', fn: myQuizzes_ }, getQuiz: { auth: 'any', fn: getQuiz_ }, answerQuiz: { auth: 'any', write: 1, fn: answerQuiz_ }, quizLider: { auth: 'any', fn: quizLider_ }, quizCelula: { auth: 'any', fn: quizCelula_ }, quizPrepara: { auth: 'any', write: 1, fn: quizPrepara_ }, quizAcao: { auth: 'any', write: 1, fn: quizAcao_ }, getQuizCfg: { auth: 'config', fn: getQuizCfg_ }, capacidade: { auth: 'config', fn: capacidade_ }, testQuizIa: { auth: 'config', fn: testQuizIa_ },
   getEntrega: { auth: 'config', fn: getEntrega_ }, saveEntrega: { auth: 'config', write: 1, fn: saveEntrega_ },
   getPushKey: { auth: 'any', fn: getPushKey_ }, pushDiag: { auth: 'any', fn: pushDiag_ }, savePushSub: { auth: 'any', write: 1, fn: savePushSub_ }, delPushSub: { auth: 'any', write: 1, fn: delPushSub_ },

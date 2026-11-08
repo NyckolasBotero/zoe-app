@@ -793,14 +793,14 @@ test('consolidação: visitante, célula mais próxima, alerta ao líder', () =>
   const c1 = e.call('createCell', { nome: 'Célula Norte', liderId: lid, coordenadas: '-23.50, -46.60' }, adm), c2 = e.call('createCell', { nome: 'Célula Sul', coordenadas: '-23.90, -46.60' }, adm); assert.ok(c1.ok && c2.ok, JSON.stringify(c1));
   assert.equal(e.call('saveVisitor', { nome: 'Pedro', telefone: '11988887777', lat: -23.51, lng: -46.61 }, A).error.code, 'FORBIDDEN');
   assert.equal(e.call('saveVisitor', { nome: 'Pedro', telefone: '11988887777' }, adm).error.code, 'VALIDATION');
-  const r = e.call('saveVisitor', { nome: 'Pedro Lima', apelido: 'Pedrão', telefone: '11988887777', lat: -23.51, lng: -46.61 }, adm); assert.ok(r.ok, JSON.stringify(r)); assert.equal(r.data.celula.nome, 'Célula Norte');
+  const r = e.call('saveVisitor', { nome: 'Pedro Lima', apelido: 'Pedrão', telefone: '11988887777', email: 'v1@x.com', sexo: 'M', convite: 'nao', lat: -23.51, lng: -46.61 }, adm); assert.ok(r.ok, JSON.stringify(r)); assert.equal(r.data.celula.nome, 'Célula Norte');
   const L = (e.run(`(function(){const t=table_('Usuarios');return 1})()`), tok('lid@zoe.com', 'Temp12345'));
   const n = e.sheets.Notificacoes.rows.slice(1).filter(x => x[1] === lid && x[2] === 'visitante'); assert.equal(n.length, 1);
   // prévia da célula mais próxima ao marcar o pino, e aviso também ao supervisor do líder
   assert.equal(e.call('nearCell', { lat: -23.51, lng: -46.61 }, A).error.code, 'FORBIDDEN'); assert.equal(e.call('nearCell', { lat: 'x', lng: 1 }, adm).error.code, 'VALIDATION');
   const nc = e.call('nearCell', { lat: -23.89, lng: -46.6 }, adm).data.celula; assert.equal(nc.nome, 'Célula Sul'); assert.ok(nc.km < 5);
   const sup = mk('sup@zoe.com', 'membro'); assert.ok(e.call('createCell', { nome: 'Célula Leste', liderId: lid, supervisorId: sup, coordenadas: '-23.50, -46.20' }, adm).ok);
-  const r2 = e.call('saveVisitor', { nome: 'Rita Leste', telefone: '11977776666', lat: -23.5, lng: -46.21 }, adm).data; assert.equal(r2.celula.nome, 'Célula Leste'); assert.equal(r2.avisados, 1);
+  const r2 = e.call('saveVisitor', { nome: 'Rita Leste', telefone: '11977776666', email: 'v2@x.com', sexo: 'M', convite: 'nao', lat: -23.5, lng: -46.21 }, adm).data; assert.equal(r2.celula.nome, 'Célula Leste'); assert.equal(r2.avisados, 1);
   // com supervisor: só ele é avisado; o líder fica de fora até o encaminhamento
   const nv = (m) => e.sheets.Notificacoes.rows.slice(1).filter(x => x[1] === m && x[2] === 'visitante').length;
   assert.equal(nv(sup), 1); assert.equal(nv(lid), 1);
@@ -1253,7 +1253,7 @@ test('ficha geral do membro: escopo por papel e histórico completo', () => {
   const c = e.call('createCell', { nome: 'Célula Norte', liderId: lid, supervisorId: sup, coordenadas: '-23.50, -46.60' }, adm).data.id; e.call('createCell', { nome: 'Célula Sul', coordenadas: '-23.90, -46.60' }, adm);
   e.run(`(function(){const t=table_('Membros');t.rows.forEach(function(m){if(m.Email==='ana@zoe.com')writeRow_(t,m._row,{CelulaID:'${c}',Nome:'Ana Souza',Telefone:'11955554444',DataDecisao:'2026-01-10',Sangue:'O+',Mae:'Maria'})})})()`);
   const A = tok('ana@zoe.com', 'Temp12345'), L = tok('lid@zoe.com', 'Temp12345'), S = tok('sup@zoe.com', 'Temp12345'), O = tok('out@zoe.com', 'Temp12345');
-  const vis = e.call('saveVisitor', { nome: 'Ana Souza', telefone: '11955554444', lat: -23.5, lng: -46.6 }, adm).data; assert.ok(vis.id);
+  const vis = e.call('saveVisitor', { nome: 'Ana Souza', telefone: '11955554444', email: 'v3@x.com', sexo: 'M', convite: 'nao', lat: -23.5, lng: -46.6 }, adm).data; assert.ok(vis.id);
   assert.ok(e.call('routeVisitor', { id: vis.id }, S).ok); assert.ok(e.call('acceptVisitor', { id: vis.id }, L).ok);
   assert.equal(e.call('getFicha', { membroId: ana }, O).error.code, 'FORBIDDEN'); assert.equal(e.call('listFichas', {}, O).data.itens.length, 0);
   const fa = e.call('getFicha', { membroId: ana }, adm); assert.ok(fa.ok, JSON.stringify(fa)); assert.equal(fa.data.nivel, 'total'); assert.equal(fa.data.sens.sangue, 'O+'); assert.equal(fa.data.datas.decisao, '2026-01-10');
@@ -1270,7 +1270,7 @@ test('consolidador amigo de outra célula tem prioridade sobre a célula mais pr
   const { e, adm, tok, mk } = boot(); const l1 = mk('l1@zoe.com', 'membro'), l2 = mk('l2@zoe.com', 'membro'), sup = mk('sup@zoe.com', 'membro'), am = mk('am@zoe.com', 'membro');
   const c1 = e.call('createCell', { nome: 'Perto', liderId: l1, supervisorId: sup, coordenadas: '-23.50, -46.60' }, adm).data.id, c2 = e.call('createCell', { nome: 'Longe', liderId: l2, supervisorId: sup, coordenadas: '-23.90, -46.60' }, adm).data.id;
   e.run(`(function(){const t=table_('Membros');t.rows.forEach(function(m){if(m.Email==='am@zoe.com')writeRow_(t,m._row,{CelulaID:'${c2}'})})})()`);
-  const S = tok('sup@zoe.com', 'Temp12345'), L2 = tok('l2@zoe.com', 'Temp12345'), v = e.call('saveVisitor', { nome: 'Bia Visita', telefone: '11944443333', lat: -23.5, lng: -46.6 }, adm).data;
+  const S = tok('sup@zoe.com', 'Temp12345'), L2 = tok('l2@zoe.com', 'Temp12345'), v = e.call('saveVisitor', { nome: 'Bia Visita', telefone: '11944443333', email: 'v4@x.com', sexo: 'M', convite: 'nao', lat: -23.5, lng: -46.6 }, adm).data;
   const r = e.call('routeVisitor', { id: v.id, consolidadorId: am }, S); assert.ok(r.ok, JSON.stringify(r)); assert.equal(r.data.celula, 'Longe');
   const it = e.call('listVisitors', {}, S).data.itens.find(x => x.id === v.id); assert.equal(it.proxima, 'Perto'); assert.equal(it.celula, 'Longe'); assert.equal(it.lider, 'l2'); assert.equal(it.consolidador, 'am');
   const nt = (m) => e.sheets.Notificacoes.rows.slice(1).filter(x => x[1] === m && x[2] === 'visitante').length; assert.equal(nt(l2), 1);
