@@ -19,7 +19,9 @@ const tb = call('supCelulas', {}, T.sup); assert.equal(tb.celulas.length, 1); co
 assert.equal(l.nome, 'Célula Norte'); assert.equal(l.pessoas, 3); assert.equal(l.membros, 1); assert.equal(l.frequentadores, 2); assert.equal(l.visitasSup, 1); assert.equal(l.oferta, 150.5); assert.equal(l.visitantes, 1);
 assert.equal(l.presenca, Math.round(5 / 6 * 100)); assert.ok(l.deus >= 60 && l.deus <= 80); assert.equal(l.batizados, 1); assert.equal(l.oracoes, 1); assert.equal(l.reacoes, 1);
 assert.equal(call('supCelulas', {}, adm).celulas.length, 2, 'admin vê todas'); assert.equal(e.call('supCelulas', {}, T.ana).ok, false, 'membro não acessa');
-const dt = call('supCelulaDetalhe', { celulaId: c1 }, T.sup); assert.equal(dt.descricao, 'Jovens'); assert.equal(dt.membros.length, 3); assert.equal(dt.reunioes.length, 2); assert.equal(dt.oracoes.reacoes, 1); assert.equal(dt.batizados, 1);
+const dt = call('supCelulaDetalhe', { celulaId: c1 }, T.sup); assert.equal(dt.descricao, 'Jovens'); assert.equal(dt.membros.length, 3); assert.equal(dt.reunioes.length, 2); assert.equal(dt.batizados, 1);
+const ex = call('supCelulaExtras', { celulaId: c1 }, T.sup); assert.equal(ex.oracoes.reacoes, 1); assert.equal(ex.oracoes.total, 1); assert.equal(ex.quiz.quizzes, 0); assert.equal(e.call('supCelulaExtras', { celulaId: c2 }, T.sup).ok, false);
+const al = call('albumSupervisao', {}, T.sup); assert.equal(al.itens.length, 1); assert.equal(al.itens[0].celula, 'Célula Norte'); assert.equal(al.itens[0].fotos.length, 1);
 assert.ok(dt.membros.find(m => m.nome.startsWith('Ana')).batizado); assert.equal(dt.reunioes[0].visitaSup, false); assert.equal(dt.reunioes[1].oferta, 100.5);
 assert.equal(e.call('supCelulaDetalhe', { celulaId: c2 }, T.sup).ok, false, 'outra supervisão não');
 const ft = call('supCelulaFotos', { celulaId: c1 }, T.sup); assert.equal(ft.total, 1);

@@ -818,10 +818,13 @@ function supCelulas_(u) {
   return table_('Celulas').rows.filter(function (c) { return c.Status !== 'Inativa' && (todas || mine.indexOf(c.CelulaID) >= 0 || c.SupervisorID === u.membroId); });
 }
 function albumSupervisao_(d, u) {
-  const cels = supCelulas_(u), cn = {}, nm = nomes_(); cels.forEach(function (c) { cn[c.CelulaID] = c; });
-  const filtro = clip_(d.celulaId, 30), off = Math.max(0, Number(d.off) || 0), lim = 12;
-  const l = table_('Reunioes').rows.filter(function (r) { return r.Foto && cn[r.CelulaID] && (!filtro || r.CelulaID === filtro); }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; });
-  return { total: l.length, off: off, celulas: cels.map(function (c) { return { id: c.CelulaID, nome: c.Nome }; }), itens: l.slice(off, off + lim).map(function (r) { const c = cn[r.CelulaID]; return { id: r.ReuniaoID, celulaId: c.CelulaID, celula: c.Nome, lider: nm[c.LiderID] || '', data: r.Data, dia: r.Data ? diaDe_(r.Data) : '', visitaSup: r.VisitaSup === '1', foto: r.Foto }; }) };
+  // um quadro por célula, com as miniaturas das fotos (da mais nova para a mais antiga)
+  const cels = supCelulas_(u), nm = nomes_(), filtro = clip_(d.celulaId, 30), off = Math.max(0, Number(d.off) || 0), porCel = filtro ? 12 : 4, lim = 10;
+  const rs = table_('Reunioes').rows.filter(function (r) { return r.Foto; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }), por = {};
+  rs.forEach(function (r) { (por[r.CelulaID] = por[r.CelulaID] || []).push(r); });
+  const com = cels.filter(function (c) { return por[c.CelulaID] && (!filtro || c.CelulaID === filtro); }).sort(function (a, b) { return a.Nome < b.Nome ? -1 : 1; });
+  return { total: com.length, off: off, celulas: cels.map(function (c) { return { id: c.CelulaID, nome: c.Nome }; }),
+    itens: com.slice(off, off + lim).map(function (c) { const l = por[c.CelulaID]; return { celulaId: c.CelulaID, celula: c.Nome, lider: nm[c.LiderID] || '', totalFotos: l.length, fotos: l.slice(0, porCel).map(function (r) { return { id: r.ReuniaoID, data: r.Data, dia: r.Data ? diaDe_(r.Data) : '', visitaSup: r.VisitaSup === '1', foto: r.Foto }; }) }; }) };
 }
 
 // ===== Área da Supervisão: tabela das células supervisionadas e o detalhamento de cada uma =====
@@ -855,22 +858,31 @@ function supCelulaDetalhe_(d, u) {
   const nm = nomes_(), oft = ofertaAtiva_(), pessoas = ativosDaCelula_(id), cn = {}; table_('Cursos').rows.forEach(function (x) { cn[x.CursoID] = x.Nome; });
   const mi = {}; table_('Ministerios').rows.forEach(function (x) { mi[x.MinisterioID] = x.Nome; });
   const evI = {}; table_('Eventos').rows.forEach(function (e) { if (e.Escopo !== 'celula') evI[e.EventoID] = e.Titulo; });
-  const matr = {}, insc = {}, minS = {}; table_('Matriculas').rows.forEach(function (r) { if (cn[r.CursoID]) (matr[r.MembroID] = matr[r.MembroID] || []).push({ curso: cn[r.CursoID], status: stN_(r.Status) }); });
-  table_('Inscricoes').rows.forEach(function (r) { if (evI[r.EventoID]) insc[r.MembroID] = (insc[r.MembroID] || 0) + 1; });
-  table_('Interesses').rows.forEach(function (r) { if (stN_(r.Status) === 'autorizado' && mi[r.MinisterioID]) (minS[r.MembroID] = minS[r.MembroID] || []).push(mi[r.MinisterioID]); });
+  const ids = {}; pessoas.forEach(function (m) { ids[m.MembroID] = 1; });
+  const matr = {}, insc = {}, minS = {}; table_('Matriculas').rows.forEach(function (r) { if (ids[r.MembroID] && cn[r.CursoID]) (matr[r.MembroID] = matr[r.MembroID] || []).push({ curso: cn[r.CursoID], status: stN_(r.Status) }); });
+  table_('Inscricoes').rows.forEach(function (r) { if (ids[r.MembroID] && evI[r.EventoID]) insc[r.MembroID] = (insc[r.MembroID] || 0) + 1; });
+  table_('Interesses').rows.forEach(function (r) { if (ids[r.MembroID] && stN_(r.Status) === 'autorizado' && mi[r.MinisterioID]) (minS[r.MembroID] = minS[r.MembroID] || []).push(mi[r.MinisterioID]); });
   const h = history_({ celulaId: id }, u), pres = {}; table_('Presencas').rows.forEach(function (p) { if (p.CelulaID === id) { const q = pres[p.MembroID] = pres[p.MembroID] || { n: 0, ult: '' }; q.n++; if (p.Data > q.ult) q.ult = p.Data; } });
   const nReun = h.reunioes.length;
-  const membros = pessoas.map(function (m) { const q = pres[m.MembroID] || { n: 0, ult: '' }; return { id: m.MembroID, nome: m.Apelido || m.Simples || m.Nome, foto: m.Foto || '', entrada: dia10_(m.DataEntrada) || dia10_(m.CriadoEm), decisao: dia10_(m.DataDecisao), batizado: !!(m.Batizado === 'sim' || m.Batizado === '1' || m.DataBatismo), dataBatismo: dia10_(m.DataBatismo), membroIgreja: m.EhMembro === '1', cursos: matr[m.MembroID] || [], ministerios: minS[m.MembroID] || [], eventos: insc[m.MembroID] || 0, presencas: q.n, presencaPct: pct_(q.n, nReun), ultima: q.ult }; }).sort(function (a, b) { return a.nome < b.nome ? -1 : 1; });
-  const ev = table_('Eventos').rows.filter(function (e) { return e.Escopo === 'celula' && e.CelulaID === id && e.Status !== 'Cancelado'; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).slice(0, 30).map(function (e) { return { data: e.Data, hora: e.Hora, titulo: e.Titulo, local: e.Local }; });
-  const or = table_('Oracoes').rows.filter(function (o) { return o.CelulaID === id; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }), orR = or.reduce(function (a, o) { return a + String(o.Oraram || '').split(',').filter(String).length; }, 0);
-  let quiz = null; try { const qc = quizCelula_({ celulaId: id }, u), tt = qc.ranking.tudo; let ac = 0, to = 0; tt.forEach(function (x) { ac += x.acertos; to += x.total; }); quiz = { acertoPct: pct_(ac, to), ranking: tt.slice(0, 20).map(function (x) { return { nome: x.nome, pontos: x.pontos, jogos: x.jogos, acertos: x.acertos, total: x.total }; }) }; } catch (e) { quiz = null; }
+  const membros = pessoas.map(function (m) { const q = pres[m.MembroID] || { n: 0, ult: '' }; return { id: m.MembroID, nome: m.Apelido || m.Simples || m.Nome, entrada: dia10_(m.DataEntrada) || dia10_(m.CriadoEm), decisao: dia10_(m.DataDecisao), batizado: !!(m.Batizado === 'sim' || m.Batizado === '1' || m.DataBatismo), dataBatismo: dia10_(m.DataBatismo), membroIgreja: m.EhMembro === '1', cursos: matr[m.MembroID] || [], ministerios: minS[m.MembroID] || [], eventos: insc[m.MembroID] || 0, presencas: q.n, presencaPct: pct_(q.n, nReun), ultima: q.ult }; }).sort(function (a, b) { return a.nome < b.nome ? -1 : 1; });
   const cursosCel = {}; membros.forEach(function (m) { m.cursos.forEach(function (x) { cursosCel[x.curso] = (cursosCel[x.curso] || 0) + 1; }); });
   const dec = table_('Posts').rows.filter(function (p) { return p.Tipo === 'decisao' && p.Status !== 'removido' && p.CelulaID === id; }).length;
   return { id: id, nome: c.Nome, foto: c.Foto || '', descricao: c.Descricao || '', dia: c.Dia || '', inicio: c.Inicio || '', endereco: c.Endereco || '', bairro: c.Bairro || '', cidade: c.Cidade || '', lider: nm[c.LiderID] || '', treinamento: nm[c.TreinamentoID] || '', supervisor: nm[c.SupervisorID] || '', oferta: oft,
     membros: membros, batizados: membros.filter(function (m) { return m.batizado; }).length, aceitaram: dec,
-    reunioes: h.reunioes.map(function (r) { return { data: r.data, dia: r.dia, presentes: r.presentes, total: r.total, presencaPct: pct_(r.presentes, r.total), deusPct: r.termometro, visitantes: (r.visitantes || []).length, visitaSup: r.visitaSup, oferta: r.oferta, licao: r.licao || r.licaoOutra || '', licaoResumo: '', papeis: r.papeis || [], obs: r.obs || '' }; }), semReuniao: h.semReuniao,
-    agenda: ev, oracoes: { total: or.length, reacoes: orR, itens: or.slice(0, 30).map(function (o) { return { autor: nm[o.MembroID] || '—', titulo: o.Titulo || clip_(o.Texto, 60), data: dia10_(o.Data), reacoes: String(o.Oraram || '').split(',').filter(String).length }; }) },
-    quiz: quiz, cursos: Object.keys(cursosCel).map(function (k) { return { curso: k, pessoas: cursosCel[k] }; }).sort(function (a, b) { return b.pessoas - a.pessoas; }) };
+    reunioes: h.reunioes.map(function (r) { return { data: r.data, dia: r.dia, presentes: r.presentes, total: r.total, presencaPct: pct_(r.presentes, r.total), deusPct: r.termometro, visitantes: (r.visitantes || []).length, visitaSup: r.visitaSup, oferta: r.oferta, licao: r.licao || r.licaoOutra || '', papeis: r.papeis || [], obs: r.obs || '' }; }), semReuniao: h.semReuniao,
+    cursos: Object.keys(cursosCel).map(function (k) { return { curso: k, pessoas: cursosCel[k] }; }).sort(function (a, b) { return b.pessoas - a.pessoas; }) };
+}
+// Parte mais lenta, carregada em paralelo: agenda, pedidos de oração e quiz (cálculo leve, sem passar pelo quiz da célula)
+function supCelulaExtras_(d, u) {
+  const id = clip_(d.celulaId, 30); if (!supCelulas_(u).some(function (x) { return x.CelulaID === id; })) throw new ApiError('FORBIDDEN', 'Você não acompanha esta célula.');
+  const nm = nomes_(), ev = table_('Eventos').rows.filter(function (e) { return e.Escopo === 'celula' && e.CelulaID === id && e.Status !== 'Cancelado'; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).slice(0, 30).map(function (e) { return { data: e.Data, hora: e.Hora, titulo: e.Titulo, local: e.Local }; });
+  const or = table_('Oracoes').rows.filter(function (o) { return o.CelulaID === id; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }), orR = or.reduce(function (a, o) { return a + String(o.Oraram || '').split(',').filter(String).length; }, 0);
+  const ids = {}; ativosDaCelula_(id).forEach(function (m) { ids[m.MembroID] = 1; }); const qz = {}; lazy_('Quizzes').rows.forEach(function (q) { if (q.CelulaID === id && q.Status === 'enviado') qz[q.QuizID] = 1; });
+  const ag = {}; Object.keys(ids).forEach(function (m) { ag[m] = { nome: nm[m] || '—', pontos: 0, jogos: 0, acertos: 0, total: 0 }; });
+  lazy_('QuizRespostas').rows.forEach(function (r) { if (qz[r.QuizID] && ag[r.MembroID]) { const x = ag[r.MembroID]; x.pontos += quizPts_(r); x.jogos++; x.acertos += Number(r.Acertos || 0); x.total += Number(r.Total || 0); } });
+  let ac = 0, to = 0; const rk = Object.keys(ag).map(function (k) { return ag[k]; }); rk.forEach(function (x) { ac += x.acertos; to += x.total; }); rk.sort(function (a, b) { return b.pontos - a.pontos; });
+  return { agenda: ev, oracoes: { total: or.length, reacoes: orR, itens: or.slice(0, 30).map(function (o) { return { autor: nm[o.MembroID] || '—', titulo: o.Titulo || clip_(o.Texto, 60), data: dia10_(o.Data), reacoes: String(o.Oraram || '').split(',').filter(String).length }; }) },
+    quiz: { quizzes: Object.keys(qz).length, acertoPct: pct_(ac, to), ranking: rk.filter(function (x) { return x.jogos; }).slice(0, 20) } };
 }
 // Fotos da célula (foto da chamada + mural), paginadas porque são pesadas
 function supCelulaFotos_(d, u) {
@@ -4776,7 +4788,7 @@ const ROUTES = {
   zoePergunta: { auth: 'any', fn: zoePergunta_ }, devocional: { auth: 'any', fn: devocional_ }, cuidadoLider: { auth: 'any', fn: cuidadoLider_ }, cuidadoMsg: { auth: 'any', fn: cuidadoMsg_ },
   studioAcessos: { auth: 'any', fn: studioAcessosLista_ }, saveStudioAcesso: { auth: 'any', write: 1, fn: saveStudioAcesso_ }, studioPresenca: { auth: 'any', fn: studioPresenca_ },
   getLessonPdf: { auth: 'any', fn: getLessonPdf_ }, saveLessonText: { auth: 'any', write: 1, fn: saveLessonText_ }, getLessonText: { auth: 'any', fn: getLessonText_ },
-  supCelulas: { auth: 'any', fn: supCelulas2_ }, supCelulaDetalhe: { auth: 'any', fn: supCelulaDetalhe_ }, supCelulaFotos: { auth: 'any', fn: supCelulaFotos_ },
+  supCelulas: { auth: 'any', fn: supCelulas2_ }, supCelulaDetalhe: { auth: 'any', fn: supCelulaDetalhe_ }, supCelulaFotos: { auth: 'any', fn: supCelulaFotos_ }, supCelulaExtras: { auth: 'any', fn: supCelulaExtras_ },
   getKinPerson: { auth: 'any', fn: getKinPerson_ }, editKinPerson: { auth: 'any', write: 1, fn: editKinPerson_ }, changeKinRel: { auth: 'any', write: 1, fn: changeKinRel_ }, saveKinRelDef: { auth: 'config', write: 1, fn: saveKinRelDef_ },
   prayFor: { auth: 'any', write: 1, fn: prayFor_ }, albumSupervisao: { auth: 'any', fn: albumSupervisao_ }, getCellRecess: { auth: 'any', fn: getCellRecess_ }, setCellRecess: { auth: 'any', write: 1, fn: setCellRecess_ },
   pingPastoral: { auth: 'any', fn: pingPastoral_ }, pastoralCiente: { auth: 'any', write: 1, fn: pastoralCiente_ },

@@ -1,5 +1,16 @@
 [
   {
+    "titulo": "Ajustes na Área da supervisão e no menu",
+    "melhorias": [
+      "A coluna “Envolvimento 10/5” passou a se chamar “Envolvimento Eventos”.",
+      "Álbum da supervisão: agora é um quadro por célula, com as miniaturas das fotos dentro (data em cada miniatura). Toque numa foto para ampliar e ver o detalhamento da célula.",
+      "O detalhamento da célula abre bem mais rápido: os dados principais aparecem primeiro e agenda, pedidos de oração, quiz e fotos chegam em seguida, em paralelo.",
+      "Menu lateral: a Área da supervisão fica logo abaixo de Meus Grupos, o espaçamento de Meus Grupos ficou igual ao dos outros itens e nenhum ícone se repete mais."
+    ],
+    "v": "1.162",
+    "data": "08/11/2026"
+  },
+  {
     "titulo": "Família: editar parentes por completo e novos parentescos",
     "melhorias": [
       "Em Editar perfil › Família, parentes cadastrados por você que não usam o app agora podem ser editados por inteiro: nome, como é chamado, sexo, nascimento, telefone, e-mail, cidade, UF, profissão, foto, se é cristão, se congrega na Zoe e o parentesco com você. Quem usa o app continua editando os próprios dados (você só marca se é cristão e se congrega).",

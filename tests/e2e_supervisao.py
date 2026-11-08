@@ -16,7 +16,7 @@ with sync_playwright() as p:
     # lid1 lança chamada com foto para gerar dados
     lid.evaluate("api('saveAttendance',{data:new Date(Date.now()-864e5).toISOString().slice(0,10),presentes:[],confirmaDia:true,foto:'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ==',visitaSup:true})").catch(lambda e:None) if False else None
     sup.evaluate("go('supervisao')"); sup.wait_for_selector('table tr.svr',timeout=10000)
-    tx=sup.inner_text('#view').lower(); assert 'presença de deus' in tx and 'envolvimento 10/5' in tx
+    tx=sup.inner_text('#view').lower(); assert 'presença de deus' in tx and 'envolvimento eventos' in tx
     sup.click('tr.svr >> nth=0'); sup.wait_for_selector('h3:has-text("Roadmap dos membros")',timeout=10000)
     tx=sup.inner_text('#view').lower()
     for t in ['Reuniões: presença','Agenda planejada','Pedidos de oração','Quiz da célula','Cursos da igreja','Fotos da célula']: assert t.lower() in tx,t
@@ -25,4 +25,9 @@ with sync_playwright() as p:
     sup.locator('button[role=tab]:has-text("Aprovações")').dispatch_event('click'); sup.wait_for_timeout(800); assert sup.locator('h1:has-text("Área da supervisão")').count()==1
     sup.locator('button[role=tab]:has-text("Álbum")').dispatch_event('click'); sup.wait_for_selector('text=Álbum da supervisão',timeout=8000)
     sup.evaluate("go('aprovacoes')"); sup.wait_for_timeout(500); assert sup.evaluate("R.r==='supervisao'&&R.sub.supervisao==='aprov'"),'aprovações redireciona'
+    # menu: Área da supervisão logo abaixo de Meus Grupos, ícones sem repetição
+    ic=sup.evaluate("[...document.querySelectorAll('#side .nav > .nv, #side .nav .mt-btn')].map(b=>b.querySelector('svg')?b.querySelector('svg').innerHTML:'')")
+    assert len(ic)==len(set(ic)),'ícones repetidos no menu'
+    ordem=sup.evaluate("[...document.querySelectorAll('#side .nav > *')].slice(0,3).map(e=>e.textContent.trim().slice(0,20))"); print(ordem)
+    assert ordem[0].startswith('Meus Grupos') or ordem[0].startswith('Área'), ordem
     print('ERROS:',errs); assert not errs; print('E2E SUPERVISAO OK')

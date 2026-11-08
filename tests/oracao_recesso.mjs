@@ -24,7 +24,7 @@ assert.equal(e.call('prayFor', { id: pid }, T.ana).ok, false, 'não ora por si m
 const foto = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ==';
 call('saveAttendance', { celulaId: cel, data: dia(-1), presentes: [lid, ana], confirmaDia: true, foto, visitaSup: true }, T.lid);
 const h = call('history', { celulaId: cel }, T.lid); assert.equal(h.reunioes[0].visitaSup, true);
-const al = call('albumSupervisao', {}, T.sup); assert.equal(al.itens.length, 1); assert.equal(al.itens[0].celula, 'Célula Norte'); assert.equal(al.itens[0].visitaSup, true); assert.equal(al.celulas.length, 1);
+const al = call('albumSupervisao', {}, T.sup); assert.equal(al.itens.length, 1); assert.equal(al.itens[0].celula, 'Célula Norte'); assert.equal(al.itens[0].fotos[0].visitaSup, true); assert.equal(al.celulas.length, 1);
 assert.equal(e.call('albumSupervisao', {}, T.lid).ok, false, 'líder comum não tem álbum'); assert.equal(call('albumSupervisao', {}, adm).celulas.length, 2);
 // 4) recesso da célula
 const quinta = (() => { for (let i = -14; i < 0; i++) { if (new Date(dia(i) + 'T12:00:00').getDay() === 4) return dia(i); } })();
