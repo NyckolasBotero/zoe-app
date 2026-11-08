@@ -1,5 +1,14 @@
 [
  {
+  "titulo": "Cadastro facial antes da Zoe",
+  "melhorias": [
+   "Para quem entra pela primeira vez, o aviso de cadastro facial e uso de imagem aparece primeiro; a Zoe só começa o tutorial depois que ele é concluído.",
+   "Corrigido o travamento em que o aviso e a Zoe apareciam um sobre o outro."
+  ],
+  "v": "1.149",
+  "data": "08/11/2026"
+ },
+ {
   "titulo": "Ícone branco nas notificações",
   "melhorias": [
    "O ícone pequeno da notificação (barra de status do Android) agora é a árvore da logo da igreja em branco, no lugar do quadrado branco."
