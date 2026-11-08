@@ -1,13 +1,5 @@
 [
   {
-    "titulo": "Quiz e Mural de fotos para todos, dentro de Células",
-    "melhorias": [
-      "Quiz e Mural de fotos ficam como guias dentro de Células e aparecem sempre para todos os participantes da célula, independentemente das regras configuradas. Em Regras Células, o “ver” dessas duas guias aparece fixo e só “editar” continua configurável."
-    ],
-    "v": "1.163",
-    "data": "08/11/2026"
-  },
-  {
     "titulo": "Ajustes na Área da supervisão e no menu",
     "melhorias": [
       "A coluna “Envolvimento 10/5” passou a se chamar “Envolvimento Eventos”.",

@@ -22,8 +22,6 @@ const PAPEIS_BASE = PAPEIS;
 const ROTULOS_TIPO = { admin: 'Administrador', pastor: 'Pastor', professor: 'Professor', membro: 'Membro', frequentador: 'Frequentador' };
 // guias do menu que o administrador pode esconder por tipo de acesso (Início, Editar perfil, Aprovações e Administração seguem regras próprias)
 const ABAS_APP = ['membro', 'biblioteca', 'celula', 'familia', 'ministerios', 'buscar', 'licoes', 'dinamicas', 'cursos', 'eventos', 'aniversarios', 'tutoriais', 'loja', 'aulas'];
-// Quiz e Mural de fotos são para todos os participantes da célula, sempre (não dependem da regra configurada)
-const GUIAS_TODOS_ = ['quiz', 'mural'];
 const GUIAS_CEL = ['freq', 'plan', 'papeis', 'oracao', 'ind', 'membros', 'perfilc', 'priv', 'pres', 'hist', 'mural', 'org', 'quiz'];
 const PERMS = ['eventos', 'transf', 'celulas', 'min', 'config', 'prof', 'cursos'];
 const DEFAULT_PERMS = {
@@ -321,7 +319,7 @@ function defRegras_() {
 }
 function regrasCel_() {
   const st = jparse_(cfgMap_().RegrasCelulas, {}), def = defRegras_(), out = {};
-  Object.keys(def).forEach(function (p) { out[p] = {}; GUIAS_CEL.forEach(function (g) { const x = st[p] && st[p][g]; out[p][g] = x ? { v: (x.v || x.e) ? 1 : 0, e: x.e ? 1 : 0 } : def[p][g]; if (GUIAS_TODOS_.indexOf(g) >= 0) out[p][g].v = 1; }); });
+  Object.keys(def).forEach(function (p) { out[p] = {}; GUIAS_CEL.forEach(function (g) { const x = st[p] && st[p][g]; out[p][g] = x ? { v: (x.v || x.e) ? 1 : 0, e: x.e ? 1 : 0 } : def[p][g]; }); });
   return out;
 }
 function celPermMap_(u, c) {
