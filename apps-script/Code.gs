@@ -35,8 +35,8 @@ const PERMS_ZERO = { eventos: 0, transf: 0, celulas: 0, min: 0, config: 0, prof:
 const SHEETS = {
   Usuarios: ['Email', 'SenhaHash', 'Salt', 'Papel', 'Status', 'MembroID', 'TrocarSenha', 'CriadoEm', 'UltimoAcesso', 'GuiaVisto', 'SenhaVis'],
   Membros: ['MembroID', 'Nome', 'Simples', 'Apelido', 'Sexo', 'Nascimento', 'Nacionalidade', 'Naturalidade', 'Sangue', 'Doador', 'Profissao', 'Telefone', 'Email', 'CEP', 'UF', 'Cidade', 'Endereco', 'Bairro', 'DataDecisao', 'Batizado', 'DataBatismo', 'IgrejaBatismo', 'Mae', 'Pai', 'EstadoCivil', 'Conjuge', 'DataCasamento', 'Filhos', 'Foto', 'CelulaID', 'EhMembro', 'Status', 'DataSaida', 'Extras', 'AceitePrivacidade', 'AceiteTermos', 'CriadoEm', 'DataEntrada', 'Lat', 'Lng', 'SodOff', 'Crista', 'CongregaZoe', 'Parente'],
-  Celulas: ['CelulaID', 'Nome', 'Descricao', 'Foto', 'LiderID', 'SupervisorID', 'Dia', 'Inicio', 'Fim', 'Categoria', 'Faixa', 'Bairro', 'Cidade', 'UF', 'Endereco', 'TreinamentoID', 'MaeID', 'PrivGrupo', 'PrivTel', 'PrivEmail', 'PrivEnd', 'Status', 'Lat', 'Lng', 'Consolidadores', 'Equipe'],
-  Reunioes: ['ReuniaoID', 'CelulaID', 'Data', 'Presentes', 'PresencaDeDeus', 'Obs', 'ForaDoDia', 'Elenco', 'Termometro', 'Foto', 'LicaoID', 'LicaoTitulo', 'LicaoResumo', 'Papeis'],
+  Celulas: ['CelulaID', 'Nome', 'Descricao', 'Foto', 'LiderID', 'SupervisorID', 'Dia', 'Inicio', 'Fim', 'Categoria', 'Faixa', 'Bairro', 'Cidade', 'UF', 'Endereco', 'TreinamentoID', 'MaeID', 'PrivGrupo', 'PrivTel', 'PrivEmail', 'PrivEnd', 'Status', 'Lat', 'Lng', 'Consolidadores', 'Equipe', 'RecessoIni', 'RecessoFim', 'RecessoAviso'],
+  Reunioes: ['ReuniaoID', 'CelulaID', 'Data', 'Presentes', 'PresencaDeDeus', 'Obs', 'ForaDoDia', 'Elenco', 'Termometro', 'Foto', 'LicaoID', 'LicaoTitulo', 'LicaoResumo', 'Papeis', 'VisitaSup'],
   Posts: ['PostID', 'Tipo', 'Escopo', 'CelulaID', 'AutorID', 'Titulo', 'Texto', 'Foto', 'Meta', 'Data', 'Status'],
   Comentarios: ['ComentID', 'PostID', 'MembroID', 'Texto', 'Data'],
   Visitantes: ['VisitanteID', 'Nome', 'Apelido', 'Telefone', 'Email', 'Nascimento', 'Endereco', 'Bairro', 'Cidade', 'UF', 'Lat', 'Lng', 'Data', 'RegistradoPor', 'CelulaID', 'Distancia', 'Contatado', 'ContatadoPor', 'ContatoData', 'Msg', 'Obs', 'Decisao', 'Status', 'SupervisorID', 'LiderID', 'ConsolidadorID', 'TriagemPor', 'EncaminhadoEm', 'AceitoEm', 'AceitoPor', 'MembroID', 'CelulaProximaID', 'AvisarEm', 'AvisoEm', 'Sexo', 'Convite', 'ConviteQuem', 'Notas'],
@@ -47,12 +47,13 @@ const SHEETS = {
   Devocionais: ['Dia', 'Seg', 'Ref', 'Livro', 'Cap', 'Vers', 'Texto'],
   CelMudancas: ['MudancaID', 'CelulaID', 'Patch', 'Status', 'SolicitadoPor', 'Data', 'DecididoPor', 'DataDecisao'],
   StudioChat: ['MsgID', 'De', 'Para', 'Texto', 'Data', 'Lida'],
+  SemReuniao: ['CelulaID', 'Data', 'Motivo', 'Criado'],
   Encontros: ['EncID', 'Tipo', 'PessoaID', 'ResponsavelID', 'CelulaID', 'Data', 'Obs', 'Criado'],
   Discipulado: ['DiscID', 'CelulaID', 'DiscipuloID', 'DiscipuladorID', 'Desde', 'Status'],
   ConsolRecursos: ['RecursoID', 'Titulo', 'Tipo', 'Texto', 'Url', 'Ordem', 'Status'],
   UsoDia: ['Dia', 'IACalls', 'IAErros', 'IANeurons', 'WorkerCalls', 'DiretoCalls', 'PushEnvios', 'PushOk', 'PushFalha'],
   PapeisLog: ['LogID', 'CelulaID', 'MembroID', 'Papel', 'Acao', 'Por', 'Data'],
-  Oracoes: ['OracaoID', 'CelulaID', 'MembroID', 'Tema', 'Titulo', 'Texto', 'Data'],
+  Oracoes: ['OracaoID', 'CelulaID', 'MembroID', 'Tema', 'Titulo', 'Texto', 'Data', 'Oraram'],
   Eventos: ['EventoID', 'Titulo', 'Data', 'Hora', 'Local', 'Descricao', 'Programacao', 'Escopo', 'CelulaID', 'CriadoPor', 'Status', 'Foto', 'Insignia', 'DataOriginal', 'Remarcado', 'MotivoRemarca', 'FotosAvisoEm', 'PostID'],
   EventoPresenca: ['EventoID', 'MembroID', 'Data'],
   Cultos: ['Data', 'Culto', 'MembroID', 'RegistradoPor', 'Hora'],
@@ -389,7 +390,7 @@ function greet_(d, u) {
 }
 /* ============================== CONFIG PÚBLICA ============================== */
 function cfgMap_() { const o = {}; table_('Config').rows.forEach(function (r) { o[r.Chave] = r.Valor; }); return o; }
-function publicConfig_() { const c = cfgMap_(); return { sodXp: sodXpCfg_(), nomeIgreja: c.NomeIgreja, whatsapp: c.WhatsApp, localNome: c.LocalNome, localEndereco: c.LocalEndereco, zoeInfo: c.ZoeInfo || '', chamada: chamadaCfg_(), discPolitica: c.DiscPolitica || 'todos', discEncontros: Number(c.DiscEncontros) || 6, consolEncontros: Number(c.ConsolEncontros) || 4, linkMapa: c.LinkMapa || '', colunasExtras: jparse_(c.ColunasExtras, []), canalYoutube: c.CanalYoutube || '', lojaWhatsapp: c.LojaWhatsApp || '', frequentadorPct: Number(c.FrequentadorPct) || 70, frequentadorJanela: Number(c.FrequentadorJanela) || 8, celulasParaSupervisor: Math.max(0, Number(c.CelulasParaSupervisor) || 0), frequenciasParaMembro: freqMembro_(), presencasParticipante: presPart_(), faltasExParticipante: faltasEx_(), sodAtivo: c.SodAtivo !== '0', notifTipos: notifTipos_(c), homeLayout: homeLayoutOk_(jparse_(c.HomeLayout, null)), navCfg: navCfgOk_(jparse_(c.NavCfg, null)), mapa: mapaCfg_(c) }; }
+function publicConfig_() { const c = cfgMap_(); return { sodXp: sodXpCfg_(), nomeIgreja: c.NomeIgreja, whatsapp: c.WhatsApp, localNome: c.LocalNome, localEndereco: c.LocalEndereco, zoeInfo: c.ZoeInfo || '', chamada: chamadaCfg_(), recessoIgreja: recessoIgreja_(), discPolitica: c.DiscPolitica || 'todos', discEncontros: Number(c.DiscEncontros) || 6, consolEncontros: Number(c.ConsolEncontros) || 4, linkMapa: c.LinkMapa || '', colunasExtras: jparse_(c.ColunasExtras, []), canalYoutube: c.CanalYoutube || '', lojaWhatsapp: c.LojaWhatsApp || '', frequentadorPct: Number(c.FrequentadorPct) || 70, frequentadorJanela: Number(c.FrequentadorJanela) || 8, celulasParaSupervisor: Math.max(0, Number(c.CelulasParaSupervisor) || 0), frequenciasParaMembro: freqMembro_(), presencasParticipante: presPart_(), faltasExParticipante: faltasEx_(), sodAtivo: c.SodAtivo !== '0', notifTipos: notifTipos_(c), homeLayout: homeLayoutOk_(jparse_(c.HomeLayout, null)), navCfg: navCfgOk_(jparse_(c.NavCfg, null)), mapa: mapaCfg_(c) }; }
 function mapaCfg_(c) { c = c || cfgMap_(); const n = function (k, d) { const v = Number(c[k]); return isFinite(v) && c[k] !== '' && c[k] !== undefined ? v : d; }; return { vis: n('MapaVisitanteVezes', 1), freq: n('MapaFrequentadorVezes', 3), raio: n('MapaRaioKm', 10), longe: n('MapaLongeKm', 10), alerta: n('MapaAlertaPct', 50), sedeLat: c.SedeLat === '' || c.SedeLat === undefined ? null : Number(c.SedeLat), sedeLng: c.SedeLng === '' || c.SedeLng === undefined ? null : Number(c.SedeLng) }; }
 const HOME_BLOCOS = ['hero', 'escalas', 'eventos', 'corrida', 'mural', 'proxevento', 'celula', 'aniv', 'domingo', 'cultos', 'testemunhos', 'feed', 'noticias']; // v1.100: o 'feed' faltava e era descartado ao salvar, voltando sempre para o meio da tela
 /* Layout do Início definido pelo administrador: lista de blocos {id,on,w (2-12 colunas),h (3-80 linhas)} */
@@ -541,6 +542,16 @@ function saveConfig_(d, u) {
       if (d[q[0]] === undefined) return; const n = Number(d[q[0]]); if (!isFinite(n) || n < q[1] || n > q[2] || Math.round(n) !== n) throw new ApiError('VALIDATION', q[3]);
       const r0 = t.rows.filter(function (x) { return x.Chave === q[0]; })[0]; if (r0) writeRow_(t, r0._row, { Valor: String(n) }); else appendRow_(t, { Chave: q[0], Valor: String(n) });
     });
+    if (d.RecessoIgrejaIni !== undefined || d.RecessoIgrejaFim !== undefined) {
+      const ri = String(d.RecessoIgrejaIni || '').trim(), rf = String(d.RecessoIgrejaFim || '').trim();
+      if ((ri || rf) && (!dataValida_(ri) || !dataValida_(rf) || rf < ri)) throw new ApiError('VALIDATION', 'Informe o início e o fim do recesso da igreja (o fim não pode ser antes do início), ou deixe os dois vazios.');
+      [['RecessoIgrejaIni', ri], ['RecessoIgrejaFim', rf]].forEach(function (q) { const r0 = t.rows.filter(function (x) { return x.Chave === q[0]; })[0]; if (r0) writeRow_(t, r0._row, { Valor: q[1] }); else appendRow_(t, { Chave: q[0], Valor: q[1] }); });
+      if (ri) { // recesso da igreja sobrepõe o da célula: o da célula é desativado
+        ensureCols_('Celulas', ['RecessoIni', 'RecessoFim', 'RecessoAviso']); const ct = table_('Celulas'), nm = nomes_();
+        ct.rows.forEach(function (c) { if (c.RecessoIni && c.RecessoFim && c.RecessoIni <= rf && c.RecessoFim >= ri) { writeRow_(ct, c._row, { RecessoIni: '', RecessoFim: '', RecessoAviso: '' }); [c.LiderID, c.SupervisorID].filter(String).forEach(function (m) { notify_(m, 'recesso', 'Recesso da igreja: ' + c.Nome, 'A igreja entrou em recesso e o recesso próprio da célula foi desativado para evitar conflito.', 'recesso'); }); } });
+      }
+      audit_(u.email, 'RECESSO_IGREJA', ri + ' ' + rf, 'OK'); try { recessoRoda_(Date.now()); } catch (e) { /* ok */ }
+    }
     ['ChamadaHoraIni', 'ChamadaFim', 'ChamadaManha'].forEach(function (k) {
       if (d[k] === undefined) return; const v = String(d[k]).trim(); if (!/^([01]?\d|2[0-3]):[0-5]\d$/.test(v)) throw new ApiError('VALIDATION', 'Use o formato HH:MM nos horários da chamada (ex.: 22:30).');
       const r0 = t.rows.filter(function (x) { return x.Chave === k; })[0]; if (r0) writeRow_(t, r0._row, { Valor: v }); else appendRow_(t, { Chave: k, Valor: v });
@@ -573,7 +584,7 @@ function parseCoord_(v) {
 }
 function cellOut_(c, own) {
   const l = c.LiderID ? table_('Membros').rows.filter(function (m) { return m.MembroID === c.LiderID; })[0] : null;
-  const o = { id: c.CelulaID, nome: c.Nome, descricao: c.Descricao, dia: c.Dia, inicio: c.Inicio, fim: c.Fim, categoria: c.Categoria, faixa: c.Faixa, bairro: c.Bairro, cidade: c.Cidade, uf: c.UF, lider: l ? (l.Apelido || l.Simples || l.Nome) : '' };
+  const o = { id: c.CelulaID, nome: c.Nome, descricao: c.Descricao, dia: c.Dia, inicio: c.Inicio, fim: c.Fim, categoria: c.Categoria, faixa: c.Faixa, bairro: c.Bairro, cidade: c.Cidade, uf: c.UF, lider: l ? (l.Apelido || l.Simples || l.Nome) : '', temSup: !!c.SupervisorID };
   if (own) { o.foto = c.Foto; o.endereco = c.Endereco; o.coordenadas = c.Lat !== '' && c.Lat !== undefined && c.Lng !== '' ? c.Lat + ', ' + c.Lng : ''; o.priv = { grupo: c.PrivGrupo === '1', tel: c.PrivTel === '1', email: c.PrivEmail === '1', end: c.PrivEnd === '1' }; }
   return o;
 }
@@ -684,6 +695,7 @@ function saveAttendance_(d, u) {
     // Termômetro da presença de Deus: 0 (frio) a 100 (forte manifestação). "PresencaDeDeus" continua marcado a partir de 50 para os indicadores antigos.
     let term = d.termometro !== undefined && d.termometro !== '' ? Math.round(Number(d.termometro)) : (d.deus ? 80 : 0); if (!isFinite(term)) throw new ApiError('VALIDATION', 'Termômetro inválido.'); term = Math.max(0, Math.min(100, term));
     const patch = { Presentes: String(pres.length), PresencaDeDeus: term >= 50 ? '1' : '0', Termometro: String(term), Obs: clip_(d.obs, 500), ForaDoDia: fora ? '1' : '0', Elenco: elenco.join(','), Foto: d.foto !== undefined ? fotoOk_(d.foto) : (ex ? ex.Foto || '' : '') };
+    if (d.visitaSup !== undefined) { ensureCols_('Reunioes', ['VisitaSup']); patch.VisitaSup = (d.visitaSup === true || d.visitaSup === '1' || d.visitaSup === 1 || d.visitaSup === 'sim') ? '1' : '0'; }
     if (quer) { patch.LicaoID = licao.id; patch.LicaoTitulo = licao.titulo; patch.LicaoResumo = licao.resumo; }
     // quem estava responsável por cada papel nesta reunião (a foto dos papéis do dia; não muda se a reunião for editada depois)
     if (!ex || !ex.Papeis) patch.Papeis = JSON.stringify(table_('Papeis').rows.filter(function (r) { return r.CelulaID === id; }).map(function (r) { return { m: r.MembroID, p: r.Papel }; }));
@@ -724,10 +736,11 @@ function history_(d, u) {
   const vm = votosMapa_(), visPor = {}; lazy_('PresVisitas').rows.forEach(function (x) { if (x.CelulaID === id) (visPor[x.Data] = visPor[x.Data] || []).push({ nome: x.Nome || nome[x.MembroID] || '?', de: x.Tipo === 'membro' ? (cn_()[x.DeCelulaID] || 'sem célula') : '', novo: x.Tipo === 'novo' }); });
   const lista = l.map(function (r) {
     const ids = pres[r.Data] || [], tm = termMedia_(r, vm), el = elencoDe(r, ids), aus = el.filter(function (m) { return ids.indexOf(m) < 0; }).map(function (m) { return nome[m] || '?'; });
-    return { data: r.Data, dia: r.Data ? diaDe_(r.Data) : '', presentes: ids.length, total: Math.max(1, el.length), deus: tm.media >= 50, termometro: tm.media, termLider: tm.lider, votos: tm.votos, visitantes: visPor[r.Data] || [], obs: r.Obs || '', foraDoDia: r.ForaDoDia === '1', licao: r.LicaoTitulo || '', licaoOutra: r.LicaoResumo || '', papeis: jparse_(r.Papeis, []).map(function (x) { return { nome: nome[x.m] || '?', papel: x.p }; }), nomesPresentes: ids.map(function (i) { return nome[i] || '?'; }), nomesAusentes: aus };
+    return { data: r.Data, dia: r.Data ? diaDe_(r.Data) : '', presentes: ids.length, total: Math.max(1, el.length), deus: tm.media >= 50, termometro: tm.media, termLider: tm.lider, votos: tm.votos, visitantes: visPor[r.Data] || [], obs: r.Obs || '', foraDoDia: r.ForaDoDia === '1', visitaSup: r.VisitaSup === '1' ? true : (r.VisitaSup === '0' ? false : null), licao: r.LicaoTitulo || '', licaoOutra: r.LicaoResumo || '', papeis: jparse_(r.Papeis, []).map(function (x) { return { nome: nome[x.m] || '?', papel: x.p }; }), nomesPresentes: ids.map(function (i) { return nome[i] || '?'; }), nomesAusentes: aus };
   });
   const media = lista.length ? Math.round(lista.reduce(function (a, r) { return a + Math.min(1, r.presentes / r.total); }, 0) / lista.length * 100) : 0;
-  return { reunioes: lista, indicadores: { participantes: total, exParticipantes: saidas.length, exNomes: saidas.map(function (x) { return { nome: nome[x.MembroID] || '?', data: x.DataDecisao, motivo: x.Motivo }; }), reunioes: l.length, presencaDeDeus: lista.filter(function (r) { return r.deus; }).length, mediaPresenca: media } };
+  const semReuniao = lazy_('SemReuniao').rows.filter(function (x) { return x.CelulaID === id; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).slice(0, 60).map(function (x) { return { data: x.Data, dia: diaDe_(x.Data), motivo: x.Motivo }; });
+  return { semReuniao: semReuniao, reunioes: lista, indicadores: { participantes: total, exParticipantes: saidas.length, exNomes: saidas.map(function (x) { return { nome: nome[x.MembroID] || '?', data: x.DataDecisao, motivo: x.Motivo }; }), reunioes: l.length, presencaDeDeus: lista.filter(function (r) { return r.deus; }).length, mediaPresenca: media } };
 }
 function indicators_(d, u) {
   const id = cellOf_(u, d, 'ver', 'ind', 'ver'), mem = table_('Membros').rows.filter(function (m) { return m.CelulaID === id; }), ids = {}; mem.forEach(function (m) { ids[m.MembroID] = m.Apelido || m.Simples || m.Nome; });
@@ -761,10 +774,102 @@ function papeisLog_(d, u) {
 function addPrayer_(d, u) {
   const texto = clip_(d.texto, 1000); if (!texto) throw new ApiError('VALIDATION', 'Escreva o pedido de oração.');
   const id = prayerCell_(u, d, 'editar'); if (!id) throw new ApiError('VALIDATION', 'Você ainda não está em uma célula.');
-  appendRow_(table_('Oracoes'), { OracaoID: id_('O'), CelulaID: id, MembroID: u.membroId, Tema: clip_(d.tema, 80), Titulo: clip_(d.titulo, 100), Texto: texto, Data: now_() }); return { ok: true };
+  ensureCols_('Oracoes', ['Oraram']); const oid = id_('O'), titulo = clip_(d.titulo, 100);
+  appendRow_(table_('Oracoes'), { OracaoID: oid, CelulaID: id, MembroID: u.membroId, Tema: clip_(d.tema, 80), Titulo: titulo, Texto: texto, Data: now_(), Oraram: '' });
+  // supervisor, líder, líder em treinamento e todos os participantes recebem o aviso (menos quem pediu)
+  const cel = table_('Celulas').rows.filter(function (c) { return c.CelulaID === id; })[0] || {}, nm = nomes_(), quem = nm[u.membroId] || 'Alguém';
+  const dest = [cel.SupervisorID, cel.LiderID, cel.TreinamentoID].concat(ativosDaCelula_(id).map(function (m) { return m.MembroID; })).filter(function (x, i, a) { return x && x !== u.membroId && a.indexOf(x) === i; });
+  dest.forEach(function (m) { notify_(m, 'oracao', 'Pedido de oração de ' + quem + ' 🙏', clip_(titulo || texto, 120), 'oracao'); });
+  return { ok: true, id: oid, avisados: dest.length };
 }
 function prayerCell_(u, d, acao) { const id = clip_(d.celulaId, 30) || u.celulaId || celulaAtiva_(u); if (id) cellAccess_(u, id, 'ver', 'oracao', acao || 'ver'); return id; }
-function listPrayers_(d, u) { const id = prayerCell_(u, d); if (!id) return []; return table_('Oracoes').rows.filter(function (o) { return o.CelulaID === id; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).slice(0, 50).map(function (o) { return { tema: o.Tema, titulo: o.Titulo, texto: o.Texto, data: o.Data }; }); }
+function listPrayers_(d, u) {
+  const id = prayerCell_(u, d); if (!id) return []; const nm = nomes_();
+  return table_('Oracoes').rows.filter(function (o) { return o.CelulaID === id; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).slice(0, 60).map(function (o) {
+    const or = String(o.Oraram || '').split(',').filter(String), minha = o.MembroID === u.membroId;
+    return { id: o.OracaoID, tema: o.Tema, titulo: o.Titulo, texto: o.Texto, data: o.Data, autorId: o.MembroID, autor: nm[o.MembroID] || '—', minha: minha, oraram: or.length, euOrei: or.indexOf(u.membroId) >= 0, quemOrou: minha ? or.map(function (x) { return nm[x] || '—'; }) : [] };
+  });
+}
+// "Orei por você 🫶": um toque marca (outro toque desmarca); quem fez o pedido recebe o carinho na primeira vez
+function prayFor_(d, u) {
+  return withLock_(function () {
+    ensureCols_('Oracoes', ['Oraram']); const t = table_('Oracoes'), o = t.rows.filter(function (x) { return x.OracaoID === clip_(d.id, 30); })[0]; if (!o) throw new ApiError('NOT_FOUND', 'Pedido não encontrado.');
+    cellAccess_(u, o.CelulaID, 'ver', 'oracao', 'ver'); if (o.MembroID === u.membroId) throw new ApiError('VALIDATION', 'Esse pedido é seu. Os irmãos é que oram por você. 💛');
+    const or = String(o.Oraram || '').split(',').filter(String), i = or.indexOf(u.membroId), ja = i >= 0;
+    if (ja) or.splice(i, 1); else or.push(u.membroId);
+    writeRow_(t, o._row, { Oraram: or.join(',') });
+    if (!ja) { const nm = nomes_(); notify_(o.MembroID, 'oracao_orei', (nm[u.membroId] || 'Alguém') + ' orou por você 🫶', clip_(o.Titulo || o.Texto, 100), 'oracao'); }
+    return { oraram: or.length, euOrei: !ja };
+  });
+}
+
+// ===== Álbum da supervisão: as fotos que os líderes mandam na chamada, de todas as células supervisionadas =====
+function albumSupervisao_(d, u) {
+  const todas = u.papel === 'admin' || u.papel === 'pastor' || can_(u, 'celulas'), mine = u.supervisiona || [];
+  if (!todas && !mine.length) throw new ApiError('FORBIDDEN', 'O álbum é para supervisores.');
+  const cels = table_('Celulas').rows.filter(function (c) { return c.Status !== 'Inativa' && (todas || mine.indexOf(c.CelulaID) >= 0 || c.SupervisorID === u.membroId); }), cn = {}, nm = nomes_(); cels.forEach(function (c) { cn[c.CelulaID] = c; });
+  const filtro = clip_(d.celulaId, 30), off = Math.max(0, Number(d.off) || 0), lim = 12;
+  const l = table_('Reunioes').rows.filter(function (r) { return r.Foto && cn[r.CelulaID] && (!filtro || r.CelulaID === filtro); }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; });
+  return { total: l.length, off: off, celulas: cels.map(function (c) { return { id: c.CelulaID, nome: c.Nome }; }), itens: l.slice(off, off + lim).map(function (r) { const c = cn[r.CelulaID]; return { id: r.ReuniaoID, celulaId: c.CelulaID, celula: c.Nome, lider: nm[c.LiderID] || '', data: r.Data, dia: r.Data ? diaDe_(r.Data) : '', visitaSup: r.VisitaSup === '1', foto: r.Foto }; }) };
+}
+
+// ===== Recesso: da igreja (Config) e da célula (definido pelo líder no perfil do pequeno grupo) =====
+function recessoIgreja_() { const c = cfgMap_(); return { ini: String(c.RecessoIgrejaIni || ''), fim: String(c.RecessoIgrejaFim || '') }; }
+function dataValida_(v) { return /^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) && !isNaN(new Date(v + 'T12:00:00').getTime()); }
+function recessoDe_(c, data, ig) { ig = ig || recessoIgreja_(); if (ig.ini && ig.fim && data >= ig.ini && data <= ig.fim) return 'igreja'; if (c && c.RecessoIni && c.RecessoFim && data >= c.RecessoIni && data <= c.RecessoFim) return 'celula'; return ''; }
+function diasEntre_(a, b) { return Math.round((new Date(b + 'T12:00:00') - new Date(a + 'T12:00:00')) / 86400000); }
+function getCellRecess_(d, u) {
+  const id = clip_(d.celulaId, 30) || celulaAtiva_(u); cellAccess_(u, id, 'ver', 'perfilc', 'ver');
+  const c = table_('Celulas').rows.filter(function (r) { return r.CelulaID === id; })[0]; if (!c) throw new ApiError('NOT_FOUND', 'Célula não encontrada.');
+  const ig = recessoIgreja_(), hoje = today_(), sem = lazy_('SemReuniao').rows.filter(function (r) { return r.CelulaID === id; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).slice(0, 30).map(function (r) { return { data: r.Data, motivo: r.Motivo }; });
+  return { ini: c.RecessoIni || '', fim: c.RecessoFim || '', ativo: recessoDe_(c, hoje, ig) === 'celula', igreja: ig, igrejaAtivo: recessoDe_({}, hoje, ig) === 'igreja', semReuniao: sem };
+}
+function setCellRecess_(d, u) {
+  return withLock_(function () {
+    const id = clip_(d.celulaId, 30) || celulaAtiva_(u); cellAccess_(u, id, 'gerir', 'perfilc', 'editar'); ensureCols_('Celulas', ['RecessoIni', 'RecessoFim', 'RecessoAviso']);
+    const t = table_('Celulas'), c = t.rows.filter(function (r) { return r.CelulaID === id; })[0]; if (!c) throw new ApiError('NOT_FOUND', 'Célula não encontrada.');
+    const hoje = today_(), nm = nomes_(), sup = c.SupervisorID, br = function (x) { return String(x).split('-').reverse().join('/'); };
+    if (d.encerrar) {
+      if (!c.RecessoIni) return getCellRecess_({ celulaId: id }, u);
+      writeRow_(t, c._row, { RecessoIni: '', RecessoFim: '', RecessoAviso: '' }); if (sup) notify_(sup, 'recesso', 'Recesso encerrado: ' + c.Nome, 'A célula voltou às reuniões. Os lembretes da chamada foram reativados.', 'recesso');
+      audit_(u.email, 'RECESSO_FIM', id, 'OK'); return getCellRecess_({ celulaId: id }, u);
+    }
+    const ini = clip_(d.ini, 10), fim = clip_(d.fim, 10); if (!dataValida_(ini) || !dataValida_(fim)) throw new ApiError('VALIDATION', 'Informe a data de início e a data estimada de fim do recesso.');
+    if (fim < ini) throw new ApiError('VALIDATION', 'A data de fim não pode ser antes do início.'); if (diasEntre_(ini, fim) > 366) throw new ApiError('VALIDATION', 'O recesso pode durar no máximo 1 ano.');
+    if (fim < hoje) throw new ApiError('VALIDATION', 'A data de fim não pode estar no passado. Para encerrar, use “Encerrar recesso”.'); if (diasEntre_(ini, hoje) > 14) throw new ApiError('VALIDATION', 'O início pode ser no máximo 14 dias atrás.');
+    const ig = recessoIgreja_(); if (ig.ini && ig.fim && ini <= ig.fim && fim >= ig.ini) throw new ApiError('VALIDATION', 'A igreja está em recesso de ' + br(ig.ini) + ' a ' + br(ig.fim) + ', que se sobrepõe a essas datas. O recesso da igreja já vale para a sua célula.');
+    const novo = !c.RecessoIni, mudou = !novo && (c.RecessoIni !== ini || c.RecessoFim !== fim), jaIniciou = ini <= hoje;
+    writeRow_(t, c._row, { RecessoIni: ini, RecessoFim: fim, RecessoAviso: (jaIniciou ? ini + '|' + fim : '') });
+    if (sup) {
+      if (novo && jaIniciou) notify_(sup, 'recesso', 'Recesso iniciado: ' + c.Nome, 'A célula entrou em recesso de ' + br(ini) + ' a ' + br(fim) + ' (previsão), definido por ' + (nm[u.membroId] || 'o líder') + '.', 'recesso');
+      else if (mudou) notify_(sup, 'recesso', 'Recesso atualizado: ' + c.Nome, 'Agora é de ' + br(ini) + ' a ' + br(fim) + ' (previsão).', 'recesso');
+    }
+    audit_(u.email, novo ? 'RECESSO' : 'RECESSO_AJUSTE', id + ' ' + ini + ' ' + fim, 'OK'); recessoRoda_(Date.now());
+    return getCellRecess_({ celulaId: id }, u);
+  });
+}
+// Todos os dias: avisa o supervisor quando o recesso começa e registra "Não houve reunião" nos dias em que a célula se reuniria
+function recessoRoda_(agoraMs) {
+  let cels, ig; try { cels = table_('Celulas').rows.filter(function (c) { return c.Status !== 'Inativa'; }); ig = recessoIgreja_(); } catch (e) { return 0; }
+  const hoje = Utilities.formatDate(new Date(agoraMs), CFG.TZ, 'yyyy-MM-dd'), igAtivo = !!(ig.ini && ig.fim && ig.ini <= hoje); let n = 0;
+  if (!igAtivo && !cels.some(function (c) { return c.RecessoIni && c.RecessoFim; })) return 0;
+  const reun = {}; table_('Reunioes').rows.forEach(function (r) { reun[r.CelulaID + '|' + r.Data] = 1; });
+  const st = lazy_('SemReuniao'), ja = {}; st.rows.forEach(function (r) { ja[r.CelulaID + '|' + r.Data] = 1; }); const ct = table_('Celulas'), br = function (x) { return String(x).split('-').reverse().join('/'); };
+  cels.forEach(function (c) {
+    if (c.RecessoIni && c.RecessoFim && c.RecessoIni <= hoje && c.RecessoAviso !== c.RecessoIni + '|' + c.RecessoFim) {
+      writeRow_(ct, c._row, { RecessoAviso: c.RecessoIni + '|' + c.RecessoFim });
+      if (c.SupervisorID) { notify_(c.SupervisorID, 'recesso', 'Recesso iniciado: ' + c.Nome, 'A célula entrou em recesso de ' + br(c.RecessoIni) + ' a ' + br(c.RecessoFim) + ' (previsão).', 'recesso'); n++; }
+    }
+    if (!c.Dia) return; const dia = norm_(c.Dia).slice(0, 3);
+    const de = [c.RecessoIni, ig.ini].filter(String).sort()[0]; if (!de) return;
+    for (let k = 0; k <= 45; k++) {
+      const D = Utilities.formatDate(new Date(agoraMs - k * 86400000), CFG.TZ, 'yyyy-MM-dd'); if (D < de) break;
+      const mot = recessoDe_(c, D, ig); if (!mot || norm_(diaDe_(D)).slice(0, 3) !== dia || reun[c.CelulaID + '|' + D] || ja[c.CelulaID + '|' + D]) continue;
+      appendRow_(st, { CelulaID: c.CelulaID, Data: D, Motivo: mot === 'igreja' ? 'Recesso da igreja' : 'Recesso da célula', Criado: now_() }); ja[c.CelulaID + '|' + D] = 1; n++;
+    }
+  });
+  return n;
+}
 /* ===== Painel de células (Administração › Células): visão geral, indicador de multiplicação, multiplicar, supervisão ===== */
 // Quantas pessoas (sem contar líder e líder em treinamento) a célula comporta antes de pedir multiplicação. É só um indicador: nunca bloqueia.
 function multLimite_() { return cfgInt_('CelulaMultiplicarAcima', 10, 2, 200); }
@@ -3606,14 +3711,14 @@ function chamadaSlots_(cfg) {
 }
 function dataMenos_(agoraMs, k) { return Utilities.formatDate(new Date(agoraMs - k * 86400000), CFG.TZ, 'yyyy-MM-dd'); }
 function chamadaRoda_(agoraMs) {
-  let cfg, cels, reun = {}; try { cfg = chamadaCfg_(); cels = table_('Celulas').rows.filter(function (c) { return c.Status !== 'Inativa' && c.Dia && (c.LiderID || c.TreinamentoID); }); table_('Reunioes').rows.forEach(function (r) { reun[r.CelulaID + '|' + r.Data] = 1; }); } catch (e) { return 0; }
+  let cfg, cels, reun = {}, ig; try { ig = recessoIgreja_(); cfg = chamadaCfg_(); cels = table_('Celulas').rows.filter(function (c) { return c.Status !== 'Inativa' && c.Dia && (c.LiderID || c.TreinamentoID); }); table_('Reunioes').rows.forEach(function (r) { reun[r.CelulaID + '|' + r.Data] = 1; }); } catch (e) { return 0; }
   if (!cels.length) return 0;
   const slots = chamadaSlots_(cfg), hm = Utilities.formatDate(new Date(agoraMs), CFG.TZ, 'HH:mm').split(':'), min = Number(hm[0]) * 60 + Number(hm[1]), cc = CacheService.getScriptCache(); let enviados = 0;
   for (let k = 0; k <= cfg.dias; k++) {
     const D = dataMenos_(agoraMs, k), agora = k * 1440 + min, dia = norm_(diaDe_(D)).slice(0, 3);
     let slot = -1; slots.forEach(function (x) { if (x <= agora && x > slot) slot = x; }); if (slot < 0 || agora - slot > 9) continue;
     cels.forEach(function (c) {
-      if (norm_(c.Dia).slice(0, 3) !== dia || reun[c.CelulaID + '|' + D]) return;
+      if (norm_(c.Dia).slice(0, 3) !== dia || reun[c.CelulaID + '|' + D] || recessoDe_(c, D, ig)) return;
       const key = 'ch:' + c.CelulaID + ':' + D; let cur = null; try { cur = cc.get(key); } catch (e) { cur = null; } if (cur !== null && cur !== undefined && Number(cur) >= slot) return;
       try { cc.put(key, String(slot), 21600); } catch (e) { /* ok */ }
       const hoje = k === 0, texto = hoje ? 'Faltou lançar a chamada da célula de hoje. Leva só um minutinho: toque para lançar. 🙏' : 'A chamada da célula de ' + diaDe_(D).toLowerCase() + ' (' + dmy_(D) + ') ainda não foi lançada. Toque para lançar quando puder. 🙏';
@@ -3623,7 +3728,7 @@ function chamadaRoda_(agoraMs) {
   }
   pushFlush_(); return enviados;
 }
-function lembreteChamada() { return chamadaRoda_(Date.now()); }
+function lembreteChamada() { try { recessoRoda_(Date.now()); } catch (e) { /* ok */ } return chamadaRoda_(Date.now()); }
 function msgPadrao_(apelido) { return 'Paz, ' + apelido + '! Aqui é da Igreja Ministério Zoe. Ficamos muito alegres com a sua presença no culto! Que Deus te abençoe. Quando quiser, tem uma célula pertinho de você e vamos adorar te receber. 🙏'; }
 function saveVisitor_(d, u) {
   if (!ehLider_(u)) throw new ApiError('FORBIDDEN', 'Só líderes lançam visitantes.');
@@ -4522,6 +4627,7 @@ const ROUTES = {
   zoePergunta: { auth: 'any', fn: zoePergunta_ }, devocional: { auth: 'any', fn: devocional_ }, cuidadoLider: { auth: 'any', fn: cuidadoLider_ }, cuidadoMsg: { auth: 'any', fn: cuidadoMsg_ },
   studioAcessos: { auth: 'any', fn: studioAcessosLista_ }, saveStudioAcesso: { auth: 'any', write: 1, fn: saveStudioAcesso_ }, studioPresenca: { auth: 'any', fn: studioPresenca_ },
   getLessonPdf: { auth: 'any', fn: getLessonPdf_ }, saveLessonText: { auth: 'any', write: 1, fn: saveLessonText_ }, getLessonText: { auth: 'any', fn: getLessonText_ },
+  prayFor: { auth: 'any', write: 1, fn: prayFor_ }, albumSupervisao: { auth: 'any', fn: albumSupervisao_ }, getCellRecess: { auth: 'any', fn: getCellRecess_ }, setCellRecess: { auth: 'any', write: 1, fn: setCellRecess_ },
   pingPastoral: { auth: 'any', fn: pingPastoral_ }, pastoralCiente: { auth: 'any', write: 1, fn: pastoralCiente_ },
   celTime: { auth: 'any', fn: celTime_ }, saveCelTime: { auth: 'any', write: 1, fn: saveCelTime_ }, discipuladoCel: { auth: 'any', fn: discipuladoCel_ }, setDiscipulador: { auth: 'any', write: 1, fn: setDiscipulador_ }, meusAcomp: { auth: 'any', fn: meusAcomp_ }, saveEncontro: { auth: 'any', write: 1, fn: saveEncontro_ }, listEncontros: { auth: 'any', fn: listEncontros_ }, listRecursosConsol: { auth: 'any', fn: listRecursosConsol_ }, saveRecursoConsol: { auth: 'any', write: 1, fn: saveRecursoConsol_ }, deleteRecursoConsol: { auth: 'any', write: 1, fn: deleteRecursoConsol_ },
   myQuizzes: { auth: 'any', fn: myQuizzes_ }, getQuiz: { auth: 'any', fn: getQuiz_ }, answerQuiz: { auth: 'any', write: 1, fn: answerQuiz_ }, quizLider: { auth: 'any', fn: quizLider_ }, quizCelula: { auth: 'any', fn: quizCelula_ }, quizPrepara: { auth: 'any', write: 1, fn: quizPrepara_ }, quizAcao: { auth: 'any', write: 1, fn: quizAcao_ }, getQuizCfg: { auth: 'config', fn: getQuizCfg_ }, capacidade: { auth: 'config', fn: capacidade_ }, testQuizIa: { auth: 'config', fn: testQuizIa_ },

@@ -1,5 +1,18 @@
 [
   {
+    "titulo": "Pedidos de oração, álbum da supervisão, visita da supervisão e recesso da célula",
+    "melhorias": [
+      "Pedidos de oração: qualquer participante envia seu pedido a qualquer hora, direto pelo app. O supervisor, o líder e todos os participantes da célula recebem um aviso, e todos veem a lista de pedidos do grupo.",
+      "Com um toque em “🫶 Orei por você”, quem fez o pedido recebe o carinho e vê quem orou por ele.",
+      "Álbum da supervisão: supervisores veem num só lugar todas as fotos que os líderes enviam na chamada das células que supervisionam, com filtro por célula.",
+      "Na chamada, o líder informa se a supervisão visitou a célula naquele dia (aparece no histórico e no álbum).",
+      "Recesso da célula: o líder define início e fim estimado no perfil do pequeno grupo e pode prorrogar, adiantar ou encerrar. Durante o recesso os lembretes da chamada ficam pausados, os dias de reunião aparecem como “Não houve reunião” e o supervisor é avisado.",
+      "Recesso da igreja (Administração › Dados da igreja): vale para todas as células e desativa recessos de célula com datas coincidentes."
+    ],
+    "v": "1.158",
+    "data": "08/11/2026"
+  },
+  {
     "titulo": "Entrada sem rosto/termos, Zoe lembra do perfil e lembretes da chamada",
     "melhorias": [
       "Novos usuários não passam mais por cadastro facial nem termos na entrada: entram direto e veem o tutorial da Zoe inteiro, sem janelas sobrepostas. O aviso de uso de imagem, os termos e a leitura do rosto só aparecem quando a pessoa abre a edição do próprio perfil (com a opção “Agora não”).",
