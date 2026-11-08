@@ -440,6 +440,9 @@ Novas colunas em Membros (Crista, CongregaZoe, Parente) e aba Galhos: rode `setu
 ## v1.126 — Regras de presença das células
 Config PresencasParaParticipante (3) e FaltasParaExParticipante (6), editáveis em Administração. exAutomatico_ roda ao salvar a frequência. Testes: tests/regras_participante.mjs e e2e_regras_participante.py.
 
+## v1.146 — Responsáveis por ministério
+- `Ministerios.Responsaveis` (ids) e `Ministerios.Autonomia` (JSON {responsável:[supervisores que deram autonomia]}). Decide o pedido: supervisor da célula da pessoa + responsáveis com autonomia dada por ele (+ quem tem a permissão `min`). Sem autonomia o responsável só recebe aviso quando a pessoa entra. Rotas `minResp`, `saveMinResp` (admin), `saveMinAutonomia` (supervisor). Testes: `tests/ministerio_resp.mjs`, `tests/e2e_ministerio_resp.py`.
+
 ## v1.145 — Ver como e botões de teste
 - Menu lateral (só administradores): **Ver como…** acima do Sair. Escolhe uma pessoa e mostra o app como ela vê, somente leitura (escritas bloqueadas com VERCOMO; registros passivos ignorados). Rota `verComoLista`; o app manda `as` em cada pedido e o servidor só aceita de administrador real. Testes: `tests/vercomo.mjs`, `tests/e2e_vercomo.py`.
 - Capacidade: botões **Testar a IA** e **Testar notificações**.

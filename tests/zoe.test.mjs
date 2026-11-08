@@ -151,7 +151,7 @@ test('cargos de célula são independentes do nível de acesso: admin pode ser l
   const cB = e.call('createCell', { nome: 'Célula B', liderId: l2, supervisorId: admId, treinamentoId: tr }, adm).data.id;
   const me = e.call('me', {}, adm).data; assert.equal(me.usuario.papel, 'admin'); assert.equal(me.cargos.lider, true); assert.equal(me.cargos.supervisor, true);
   const S = tok('sup@zoe.com', 'Temp12345'), L2 = tok('lider2@zoe.com', 'Temp12345'), T = tok('trein@zoe.com', 'Temp12345'), X = tok('comum@zoe.com', 'Temp12345');
-  assert.deepEqual(e.call('me', {}, S).data.cargos, { lider: false, treinamento: false, supervisor: true });
+  assert.deepEqual(e.call('me', {}, S).data.cargos, { lider: false, treinamento: false, supervisor: true, respMin: false });
   assert.equal(e.call('me', {}, T).data.nivelCelula, 'treinamento'); assert.equal(e.call('me', {}, L2).data.nivelCelula, 'lider');
   // treinamento: vê membros e registra presença; não gerencia nem pede transferência
   assert.equal(e.call('cellMembers', {}, T).ok, true);

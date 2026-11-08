@@ -57,7 +57,7 @@ const SHEETS = {
   CorridaLeitura: ['CorridaID', 'MembroID', 'Data', 'Capitulos', 'Resumo', 'Status', 'ValidadoPor', 'Obs'],
   CorridaConc: ['CorridaID', 'MembroID', 'Fim', 'Faltas', 'Faixa', 'Pos'],
   Inscricoes: ['EventoID', 'MembroID', 'Data'],
-  Ministerios: ['MinisterioID', 'Nome', 'Ordem', 'Ativo', 'Descricao', 'Foto'],
+  Ministerios: ['MinisterioID', 'Nome', 'Ordem', 'Ativo', 'Descricao', 'Foto', 'Responsaveis', 'Autonomia'],
   Interesses: ['InteresseID', 'MinisterioID', 'MembroID', 'Data', 'Status', 'DecididoPor', 'DataDecisao'],
   Membresias: ['MembresiaID', 'MembroID', 'CelulaID', 'Frequencias', 'Status', 'DecididoPor', 'Data', 'DataDecisao'],
   AprovLog: ['Tipo', 'RefID', 'Acao', 'Por', 'Data', 'Motivo'],
@@ -344,7 +344,7 @@ function me_(d, u) {
   const cel = ativa ? todas.filter(function (r) { return r.CelulaID === ativa; })[0] : null, full = can_(u, 'celulas');
   const cargo = function (r) { return r.LiderID === u.membroId ? 'Líder' : r.SupervisorID === u.membroId ? 'Supervisor' : r.TreinamentoID === u.membroId ? 'Líder em treinamento' : ''; };
   const minhas = todas.filter(function (r) { return full || cargo(r); }).map(function (r) { return { id: r.CelulaID, nome: r.Nome, cargo: cargo(r) || 'Administração' }; });
-  const cg = { lider: u.lidera.length > 0, treinamento: u.treina.length > 0, supervisor: u.supervisiona.length > 0 };
+  const cg = { lider: u.lidera.length > 0, treinamento: u.treina.length > 0, supervisor: u.supervisiona.length > 0, respMin: minhasResp_(u.membroId).length > 0 };
   const nivelCel = !cel ? '' : (full || (cel.LiderID === u.membroId) ? 'lider' : cel.SupervisorID === u.membroId ? 'supervisor' : cel.TreinamentoID === u.membroId ? 'treinamento' : 'membro');
   const tef = tipoEf_(u), abas = abasPorTipo_()[tef] || {}, cp = cel ? (full ? allCelPerm_() : celPermMap_(u, cel)) : null;
   const urow = table_('Usuarios').rows.filter(function (r) { return String(r.Email).toLowerCase() === u.email; })[0] || {};
@@ -869,7 +869,7 @@ function aprovItens_(u) {
   const nm = function (id) { return id && mem[id] ? (mem[id].Nome || '') : ''; };
   const cel = {}; table_('Celulas').rows.forEach(function (c) { cel[c.CelulaID] = c; });
   const mi = {}; table_('Ministerios').rows.forEach(function (m) { mi[m.MinisterioID] = m.Nome; });
-  const meu = function (c) { return !!c && !!u.membroId && c.SupervisorID === u.membroId; }, adm = can_(u, 'transf'), min = can_(u, 'min');
+  const meu = function (c) { return !!c && !!u.membroId && c.SupervisorID === u.membroId; }, adm = can_(u, 'transf'), min = can_(u, 'min'), minRows = {}; table_('Ministerios').rows.forEach(function (m) { minRows[m.MinisterioID] = m; });
   const logs = {}; table_('AprovLog').rows.forEach(function (l) { const k = l.Tipo + ':' + l.RefID; (logs[k] = logs[k] || []).push({ acao: l.Acao, por: nm(l.Por) || '—', data: l.Data, motivo: l.Motivo || '' }); });
   const out = [];
   const add = function (o) {
@@ -887,9 +887,11 @@ function aprovItens_(u) {
     if (!(adm || meu(cel[x.CelulaID]))) return;
     add({ tipo: 'saida', id: x.SaidaID, pessoaId: x.MembroID, titulo: nm(x.MembroID) + ' saiu da congregação', detalhe: 'Célula ' + ((cel[x.CelulaID] || {}).Nome || '?') + (x.Motivo ? ' · ' + x.Motivo : ''), status: x.Status, data: x.Data, solicitante: nm(x.SolicitadoPor), decididoPorId: x.DecididoPor, decididoPor: nm(x.DecididoPor), dataDecisao: x.DataDecisao, pode: adm || x.SolicitadoPor !== u.membroId, admOk: adm, ctxCel: x.CelulaID, ctx: { de: (cel[x.CelulaID] || {}).Nome || '', motivo: x.Motivo || '' } });
   });
-  if (min) table_('Interesses').rows.forEach(function (i) {
-    const m = mem[i.MembroID] || {};
-    add({ tipo: 'interesse', id: i.InteresseID, pessoaId: i.MembroID, titulo: nm(i.MembroID) + ' quer participar do ministério ' + (mi[i.MinisterioID] || '?'), detalhe: m.Telefone ? 'Telefone ' + m.Telefone : 'Sem telefone cadastrado', status: stN_(i.Status), data: i.Data, solicitante: nm(i.MembroID), decididoPorId: i.DecididoPor, decididoPor: nm(i.DecididoPor), dataDecisao: i.DataDecisao, pode: true, admOk: true, ctx: { ministerio: mi[i.MinisterioID] || '' } });
+  table_('Interesses').rows.forEach(function (i) {
+    const m = mem[i.MembroID] || {}, mn = minRows[i.MinisterioID] || {}, dc = minDec_(mn, i.MembroID, mem, cel), sou = dc.decisores.indexOf(u.membroId) >= 0;
+    if (!(min || sou)) return;
+    const resp = minResp_(mn).map(nm).filter(String).join(', ');
+    add({ tipo: 'interesse', id: i.InteresseID, pessoaId: i.MembroID, titulo: nm(i.MembroID) + ' quer participar do ministério ' + (mi[i.MinisterioID] || '?'), detalhe: (m.Telefone ? 'Telefone ' + m.Telefone : 'Sem telefone cadastrado') + (resp ? ' · Responsável: ' + resp : ''), status: stN_(i.Status), data: i.Data, solicitante: nm(i.MembroID), decididoPorId: i.DecididoPor, decididoPor: nm(i.DecididoPor), dataDecisao: i.DataDecisao, pode: true, admOk: min, ctx: { ministerio: mi[i.MinisterioID] || '' } });
   });
   table_('Membresias').rows.forEach(function (b) {
     if (!(adm || meu(cel[b.CelulaID]))) return; const m = mem[b.MembroID] || {};
@@ -961,9 +963,12 @@ function notifyDecisao_(tipo, id, status, motivo, u) {
 }
 function decideInterest_(d, u) {
   return withLock_(function () {
-    if (!can_(u, 'min')) throw new ApiError('FORBIDDEN', 'Sem permissão para aprovar ministérios.');
     const t = table_('Interesses'), r = t.rows.filter(function (x) { return x.InteresseID === d.id; })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Pedido não encontrado.'); if (stN_(r.Status) !== 'pendente') throw new ApiError('VALIDATION', 'Esse pedido já foi decidido.');
-    const st = d.decisao === 'autorizado' ? 'autorizado' : 'negado'; writeRow_(t, r._row, { Status: st, DecididoPor: u.membroId, DataDecisao: now_() }); audit_(u.email, 'INTERESSE_' + st.toUpperCase(), r.InteresseID, 'OK'); return { status: st };
+    const mn = table_('Ministerios').rows.filter(function (x) { return x.MinisterioID === r.MinisterioID; })[0] || {}, dc = minDec_(mn, r.MembroID);
+    if (!(can_(u, 'min') || dc.decisores.indexOf(u.membroId) >= 0)) throw new ApiError('FORBIDDEN', 'Só o supervisor da pessoa ou o responsável com autonomia decide este pedido.');
+    const st = d.decisao === 'autorizado' ? 'autorizado' : 'negado'; writeRow_(t, r._row, { Status: st, DecididoPor: u.membroId, DataDecisao: now_() }); audit_(u.email, 'INTERESSE_' + st.toUpperCase(), r.InteresseID, 'OK');
+    if (st === 'autorizado') { try { const nm = nomes_(); minResp_(mn).forEach(function (rid) { if (rid !== u.membroId && rid !== r.MembroID) notify_(rid, 'ministerio', 'Novo integrante em ' + mn.Nome, (nm[r.MembroID] || 'Uma pessoa') + ' entrou no ministério (aprovado por ' + (nm[u.membroId] || 'a liderança') + ').', 'min:' + mn.MinisterioID); }); } catch (e) { /* a decisão já foi gravada */ } }
+    return { status: st };
   });
 }
 function decideMembership_(d, u) {
@@ -1501,8 +1506,51 @@ function interest_(d, u) {
     const m = table_('Ministerios').rows.filter(function (r) { return r.MinisterioID === d.ministerioId && r.Ativo !== '0'; })[0]; if (!m) throw new ApiError('NOT_FOUND', 'Ministério não encontrado.');
     if (d.membro) saveMember_({ membro: { Nome: d.membro.Nome, Telefone: d.membro.Telefone, Profissao: d.membro.Profissao, Nascimento: d.membro.Nascimento } }, u);
     const t = table_('Interesses'); if (t.rows.some(function (r) { return r.MinisterioID === m.MinisterioID && r.MembroID === u.membroId && r.Status === 'autorizado'; })) throw new ApiError('VALIDATION', 'Você já participa deste ministério.');
-    if (!t.rows.some(function (r) { return r.MinisterioID === m.MinisterioID && r.MembroID === u.membroId && r.Status === 'novo'; })) appendRow_(t, { InteresseID: id_('I'), MinisterioID: m.MinisterioID, MembroID: u.membroId, Data: now_(), Status: 'novo' });
+    if (!t.rows.some(function (r) { return r.MinisterioID === m.MinisterioID && r.MembroID === u.membroId && r.Status === 'novo'; })) {
+      const iid = id_('I'); appendRow_(t, { InteresseID: iid, MinisterioID: m.MinisterioID, MembroID: u.membroId, Data: now_(), Status: 'novo' });
+      try { const nm = nomes_(); minDec_(m, u.membroId).decisores.forEach(function (mid) { notify_(mid, 'aprovacao', (nm[u.membroId] || 'Alguém') + ' quer participar de ' + m.Nome, 'Abra Aprovações para decidir.', 'interesse:' + iid); }); } catch (e) { /* o pedido já foi gravado */ }
+    }
     return { ok: true };
+  });
+}
+/* ===== Responsáveis por ministério ===== */
+// O administrador define os responsáveis de cada ministério. Quem decide o pedido de uma pessoa é o supervisor da célula dela e, só se o supervisor tiver
+// dado autonomia, o responsável. Sem autonomia o responsável apenas é avisado quando a pessoa entra. Sem responsável definido, fica com o supervisor.
+function minResp_(m) { return String(m && m.Responsaveis || '').split(',').filter(String); }
+function minhasResp_(membroId) { if (!membroId) return []; return table_('Ministerios').rows.filter(function (m) { return m.Ativo !== '0' && minResp_(m).indexOf(membroId) >= 0; }).map(function (m) { return m.MinisterioID; }); }
+function minDec_(m, pessoaId, mem, cel) {
+  const R = minResp_(m).filter(function (r) { return r !== pessoaId; }), au = jparse_(m && m.Autonomia, {});
+  let sup = ''; if (pessoaId) { const p = mem ? mem[pessoaId] : table_('Membros').rows.filter(function (x) { return x.MembroID === pessoaId; })[0]; const cid = p && p.CelulaID; if (cid) { const c = cel ? cel[cid] : table_('Celulas').rows.filter(function (x) { return x.CelulaID === cid; })[0]; sup = c && c.Status !== 'Inativa' ? (c.SupervisorID || '') : ''; } }
+  const auto = R.filter(function (r) { return sup && (au[r] || []).indexOf(sup) >= 0; });
+  return { sup: sup, decisores: (sup ? [sup] : []).concat(auto), soAvisa: R.filter(function (r) { return auto.indexOf(r) < 0; }), responsaveis: R };
+}
+function minRespOut_(u) {
+  const nm = nomes_(), au = function (m, r) { return (jparse_(m.Autonomia, {})[r] || []).indexOf(u.membroId) >= 0; };
+  const itens = table_('Ministerios').rows.filter(function (m) { return m.Ativo !== '0'; }).sort(function (a, b) { return Number(a.Ordem) - Number(b.Ordem); }).map(function (m) { return { id: m.MinisterioID, nome: m.Nome, responsaveis: minResp_(m).map(function (r) { return { id: r, nome: nm[r] || r, autonomia: au(m, r) }; }) }; });
+  return { admin: can_(u, 'min'), supervisor: (u.supervisiona || []).length > 0, itens: itens };
+}
+function minResp(d, u) { return minRespOut_(u); }
+function saveMinResp_(d, u) {
+  if (!can_(u, 'min')) throw new ApiError('FORBIDDEN', 'Só a administração define os responsáveis.');
+  const ms = {}; table_('Usuarios').rows.forEach(function (r) { if (r.Status !== 'Inativo' && r.MembroID) ms[r.MembroID] = 1; });
+  const ids = (Array.isArray(d.ids) ? d.ids : []).map(function (x) { return clip_(x, 30); }).filter(function (x, i, a) { return x && ms[x] && a.indexOf(x) === i; }).slice(0, 8);
+  return withLock_(function () {
+    const t = table_('Ministerios'), m = t.rows.filter(function (x) { return x.MinisterioID === clip_(d.ministerioId, 30) && x.Ativo !== '0'; })[0]; if (!m) throw new ApiError('NOT_FOUND', 'Ministério não encontrado.');
+    const au = jparse_(m.Autonomia, {}), novo = {}; ids.forEach(function (r) { if (au[r]) novo[r] = au[r]; });
+    writeRow_(t, m._row, { Responsaveis: ids.join(','), Autonomia: JSON.stringify(novo) }); audit_(u.email, 'MIN_RESPONSAVEIS', m.Nome + ': ' + ids.join(','), 'OK');
+    const antes = minResp_(m), nm = nomes_(); ids.forEach(function (r) { if (antes.indexOf(r) < 0) notify_(r, 'ministerio', 'Você é responsável por ' + m.Nome, 'Você será avisado quando alguém entrar. Se o seu supervisor der autonomia, você também decide os pedidos.', 'min:' + m.MinisterioID); });
+    return minRespOut_(u);
+  });
+}
+function saveMinAutonomia_(d, u) {
+  if (!(u.supervisiona || []).length) throw new ApiError('FORBIDDEN', 'Só supervisores definem a autonomia dos responsáveis.');
+  return withLock_(function () {
+    const t = table_('Ministerios'), m = t.rows.filter(function (x) { return x.MinisterioID === clip_(d.ministerioId, 30) && x.Ativo !== '0'; })[0]; if (!m) throw new ApiError('NOT_FOUND', 'Ministério não encontrado.');
+    const rid = clip_(d.responsavelId, 30); if (minResp_(m).indexOf(rid) < 0) throw new ApiError('VALIDATION', 'Essa pessoa não é responsável por este ministério.');
+    const au = jparse_(m.Autonomia, {}), l = (au[rid] || []).filter(function (x) { return x !== u.membroId; }); if (d.autonomia) l.push(u.membroId); if (l.length) au[rid] = l; else delete au[rid];
+    writeRow_(t, m._row, { Autonomia: JSON.stringify(au) }); audit_(u.email, 'MIN_AUTONOMIA', m.Nome + ':' + rid + ':' + (d.autonomia ? 1 : 0), 'OK');
+    const nm = nomes_(); notify_(rid, 'ministerio', d.autonomia ? 'Você ganhou autonomia em ' + m.Nome : 'Autonomia em ' + m.Nome + ' removida', d.autonomia ? (nm[u.membroId] || 'Seu supervisor') + ' permite que você decida os pedidos das pessoas da célula dele. Veja em Aprovações.' : (nm[u.membroId] || 'Seu supervisor') + ' vai decidir os pedidos das pessoas dele; você continua sendo avisado quando alguém entrar.', 'min:' + m.MinisterioID);
+    return minRespOut_(u);
   });
 }
 function listInterests_() { const mem = {}; table_('Membros').rows.forEach(function (m) { mem[m.MembroID] = m; }); const mi = {}; table_('Ministerios').rows.forEach(function (m) { mi[m.MinisterioID] = m.Nome; });
@@ -4162,7 +4210,7 @@ const ROUTES = {
   saveMember: { auth: 'any', write: 1, fn: saveMember_ }, acceptLegal: { auth: 'any', write: 1, fn: acceptLegal_ }, birthdays: { auth: 'any', fn: birthdays_ },
   rescheduleEvent: { auth: 'eventos', write: 1, fn: rescheduleEvent_ }, saveEventoFotos: { auth: 'any', write: 1, fn: saveEventoFotos_ }, listEventoFotos: { auth: 'any', fn: listEventoFotos_ }, delEventoFoto: { auth: 'any', write: 1, fn: delEventoFoto_ }, getFeedFontes: { auth: 'any', fn: getFeedFontes_ }, saveFeedFontes: { auth: 'config', write: 1, fn: saveFeedFontes_ },
   listEvents: { auth: 'any', fn: listEvents_ }, enroll: { auth: 'any', write: 1, fn: enroll_ }, listNews: { auth: 'any', fn: listNews_ },
-  listMinistries: { auth: 'any', fn: listMin_ }, interest: { auth: 'any', write: 1, fn: interest_ },
+  listMinistries: { auth: 'any', fn: listMin_ }, minResp: { auth: 'any', fn: minResp }, saveMinResp: { auth: 'min', write: 1, fn: saveMinResp_ }, saveMinAutonomia: { auth: 'any', write: 1, fn: saveMinAutonomia_ }, interest: { auth: 'any', write: 1, fn: interest_ },
   listCourses: { auth: 'any', fn: listCourses_ }, enrollCourse: { auth: 'any', write: 1, fn: enrollCourse_ }, saveCourse: { auth: 'any', write: 1, fn: saveCourse_ }, courseDetail: { auth: 'any', fn: courseDetail_ }, saveAula: { auth: 'any', write: 1, fn: saveAula_ }, deleteAula: { auth: 'any', write: 1, fn: deleteAula_ }, getAulaPdf: { auth: 'any', fn: getAulaPdf_ },
   requestStart: { auth: 'any', write: 1, fn: requestStart_ }, getClassRoll: { auth: 'any', fn: getClassRoll_ }, saveClassRoll: { auth: 'any', write: 1, fn: saveClassRoll_ }, finishCourse: { auth: 'any', write: 1, fn: finishCourse_ }, listCertificates: { auth: 'any', fn: listCertificates_ }, decideCert: { auth: 'any', write: 1, fn: decideCert_ }, certificate: { auth: 'any', fn: certificate_ },
   getSignature: { auth: 'any', fn: getSignature_ }, saveSignature: { auth: 'any', write: 1, fn: saveSignature_ }, rateAula: { auth: 'any', write: 1, fn: rateAula_ }, aulaFeedback: { auth: 'any', fn: aulaFeedback_ },

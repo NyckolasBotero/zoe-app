@@ -8,7 +8,7 @@ const cel = call('createCell', { nome: 'Célula Norte', liderId: lid, dia: 'Quar
 const lista = call('verComoLista', {}).data.itens; assert(lista.length >= 2 && !lista.some(x => x.nome === 'Pastor Admin'));
 const l = lista.find(x => x.id === lid); assert.deepEqual(l.cargos, ['Líder']); assert.equal(l.celula, 'Célula Norte');
 // lê como o líder
-const me = call('me', {}, adm, { as: lid }).data; assert.equal(me.membro.MembroID, lid); assert.equal(me.nivelCelula, 'lider'); assert.deepEqual(me.cargos, { lider: true, treinamento: false, supervisor: false });
+const me = call('me', {}, adm, { as: lid }).data; assert.equal(me.membro.MembroID, lid); assert.equal(me.nivelCelula, 'lider'); assert.deepEqual(me.cargos, { lider: true, treinamento: false, supervisor: false, respMin: false });
 const meAdm = call('me', {}).data; assert.equal(meAdm.usuario.papel, 'admin');
 // como a Ana (membro) não vê a administração
 assert.equal(call('listUsers', {}, adm, { as: ana }).ok, false);

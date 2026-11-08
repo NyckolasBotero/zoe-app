@@ -1,5 +1,16 @@
 [
  {
+  "titulo": "Responsáveis por ministério",
+  "melhorias": [
+   "Administração › Ministérios: o administrador define os responsáveis de cada ministério.",
+   "O pedido para entrar num ministério vai ao supervisor da célula da pessoa, que é quem decide. Sem responsável definido, a tarefa fica só com o supervisor.",
+   "Em Aprovações, o supervisor escolhe se cada responsável tem autonomia para decidir os pedidos das pessoas das células dele. Com autonomia, o responsável recebe e decide o pedido; sem autonomia, é apenas avisado quando a pessoa entra.",
+   "Todos os avisos (pedido novo, autonomia dada ou retirada, nova pessoa no ministério) chegam como notificação, inclusive com o app fechado."
+  ],
+  "v": "1.146",
+  "data": "07/11/2026"
+ },
+ {
   "titulo": "Ver como e botões de teste",
   "melhorias": [
    "Administradores ganharam o botão “Ver como…” no menu lateral, acima do Sair: escolha uma pessoa (com busca e filtro por Supervisor, Líder, Líder em treinamento, Pastor, Membro) e veja o app do jeito que ela vê. Uma faixa avisa o tempo todo e o botão “Voltar a ser eu” sai do modo.",
