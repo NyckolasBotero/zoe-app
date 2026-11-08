@@ -1,5 +1,17 @@
 [
  {
+  "titulo": "Zoe mais inteligente: devocional, perguntas e cuidado com a célula",
+  "melhorias": [
+   "Devocional da Zoe: todo dia um versículo (Almeida) com uma reflexão curta feita para o seu momento (novo na igreja, líder, quem serve num ministério ou membro), no topo do feed e em notificação.",
+   "Pergunte à Zoe: quando ela não sabe de cara, consulta a IA usando só os dados do app (eventos, ministérios, sua célula e o texto que a administração escrever em Dados da igreja). Se não souber, ela diz e indica a liderança.",
+   "Cuidado com a célula (Indicadores): sugestões para o líder a partir de faltas seguidas, quiz sem jogar e aniversários, com mensagem pronta para o WhatsApp (editável, com opção de reescrever por IA). Nada é enviado sozinho; toda segunda o líder recebe um aviso.",
+   "Quiz: reuniões recentes que tinham lição mas não viraram quiz agora são resgatadas automaticamente. O quiz continua podendo ser respondido dias depois.",
+   "Administração › Dados da igreja: novo campo com o que a Zoe pode contar (horários dos cultos, como chegar, contatos)."
+  ],
+  "v": "1.150",
+  "data": "08/11/2026"
+ },
+ {
   "titulo": "Cadastro facial antes da Zoe",
   "melhorias": [
    "Para quem entra pela primeira vez, o aviso de cadastro facial e uso de imagem aparece primeiro; a Zoe só começa o tutorial depois que ele é concluído.",
