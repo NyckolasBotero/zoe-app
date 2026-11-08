@@ -389,7 +389,7 @@ function greet_(d, u) {
 }
 /* ============================== CONFIG PÚBLICA ============================== */
 function cfgMap_() { const o = {}; table_('Config').rows.forEach(function (r) { o[r.Chave] = r.Valor; }); return o; }
-function publicConfig_() { const c = cfgMap_(); return { sodXp: sodXpCfg_(), nomeIgreja: c.NomeIgreja, whatsapp: c.WhatsApp, localNome: c.LocalNome, localEndereco: c.LocalEndereco, zoeInfo: c.ZoeInfo || '', discPolitica: c.DiscPolitica || 'todos', discEncontros: Number(c.DiscEncontros) || 6, consolEncontros: Number(c.ConsolEncontros) || 4, linkMapa: c.LinkMapa || '', colunasExtras: jparse_(c.ColunasExtras, []), canalYoutube: c.CanalYoutube || '', lojaWhatsapp: c.LojaWhatsApp || '', frequentadorPct: Number(c.FrequentadorPct) || 70, frequentadorJanela: Number(c.FrequentadorJanela) || 8, celulasParaSupervisor: Math.max(0, Number(c.CelulasParaSupervisor) || 0), frequenciasParaMembro: freqMembro_(), presencasParticipante: presPart_(), faltasExParticipante: faltasEx_(), sodAtivo: c.SodAtivo !== '0', notifTipos: notifTipos_(c), homeLayout: homeLayoutOk_(jparse_(c.HomeLayout, null)), navCfg: navCfgOk_(jparse_(c.NavCfg, null)), mapa: mapaCfg_(c) }; }
+function publicConfig_() { const c = cfgMap_(); return { sodXp: sodXpCfg_(), nomeIgreja: c.NomeIgreja, whatsapp: c.WhatsApp, localNome: c.LocalNome, localEndereco: c.LocalEndereco, zoeInfo: c.ZoeInfo || '', chamada: chamadaCfg_(), discPolitica: c.DiscPolitica || 'todos', discEncontros: Number(c.DiscEncontros) || 6, consolEncontros: Number(c.ConsolEncontros) || 4, linkMapa: c.LinkMapa || '', colunasExtras: jparse_(c.ColunasExtras, []), canalYoutube: c.CanalYoutube || '', lojaWhatsapp: c.LojaWhatsApp || '', frequentadorPct: Number(c.FrequentadorPct) || 70, frequentadorJanela: Number(c.FrequentadorJanela) || 8, celulasParaSupervisor: Math.max(0, Number(c.CelulasParaSupervisor) || 0), frequenciasParaMembro: freqMembro_(), presencasParticipante: presPart_(), faltasExParticipante: faltasEx_(), sodAtivo: c.SodAtivo !== '0', notifTipos: notifTipos_(c), homeLayout: homeLayoutOk_(jparse_(c.HomeLayout, null)), navCfg: navCfgOk_(jparse_(c.NavCfg, null)), mapa: mapaCfg_(c) }; }
 function mapaCfg_(c) { c = c || cfgMap_(); const n = function (k, d) { const v = Number(c[k]); return isFinite(v) && c[k] !== '' && c[k] !== undefined ? v : d; }; return { vis: n('MapaVisitanteVezes', 1), freq: n('MapaFrequentadorVezes', 3), raio: n('MapaRaioKm', 10), longe: n('MapaLongeKm', 10), alerta: n('MapaAlertaPct', 50), sedeLat: c.SedeLat === '' || c.SedeLat === undefined ? null : Number(c.SedeLat), sedeLng: c.SedeLng === '' || c.SedeLng === undefined ? null : Number(c.SedeLng) }; }
 const HOME_BLOCOS = ['hero', 'escalas', 'eventos', 'corrida', 'mural', 'proxevento', 'celula', 'aniv', 'domingo', 'cultos', 'testemunhos', 'feed', 'noticias']; // v1.100: o 'feed' faltava e era descartado ao salvar, voltando sempre para o meio da tela
 /* Layout do Início definido pelo administrador: lista de blocos {id,on,w (2-12 colunas),h (3-80 linhas)} */
@@ -537,9 +537,13 @@ function notifTipos_(c) { const o = jparse_((c || cfgMap_()).NotifTipos, {}), r 
 function saveConfig_(d, u) {
   return withLock_(function () {
     const t = table_('Config'), allow = { NomeIgreja: 120, WhatsApp: 20, LojaWhatsApp: 20, LocalNome: 120, LocalEndereco: 250, LinkMapa: 300, ZoeInfo: 1500, DiscPolitica: 10, DiscEncontros: 3, ConsolEncontros: 3 };
-    [['FrequentadorPct', 1, 100, 'O limite de presença precisa estar entre 1 e 100.'], ['FrequentadorJanela', 1, 52, 'Informe de 1 a 52 reuniões.'], ['CelulasParaSupervisor', 0, 50, 'Informe de 0 a 50 células.'], ['PresencasParaParticipante', 1, 50, 'Informe de 1 a 50 presenças.'], ['FaltasParaExParticipante', 1, 50, 'Informe de 1 a 50 faltas seguidas.'], ['CelulaMultiplicarAcima', 2, 200, 'Informe de 2 a 200 pessoas.']].forEach(function (q) {
+    [['FrequentadorPct', 1, 100, 'O limite de presença precisa estar entre 1 e 100.'], ['FrequentadorJanela', 1, 52, 'Informe de 1 a 52 reuniões.'], ['CelulasParaSupervisor', 0, 50, 'Informe de 0 a 50 células.'], ['PresencasParaParticipante', 1, 50, 'Informe de 1 a 50 presenças.'], ['FaltasParaExParticipante', 1, 50, 'Informe de 1 a 50 faltas seguidas.'], ['CelulaMultiplicarAcima', 2, 200, 'Informe de 2 a 200 pessoas.'], ['ChamadaPasso1', 5, 180, 'O intervalo inicial vai de 5 a 180 minutos.'], ['ChamadaQtd1', 1, 10, 'Informe de 1 a 10 lembretes no ritmo inicial.'], ['ChamadaPasso2', 5, 120, 'O intervalo seguinte vai de 5 a 120 minutos.'], ['ChamadaPassoManha', 10, 240, 'O intervalo da manhã vai de 10 a 240 minutos.'], ['ChamadaDias', 1, 14, 'Informe de 1 a 14 dias de lembrete.']].forEach(function (q) {
       if (d[q[0]] === undefined) return; const n = Number(d[q[0]]); if (!isFinite(n) || n < q[1] || n > q[2] || Math.round(n) !== n) throw new ApiError('VALIDATION', q[3]);
       const r0 = t.rows.filter(function (x) { return x.Chave === q[0]; })[0]; if (r0) writeRow_(t, r0._row, { Valor: String(n) }); else appendRow_(t, { Chave: q[0], Valor: String(n) });
+    });
+    ['ChamadaHoraIni', 'ChamadaFim', 'ChamadaManha'].forEach(function (k) {
+      if (d[k] === undefined) return; const v = String(d[k]).trim(); if (!/^([01]?\d|2[0-3]):[0-5]\d$/.test(v)) throw new ApiError('VALIDATION', 'Use o formato HH:MM nos horários da chamada (ex.: 22:30).');
+      const r0 = t.rows.filter(function (x) { return x.Chave === k; })[0]; if (r0) writeRow_(t, r0._row, { Valor: v }); else appendRow_(t, { Chave: k, Valor: v });
     });
     if (d.SodAtivo !== undefined) { const v = d.SodAtivo === false || d.SodAtivo === '0' || d.SodAtivo === 0 ? '0' : '1', r1 = t.rows.filter(function (x) { return x.Chave === 'SodAtivo'; })[0]; if (r1) writeRow_(t, r1._row, { Valor: v }); else appendRow_(t, { Chave: 'SodAtivo', Valor: v }); audit_(u.email, 'SOD_ATIVO', v, 'OK'); }
     if (d.FrequenciasParaMembro !== undefined) {
@@ -3587,6 +3591,39 @@ function lembreteVisitantes() {
   });
   pushFlush_();
 }
+// ===== Lembretes da chamada da célula: a noite da reunião, depois de hora em hora nas manhãs seguintes até o líder lançar =====
+function hhmm_(v, def) { const m = /^(\d{1,2}):(\d{2})$/.exec(String(v || '').trim()); return m && Number(m[1]) < 24 && Number(m[2]) < 60 ? Number(m[1]) * 60 + Number(m[2]) : def; }
+function chamadaCfg_() {
+  const c = cfgMap_(), n = function (k, d, a, b) { const v = Number(c[k]); return c[k] !== '' && c[k] !== undefined && isFinite(v) && v >= a && v <= b ? Math.round(v) : d; }, fim = hhmm_(c.ChamadaFim, 0);
+  return { ini: hhmm_(c.ChamadaHoraIni, 22 * 60 + 30), p1: n('ChamadaPasso1', 30, 5, 180), q1: n('ChamadaQtd1', 3, 1, 10), p2: n('ChamadaPasso2', 10, 5, 120), fim: fim === 0 ? 1440 : fim, manha: hhmm_(c.ChamadaManha, 8 * 60), pm: n('ChamadaPassoManha', 60, 10, 240), dias: n('ChamadaDias', 3, 1, 14), limite: 22 * 60 };
+}
+// horários dos lembretes, em minutos desde 00:00 do dia da reunião (valores acima de 1440 caem nos dias seguintes)
+function chamadaSlots_(cfg) {
+  const out = []; let t = cfg.ini; for (let k = 0; k < cfg.q1; k++) { out.push(t); t += cfg.p1; }
+  let u = out[out.length - 1] + cfg.p2; while (u <= cfg.fim) { out.push(u); u += cfg.p2; }
+  for (let d = 1; d <= cfg.dias; d++) for (let m = cfg.manha; m <= cfg.limite; m += cfg.pm) out.push(d * 1440 + m);
+  return out;
+}
+function dataMenos_(agoraMs, k) { return Utilities.formatDate(new Date(agoraMs - k * 86400000), CFG.TZ, 'yyyy-MM-dd'); }
+function chamadaRoda_(agoraMs) {
+  let cfg, cels, reun = {}; try { cfg = chamadaCfg_(); cels = table_('Celulas').rows.filter(function (c) { return c.Status !== 'Inativa' && c.Dia && (c.LiderID || c.TreinamentoID); }); table_('Reunioes').rows.forEach(function (r) { reun[r.CelulaID + '|' + r.Data] = 1; }); } catch (e) { return 0; }
+  if (!cels.length) return 0;
+  const slots = chamadaSlots_(cfg), hm = Utilities.formatDate(new Date(agoraMs), CFG.TZ, 'HH:mm').split(':'), min = Number(hm[0]) * 60 + Number(hm[1]), cc = CacheService.getScriptCache(); let enviados = 0;
+  for (let k = 0; k <= cfg.dias; k++) {
+    const D = dataMenos_(agoraMs, k), agora = k * 1440 + min, dia = norm_(diaDe_(D)).slice(0, 3);
+    let slot = -1; slots.forEach(function (x) { if (x <= agora && x > slot) slot = x; }); if (slot < 0 || agora - slot > 9) continue;
+    cels.forEach(function (c) {
+      if (norm_(c.Dia).slice(0, 3) !== dia || reun[c.CelulaID + '|' + D]) return;
+      const key = 'ch:' + c.CelulaID + ':' + D; let cur = null; try { cur = cc.get(key); } catch (e) { cur = null; } if (cur !== null && cur !== undefined && Number(cur) >= slot) return;
+      try { cc.put(key, String(slot), 21600); } catch (e) { /* ok */ }
+      const hoje = k === 0, texto = hoje ? 'Faltou lançar a chamada da célula de hoje. Leva só um minutinho: toque para lançar. 🙏' : 'A chamada da célula de ' + diaDe_(D).toLowerCase() + ' (' + dmy_(D) + ') ainda não foi lançada. Toque para lançar quando puder. 🙏';
+      [c.LiderID, c.TreinamentoID].filter(function (x, i, a) { return x && a.indexOf(x) === i; }).forEach(function (m) { PUSHQ_.push({ m: m, t: 'Chamada pendente: ' + c.Nome + ' 📋', b: texto, k: 'freq' }); enviados++; });
+      if (!cc.get('chn:' + c.CelulaID + ':' + D)) { try { cc.put('chn:' + c.CelulaID + ':' + D, '1', 21600); } catch (e) { /* ok */ } [c.LiderID, c.TreinamentoID].filter(function (x, i, a) { return x && a.indexOf(x) === i; }).forEach(function (m) { notify_(m, 'freq', 'Chamada pendente: ' + c.Nome, texto, 'freq'); }); }
+    });
+  }
+  pushFlush_(); return enviados;
+}
+function lembreteChamada() { return chamadaRoda_(Date.now()); }
 function msgPadrao_(apelido) { return 'Paz, ' + apelido + '! Aqui é da Igreja Ministério Zoe. Ficamos muito alegres com a sua presença no culto! Que Deus te abençoe. Quando quiser, tem uma célula pertinho de você e vamos adorar te receber. 🙏'; }
 function saveVisitor_(d, u) {
   if (!ehLider_(u)) throw new ApiError('FORBIDDEN', 'Só líderes lançam visitantes.');
@@ -5130,4 +5167,6 @@ function instalaGatilhos_() {
   if (!temQ) ScriptApp.newTrigger('enviaQuizzes').timeBased().everyDays(1).atHour(9).create();
   const temV = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'lembreteVisitantes'; });
   if (!temV) ScriptApp.newTrigger('lembreteVisitantes').timeBased().everyMinutes(15).create();
+  const temC = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'lembreteChamada'; });
+  if (!temC) ScriptApp.newTrigger('lembreteChamada').timeBased().everyMinutes(5).create();
 }

@@ -1,5 +1,15 @@
 [
   {
+    "titulo": "Entrada sem rosto/termos, Zoe lembra do perfil e lembretes da chamada",
+    "melhorias": [
+      "Novos usuários não passam mais por cadastro facial nem termos na entrada: entram direto e veem o tutorial da Zoe inteiro, sem janelas sobrepostas. O aviso de uso de imagem, os termos e a leitura do rosto só aparecem quando a pessoa abre a edição do próprio perfil (com a opção “Agora não”).",
+      "Enquanto o perfil estiver incompleto, a Zoe manda a cada 10 minutos uma mensagem discreta e gentil com um versículo, com os botões “Completar agora” e “Depois”. Ela não aparece se a pessoa estiver digitando, com uma janela aberta ou já editando o perfil, e some sozinha depois de alguns segundos.",
+      "Chamada da célula: se o líder não lançar a frequência, o celular dele recebe aviso às 22:30, 23:00 e 23:30, depois de 10 em 10 minutos até 00:00. Se continuar sem lançar, o lembrete volta nas manhãs seguintes, a partir das 8h, de hora em hora, por alguns dias. Para ao lançar. Os horários, os intervalos e os dias são ajustados em Administração › Dados da igreja."
+    ],
+    "v": "1.157",
+    "data": "08/11/2026"
+  },
+  {
     "titulo": "Mensagem pastoral direto nas Conversas, com 👍",
     "melhorias": [
       "O botão flutuante de chat do Studio saiu. Agora a mensagem pastoral chega pelo ícone de Conversas de quem está transmitindo ou projetando: o painel abre sozinho, mostra a mensagem em destaque numa faixa vermelha separada das conversas normais, toca o aviso e vibra.",
