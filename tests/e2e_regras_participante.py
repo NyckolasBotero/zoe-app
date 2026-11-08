@@ -5,7 +5,7 @@ with sync_playwright() as p:
     pg.add_style_tag(content='#pushbar{display:none!important}')
     pg.evaluate("go('admin')"); pg.wait_for_timeout(500)
     pg.evaluate("sub('admin','def')") if False else None
-    pg.click('text=Definições de Parâmetros'); pg.wait_for_selector('#app_p',timeout=8000)
+    pg.evaluate("admGrupo('cel')"); pg.wait_for_selector('#app_p',timeout=8000)
     assert pg.input_value('#app_p')=='3' and pg.input_value('#app_f')=='6'
     pg.fill('#app_p','4'); pg.fill('#app_f','5'); pg.click('button:has-text("Salvar regras")'); pg.wait_for_timeout(800)
     cfg=pg.evaluate("api('getPublicConfig',{}).catch(()=>null)"); 

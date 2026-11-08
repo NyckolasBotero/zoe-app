@@ -1,5 +1,14 @@
 [
  {
+  "titulo": "Configurações de células no painel Células",
+  "melhorias": [
+   "Regras Células (permissões por guia e parâmetros), Regras Membro (presenças para participante e faltas para ex-participante) e a IA do quiz das lições agora ficam em Administração › Células, junto com a lista de células.",
+   "Definições de Parâmetros ficou só com as configurações gerais (menu, e-mail, Sod, notificações, colunas, dados da igreja)."
+  ],
+  "v": "1.140",
+  "data": "07/11/2026"
+ },
+ {
   "titulo": "Meus Grupos no padrão do menu",
   "melhorias": [
    "O botão Meus Grupos agora tem o mesmo visual dos demais itens do menu lateral (ícone, tamanho da letra e espaçamento)."

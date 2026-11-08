@@ -12,7 +12,7 @@ with sync_playwright() as p:
     b=p.chromium.launch(); pg=b.new_page(viewport={'width':1200,'height':900}); pg.on('pageerror',lambda e:errs.append(str(e)))
     pg.on('dialog',lambda d:d.accept())
     login(pg,'admin@zoe.com','SenhaForte123')
-    pg.click('.nv:has-text("Administração")'); pg.wait_for_selector('.admtabs'); pg.evaluate("admGrupo('def')"); pg.wait_for_selector('h3:has-text("Regras Células")'); pg.wait_for_timeout(1800)
+    pg.click('.nv:has-text("Administração")'); pg.wait_for_selector('.admtabs'); pg.evaluate("admGrupo('cel')"); pg.wait_for_selector('h3:has-text("Regras Células")'); pg.wait_for_timeout(1800)
     t=pg.inner_text('#view')
     for g in ['Frequência','Planejamento','Papéis','Oração','Indicadores','Membros','Perfil da célula','Privacidade','Presença','Histórico','Mural de fotos','Organograma']: assert g in t,g
     assert 'frequentador' in t.lower() and 'líder em treinamento' in t.lower()
@@ -20,7 +20,7 @@ with sync_playwright() as p:
     # novo tipo
     pg.fill('#nt_n','Visitante'); pg.click('button:has-text("Criar tipo")'); pg.wait_for_selector('.chip:has-text("Visitante")'); pg.wait_for_timeout(900)
     assert 'Visitante' in pg.inner_html('#nu_p')
-    pg.evaluate("admGrupo('def')"); pg.wait_for_selector('#rc_p')
+    pg.evaluate("admGrupo('cel')"); pg.wait_for_selector('#rc_p')
     # parâmetros
     pg.fill('#rc_p','60'); pg.fill('#rc_s','0'); pg.click('button:has-text("Salvar parâmetros")'); pg.wait_for_timeout(800)
     # ver/editar: Membro passa a poder ver Frequência (sem editar)
