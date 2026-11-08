@@ -1,5 +1,13 @@
 [
  {
+  "titulo": "Meus Grupos no padrão do menu",
+  "melhorias": [
+   "O botão Meus Grupos agora tem o mesmo visual dos demais itens do menu lateral (ícone, tamanho da letra e espaçamento)."
+  ],
+  "v": "1.139",
+  "data": "07/11/2026"
+ },
+ {
   "titulo": "Correção no cartão do quiz",
   "melhorias": [
    "Ao salvar o Worker da Cloudflare, o cartão do Quiz das lições passa a mostrar o estado certo na hora, sem recarregar a página."
