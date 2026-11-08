@@ -36,7 +36,7 @@ const SHEETS = {
   Usuarios: ['Email', 'SenhaHash', 'Salt', 'Papel', 'Status', 'MembroID', 'TrocarSenha', 'CriadoEm', 'UltimoAcesso', 'GuiaVisto', 'SenhaVis'],
   Membros: ['MembroID', 'Nome', 'Simples', 'Apelido', 'Sexo', 'Nascimento', 'Nacionalidade', 'Naturalidade', 'Sangue', 'Doador', 'Profissao', 'Telefone', 'Email', 'CEP', 'UF', 'Cidade', 'Endereco', 'Bairro', 'DataDecisao', 'Batizado', 'DataBatismo', 'IgrejaBatismo', 'Mae', 'Pai', 'EstadoCivil', 'Conjuge', 'DataCasamento', 'Filhos', 'Foto', 'CelulaID', 'EhMembro', 'Status', 'DataSaida', 'Extras', 'AceitePrivacidade', 'AceiteTermos', 'CriadoEm', 'DataEntrada', 'Lat', 'Lng', 'SodOff', 'Crista', 'CongregaZoe', 'Parente'],
   Celulas: ['CelulaID', 'Nome', 'Descricao', 'Foto', 'LiderID', 'SupervisorID', 'Dia', 'Inicio', 'Fim', 'Categoria', 'Faixa', 'Bairro', 'Cidade', 'UF', 'Endereco', 'TreinamentoID', 'MaeID', 'PrivGrupo', 'PrivTel', 'PrivEmail', 'PrivEnd', 'Status', 'Lat', 'Lng', 'Consolidadores', 'Equipe', 'RecessoIni', 'RecessoFim', 'RecessoAviso'],
-  Reunioes: ['ReuniaoID', 'CelulaID', 'Data', 'Presentes', 'PresencaDeDeus', 'Obs', 'ForaDoDia', 'Elenco', 'Termometro', 'Foto', 'LicaoID', 'LicaoTitulo', 'LicaoResumo', 'Papeis', 'VisitaSup'],
+  Reunioes: ['ReuniaoID', 'CelulaID', 'Data', 'Presentes', 'PresencaDeDeus', 'Obs', 'ForaDoDia', 'Elenco', 'Termometro', 'Foto', 'LicaoID', 'LicaoTitulo', 'LicaoResumo', 'Papeis', 'VisitaSup', 'Oferta'],
   Posts: ['PostID', 'Tipo', 'Escopo', 'CelulaID', 'AutorID', 'Titulo', 'Texto', 'Foto', 'Meta', 'Data', 'Status'],
   Comentarios: ['ComentID', 'PostID', 'MembroID', 'Texto', 'Data'],
   Visitantes: ['VisitanteID', 'Nome', 'Apelido', 'Telefone', 'Email', 'Nascimento', 'Endereco', 'Bairro', 'Cidade', 'UF', 'Lat', 'Lng', 'Data', 'RegistradoPor', 'CelulaID', 'Distancia', 'Contatado', 'ContatadoPor', 'ContatoData', 'Msg', 'Obs', 'Decisao', 'Status', 'SupervisorID', 'LiderID', 'ConsolidadorID', 'TriagemPor', 'EncaminhadoEm', 'AceitoEm', 'AceitoPor', 'MembroID', 'CelulaProximaID', 'AvisarEm', 'AvisoEm', 'Sexo', 'Convite', 'ConviteQuem', 'Notas'],
@@ -54,7 +54,7 @@ const SHEETS = {
   UsoDia: ['Dia', 'IACalls', 'IAErros', 'IANeurons', 'WorkerCalls', 'DiretoCalls', 'PushEnvios', 'PushOk', 'PushFalha'],
   PapeisLog: ['LogID', 'CelulaID', 'MembroID', 'Papel', 'Acao', 'Por', 'Data'],
   Oracoes: ['OracaoID', 'CelulaID', 'MembroID', 'Tema', 'Titulo', 'Texto', 'Data', 'Oraram'],
-  Eventos: ['EventoID', 'Titulo', 'Data', 'Hora', 'Local', 'Descricao', 'Programacao', 'Escopo', 'CelulaID', 'CriadoPor', 'Status', 'Foto', 'Insignia', 'DataOriginal', 'Remarcado', 'MotivoRemarca', 'FotosAvisoEm', 'PostID'],
+  Eventos: ['EventoID', 'Titulo', 'Data', 'Hora', 'Local', 'Descricao', 'Programacao', 'Escopo', 'CelulaID', 'CriadoPor', 'Status', 'Foto', 'Insignia', 'DataOriginal', 'Remarcado', 'MotivoRemarca', 'FotosAvisoEm', 'PostID', 'Palestrantes'],
   EventoPresenca: ['EventoID', 'MembroID', 'Data'],
   Cultos: ['Data', 'Culto', 'MembroID', 'RegistradoPor', 'Hora'],
   Metricas: ['Slot', 'Pagina', 'Acao', 'N', 'Erros', 'RttSoma', 'RttMax', 'SrvSoma', 'SrvMax', 'Lentas', 'Aparelhos', 'Hist', 'LockSoma', 'EsperaSoma'],
@@ -390,7 +390,7 @@ function greet_(d, u) {
 }
 /* ============================== CONFIG PÚBLICA ============================== */
 function cfgMap_() { const o = {}; table_('Config').rows.forEach(function (r) { o[r.Chave] = r.Valor; }); return o; }
-function publicConfig_() { const c = cfgMap_(); return { sodXp: sodXpCfg_(), nomeIgreja: c.NomeIgreja, whatsapp: c.WhatsApp, localNome: c.LocalNome, localEndereco: c.LocalEndereco, zoeInfo: c.ZoeInfo || '', chamada: chamadaCfg_(), recessoIgreja: recessoIgreja_(), discPolitica: c.DiscPolitica || 'todos', discEncontros: Number(c.DiscEncontros) || 6, consolEncontros: Number(c.ConsolEncontros) || 4, linkMapa: c.LinkMapa || '', colunasExtras: jparse_(c.ColunasExtras, []), canalYoutube: c.CanalYoutube || '', lojaWhatsapp: c.LojaWhatsApp || '', frequentadorPct: Number(c.FrequentadorPct) || 70, frequentadorJanela: Number(c.FrequentadorJanela) || 8, celulasParaSupervisor: Math.max(0, Number(c.CelulasParaSupervisor) || 0), frequenciasParaMembro: freqMembro_(), presencasParticipante: presPart_(), faltasExParticipante: faltasEx_(), sodAtivo: c.SodAtivo !== '0', notifTipos: notifTipos_(c), homeLayout: homeLayoutOk_(jparse_(c.HomeLayout, null)), navCfg: navCfgOk_(jparse_(c.NavCfg, null)), mapa: mapaCfg_(c) }; }
+function publicConfig_() { const c = cfgMap_(); return { sodXp: sodXpCfg_(), nomeIgreja: c.NomeIgreja, whatsapp: c.WhatsApp, localNome: c.LocalNome, localEndereco: c.LocalEndereco, zoeInfo: c.ZoeInfo || '', chamada: chamadaCfg_(), recessoIgreja: recessoIgreja_(), ofertaAtiva: c.OfertaAtiva === '1', discPolitica: c.DiscPolitica || 'todos', discEncontros: Number(c.DiscEncontros) || 6, consolEncontros: Number(c.ConsolEncontros) || 4, linkMapa: c.LinkMapa || '', colunasExtras: jparse_(c.ColunasExtras, []), canalYoutube: c.CanalYoutube || '', lojaWhatsapp: c.LojaWhatsApp || '', frequentadorPct: Number(c.FrequentadorPct) || 70, frequentadorJanela: Number(c.FrequentadorJanela) || 8, celulasParaSupervisor: Math.max(0, Number(c.CelulasParaSupervisor) || 0), frequenciasParaMembro: freqMembro_(), presencasParticipante: presPart_(), faltasExParticipante: faltasEx_(), sodAtivo: c.SodAtivo !== '0', notifTipos: notifTipos_(c), homeLayout: homeLayoutOk_(jparse_(c.HomeLayout, null)), navCfg: navCfgOk_(jparse_(c.NavCfg, null)), mapa: mapaCfg_(c) }; }
 function mapaCfg_(c) { c = c || cfgMap_(); const n = function (k, d) { const v = Number(c[k]); return isFinite(v) && c[k] !== '' && c[k] !== undefined ? v : d; }; return { vis: n('MapaVisitanteVezes', 1), freq: n('MapaFrequentadorVezes', 3), raio: n('MapaRaioKm', 10), longe: n('MapaLongeKm', 10), alerta: n('MapaAlertaPct', 50), sedeLat: c.SedeLat === '' || c.SedeLat === undefined ? null : Number(c.SedeLat), sedeLng: c.SedeLng === '' || c.SedeLng === undefined ? null : Number(c.SedeLng) }; }
 const HOME_BLOCOS = ['hero', 'escalas', 'eventos', 'corrida', 'mural', 'proxevento', 'celula', 'aniv', 'domingo', 'cultos', 'testemunhos', 'feed', 'noticias']; // v1.100: o 'feed' faltava e era descartado ao salvar, voltando sempre para o meio da tela
 /* Layout do Início definido pelo administrador: lista de blocos {id,on,w (2-12 colunas),h (3-80 linhas)} */
@@ -556,6 +556,7 @@ function saveConfig_(d, u) {
       if (d[k] === undefined) return; const v = String(d[k]).trim(); if (!/^([01]?\d|2[0-3]):[0-5]\d$/.test(v)) throw new ApiError('VALIDATION', 'Use o formato HH:MM nos horários da chamada (ex.: 22:30).');
       const r0 = t.rows.filter(function (x) { return x.Chave === k; })[0]; if (r0) writeRow_(t, r0._row, { Valor: v }); else appendRow_(t, { Chave: k, Valor: v });
     });
+    if (d.OfertaAtiva !== undefined) { const v = (d.OfertaAtiva === true || d.OfertaAtiva === '1' || d.OfertaAtiva === 1) ? '1' : '0', r1 = t.rows.filter(function (x) { return x.Chave === 'OfertaAtiva'; })[0]; if (r1) writeRow_(t, r1._row, { Valor: v }); else appendRow_(t, { Chave: 'OfertaAtiva', Valor: v }); audit_(u.email, 'OFERTA_CAMPO', v, 'OK'); }
     if (d.SodAtivo !== undefined) { const v = d.SodAtivo === false || d.SodAtivo === '0' || d.SodAtivo === 0 ? '0' : '1', r1 = t.rows.filter(function (x) { return x.Chave === 'SodAtivo'; })[0]; if (r1) writeRow_(t, r1._row, { Valor: v }); else appendRow_(t, { Chave: 'SodAtivo', Valor: v }); audit_(u.email, 'SOD_ATIVO', v, 'OK'); }
     if (d.FrequenciasParaMembro !== undefined) {
       const n = Number(d.FrequenciasParaMembro); if (!isFinite(n) || n < 1 || n > 50 || Math.round(n) !== n) throw new ApiError('VALIDATION', 'Informe um número inteiro de 1 a 50.');
@@ -695,6 +696,11 @@ function saveAttendance_(d, u) {
     // Termômetro da presença de Deus: 0 (frio) a 100 (forte manifestação). "PresencaDeDeus" continua marcado a partir de 50 para os indicadores antigos.
     let term = d.termometro !== undefined && d.termometro !== '' ? Math.round(Number(d.termometro)) : (d.deus ? 80 : 0); if (!isFinite(term)) throw new ApiError('VALIDATION', 'Termômetro inválido.'); term = Math.max(0, Math.min(100, term));
     const patch = { Presentes: String(pres.length), PresencaDeDeus: term >= 50 ? '1' : '0', Termometro: String(term), Obs: clip_(d.obs, 500), ForaDoDia: fora ? '1' : '0', Elenco: elenco.join(','), Foto: d.foto !== undefined ? fotoOk_(d.foto) : (ex ? ex.Foto || '' : '') };
+    if (ofertaAtiva_() && d.oferta !== undefined) {
+      const raw = String(d.oferta === null ? '' : d.oferta).replace(/\s/g, '').replace(/^R\$/i, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.'), val = raw === '' ? '' : Number(raw);
+      if (val !== '' && (!isFinite(val) || val < 0 || val > 10000000)) throw new ApiError('VALIDATION', 'Valor da oferta inválido.');
+      ensureCols_('Reunioes', ['Oferta']); patch.Oferta = val === '' ? '' : String(Math.round(val * 100) / 100);
+    }
     if (d.visitaSup !== undefined) { ensureCols_('Reunioes', ['VisitaSup']); patch.VisitaSup = (d.visitaSup === true || d.visitaSup === '1' || d.visitaSup === 1 || d.visitaSup === 'sim') ? '1' : '0'; }
     if (quer) { patch.LicaoID = licao.id; patch.LicaoTitulo = licao.titulo; patch.LicaoResumo = licao.resumo; }
     // quem estava responsável por cada papel nesta reunião (a foto dos papéis do dia; não muda se a reunião for editada depois)
@@ -736,7 +742,7 @@ function history_(d, u) {
   const vm = votosMapa_(), visPor = {}; lazy_('PresVisitas').rows.forEach(function (x) { if (x.CelulaID === id) (visPor[x.Data] = visPor[x.Data] || []).push({ nome: x.Nome || nome[x.MembroID] || '?', de: x.Tipo === 'membro' ? (cn_()[x.DeCelulaID] || 'sem célula') : '', novo: x.Tipo === 'novo' }); });
   const lista = l.map(function (r) {
     const ids = pres[r.Data] || [], tm = termMedia_(r, vm), el = elencoDe(r, ids), aus = el.filter(function (m) { return ids.indexOf(m) < 0; }).map(function (m) { return nome[m] || '?'; });
-    return { data: r.Data, dia: r.Data ? diaDe_(r.Data) : '', presentes: ids.length, total: Math.max(1, el.length), deus: tm.media >= 50, termometro: tm.media, termLider: tm.lider, votos: tm.votos, visitantes: visPor[r.Data] || [], obs: r.Obs || '', foraDoDia: r.ForaDoDia === '1', visitaSup: r.VisitaSup === '1' ? true : (r.VisitaSup === '0' ? false : null), licao: r.LicaoTitulo || '', licaoOutra: r.LicaoResumo || '', papeis: jparse_(r.Papeis, []).map(function (x) { return { nome: nome[x.m] || '?', papel: x.p }; }), nomesPresentes: ids.map(function (i) { return nome[i] || '?'; }), nomesAusentes: aus };
+    return { data: r.Data, dia: r.Data ? diaDe_(r.Data) : '', presentes: ids.length, total: Math.max(1, el.length), deus: tm.media >= 50, termometro: tm.media, termLider: tm.lider, votos: tm.votos, visitantes: visPor[r.Data] || [], obs: r.Obs || '', foraDoDia: r.ForaDoDia === '1', oferta: ofertaAtiva_() && r.Oferta !== '' && r.Oferta !== undefined ? Number(r.Oferta) : null, visitaSup: r.VisitaSup === '1' ? true : (r.VisitaSup === '0' ? false : null), licao: r.LicaoTitulo || '', licaoOutra: r.LicaoResumo || '', papeis: jparse_(r.Papeis, []).map(function (x) { return { nome: nome[x.m] || '?', papel: x.p }; }), nomesPresentes: ids.map(function (i) { return nome[i] || '?'; }), nomesAusentes: aus };
   });
   const media = lista.length ? Math.round(lista.reduce(function (a, r) { return a + Math.min(1, r.presentes / r.total); }, 0) / lista.length * 100) : 0;
   const semReuniao = lazy_('SemReuniao').rows.filter(function (x) { return x.CelulaID === id; }).sort(function (a, b) { return a.Data < b.Data ? 1 : -1; }).slice(0, 60).map(function (x) { return { data: x.Data, dia: diaDe_(x.Data), motivo: x.Motivo }; });
@@ -814,6 +820,7 @@ function albumSupervisao_(d, u) {
 }
 
 // ===== Recesso: da igreja (Config) e da célula (definido pelo líder no perfil do pequeno grupo) =====
+function ofertaAtiva_() { return cfgMap_().OfertaAtiva === '1'; }
 function recessoIgreja_() { const c = cfgMap_(); return { ini: String(c.RecessoIgrejaIni || ''), fim: String(c.RecessoIgrejaFim || '') }; }
 function dataValida_(v) { return /^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) && !isNaN(new Date(v + 'T12:00:00').getTime()); }
 function recessoDe_(c, data, ig) { ig = ig || recessoIgreja_(); if (ig.ini && ig.fim && data >= ig.ini && data <= ig.fim) return 'igreja'; if (c && c.RecessoIni && c.RecessoFim && data >= c.RecessoIni && data <= c.RecessoFim) return 'celula'; return ''; }
@@ -853,6 +860,14 @@ function recessoRoda_(agoraMs) {
   let cels, ig; try { cels = table_('Celulas').rows.filter(function (c) { return c.Status !== 'Inativa'; }); ig = recessoIgreja_(); } catch (e) { return 0; }
   const hoje = Utilities.formatDate(new Date(agoraMs), CFG.TZ, 'yyyy-MM-dd'), igAtivo = !!(ig.ini && ig.fim && ig.ini <= hoje); let n = 0;
   if (!igAtivo && !cels.some(function (c) { return c.RecessoIni && c.RecessoFim; })) return 0;
+  if (igAtivo && ig.fim >= hoje) { // início do recesso institucional: avisa os líderes uma única vez
+    const tc = table_('Config'), ch = ig.ini + '|' + ig.fim, ra = tc.rows.filter(function (x) { return x.Chave === 'RecessoIgrejaAviso'; })[0];
+    if (!ra || ra.Valor !== ch) {
+      if (ra) writeRow_(tc, ra._row, { Valor: ch }); else appendRow_(tc, { Chave: 'RecessoIgrejaAviso', Valor: ch });
+      const br0 = function (x) { return String(x).split('-').reverse().join('/'); }, vistos = {};
+      cels.forEach(function (c) { [c.LiderID, c.TreinamentoID].forEach(function (m) { if (m && !vistos[m]) { vistos[m] = 1; notify_(m, 'recesso', 'Recesso institucional 🌴', 'A igreja está em recesso de ' + br0(ig.ini) + ' a ' + br0(ig.fim) + '. As reuniões desse período ficam como “Recesso institucional” e os lembretes da chamada estão pausados.', 'recesso'); n++; } }); });
+    }
+  }
   const reun = {}; table_('Reunioes').rows.forEach(function (r) { reun[r.CelulaID + '|' + r.Data] = 1; });
   const st = lazy_('SemReuniao'), ja = {}; st.rows.forEach(function (r) { ja[r.CelulaID + '|' + r.Data] = 1; }); const ct = table_('Celulas'), br = function (x) { return String(x).split('-').reverse().join('/'); };
   cels.forEach(function (c) {
@@ -865,7 +880,7 @@ function recessoRoda_(agoraMs) {
     for (let k = 0; k <= 45; k++) {
       const D = Utilities.formatDate(new Date(agoraMs - k * 86400000), CFG.TZ, 'yyyy-MM-dd'); if (D < de) break;
       const mot = recessoDe_(c, D, ig); if (!mot || norm_(diaDe_(D)).slice(0, 3) !== dia || reun[c.CelulaID + '|' + D] || ja[c.CelulaID + '|' + D]) continue;
-      appendRow_(st, { CelulaID: c.CelulaID, Data: D, Motivo: mot === 'igreja' ? 'Recesso da igreja' : 'Recesso da célula', Criado: now_() }); ja[c.CelulaID + '|' + D] = 1; n++;
+      appendRow_(st, { CelulaID: c.CelulaID, Data: D, Motivo: mot === 'igreja' ? 'Recesso institucional' : 'Recesso da célula', Criado: now_() }); ja[c.CelulaID + '|' + D] = 1; n++;
     }
   });
   return n;
@@ -1552,7 +1567,7 @@ function listEvents_(d, u) {
   try { avisosEventosPassados_(); } catch (e) { }
   const ins = {}; table_('Inscricoes').rows.forEach(function (r) { if (r.MembroID === u.membroId) ins[r.EventoID] = 1; }); const lim = Utilities.formatDate(new Date(Date.now() - 30 * 86400000), CFG.TZ, 'yyyy-MM-dd');
   return table_('Eventos').rows.filter(function (e) { return e.Status !== 'Cancelado' && e.Data >= lim && (e.Escopo !== 'celula' || e.CelulaID === u.celulaId || can_(u, 'celulas')); }).sort(function (a, b) { return a.Data < b.Data ? -1 : 1; })
-    .map(function (e) { return { id: e.EventoID, titulo: e.Titulo, data: e.Data, hora: e.Hora, local: e.Local, descricao: e.Descricao, programacao: jparse_(e.Programacao, []), escopo: e.Escopo, celulaId: e.CelulaID, foto: e.Foto || '', insignia: e.Insignia || '', inscrito: !!ins[e.EventoID], adm: e.Escopo !== 'celula', remarcado: e.Remarcado === '1', dataOriginal: e.DataOriginal || '', motivo: e.MotivoRemarca || '', postId: e.PostID || '' }; });
+    .map(function (e) { return { id: e.EventoID, titulo: e.Titulo, data: e.Data, hora: e.Hora, local: e.Local, descricao: e.Descricao, programacao: jparse_(e.Programacao, []), escopo: e.Escopo, celulaId: e.CelulaID, foto: e.Foto || '', insignia: e.Insignia || '', inscrito: !!ins[e.EventoID], adm: e.Escopo !== 'celula', remarcado: e.Remarcado === '1', dataOriginal: e.DataOriginal || '', motivo: e.MotivoRemarca || '', postId: e.PostID || '', palestrantes: jparse_(e.Palestrantes, []) }; });
 }
 
 /* ===== Eventos que passaram: remarcar, avisar a Mídia, fotos do evento e post "Como foi…" ===== */
@@ -1627,10 +1642,15 @@ function saveFeedFontes_(d, u) {
   });
 }
 function fotoOk_(v) { v = String(v || ''); if (v && (!/^data:image\/(jpeg|png|webp);base64,/.test(v) || v.length > 45000)) throw new ApiError('VALIDATION', 'Foto inválida ou muito grande.'); return v; }
+// Palestrantes (opcional): até 8, cada um com nome e foto pequena (opcional)
+function palestrantesOk_(v) {
+  return (Array.isArray(v) ? v : []).slice(0, 8).map(function (x) { const f = fotoOk_(x && x.foto); if (f.length > 7000) throw new ApiError('VALIDATION', 'A foto do palestrante é muito grande.'); return { nome: clip_(x && x.nome, 80), foto: f }; }).filter(function (x) { return x.nome; });
+}
 function createEvent_(d, u) {
+  ensureCols_('Eventos', ['Palestrantes']);
   return withLock_(function () {
     const t = clip_(d.titulo, 120), data = clip_(d.data, 10); if (!t || !data || !dateOk_(data)) throw new ApiError('VALIDATION', 'Informe título e data válida.');
-    appendRow_(table_('Eventos'), { EventoID: id_('E'), Titulo: t, Data: data, Hora: clip_(d.hora, 5), Local: clip_(d.local, 150), Descricao: clip_(d.descricao, 1000), Programacao: JSON.stringify((d.programacao || []).slice(0, 30).map(function (x) { return clip_(x, 120); })), Escopo: 'igreja', CriadoPor: u.membroId, Status: 'Ativo', Foto: fotoOk_(d.foto), Insignia: clip_(d.insignia, 60) });
+    appendRow_(table_('Eventos'), { EventoID: id_('E'), Titulo: t, Data: data, Hora: clip_(d.hora, 5), Local: clip_(d.local, 150), Descricao: clip_(d.descricao, 1000), Programacao: JSON.stringify((d.programacao || []).slice(0, 30).map(function (x) { return clip_(x, 120); })), Escopo: 'igreja', CriadoPor: u.membroId, Status: 'Ativo', Foto: fotoOk_(d.foto), Insignia: clip_(d.insignia, 60), Palestrantes: JSON.stringify(palestrantesOk_(d.palestrantes)) });
     audit_(u.email, 'EVENTO_CRIADO', t, 'OK'); return { ok: true };
   });
 }

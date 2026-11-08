@@ -1,5 +1,15 @@
 [
   {
+    "titulo": "Recesso institucional, palestrantes nos eventos e oferta na chamada",
+    "melhorias": [
+      "Recesso institucional: a administração define o período em Dados da igreja. Os líderes recebem uma notificação quando o recesso começa, os lembretes da chamada ficam pausados e, no dia de cada reunião, o app registra automaticamente “Não houve reunião · Recesso institucional”.",
+      "Eventos: ao criar um evento é possível (opcionalmente) adicionar palestrantes com nome e foto. Eles aparecem de forma dinâmica nos cards da lista de eventos, no “Próximo evento” do feed, no carrossel e na página do evento, que se adapta ao celular e ao computador.",
+      "Oferta na chamada: um interruptor em Administração › Dados da igreja liga ou desliga o campo “Oferta” no registro de presença. Ligado, o líder digita o valor e ele aparece no histórico. Desligado, o campo não aparece (nem travado) e o valor não é mostrado."
+    ],
+    "v": "1.159",
+    "data": "08/11/2026"
+  },
+  {
     "titulo": "Pedidos de oração, álbum da supervisão, visita da supervisão e recesso da célula",
     "melhorias": [
       "Pedidos de oração: qualquer participante envia seu pedido a qualquer hora, direto pelo app. O supervisor, o líder e todos os participantes da célula recebem um aviso, e todos veem a lista de pedidos do grupo.",
