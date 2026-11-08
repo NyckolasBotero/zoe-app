@@ -1,5 +1,15 @@
 [
   {
+    "titulo": "Família: editar parentes por completo e novos parentescos",
+    "melhorias": [
+      "Em Editar perfil › Família, parentes cadastrados por você que não usam o app agora podem ser editados por inteiro: nome, como é chamado, sexo, nascimento, telefone, e-mail, cidade, UF, profissão, foto, se é cristão, se congrega na Zoe e o parentesco com você. Quem usa o app continua editando os próprios dados (você só marca se é cristão e se congrega).",
+      "Novos parentescos: padrasto e madrasta já aparecem na escolha. A administração cria outros (ex.: Sogro, com o inverso Genro/Nora) em Administração › Dados da igreja › Parentescos. Eles aparecem em “Outros parentescos” na lista da família.",
+      "Atalho em Família Zoe › Árvore Zoe › Minha família: botões “Acrescentar familiar” e “Editar familiar”, direto no topo."
+    ],
+    "v": "1.161",
+    "data": "08/11/2026"
+  },
+  {
     "titulo": "Área da supervisão",
     "melhorias": [
       "Nova área “Área da supervisão” no menu (supervisores e administração). Dentro dela ficam as abas Células supervisionadas, Aprovações e Álbum.",

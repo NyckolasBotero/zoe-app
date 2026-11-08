@@ -114,6 +114,7 @@ const SHEETS = {
   MuralCelula: ['ItemID', 'CelulaID', 'Tipo', 'X', 'Y', 'W', 'R', 'Z', 'Legenda', 'Cor', 'Kind', 'Foto', 'AutorID', 'CriadoEm'],
   VotosDeus: ['CelulaID', 'Data', 'MembroID', 'Valor', 'Quando'],
   Parentes: ['ParID', 'A', 'B', 'Tipo', 'CriadoPor', 'CriadoEm'],
+  ParentesExtra: ['ParID', 'A', 'B', 'Rotulo', 'CriadoPor', 'CriadoEm'],
   Galhos: ['GalhoID', 'Tipo', 'Nome', 'Ref', 'Membros', 'DX', 'DY', 'CriadoPor', 'CriadoEm'],
   Artes: ['ArteID', 'Titulo', 'Formato', 'Largura', 'Altura', 'Projeto', 'Foto', 'Mini', 'Status', 'CriadoPor', 'CriadoEm', 'DecididoPor', 'DecididoEm', 'Motivo', 'MidiaID'],
   MidiasTelao: ['MidiaID', 'Titulo', 'Foto', 'Mini', 'Ativo', 'CriadoPor', 'CriadoEm'],
@@ -2900,6 +2901,25 @@ function saveArteAprovadores_(d, u) {
 const KIN_PART = { de: 1, da: 1, do: 1, das: 1, dos: 1, e: 1 };
 function kinToks_(nome) { return norm_(nome).split(' ').filter(function (t) { return t && !KIN_PART[t]; }); }
 function kinAtivos_() { return table_('Membros').rows.filter(function (m) { return m.Status !== 'Inativo' || m.Parente === '1'; }); }
+// Parentescos além dos da árvore (pai, mãe, filho, irmão, cônjuge): padrasto e madrasta já vêm de fábrica; a administração cria outros
+function kinRelDefs_() {
+  const o = [{ k: 'padrasto', nome: 'Padrasto', inv: 'Enteado(a)', sx: 'M', base: 1 }, { k: 'madrasta', nome: 'Madrasta', inv: 'Enteado(a)', sx: 'F', base: 1 }];
+  jparse_(cfgMap_().ParentescosExtra, []).forEach(function (x) { if (x && x.k && x.nome && !o.some(function (y) { return y.k === x.k; })) o.push({ k: x.k, nome: x.nome, inv: x.inv || x.nome, sx: x.sx || '', base: 0 }); });
+  return o;
+}
+function kinRelDef_(k) { return kinRelDefs_().filter(function (x) { return x.k === k; })[0] || null; }
+function saveKinRelDef_(d, u) {
+  return withLock_(function () {
+    const t = table_('Config'), r0 = t.rows.filter(function (x) { return x.Chave === 'ParentescosExtra'; })[0]; let l = jparse_(r0 ? r0.Valor : '', []);
+    if (d.remover) { l = l.filter(function (x) { return x.k !== clip_(d.remover, 40); }); } else {
+      const nome = clip_(d.nome, 40).trim(), inv = clip_(d.inverso, 40).trim(); if (nome.length < 3) throw new ApiError('VALIDATION', 'Dê um nome ao parentesco (ex.: Sogro).');
+      const k = 'x_' + norm_(nome).replace(/[^a-z0-9]+/g, '_').slice(0, 30); if (kinRelDef_(k) || ['pai', 'mae', 'filho', 'filha', 'irmao', 'irma', 'conjuge'].indexOf(k.slice(2)) >= 0) throw new ApiError('VALIDATION', 'Esse parentesco já existe.');
+      if (l.length >= 30) throw new ApiError('VALIDATION', 'Limite de 30 parentescos criados.'); l.push({ k: k, nome: nome, inv: inv || nome, sx: d.sexo === 'M' || d.sexo === 'F' ? d.sexo : '' });
+    }
+    if (r0) writeRow_(t, r0._row, { Valor: JSON.stringify(l) }); else appendRow_(t, { Chave: 'ParentescosExtra', Valor: JSON.stringify(l) });
+    audit_(u.email, 'PARENTESCO_DEF', d.remover ? 'del' : clip_(d.nome, 40), 'OK'); return { rels: kinRelDefs_() };
+  });
+}
 function kinRows_() { return table_('Parentes').rows.filter(function (r) { return r.A && r.B; }); }
 function kinPode_(u, mid) {
   if (u.membroId === mid) return true;
@@ -2923,7 +2943,7 @@ function kinIrmaos_(rows, id) {
   return Object.keys(o);
 }
 function kinAncestral_(rows, de, alvo) { const vis = {}, pilha = [de]; while (pilha.length) { const x = pilha.pop(); if (x === alvo) return true; if (vis[x]) continue; vis[x] = 1; kinPais_(rows, x).forEach(function (p) { pilha.push(p); }); } return false; }
-function kinNaFamilia_(u, id) { const c = kinComponentes_(kinRows_()).filter(function (c2) { return c2.indexOf(u.membroId) >= 0; })[0]; return !!c && c.indexOf(id) >= 0; }
+function kinNaFamilia_(u, id) { if (lazy_('ParentesExtra').rows.some(function (r) { return r.A && r.B && ((r.A === u.membroId && r.B === id) || (r.B === u.membroId && r.A === id)); })) return true; const c = kinComponentes_(kinRows_()).filter(function (c2) { return c2.indexOf(u.membroId) >= 0; })[0]; return !!c && c.indexOf(id) >= 0; }
 function suggestKin_(d, u) {
   const eu = u.membroId, meu = table_('Membros').rows.filter(function (m) { return m.MembroID === eu; })[0] || {};
   const nome = clip_(d.nome, 120) || meu.Nome || '', tk = kinToks_(nome); if (tk.length < 1) return { iguais: [], familia: [] };
@@ -2948,7 +2968,9 @@ function listKin_(d, u) {
   const id = clip_(d.membroId, 30) || u.membroId; if (!kinPode_(u, id)) throw new ApiError('FORBIDDEN', 'Sem acesso à família desta pessoa.');
   const ms = {}; table_('Membros').rows.forEach(function (m) { ms[m.MembroID] = m; }); const cel = {}; table_('Celulas').rows.forEach(function (c) { cel[c.CelulaID] = c.Nome; });
   const rows = kinRows_(), meus = rows.filter(function (r) { return r.A === id || r.B === id; }).map(function (r) { return { id: r.ParID, tipo: r.Tipo, a: r.A, b: r.B }; });
-  const v = kinVista_(rows, id, ms, cel); v.vinculos = meus; v.texto = ms[id] ? { mae: ms[id].Mae || '', pai: ms[id].Pai || '', conjuge: ms[id].Conjuge || '' } : {}; return v;
+  const v = kinVista_(rows, id, ms, cel); v.vinculos = meus; v.rels = kinRelDefs_();
+  v.outros = lazy_('ParentesExtra').rows.filter(function (r) { return r.A && r.B && (r.A === id || r.B === id); }).map(function (r) { const df = kinRelDef_(r.Rotulo), outro = r.A === id ? r.B : r.A; return ms[outro] ? { id: r.ParID, k: r.Rotulo, rotulo: df ? (r.A === id ? df.nome : df.inv) : r.Rotulo, pessoa: kinNo_(ms[outro], cel) } : null; }).filter(Boolean);
+  v.texto = ms[id] ? { mae: ms[id].Mae || '', pai: ms[id].Pai || '', conjuge: ms[id].Conjuge || '' } : {}; return v;
 }
 function kinSugestoes_(rows, ms, tipo, a, b) {
   const out = [], ja = function (t, x, y) { return rows.some(function (r) { return r.Tipo === t && ((r.A === x && r.B === y) || (t !== 'filho' && r.A === y && r.B === x)); }); };
@@ -2964,6 +2986,11 @@ function kinSugestoes_(rows, ms, tipo, a, b) {
 }
 function saveKin_(d, u) {
   const a = clip_(d.a, 30) || u.membroId, b = clip_(d.b, 30), rel = String(d.rel || '');
+  if (kinRelDef_(rel)) { // parentesco extra: não entra na estrutura da árvore, só na lista
+    if (!b || a === b) throw new ApiError('VALIDATION', 'Escolha outra pessoa.'); if (!kinPode_(u, a) && !kinNaFamilia_(u, a)) throw new ApiError('FORBIDDEN', 'Só a própria pessoa, a família já vinculada ou a liderança vincula parentes.');
+    const mx = {}; table_('Membros').rows.forEach(function (m) { mx[m.MembroID] = 1; }); if (!mx[a] || !mx[b]) throw new ApiError('NOT_FOUND', 'Pessoa não encontrada.');
+    return withLock_(function () { const t = lazy_('ParentesExtra'); if (t.rows.some(function (r) { return r.Rotulo === rel && r.A === a && r.B === b; })) throw new ApiError('VALIDATION', 'Esse vínculo já existe.'); const id = id_('PX'); appendRow_(t, { ParID: id, A: a, B: b, Rotulo: rel, CriadoPor: u.membroId, CriadoEm: now_() }); audit_(u.email, 'PARENTE_ADD', id, 'OK'); return { id: id, sugestoes: [] }; });
+  }
   const mapa = { pai: ['filho', b, a], mae: ['filho', b, a], filho: ['filho', a, b], filha: ['filho', a, b], conjuge: ['conjuge', a, b], irmao: ['irmao', a, b], irma: ['irmao', a, b], tipo: null };
   let tipo, x, y; if (d.tipo && (d.tipo === 'filho' || d.tipo === 'conjuge' || d.tipo === 'irmao')) { tipo = d.tipo; x = a; y = b; } else { const m = mapa[rel]; if (!m) throw new ApiError('VALIDATION', 'Escolha o parentesco.'); tipo = m[0]; x = m[1]; y = m[2]; }
   if (!b || a === b) throw new ApiError('VALIDATION', 'Escolha outra pessoa.');
@@ -2983,6 +3010,11 @@ function saveKin_(d, u) {
   });
 }
 function delKin_(d, u) {
+  if (String(d.id || '').indexOf('PX') === 0) return withLock_(function () {
+    const t = lazy_('ParentesExtra'), r = t.rows.filter(function (x) { return x.ParID === clip_(d.id, 30); })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Vínculo não encontrado.');
+    if (!(kinPode_(u, r.A) || kinPode_(u, r.B))) throw new ApiError('FORBIDDEN', 'Sem permissão para remover este vínculo.');
+    writeRow_(t, r._row, { A: '', B: '', Rotulo: 'removido' }); audit_(u.email, 'PARENTE_DEL', r.ParID, 'OK'); return { ok: true };
+  });
   return withLock_(function () {
     const t = table_('Parentes'), r = t.rows.filter(function (x) { return x.ParID === clip_(d.id, 30); })[0]; if (!r) throw new ApiError('NOT_FOUND', 'Vínculo não encontrado.');
     if (!(kinPode_(u, r.A) || kinPode_(u, r.B))) throw new ApiError('FORBIDDEN', 'Sem permissão para remover este vínculo.');
@@ -3049,9 +3081,45 @@ function setKinInfo_(d, u) {
     writeRow_(t, m._row, p); audit_(u.email, 'PARENTE_INFO', id, 'OK'); return { ok: true };
   });
 }
+/* edita TODOS os dados de um parente cadastrado por alguém da família (que não usa o site) */
+function editKinPerson_(d, u) {
+  const id = clip_(d.id, 30); if (!kinPode_(u, id) && !kinNaFamilia_(u, id)) throw new ApiError('FORBIDDEN', 'Só a própria pessoa, a família vinculada ou a liderança edita este cadastro.');
+  return withLock_(function () {
+    const t = ensureCols_('Membros', ['Crista', 'CongregaZoe', 'Parente']), m = t.rows.filter(function (x) { return x.MembroID === id; })[0]; if (!m) throw new ApiError('NOT_FOUND', 'Pessoa não encontrada.');
+    if (m.Parente !== '1') throw new ApiError('FORBIDDEN', 'Esta pessoa usa o app e edita os próprios dados.');
+    const v = function (x) { x = String(x === undefined || x === null ? '' : x); return x === '1' || x === '0' ? x : ''; }, p = {};
+    if (d.nome !== undefined) { const n = clip_(d.nome, 150).trim(); if (n.length < 3) throw new ApiError('VALIDATION', 'Digite o nome completo.'); p.Nome = n; p.Simples = n; if (d.apelido === undefined && !m.Apelido) p.Apelido = n.split(/\s+/)[0]; }
+    if (d.apelido !== undefined) p.Apelido = clip_(d.apelido, 60).trim();
+    if (d.sexo !== undefined) p.Sexo = d.sexo === 'M' || d.sexo === 'F' ? d.sexo : '';
+    if (d.nasc !== undefined) { if (d.nasc && !/^\d{4}-\d{2}-\d{2}$/.test(String(d.nasc))) throw new ApiError('VALIDATION', 'Data de nascimento inválida.'); p.Nascimento = String(d.nasc || ''); }
+    ['telefone:Telefone:25', 'email:Email:120', 'cidade:Cidade:80', 'profissao:Profissao:80'].forEach(function (q) { const a = q.split(':'); if (d[a[0]] !== undefined) p[a[1]] = clip_(d[a[0]], Number(a[2])).trim(); });
+    if (d.uf !== undefined) p.UF = clip_(d.uf, 2).toUpperCase();
+    if (d.crista !== undefined) p.Crista = v(d.crista); if (d.congrega !== undefined) p.CongregaZoe = v(d.congrega);
+    if (d.foto !== undefined) p.Foto = d.foto ? fotoParaGravar_(d.foto, m.Foto, id) : '';
+    writeRow_(t, m._row, p); audit_(u.email, 'PARENTE_EDIT', id, 'OK'); return { ok: true };
+  });
+}
+function getKinPerson_(d, u) {
+  const id = clip_(d.id, 30); if (!kinPode_(u, id) && !kinNaFamilia_(u, id)) throw new ApiError('FORBIDDEN', 'Sem acesso a este cadastro.');
+  const m = table_('Membros').rows.filter(function (x) { return x.MembroID === id; })[0]; if (!m) throw new ApiError('NOT_FOUND', 'Pessoa não encontrada.');
+  return { id: id, parente: m.Parente === '1', nome: m.Nome, apelido: m.Apelido || '', sexo: m.Sexo || '', nasc: dia10_(m.Nascimento), telefone: m.Telefone || '', email: m.Email || '', cidade: m.Cidade || '', uf: m.UF || '', profissao: m.Profissao || '', crista: m.Crista === '1' ? '1' : m.Crista === '0' ? '0' : '', congrega: m.CongregaZoe === '1' ? '1' : '0' };
+}
+/* troca o parentesco entre duas pessoas (remove o vínculo antigo e cria o novo; se o novo for recusado, o antigo volta) */
+function changeKinRel_(d, u) {
+  const a = clip_(d.a, 30) || u.membroId, b = clip_(d.b, 30), rel = String(d.rel || ''); if (!b || a === b) throw new ApiError('VALIDATION', 'Escolha outra pessoa.');
+  if (!kinPode_(u, a) && !kinNaFamilia_(u, a)) throw new ApiError('FORBIDDEN', 'Só a própria pessoa, a família já vinculada ou a liderança muda o parentesco.');
+  const velhos = withLock_(function () {
+    const t = table_('Parentes'), tx = lazy_('ParentesExtra'), l = [];
+    t.rows.forEach(function (r) { if (r.Tipo !== 'removido' && ((r.A === a && r.B === b) || (r.A === b && r.B === a))) { l.push({ tb: t, row: r._row, bk: { A: r.A, B: r.B, Tipo: r.Tipo } }); writeRow_(t, r._row, { A: '', B: '', Tipo: 'removido' }); } });
+    tx.rows.forEach(function (r) { if (r.A && r.B && ((r.A === a && r.B === b) || (r.A === b && r.B === a))) { l.push({ tb: tx, row: r._row, bk: { A: r.A, B: r.B, Rotulo: r.Rotulo } }); writeRow_(tx, r._row, { A: '', B: '', Rotulo: 'removido' }); } });
+    return l;
+  });
+  try { const r = saveKin_({ a: a, b: b, rel: rel }, u); audit_(u.email, 'PARENTE_TROCA', a + '>' + b + ' ' + rel, 'OK'); return r; }
+  catch (e) { withLock_(function () { velhos.forEach(function (x) { writeRow_(x.tb, x.row, x.bk); }); }); throw e; }
+}
 /* cadastra um parente que não usa o site (fica só na árvore, não entra nas listas da igreja) e já vincula */
 function addKinPerson_(d, u) {
-  const a = clip_(d.a, 30) || u.membroId, rel = String(d.rel || ''), nome = clip_(d.nome, 150).trim(), sx = { pai: 'M', mae: 'F', filho: 'M', filha: 'F', irmao: '', irma: 'F', conjuge: '' };
+  const a = clip_(d.a, 30) || u.membroId, rel = String(d.rel || ''), nome = clip_(d.nome, 150).trim(), sx = { pai: 'M', mae: 'F', filho: 'M', filha: 'F', irmao: '', irma: 'F', conjuge: '' }; kinRelDefs_().forEach(function (x) { sx[x.k] = x.sx; });
   if (nome.length < 3) throw new ApiError('VALIDATION', 'Digite o nome completo.'); if (!(rel in sx)) throw new ApiError('VALIDATION', 'Escolha o parentesco.');
   if (!kinPode_(u, a) && !kinNaFamilia_(u, a)) throw new ApiError('FORBIDDEN', 'Só a própria pessoa, a família já vinculada ou a liderança vincula parentes.');
   if (!table_('Membros').rows.some(function (m) { return m.MembroID === a; })) throw new ApiError('NOT_FOUND', 'Pessoa não encontrada.');
@@ -3061,7 +3129,7 @@ function addKinPerson_(d, u) {
   const v = function (x) { x = String(x === undefined || x === null ? '' : x); return x === '1' || x === '0' ? x : ''; }, sexo = d.sexo === 'M' || d.sexo === 'F' ? d.sexo : sx[rel], nasc = /^\d{4}-\d{2}-\d{2}$/.test(String(d.nasc || '')) ? String(d.nasc) : '';
   const nid = withLock_(function () {
     const t = ensureCols_('Membros', ['Crista', 'CongregaZoe', 'Parente']), id = id_('M'), foto = /^data:image\//.test(String(d.foto || '')) ? fotoParaGravar_(d.foto, '', id) : '';
-    appendRow_(t, { MembroID: id, Nome: nome, Apelido: nome.split(/\s+/)[0], Sexo: sexo, Nascimento: nasc, Foto: foto, EhMembro: '0', Status: 'Inativo', Parente: '1', Crista: v(d.crista), CongregaZoe: v(d.congrega), CriadoEm: now_() });
+    appendRow_(t, { MembroID: id, Nome: nome, Apelido: nome.split(/\s+/)[0], Sexo: sexo, Nascimento: nasc, Foto: foto, EhMembro: '0', Status: 'Inativo', Parente: '1', Crista: v(d.crista), CongregaZoe: v(d.congrega), Telefone: clip_(d.telefone, 25), Email: clip_(d.email, 120), Cidade: clip_(d.cidade, 80), UF: clip_(d.uf, 2).toUpperCase(), Profissao: clip_(d.profissao, 80), CriadoEm: now_() });
     audit_(u.email, 'PARENTE_NOVO', id, 'OK'); return id;
   });
   try { const r = saveKin_({ a: a, b: nid, rel: rel }, u); return { id: nid, sugestoes: r.sugestoes || [] }; }
@@ -4709,6 +4777,7 @@ const ROUTES = {
   studioAcessos: { auth: 'any', fn: studioAcessosLista_ }, saveStudioAcesso: { auth: 'any', write: 1, fn: saveStudioAcesso_ }, studioPresenca: { auth: 'any', fn: studioPresenca_ },
   getLessonPdf: { auth: 'any', fn: getLessonPdf_ }, saveLessonText: { auth: 'any', write: 1, fn: saveLessonText_ }, getLessonText: { auth: 'any', fn: getLessonText_ },
   supCelulas: { auth: 'any', fn: supCelulas2_ }, supCelulaDetalhe: { auth: 'any', fn: supCelulaDetalhe_ }, supCelulaFotos: { auth: 'any', fn: supCelulaFotos_ },
+  getKinPerson: { auth: 'any', fn: getKinPerson_ }, editKinPerson: { auth: 'any', write: 1, fn: editKinPerson_ }, changeKinRel: { auth: 'any', write: 1, fn: changeKinRel_ }, saveKinRelDef: { auth: 'config', write: 1, fn: saveKinRelDef_ },
   prayFor: { auth: 'any', write: 1, fn: prayFor_ }, albumSupervisao: { auth: 'any', fn: albumSupervisao_ }, getCellRecess: { auth: 'any', fn: getCellRecess_ }, setCellRecess: { auth: 'any', write: 1, fn: setCellRecess_ },
   pingPastoral: { auth: 'any', fn: pingPastoral_ }, pastoralCiente: { auth: 'any', write: 1, fn: pastoralCiente_ },
   celTime: { auth: 'any', fn: celTime_ }, saveCelTime: { auth: 'any', write: 1, fn: saveCelTime_ }, discipuladoCel: { auth: 'any', fn: discipuladoCel_ }, setDiscipulador: { auth: 'any', write: 1, fn: setDiscipulador_ }, meusAcomp: { auth: 'any', fn: meusAcomp_ }, saveEncontro: { auth: 'any', write: 1, fn: saveEncontro_ }, listEncontros: { auth: 'any', fn: listEncontros_ }, listRecursosConsol: { auth: 'any', fn: listRecursosConsol_ }, saveRecursoConsol: { auth: 'any', write: 1, fn: saveRecursoConsol_ }, deleteRecursoConsol: { auth: 'any', write: 1, fn: deleteRecursoConsol_ },
