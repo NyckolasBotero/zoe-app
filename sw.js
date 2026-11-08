@@ -6,7 +6,7 @@ self.addEventListener('push', (e) => {
   e.waitUntil((async () => {
     const cs = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     // sempre mostra: o iPhone exige que todo aviso recebido apareça, senão desliga as notificações do app
-    await self.registration.showNotification(d.title || 'Ministério Zoe', { body: d.body || '', tag: d.tag || 'zoe', icon: 'assets/img/icon-192.png', badge: 'assets/img/icon-192.png', data: { url: d.url || './' }, renotify: true });
+    await self.registration.showNotification(d.title || 'Ministério Zoe', { body: d.body || '', tag: d.tag || 'zoe', icon: 'assets/img/icon-192.png', badge: 'assets/img/badge-96.png', data: { url: d.url || './' }, renotify: true });
   })());
 });
 self.addEventListener('notificationclick', (e) => {

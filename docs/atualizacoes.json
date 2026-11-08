@@ -1,5 +1,13 @@
 [
  {
+  "titulo": "Ícone branco nas notificações",
+  "melhorias": [
+   "O ícone pequeno da notificação (barra de status do Android) agora é a árvore da logo da igreja em branco, no lugar do quadrado branco."
+  ],
+  "v": "1.148",
+  "data": "07/11/2026"
+ },
+ {
   "titulo": "Quiz com pontos, ranking e histórico",
   "melhorias": [
    "Nova aba Quiz na área da célula: sua pontuação, ranking da célula (sempre ou do mês), os quizzes da célula com quem jogou e quem faltou, e o seu histórico.",
