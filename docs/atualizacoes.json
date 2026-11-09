@@ -1,5 +1,17 @@
 [
   {
+    "titulo": "Zoe Live Studio: estúdio no estilo OBS",
+    "melhorias": [
+      "Lives agora se chama Zoe Live Studio e segue a estrutura de uma mesa de transmissão: Pré-visualização, Transição e Programa em cima; Cenas, Fontes, Mixer de áudio e Controles embaixo.",
+      "Botão de tela cheia no topo do estúdio.",
+      "Comentários viram balões flutuantes à direita, cada um com o logo da rede de onde veio (YouTube, Facebook, Instagram, TikTok ou o site da Zoe).",
+      "Cenas: criar, renomear, duplicar, apagar e reordenar. Fontes: câmera, captura de tela, telão, imagem, apresentação de imagens, vídeo, texto, relógio, contagem regressiva, logotipo da Zoe, cor e cena dentro de cena.",
+      "Cada fonte pode ser ocultada, travada, duplicada, ter opacidade ajustada e ser movida e redimensionada na pré-visualização."
+    ],
+    "v": "1.165",
+    "data": "08/11/2026"
+  },
+  {
     "titulo": "Fotos da chamada, Histórico de células, fitas no mural e Início reorganizável",
     "melhorias": [
       "Chamada: agora dá para subir até 3 fotos do dia e marcar uma como principal. Sem marcação, vale a primeira.",
