@@ -9,8 +9,8 @@ with sync_playwright() as p:
     for sec in ['Cenas','Fontes','Mixer de áudio','Controles']: assert pg.locator(f'section[aria-label="{sec}"]').count()==1,sec
     n0=pg.evaluate("ST.cenas.length")
     # cenas: criar, renomear, duplicar, mover
-    pg.click('#st_cenasf button[aria-label="Nova cena"]'); assert pg.evaluate("ST.cenas.length")==n0+1
-    pg.click('#st_cenasf button[aria-label="Renomear cena"]'); assert pg.evaluate("stCena(ST.prev).nome")=='Renomeada'
+    pg.click('#st_cenasf button[aria-label="Nova cena"]'); pg.wait_for_selector('#st_dlgi'); pg.fill('#st_dlgi','Cena nova'); pg.click('#st_dlgok'); pg.wait_for_timeout(200); assert pg.evaluate("ST.cenas.length")==n0+1
+    pg.click('#st_cenasf button[aria-label="Renomear cena"]'); pg.wait_for_selector('#st_dlgi'); pg.fill('#st_dlgi','Renomeada'); pg.click('#st_dlgok'); pg.wait_for_timeout(200); assert pg.evaluate("stCena(ST.prev).nome")=='Renomeada'
     pg.click('#st_cenasf button[aria-label="Duplicar cena"]'); assert pg.evaluate("ST.cenas.length")==n0+2
     pg.click('#st_cenasf button[aria-label="Subir cena"]')
     # fontes novas

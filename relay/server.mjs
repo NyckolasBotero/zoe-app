@@ -91,17 +91,17 @@ function parar(S) {
 // Espectadores e comentários das plataformas (opcional): YouTube Data API v3 e Facebook Graph API
 function apis(S, lista) {
   const ts = []; (Array.isArray(lista) ? lista : []).slice(0, 10).forEach((a) => {
-    if (!a || !a.apiKey || !a.videoId) return; const id = String(a.id).slice(0, 30);
-    const q = (u) => fetch(u, { signal: AbortSignal.timeout(8000) }).then(async (r) => { const j = await r.json(); if (!r.ok) throw new Error((j.error && (j.error.message || j.error)) || r.status); return j; });
+    if (!a || !(a.apiKey || a.bearer) || !a.videoId) return; const id = String(a.id).slice(0, 30);
+    const q = (u) => fetch(u, { signal: AbortSignal.timeout(8000), headers: a.bearer && a.tipo === 'youtube' ? { Authorization: 'Bearer ' + String(a.bearer).slice(0, 2000) } : {} }).then(async (r) => { const j = await r.json(); if (!r.ok) throw new Error((j.error && (j.error.message || j.error)) || r.status); return j; });
     const tick = async () => { try {
-      if (a.tipo === 'youtube') { const j = await q(`https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=${encodeURIComponent(a.videoId)}&key=${encodeURIComponent(a.apiKey)}`); const d = j.items && j.items[0] && j.items[0].liveStreamingDetails; send(S.ws, { type: 'plataforma', id, espectadores: d ? Number(d.concurrentViewers) || 0 : null }); }
+      if (a.tipo === 'youtube') { const j = await q(`https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=${encodeURIComponent(a.videoId)}${a.bearer ? '' : '&key=' + encodeURIComponent(a.apiKey)}`); const d = j.items && j.items[0] && j.items[0].liveStreamingDetails; send(S.ws, { type: 'plataforma', id, espectadores: d ? Number(d.concurrentViewers) || 0 : null }); }
       else if (a.tipo === 'facebook') { const j = await q(`https://graph.facebook.com/v19.0/${encodeURIComponent(a.videoId)}?fields=live_views,status&access_token=${encodeURIComponent(a.apiKey)}`); send(S.ws, { type: 'plataforma', id, espectadores: Number(j.live_views) || 0, status: j.status }); }
     } catch (e) { send(S.ws, { type: 'plataforma', id, erro: String(e.message || e).slice(0, 140) }); } };
     tick(); ts.push(setInterval(tick, 15000));
     // comentários
     let tok = '', desde = 0;
     const chat = async () => { try {
-      if (a.tipo === 'youtube' && a.chatId) { const j = await q(`https://www.googleapis.com/youtube/v3/liveChat/messages?liveChatId=${encodeURIComponent(a.chatId)}&part=snippet,authorDetails&maxResults=50${tok ? '&pageToken=' + encodeURIComponent(tok) : ''}&key=${encodeURIComponent(a.apiKey)}`); tok = j.nextPageToken || tok; (j.items || []).forEach((m) => send(S.ws, { type: 'comentario', plataforma: id, autor: m.authorDetails && m.authorDetails.displayName, texto: m.snippet && m.snippet.displayMessage })); }
+      if (a.tipo === 'youtube' && a.chatId) { const j = await q(`https://www.googleapis.com/youtube/v3/liveChat/messages?liveChatId=${encodeURIComponent(a.chatId)}&part=snippet,authorDetails&maxResults=50${tok ? '&pageToken=' + encodeURIComponent(tok) : ''}${a.bearer ? '' : '&key=' + encodeURIComponent(a.apiKey)}`); tok = j.nextPageToken || tok; (j.items || []).forEach((m) => send(S.ws, { type: 'comentario', plataforma: id, autor: m.authorDetails && m.authorDetails.displayName, texto: m.snippet && m.snippet.displayMessage })); }
       else if (a.tipo === 'facebook') { const j = await q(`https://graph.facebook.com/v19.0/${encodeURIComponent(a.videoId)}/comments?fields=from,message,created_time&order=chronological&access_token=${encodeURIComponent(a.apiKey)}`); (j.data || []).filter((m) => Date.parse(m.created_time) > desde).forEach((m) => { desde = Math.max(desde, Date.parse(m.created_time)); send(S.ws, { type: 'comentario', plataforma: id, autor: m.from && m.from.name, texto: m.message }); }); }
     } catch { } };
     if ((a.tipo === 'youtube' && a.chatId) || a.tipo === 'facebook') { if (a.tipo === 'facebook') desde = Date.now(); ts.push(setInterval(chat, 6000)); }

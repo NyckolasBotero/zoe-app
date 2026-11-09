@@ -763,6 +763,10 @@ test('telão: versículo como item transmitido', () => {
 test('transmissão ao vivo: cadastro de plataformas, início/fim, Lives e Vídeos, espectadores e comentários', () => {
   const { e, adm, tok, mk } = boot(); mk('ana@zoe.com', 'membro'); const A = tok('ana@zoe.com', 'Temp12345');
   assert.equal(e.call('getLiveCfg', {}, A).error.code, 'FORBIDDEN'); assert.equal(e.call('saveLiveCfg', {}, A).error.code, 'FORBIDDEN'); assert.equal(e.call('liveStart', { titulo: 'x', hls: 'https://a.b/x.m3u8' }, A).error.code, 'FORBIDDEN');
+  assert.equal(e.call('getStudioSetups', {}, A).error.code, 'FORBIDDEN');
+  { const big = { Padrão: { ts: 1, dados: { cenas: [{ id: 'a', nome: 'Cena', camadas: [] }], x: 'y'.repeat(95000) } } }; assert.ok(e.call('saveStudioSetups', { setups: big }, adm).ok); assert.equal(e.call('getStudioSetups', {}, adm).data.setups['Padrão'].dados.x.length, 95000);
+    assert.ok(e.call('saveStudioSetups', { setups: { Outro: { ts: 2, dados: { a: 1 } } } }, adm).ok); const so = e.call('getStudioSetups', {}, adm).data.setups; assert.deepEqual(Object.keys(so), ['Outro']); }
+  assert.equal(e.call('saveLiveCfg', { googleClientId: 'abc' }, adm).error.code, 'VALIDATION'); assert.ok(e.call('saveLiveCfg', { googleClientId: '123-abc.apps.googleusercontent.com' }, adm).ok); assert.equal(e.call('getLiveCfg', {}, adm).data.googleClientId, '123-abc.apps.googleusercontent.com');
   assert.equal(e.call('saveLiveCfg', { relay: { url: 'http://x' } }, adm).error.code, 'VALIDATION'); assert.equal(e.call('saveLiveCfg', { plats: [{ nome: 'YT', tipo: 'youtube', rtmp: 'http://x' }] }, adm).error.code, 'VALIDATION');
   const c = e.call('saveLiveCfg', { relay: { url: 'wss://relay.zoe.com/live', token: 'seg' }, plats: [{ nome: 'YouTube', tipo: 'youtube', rtmp: 'rtmp://a.rtmp.youtube.com/live2', chave: 'abcd-1234', assistir: 'https://youtube.com/live/xyz' }], q: { res: 1080, fps: 30, kbps: 4500 } }, adm).data;
   assert.equal(c.plats[0].chave, 'abcd-1234'); assert.equal(c.q.res, 1080); const pid = c.plats[0].id;

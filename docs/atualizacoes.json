@@ -1,5 +1,22 @@
 [
   {
+    "titulo": "Zoe Live Studio: movimento de câmera, PiP, legendas e tarjas",
+    "melhorias": [
+      "Movimento de câmera: dê zoom numa fonte (câmera, tela, imagem ou vídeo) e defina pontos A, B, C… no quadro. A imagem anda de ponto a ponto, com modelos prontos (panorâmica, aproximar, afastar, diagonal e quadro fixo), duração, repetição e começo automático quando a cena entra no ar.",
+      "PiP da projeção: o telão (letras, versículos e banners) vira uma janelinha na transmissão, com posição, tamanho, borda e cantos ajustáveis. Todas as fontes ganharam medidas exatas de posição e tamanho.",
+      "Texto corrido: barra com texto passando, cor, velocidade, direção, rótulo e opacidade da barra ajustáveis.",
+      "Letra da música e versículo em legenda: o que está na projeção aparece sobre a live para quem assiste cantar ou ler junto, e some sozinho quando o telão é limpo.",
+      "Tarjas de nome para pastores e líderes, com 5 modelos de telejornal (Clássico Zoe, Telejornal, Manchete, Minimalista e Vidro), animação de entrada, lista de pastores e botão Mostrar/Ocultar em Controles.",
+      "Entrar com Google: a administração cadastra o ID do cliente uma vez e quem transmite entra com a conta do canal; o Estúdio cria a live no YouTube sozinho, sem copiar endereço e chave. O vídeo ainda passa pelo servidor de retransmissão, cadastrado uma única vez.",
+      "Setups: salve, carregue, baixe e importe o estúdio inteiro (cenas, posições, movimentos, tarjas, textos, mixer, qualidade e lista de pastores). O servidor guarda até 20 setups.",
+      "Tudo dentro do estúdio: Plataformas e conexão abre numa janela central do próprio Zoe Live Studio, e criar, renomear e apagar cenas, setups e transmissão usam janelas internas, sem caixas do navegador. A tela cheia não é mais interrompida.",
+      "Layout como no OBS: arraste a divisória entre as telas e os blocos de baixo para aumentar ou diminuir, arraste as divisórias entre Cenas, Fontes, Mixer e Controles, e arraste o título de um bloco para trocá-lo de lugar. O layout fica salvo; em Configurações há “Restaurar layout padrão”.",
+      "Programa congelado: ao fazer a Transição, o Programa leva uma cópia da pré-visualização daquele momento. Mover ou editar algo na pré-visualização não mexe no que está no ar; só a próxima Transição aplica as mudanças (agora ela funciona mesmo com a mesma cena nos dois lados)."
+    ],
+    "v": "1.166",
+    "data": "08/11/2026"
+  },
+  {
     "titulo": "Zoe Live Studio: estúdio no estilo OBS",
     "melhorias": [
       "Lives agora se chama Zoe Live Studio e segue a estrutura de uma mesa de transmissão: Pré-visualização, Transição e Programa em cima; Cenas, Fontes, Mixer de áudio e Controles embaixo.",
