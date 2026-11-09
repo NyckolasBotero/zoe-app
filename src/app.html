@@ -760,6 +760,18 @@ body.st-fs .toast{z-index:9500}
  .st-spv{display:block;width:10px;flex:none;cursor:col-resize;position:relative;touch-action:none}.st-spv::after{content:'';position:absolute;top:8px;bottom:8px;left:4px;width:2px;border-radius:2px;background:#1d2f26;transition:background .15s}.st-spv:hover::after{background:#2fbf71}
  .st-pnh{cursor:grab}.st-pnh:active{cursor:grabbing}
 }
+
+/* v1.167 — menu de camada e atalhos de efeito */
+#st_ctx{z-index:25}.st-cxl{position:absolute;inset:0;pointer-events:auto}
+.st-cm{position:absolute;width:220px;background:#101c16;border:1px solid #2c4538;border-radius:12px;padding:6px;box-shadow:0 12px 32px rgba(0,0,0,.55);display:flex;flex-direction:column;gap:1px;color:#e8f3ec}
+.st-cmh{padding:6px 10px;font-weight:700;font-size:12px;color:#9fe3bd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.st-cms{padding:4px 10px;font-size:11px;color:#8fa89a}
+.st-cmi{display:flex;align-items:center;gap:8px;padding:7px 10px;border:0;background:transparent;color:inherit;border-radius:8px;cursor:pointer;font:inherit;font-size:13px;text-align:left}.st-cmi:hover,.st-cmi.on{background:#1d6b42}.st-cmi svg{stroke:currentColor;flex:none}.st-cmd{height:1px;background:#1d2f26;margin:3px 4px}
+.st-fxh{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#8fa89a;margin-top:6px}
+.st-fxl{display:flex;flex-direction:column;gap:3px}.st-fx{display:flex;align-items:center;gap:2px;border:1px solid #2c4538;border-radius:8px;background:#13241b}.st-fx.on{border-color:#2fbf71;background:#1b3a29}
+.st-fxb{flex:1;min-width:0;background:transparent;border:0;color:#e8f3ec;padding:5px 7px;font:inherit;font-size:12px;text-align:left;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.st-fx .ib{width:24px;height:24px}.st-trc{overflow:auto;justify-content:flex-start}
+.st-it[draggable=true]{cursor:grab}
+.st-tbt{position:sticky;top:0;z-index:2;display:flex;flex-direction:column;gap:8px;background:#0a120e;padding-bottom:6px}
 </style>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><filter id="goo"><feGaussianBlur in="SourceGraphic" stdDeviation="14" result="b"/><feColorMatrix in="b" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -8"/></filter></defs></svg>
@@ -4684,7 +4696,7 @@ function stDesenhaTelao(ctx,w,h,modo){const t=ST.tm,u=t.unit,P=Object.assign({},
 const _imgs={};function stImg(src){if(!src)return null;let i=_imgs[src];if(!i){i=_imgs[src]=new Image();i.src=src}return i.complete?i:null}
 
 /* ---- desenho das cenas ---- */
-function stCobre(ctx,el,x,y,w,h,modo,v){const ew=el.videoWidth||el.naturalWidth||el.width,eh=el.videoHeight||el.naturalHeight||el.height;if(!ew||!eh)return;const k=modo==='contain'?Math.min(w/ew,h/eh):Math.max(w/ew,h/eh),z=v?Math.max(1,v.z||1):1,dw=ew*k*z,dh=eh*k*z;let ox=(w-dw)/2,oy=(h-dh)/2;
+function stCobre(ctx,el,x,y,w,h,modo,v){const ew=el.videoWidth||el.naturalWidth||el.width,eh=el.videoHeight||el.naturalHeight||el.height;if(!ew||!eh)return;const k=modo==='contain'?Math.min(w/ew,h/eh):Math.max(w/ew,h/eh),z=v?Math.max(1,v.z||1):1,dw=modo==='stretch'?w*z:ew*k*z,dh=modo==='stretch'?h*z:eh*k*z;let ox=(w-dw)/2,oy=(h-dh)/2;
  if(v){ox=dw>=w?Math.min(0,Math.max(w-dw,w/2-v.cx*dw)):(w-dw)/2;oy=dh>=h?Math.min(0,Math.max(h-dh,h/2-v.cy*dh)):(h-dh)/2}
  ctx.save();ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();ctx.drawImage(el,x+ox,y+oy,dw,dh);ctx.restore()}
 function stDesenhaCena(ctx,cena,W,H,pre,sub){if(!sub){ctx.fillStyle='#000';ctx.fillRect(0,0,W,H)}if(!cena)return;
@@ -4697,26 +4709,27 @@ function stDesenhaCena(ctx,cena,W,H,pre,sub){if(!sub){ctx.fillStyle='#000';ctx.f
   else if(l.tipo==='tarja')stTarja(ctx,l,x,y,w,h);
   else if(l.tipo==='telao'){ctx.save();ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();ctx.translate(x,y);stDesenhaTelao(ctx,w,h,l.p.modo);ctx.restore()}
   else if(l.tipo==='cena'){const sc=stCena(l.p.cena);if(sc&&stDepth<3){stDepth++;ctx.save();ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();ctx.translate(x,y);ctx.scale(l.w,l.h);stDesenhaCena(ctx,sc,W,H,false,true);ctx.restore();stDepth--}}
-  else{const o=stSrc(l);if(l.tipo==='apresentacao'&&o.ok&&o.imgs.length)o.el=o.imgs[Math.floor(Date.now()/1000/(l.p.seg||5))%o.imgs.length];if(o.ok&&o.el)stCobre(ctx,o.el,x,y,w,h,['tela','imagem','logo','apresentacao','video'].includes(l.tipo)?'contain':'cover',MOV_TIPOS.includes(l.tipo)?stVista(l):null);else{ctx.fillStyle='#10161d';ctx.fillRect(x,y,w,h);ctx.fillStyle='#8ea0b0';ctx.font=`600 ${Math.max(12,h*.05)}px sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(o.erro||(l.tipo==='camera'?'Aguardando câmera…':'Aguardando fonte…'),x+w/2,y+h/2)}}});
+  else{const o=stSrc(l);if(l.tipo==='apresentacao'&&o.ok&&o.imgs.length)o.el=o.imgs[Math.floor(Date.now()/1000/(l.p.seg||5))%o.imgs.length];if(o.ok&&o.el)stCobre(ctx,o.el,x,y,w,h,l.p.fit||(['tela','imagem','logo','apresentacao','video'].includes(l.tipo)?'contain':'cover'),MOV_TIPOS.includes(l.tipo)?stVista(l):null);else{ctx.fillStyle='#10161d';ctx.fillRect(x,y,w,h);ctx.fillStyle='#8ea0b0';ctx.font=`600 ${Math.max(12,h*.05)}px sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(o.erro||(l.tipo==='camera'?'Aguardando câmera…':'Aguardando fonte…'),x+w/2,y+h/2)}}});
 ctx.globalAlpha=1;
- if(pre&&ST.sel){const l=cena.camadas.find(x=>x.id===ST.sel);if(l){ctx.strokeStyle='#22c55e';ctx.lineWidth=Math.max(2,W/320);ctx.setLineDash([8,6]);ctx.strokeRect(l.x*W,l.y*H,l.w*W,l.h*H);ctx.setLineDash([]);const s=Math.max(10,W/60);ctx.fillStyle='#22c55e';ctx.fillRect((l.x+l.w)*W-s,(l.y+l.h)*H-s,s,s)}}}
+ if(pre)stSobrepoe(ctx,cena,W,H)}
 const stEase=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
 function stBuf(k,W,H){const b=ST['b'+k]||(ST['b'+k]=document.createElement('canvas'));if(b.width!==W||b.height!==H){b.width=W;b.height=H}return b}
-function stComposita(ctx,W,H,tr,p){const A=stBuf('A',W,H),B=stBuf('B',W,H);stSetAtual=tr.setA;try{stDesenhaCena(A.getContext('2d'),stCena(tr.a),W,H)}finally{stSetAtual=tr.setB}try{stDesenhaCena(B.getContext('2d'),stCena(tr.b),W,H)}finally{stSetAtual=null}const e=stEase(p);ctx.save();
+function stComposita(ctx,W,H,tr,p,kp){kp=kp||'';const A=stBuf(kp+'A',W,H),B=stBuf(kp+'B',W,H);stSetAtual=tr.setA;try{stDesenhaCena(A.getContext('2d'),stCena(tr.a),W,H)}finally{stSetAtual=tr.setB}try{stDesenhaCena(B.getContext('2d'),stCena(tr.b),W,H)}finally{stSetAtual=null}const e=stEase(p);ctx.save();
  switch(tr.tipo){
   case'mergulho':ctx.drawImage(e<.5?A:B,0,0);ctx.fillStyle='#000';ctx.globalAlpha=e<.5?e*2:(1-e)*2;ctx.fillRect(0,0,W,H);break;
-  case'desfoque':{const px=ST.trans.desf;ctx.filter=`blur(${px*Math.sin(Math.PI*e)}px)`;ctx.drawImage(A,0,0);ctx.globalAlpha=e;ctx.drawImage(B,0,0);break}
+  case'desfoque':{const px=tr.desf!=null?tr.desf:ST.trans.desf;ctx.filter=`blur(${px*Math.sin(Math.PI*e)}px)`;ctx.drawImage(A,0,0);ctx.globalAlpha=e;ctx.drawImage(B,0,0);break}
   case'deslizar':ctx.drawImage(A,-W*e,0);ctx.drawImage(B,W*(1-e),0);break;
   case'cortina':ctx.drawImage(A,0,0);ctx.beginPath();ctx.rect(0,0,W*e,H);ctx.clip();ctx.drawImage(B,0,0);break;
   case'zoom':ctx.drawImage(A,0,0);ctx.globalAlpha=e;const k=.6+.4*e;ctx.drawImage(B,W*(1-k)/2,H*(1-k)/2,W*k,H*k);break;
   case'iris':ctx.drawImage(A,0,0);ctx.beginPath();ctx.arc(W/2,H/2,Math.hypot(W,H)/2*e,0,7);ctx.clip();ctx.drawImage(B,0,0);break;
+  case'corte':ctx.drawImage(p<.5?A:B,0,0);break;
   default:ctx.drawImage(A,0,0);ctx.globalAlpha=e;ctx.drawImage(B,0,0)}
  ctx.restore()}
 function stRender(){if(!ST.raf)return;const out=ST.cv;
  if(!out||(!ST.out&&!ST.rec&&!(R.r==='multimidia'&&MM.sub==='estudio'))){cancelAnimationFrame(ST.raf);clearTimeout(ST.raf);ST.raf=0;return}
  const [W,H]=RES[ST.q.res]||RES[720];if(out.width!==W||out.height!==H){out.width=W;out.height=H}const ctx=out.getContext('2d');stMvAuto();
  if(ST.TR){const tr=ST.TR,p=Math.min(1,(performance.now()-tr.t0)/tr.dur);if(p>=1){ST.prog=tr.b;ST.progSet=tr.setB;ST.TR=null;stSalva();stDesenhaProg(ctx,W,H);stRenderUI()}else stComposita(ctx,W,H,tr,p)}else stDesenhaProg(ctx,W,H);
- const pv=ST.pv&&document.body.contains(ST.pv)?ST.pv:null;if(pv){const pc=pv.getContext('2d');if(pv.width!==640){pv.width=640;pv.height=360}stPreG=true;try{stDesenhaCena(pc,stCena(ST.prev),640,360,true)}finally{stPreG=false}}
+ const pv=ST.pv&&document.body.contains(ST.pv)?ST.pv:null;if(pv){const pc=pv.getContext('2d');if(pv.width!==640){pv.width=640;pv.height=360}const tp=ST.TRp;if(tp){const pp=Math.min(1,(performance.now()-tp.t0)/tp.dur);if(pp>=1)ST.TRp=null;else stComposita(pc,640,360,tp,pp,'p')}if(!ST.TRp){stPreG=true;try{stDesenhaCena(pc,stCena(ST.prev),640,360,true)}finally{stPreG=false}}}
  const mvc=document.getElementById('st_mvc');if(mvc)stMvDesenha(mvc);
  const tv=ST.tvc&&document.body.contains(ST.tvc)?ST.tvc:null;if(tv){if(tv.width!==384){tv.width=384;tv.height=216}stDesenhaTelao(tv.getContext('2d'),384,216,'cheio')}
  ['mic','sis'].forEach(k=>{const v=stNivel(k);ST.lvl[k]=Math.max(v,ST.lvl[k]*.85);const e=document.getElementById('vu_'+k);if(e)e.style.width=Math.round(ST.lvl[k]*100)+'%'});
@@ -4726,7 +4739,7 @@ const stHora=ms=>{const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor(
 
 /* ---- ações do estúdio ---- */
 function stTransita(){if(ST.TR)return;if(ST.trans.tipo==='corte'||ST.trans.dur<80){const a=ST.prog;stSetProg(ST.prev);ST.prev=a;stSalva();stRenderUI();return}
- ST.TR={a:ST.prog,b:ST.prev,setA:ST.progSet||ST.cenas,setB:ST.cenas.map(stClone),tipo:ST.trans.tipo,dur:ST.trans.dur,t0:performance.now()};const a=ST.prog;ST.prev=a;/* troca: a anterior vira prévia */setTimeout(()=>{stSalva();stRenderUI()},ST.trans.dur+40)}
+ ST.TR={a:ST.prog,b:ST.prev,setA:ST.progSet||ST.cenas,setB:ST.cenas.map(stClone),tipo:ST.trans.tipo,dur:ST.trans.dur,desf:ST.trans.desf,t0:performance.now()};const a=ST.prog;ST.prev=a;/* troca: a anterior vira prévia */setTimeout(()=>{stSalva();stRenderUI()},ST.trans.dur+40)}
 function stCorte(){const t=ST.trans.tipo;ST.trans.tipo='corte';stTransita();ST.trans.tipo=t}
 function stSetTrans(k,v){ST.trans[k]=v;stSalva();stRenderUI()}
 function stPrev(id){ST.prev=id;stSalva();stRenderUI()}
@@ -4755,18 +4768,87 @@ function stAddCamada(tipo){const c=stEdit();if(!c)return;const def=FONTES_SRC.fi
 function stSlidesArq(fs,l,c){const arr=[...fs].slice(0,8);if(!arr.length)return;if(!c.camadas.includes(l)){c.camadas.push(l);ST.sel=l.id}l.p.imgs=l.p.imgs||[];let n=arr.length;arr.forEach(f=>redimMax(f,u=>{if(l.p.imgs.length<8)l.p.imgs.push(u);if(--n===0){delete ST.srcs[l.id];stSalva();stRenderUI()}},1280))}
 function stImagemArq(f,l,c){if(!f)return;redimMax(f,url=>{l.p={src:url};l.nome=f.name.replace(/\.[^.]+$/,'').slice(0,30);c.camadas.push(l);ST.sel=l.id;stSalva();stRenderUI()},1920)}
 function stCamadaAcao(id,a){const c=stEdit(),i=c.camadas.findIndex(l=>l.id===id),l=c.camadas[i];if(!l)return;
- if(a==='vis')l.vis=!l.vis;else if(a==='up'&&i<c.camadas.length-1){c.camadas.splice(i,1);c.camadas.splice(i+1,0,l)}else if(a==='down'&&i>0){c.camadas.splice(i,1);c.camadas.splice(i-1,0,l)}else if(a==='del'){c.camadas.splice(i,1);if(ST.sel===id)ST.sel=''}else if(a==='dup'){const n=JSON.parse(JSON.stringify(l));n.id=uid();n.nome=l.nome+' (cópia)';n.x=Math.min(.9,l.x+.04);n.y=Math.min(.9,l.y+.04);c.camadas.splice(i+1,0,n);ST.sel=n.id}
+ if(a==='vis')l.vis=!l.vis;else if(a==='up'&&i<c.camadas.length-1){c.camadas.splice(i,1);c.camadas.splice(i+1,0,l)}else if(a==='down'&&i>0){c.camadas.splice(i,1);c.camadas.splice(i-1,0,l)}else if(a==='front'){c.camadas.splice(i,1);c.camadas.push(l)}else if(a==='back'){c.camadas.splice(i,1);c.camadas.unshift(l)}else if(a==='del'){c.camadas.splice(i,1);if(ST.sel===id)ST.sel=''}else if(a==='dup'){const n=JSON.parse(JSON.stringify(l));n.id=uid();n.nome=l.nome+' (cópia)';n.x=Math.min(.9,l.x+.04);n.y=Math.min(.9,l.y+.04);c.camadas.splice(i+1,0,n);ST.sel=n.id}
  else if(a==='cheio'){l.x=0;l.y=0;l.w=1;l.h=1}else if(a==='esq'){l.x=0;l.y=0;l.w=.5;l.h=1}else if(a==='dir'){l.x=.5;l.y=0;l.w=.5;l.h=1}else if(a==='pip'){l.x=.68;l.y=.66;l.w=.3;l.h=.3}
  stSalva();stRenderUI()}
 function stCamadaProp(id,k,v,top){const l=stAchaCamada(id);if(!l)return;if(top)l[k]=v;else l.p[k]=v;if(k==='dev'){Object.keys(ST.srcs).forEach(s=>{if(s===id)delete ST.srcs[s]})}if(k==='src'||k==='seg'&&l.tipo==='apresentacao')delete ST.srcs[id];stSalva();if(['dev','modo','cena','nome'].includes(k))stRenderUI()}
 async function stEditaTexto(id){const l=stAchaCamada(id);if(!l)return;const t=await stDlg({t:'Texto',input:1,val:l.p.texto,max:200,ok:'Salvar'});if(t!==null){l.p.texto=t;stSalva()}}
 /* arrastar e redimensionar na prévia */
+/* ===== v1.167: redimensionar livre, réguas e guias, menu de camada, atalhos de efeito ===== */
+const MEDIA_AR=['camera','tela','imagem','video','apresentacao','logo','pip'];
+const stArLock=l=>l.ar!=null?!!l.ar:MEDIA_AR.includes(l.tipo);
+const CURSOR_H={nw:'nwse-resize',se:'nwse-resize',ne:'nesw-resize',sw:'nesw-resize',n:'ns-resize',s:'ns-resize',e:'ew-resize',w:'ew-resize',mv:'move'};
+ST.guias={vx:[],vy:[]};ST.dragL='';ST.fx=[];ST.TRp=null;
+(function(){try{const o=JSON.parse(localStorage.getItem('zoe-studio-fx')||'null');if(Array.isArray(o))ST.fx=o.slice(0,30)}catch(e){}})();
+function stHit(l,x,y,r){let tx=8/r.width,ty=8/r.height;tx=Math.min(tx,l.w/3);ty=Math.min(ty,l.h/3);
+ const nw=Math.abs(x-l.x)<=tx,ne=Math.abs(x-(l.x+l.w))<=tx,nn=Math.abs(y-l.y)<=ty,ns=Math.abs(y-(l.y+l.h))<=ty,inX=x>=l.x-tx&&x<=l.x+l.w+tx,inY=y>=l.y-ty&&y<=l.y+l.h+ty;
+ if((nw||ne)&&(nn||ns))return(nn?'n':'s')+(nw?'w':'e');if((nw||ne)&&inY)return nw?'w':'e';if((nn||ns)&&inX)return nn?'n':'s';if(x>=l.x&&x<=l.x+l.w&&y>=l.y&&y<=l.y+l.h)return'mv';return null}
+const stNoTopo=(c,x,y)=>{for(let i=c.camadas.length-1;i>=0;i--){const q=c.camadas[i];if(q.vis&&x>=q.x&&x<=q.x+q.w&&y>=q.y&&y<=q.y+q.h)return q}return null};
+function stSnapVal(v,cands,tol){let best=null,bd=tol;cands.forEach(c=>{const d=Math.abs(c-v);if(d<=bd){bd=d;best=c}});return best}
+function stCands(c,l){const vx=[0,1/3,.5,2/3,1],vy=[0,1/3,.5,2/3,1];c.camadas.forEach(q=>{if(q===l||!q.vis||(q.w>=.98&&q.h>=.98))return;vx.push(q.x,q.x+q.w/2,q.x+q.w);vy.push(q.y,q.y+q.h/2,q.y+q.h)});return{vx,vy}}
+function stMove(d,x,y,c,alt){const dx=x-d.x0,dy=y-d.y0;let nx=d.ox+dx,ny=d.oy+dy;ST.guias={vx:[],vy:[]};
+ if(!alt){const cd=stCands(c,d.l),tol=.012;let bx=null,by=null;
+  [[0,nx],[.5,nx+d.ow/2],[1,nx+d.ow]].forEach(([k,v])=>{const s=stSnapVal(v,cd.vx,tol);if(s!=null&&(!bx||Math.abs(s-v)<bx.d))bx={s,o:k*d.ow,d:Math.abs(s-v)}});
+  [[0,ny],[.5,ny+d.oh/2],[1,ny+d.oh]].forEach(([k,v])=>{const s=stSnapVal(v,cd.vy,tol);if(s!=null&&(!by||Math.abs(s-v)<by.d))by={s,o:k*d.oh,d:Math.abs(s-v)}});
+  if(bx){nx=bx.s-bx.o;ST.guias.vx.push(bx.s)}if(by){ny=by.s-by.o;ST.guias.vy.push(by.s)}}
+ d.l.x=Math.max(-.5,Math.min(1,nx));d.l.y=Math.max(-.5,Math.min(1,ny))}
+function stRedim(d,x,y,c,lock,alt){const hd=d.modo,dx=x-d.x0,dy=y-d.y0,MN=.03;let L=d.ox,T=d.oy,R=d.ox+d.ow,B=d.oy+d.oh;ST.guias={vx:[],vy:[]};
+ if(hd.includes('e'))R+=dx;if(hd.includes('w'))L+=dx;if(hd.includes('s'))B+=dy;if(hd.includes('n'))T+=dy;
+ if(lock){const rn=d.ow/d.oh;let nw=R-L,nh=B-T;
+  if(hd.length===2){const sx=nw/d.ow,sy=nh/d.oh;let s=Math.abs(sx-1)>Math.abs(sy-1)?sx:sy;s=Math.max(s,MN/d.ow,MN/d.oh);nw=d.ow*s;nh=d.oh*s}
+  else if(hd==='e'||hd==='w'){nw=Math.max(MN,nw);nh=nw/rn}else{nh=Math.max(MN,nh);nw=nh*rn}
+  const ax=hd.includes('w')?d.ox+d.ow:d.ox,ay=hd.includes('n')?d.oy+d.oh:d.oy;
+  d.l.w=nw;d.l.h=nh;d.l.x=hd.includes('w')?ax-nw:hd.includes('e')?ax:d.ox+(d.ow-nw)/2;d.l.y=hd.includes('n')?ay-nh:hd.includes('s')?ay:d.oy+(d.oh-nh)/2;return}
+ if(!alt){const cd=stCands(c,d.l),tol=.012,sn=(v,a,k)=>{const s=stSnapVal(v,a,tol);if(s!=null){ST.guias[k].push(s);return s}return v};if(hd.includes('e'))R=sn(R,cd.vx,'vx');if(hd.includes('w'))L=sn(L,cd.vx,'vx');if(hd.includes('s'))B=sn(B,cd.vy,'vy');if(hd.includes('n'))T=sn(T,cd.vy,'vy')}
+ if(R-L<MN){if(hd.includes('w'))L=R-MN;else R=L+MN}if(B-T<MN){if(hd.includes('n'))T=B-MN;else B=T+MN}
+ d.l.x=L;d.l.y=T;d.l.w=Math.min(3,R-L);d.l.h=Math.min(3,B-T)}
 function stPtr(ev){const cv=ev.currentTarget,r=cv.getBoundingClientRect(),x=(ev.clientX-r.left)/r.width,y=(ev.clientY-r.top)/r.height,c=stEdit();if(!c)return;
- if(ev.type==='pointerdown'){let l=null,modo='mv';const sel=c.camadas.find(q=>q.id===ST.sel);if(sel&&Math.abs(x-(sel.x+sel.w))<.04&&Math.abs(y-(sel.y+sel.h))<.06){l=sel;modo='rs'}
-  else for(let i=c.camadas.length-1;i>=0;i--){const q=c.camadas[i];if(q.vis&&x>=q.x&&x<=q.x+q.w&&y>=q.y&&y<=q.y+q.h){l=q;break}}
-  if(l){ST.sel=l.id;ST.drag=l.lock?null:{l,modo,x0:x,y0:y,ox:l.x,oy:l.y,ow:l.w,oh:l.h};if(ST.drag)cv.setPointerCapture(ev.pointerId);stRenderUI()}else{ST.sel='';stRenderUI()}}
- else if(ev.type==='pointermove'&&ST.drag){const d=ST.drag,dx=x-d.x0,dy=y-d.y0;if(d.modo==='mv'){d.l.x=Math.max(-.5,Math.min(1,d.ox+dx));d.l.y=Math.max(-.5,Math.min(1,d.oy+dy))}else{d.l.w=Math.max(.05,Math.min(2,d.ow+dx));d.l.h=Math.max(.05,Math.min(2,d.oh+dy))}}
- else if(ev.type==='pointerup'&&ST.drag){ST.drag=null;stSalva();stRenderUI()}}
+ if(ev.type==='pointerdown'){if(ev.button===2)return;const sel=c.camadas.find(q=>q.id===ST.sel);let l=null,modo='mv';
+  const h=sel&&sel.vis?stHit(sel,x,y,r):null;if(h&&h!=='mv'){l=sel;modo=h}else l=stNoTopo(c,x,y);
+  if(l){ST.sel=l.id;ST.drag=l.lock?null:{l,modo,x0:x,y0:y,ox:l.x,oy:l.y,ow:l.w,oh:l.h};if(ST.drag){cv.style.cursor=CURSOR_H[modo];try{cv.setPointerCapture(ev.pointerId)}catch(e){}}stRenderUI()}else{ST.sel='';stRenderUI()}}
+ else if(ev.type==='pointermove'){if(ST.drag){const d=ST.drag;if(d.modo==='mv')stMove(d,x,y,c,ev.altKey);else stRedim(d,x,y,c,stArLock(d.l)!==ev.shiftKey,ev.altKey)}
+  else{const sel=c.camadas.find(q=>q.id===ST.sel);let h=sel&&sel.vis?stHit(sel,x,y,r):null;if(!h&&stNoTopo(c,x,y))h='mv';cv.style.cursor=h?(sel&&sel.lock&&sel.id===ST.sel&&h!==null&&(stHit(sel,x,y,r))?'not-allowed':CURSOR_H[h]):'default'}}
+ else if(ev.type==='pointerup'&&ST.drag){ST.drag=null;ST.guias={vx:[],vy:[]};stSalva();stRenderUI()}}
+function stSobrepoe(ctx,cena,W,H){const u=W/640,l=ST.sel&&cena.camadas.find(x=>x.id===ST.sel);
+ if(ST.drag&&ST.drag.l){const b=ST.drag.l,[RW,RH]=RES[ST.q.res]||RES[720];ctx.save();
+  ctx.lineWidth=u;ctx.strokeStyle='rgba(255,255,255,.22)';ctx.setLineDash([4*u,4*u]);[1/3,.5,2/3].forEach(f=>{ctx.beginPath();ctx.moveTo(f*W,0);ctx.lineTo(f*W,H);ctx.moveTo(0,f*H);ctx.lineTo(W,f*H);ctx.stroke()});ctx.setLineDash([]);
+  const g=ST.guias||{vx:[],vy:[]};ctx.strokeStyle='#ff2d95';ctx.lineWidth=1.6*u;g.vx.forEach(v=>{ctx.beginPath();ctx.moveTo(v*W,0);ctx.lineTo(v*W,H);ctx.stroke()});g.vy.forEach(v=>{ctx.beginPath();ctx.moveTo(0,v*H);ctx.lineTo(W,v*H);ctx.stroke()});
+  const rh=15*u;ctx.fillStyle='rgba(8,14,11,.85)';ctx.fillRect(0,0,W,rh);ctx.fillRect(0,0,rh,H);ctx.fillStyle='rgba(34,197,94,.5)';ctx.fillRect(b.x*W,0,b.w*W,rh);ctx.fillRect(0,b.y*H,rh,b.h*H);
+  ctx.strokeStyle='rgba(255,255,255,.75)';ctx.fillStyle='rgba(255,255,255,.9)';ctx.lineWidth=u;ctx.font=`${8*u}px sans-serif`;ctx.textBaseline='top';
+  for(let i=0;i<=20;i++){const f=i/20,len=i%10===0?rh*.8:i%5===0?rh*.55:rh*.3;ctx.beginPath();ctx.moveTo(f*W,rh-len);ctx.lineTo(f*W,rh);ctx.moveTo(rh-len,f*H);ctx.lineTo(rh,f*H);ctx.stroke()}
+  [0,.25,.5,.75,1].forEach(f=>{const t=String(Math.round(f*100));ctx.textAlign=f===1?'right':'left';ctx.fillText(t,f*W+(f===1?-2:2)*u,u);ctx.textAlign='left';ctx.fillText(t,u,f*H+(f===1?-9*u:u))});
+  const tx=`X ${Math.round(b.x*100)}%  Y ${Math.round(b.y*100)}%  ·  ${Math.round(b.w*RW)}×${Math.round(b.h*RH)} px`;ctx.font=`700 ${9*u}px sans-serif`;const tw=ctx.measureText(tx).width+10*u;let lx=Math.max(rh+2*u,Math.min(W-tw-2*u,b.x*W)),ly=b.y*H-18*u;if(ly<rh+2*u)ly=Math.min(H-18*u,(b.y+b.h)*H+4*u);
+  ctx.fillStyle='rgba(8,14,11,.9)';stRR(ctx,lx,ly,tw,15*u,5*u);ctx.fill();ctx.fillStyle='#fff';ctx.textBaseline='middle';ctx.textAlign='left';ctx.fillText(tx,lx+5*u,ly+8*u);ctx.restore()}
+ if(l){ctx.save();ctx.strokeStyle=l.lock?'#f59e0b':'#22c55e';ctx.lineWidth=Math.max(2,2*u);ctx.setLineDash([8*u,6*u]);ctx.strokeRect(l.x*W,l.y*H,l.w*W,l.h*H);ctx.setLineDash([]);
+  if(!l.lock){const s=7*u,pts=[[l.x,l.y],[l.x+l.w/2,l.y],[l.x+l.w,l.y],[l.x,l.y+l.h/2],[l.x+l.w,l.y+l.h/2],[l.x,l.y+l.h],[l.x+l.w/2,l.y+l.h],[l.x+l.w,l.y+l.h]];pts.forEach(([px,py])=>{ctx.fillStyle='#fff';ctx.strokeStyle='#16a34a';ctx.lineWidth=1.5*u;ctx.fillRect(px*W-s/2,py*H-s/2,s,s);ctx.strokeRect(px*W-s/2,py*H-s/2,s,s)})}ctx.restore()}}
+/* menu de camadas: botão direito na prévia ou na lista de Fontes */
+function stMenuFecha(){const m=$('#st_ctx');if(m)m.innerHTML=''}
+function stMenuAbre(ev,l,pilha){const stu=$('#stu'),m=$('#st_ctx');if(!stu||!m||!l)return;ev.preventDefault();ST.sel=l.id;const r=stu.getBoundingClientRect(),lx=Math.max(4,Math.min(ev.clientX-r.left,r.width-230)),ly=Math.max(4,Math.min(ev.clientY-r.top,r.height-360));
+ const it=(ac,t,ico)=>`<button class="st-cmi" onclick="stMenuAc('${l.id}','${ac}')">${ic(ico,14)}<span>${t}</span></button>`;
+ m.innerHTML=`<div class="st-cxl" onclick="if(event.target===this)stMenuFecha()" oncontextmenu="event.preventDefault();stMenuFecha()"><div class="st-cm" style="left:${lx}px;top:${ly}px" role="menu"><div class="st-cmh">${esc(l.nome)}</div>
+ ${pilha&&pilha.length>1?`<div class="st-cms">Camadas neste ponto</div>${pilha.map(q=>`<button class="st-cmi ${q.id===l.id?'on':''}" onclick="stMenuSel('${q.id}')"><span>${esc(q.nome)}</span></button>`).join('')}<div class="st-cmd"></div>`:''}
+ ${it('front','Trazer para a frente','up')}${it('up','Subir uma camada','up')}${it('down','Descer uma camada','down')}${it('back','Enviar para trás','down')}<div class="st-cmd"></div>
+ ${it('dup','Duplicar','copy')}${it('vis',l.vis?'Ocultar':'Mostrar',l.vis?'eyeoff':'eye')}${it('lock',l.lock?'Destravar':'Travar','lock')}${MEDIA_AR.includes(l.tipo)?it('ar','Proporção '+(stArLock(l)?'livre':'travada'),'link'):''}${it('props','Propriedades…','cog')}<div class="st-cmd"></div>${it('del','Remover','trash')}</div></div>`;stRenderUI()}
+function stMenuSel(id){ST.sel=id;stMenuFecha();stRenderUI()}
+function stMenuAc(id,ac){stMenuFecha();const l=stAchaCamada(id);if(!l)return;ST.sel=id;if(ac==='props')return stProps(id);if(ac==='lock')return stTrava(id);if(ac==='ar')return stArToggle(id);stCamadaAcao(id,ac)}
+function stMenuL(ev,id){stMenuAbre(ev,stAchaCamada(id),null)}
+function stMenuPv(ev){const cv=ev.currentTarget,r=cv.getBoundingClientRect(),x=(ev.clientX-r.left)/r.width,y=(ev.clientY-r.top)/r.height,c=stEdit();if(!c)return;ev.preventDefault();const pilha=c.camadas.filter(q=>q.vis&&x>=q.x&&x<=q.x+q.w&&y>=q.y&&y<=q.y+q.h).reverse();if(!pilha.length)return stMenuFecha();stMenuAbre(ev,pilha[0],pilha)}
+function stArToggle(id){const l=stAchaCamada(id);if(!l)return;l.ar=!stArLock(l);if(['imagem','logo'].includes(l.tipo)){if(!l.ar&&!l.p.fit)l.p.fit='stretch';else if(l.ar&&l.p.fit==='stretch')l.p.fit='contain'}stSalva();stRenderUI()}
+function stLDrag(ev,id){ST.dragL=id;ST.dragP='';try{ev.dataTransfer.setData('text/plain',id);ev.dataTransfer.effectAllowed='move'}catch(e){}}
+function stLDrop(ev,id){ev.preventDefault();ev.stopPropagation();const from=ST.dragL;ST.dragL='';const c=stEdit();if(!c||!from||from===id)return;const fi=c.camadas.findIndex(l=>l.id===from);if(fi<0)return;const r=ev.currentTarget.getBoundingClientRect(),acima=ev.clientY<r.top+r.height/2,[l]=c.camadas.splice(fi,1),ti=c.camadas.findIndex(q=>q.id===id);c.camadas.splice(acima?ti+1:ti,0,l);ST.sel=l.id;stSalva();stRenderUI()}
+function stAjusteHTML(l){if(!MEDIA_AR.includes(l.tipo))return '';const f=l.p.fit||(['tela','imagem','logo','apresentacao','video'].includes(l.tipo)?'contain':'cover');
+ return `<label class="f">Ajuste na caixa<select onchange="stCamadaProp('${l.id}','fit',this.value)">${[['contain','Caber inteira (sem cortar)'],['cover','Preencher (corta as bordas)'],['stretch','Esticar (deforma)']].map(([v,t])=>`<option value="${v}" ${f===v?'selected':''}>${t}</option>`).join('')}</select></label><label class="chk"><input type="checkbox" ${stArLock(l)?'checked':''} onchange="stArToggle('${l.id}');stProps('${l.id}')"> Travar a proporção ao redimensionar (Shift inverte)</label>`}
+/* atalhos de efeito (transição) */
+const FX_BASE=[{id:'b-fade',nome:'Fade',tipo:'fade',dur:600},{id:'b-rapido',nome:'Fade rápido',tipo:'fade',dur:250},{id:'b-mergulho',nome:'Pelo preto',tipo:'mergulho',dur:900},{id:'b-desfoque',nome:'Desfoque',tipo:'desfoque',dur:700,desf:30},{id:'b-zoom',nome:'Zoom',tipo:'zoom',dur:700},{id:'b-cortina',nome:'Cortina',tipo:'cortina',dur:800},{id:'b-iris',nome:'Íris',tipo:'iris',dur:900},{id:'b-deslizar',nome:'Deslizar',tipo:'deslizar',dur:700},{id:'b-corte',nome:'Corte',tipo:'corte',dur:0}];
+const stFxAch=id=>FX_BASE.concat(ST.fx).find(f=>f.id===id);
+function stFxGuarda(){try{localStorage.setItem('zoe-studio-fx',JSON.stringify(ST.fx))}catch(e){}}
+function stFxAplica(f){ST.trans.tipo=f.tipo;ST.trans.dur=f.dur;if(f.desf!=null)ST.trans.desf=f.desf;stSalva()}
+function stFxSel(id){const f=stFxAch(id);if(!f)return;stFxAplica(f);ST.TRp={a:ST.prog,b:ST.prev,setA:ST.progSet||ST.cenas,setB:ST.cenas.map(stClone),tipo:f.tipo,dur:Math.max(700,f.dur),desf:ST.trans.desf,t0:performance.now()};stTransUI()}
+function stFxAr(id){const f=stFxAch(id);if(!f||ST.TR)return;stFxAplica(f);ST.TRp=null;stTransita();stTransUI()}
+async function stFxSalva(){const t=ST.trans,n=await stDlg({t:'Salvar efeito',msg:`${(TRANS.find(x=>x[0]===t.tipo)||[0,t.tipo])[1]} · ${t.dur} ms`,input:1,val:'',ok:'Salvar'});if(!n||!n.trim())return;if(ST.fx.length>=30)return toast('Limite de 30 efeitos salvos.','err');ST.fx.push({id:uid(),nome:n.trim().slice(0,24),tipo:t.tipo,dur:t.dur,desf:t.desf,user:1});stFxGuarda();stTransUI()}
+function stFxApaga(id){ST.fx=ST.fx.filter(f=>f.id!==id);stFxGuarda();stTransUI()}
+function stFxHTML(){const t=ST.trans,all=FX_BASE.concat(ST.fx);return `<div class="st-fxh">Atalhos de efeito</div><div class="st-fxl">${all.map(f=>`<div class="st-fx ${f.tipo===t.tipo&&f.dur===t.dur?'on':''}"><button class="st-fxb" onclick="stFxSel('${f.id}')" title="Ver este efeito na pré-visualização">${esc(f.nome)}</button><button class="ib sm" onclick="stFxAr('${f.id}')" title="Colocar no ar com este efeito" aria-label="Colocar no ar com ${esc(f.nome)}">${ic('play',13)}</button>${f.user?`<button class="ib sm" onclick="stFxApaga('${f.id}')" title="Apagar efeito salvo" aria-label="Apagar ${esc(f.nome)}">${ic('x',13)}</button>`:''}</div>`).join('')}</div><button class="btn ghost sm" onclick="stFxSalva()">${ic('plus',13)} Salvar efeito atual</button>`}
+
 
 /* ===== v1.166: movimento de câmera, PiP, texto corrido, letra/versículo e tarjas ===== */
 const MOV_TIPOS=['camera','tela','imagem','video','apresentacao'];
@@ -4919,7 +5001,7 @@ function ytBlocoHTML(cfg){if(!cfg.googleClientId)return `<div class="st-yt"><b>$
 
 /* ---- setups: salvar e carregar o estúdio inteiro ---- */
 const SU={srv:null,view:[],busy:false};
-function stSnap(){return JSON.parse(JSON.stringify({cenas:ST.cenas,prog:ST.prog,prev:ST.prev,trans:ST.trans,mix:ST.mix,q:ST.q,titulo:ST.titulo,pastores:ST.pastores}))}
+function stSnap(){return JSON.parse(JSON.stringify({cenas:ST.cenas,prog:ST.prog,prev:ST.prev,trans:ST.trans,mix:ST.mix,q:ST.q,titulo:ST.titulo,pastores:ST.pastores,fx:ST.fx}))}
 function stLeve(d){d.cenas.forEach(c=>c.camadas.forEach(l=>{const p=l.p||{};if(p.src&&p.src.length>60000){delete p.src;p.semImg=1}if(p.imgs){const n=p.imgs.length;p.imgs=p.imgs.filter(u=>u.length<=60000);if(p.imgs.length<n)p.semImg=1}}));return d}
 const stSetupsLocal=()=>{try{return JSON.parse(localStorage.getItem('zoe-studio-setups')||'{}')}catch(e){return{}}};
 function stSetupsGuardaLocal(o){try{localStorage.setItem('zoe-studio-setups',JSON.stringify(o))}catch(e){toast('Memória do navegador cheia: o setup só vai para o servidor.','info')}}
@@ -4935,7 +5017,7 @@ async function stSetupSalva(){const n=(($('#su_n')||{}).value||'').trim().slice(
  SU.srv=SU.srv||{};if(!SU.srv[n]&&Object.keys(SU.srv).length>=20)return toast('Limite de 20 setups no servidor. Apague algum.','err');const antes=SU.srv[n];SU.srv[n]={ts,dados:stLeve(JSON.parse(JSON.stringify(snap)))};SU.busy=true;stSetupsMostra();
  try{await mmApi('saveStudioSetups',{setups:SU.srv});ST.setupNome=n;stSalva();toast('Setup “'+n+'” salvo.')}catch(e){if(antes)SU.srv[n]=antes;else delete SU.srv[n];ST.setupNome=n;stSalva();toast('Salvo só neste navegador: '+(e.message||'sem servidor'),'info')}
  SU.busy=false;stSetupsMostra();stCtlUI()}
-function stAplica(d){if(!d||!Array.isArray(d.cenas)||!d.cenas.length)return toast('Setup inválido.','err');ST.cenas=d.cenas;ST.prog=d.prog;ST.prev=d.prev;if(d.trans)Object.assign(ST.trans,d.trans);if(d.mix)ST.mix=Object.assign(ST.mix,d.mix);if(d.q&&!ST.out)Object.assign(ST.q,d.q);if(typeof d.titulo==='string'&&!ST.out)ST.titulo=d.titulo;ST.pastores=Array.isArray(d.pastores)?d.pastores.slice(0,40):[];
+function stAplica(d){if(!d||!Array.isArray(d.cenas)||!d.cenas.length)return toast('Setup inválido.','err');ST.cenas=d.cenas;ST.prog=d.prog;ST.prev=d.prev;if(d.trans)Object.assign(ST.trans,d.trans);if(d.mix)ST.mix=Object.assign(ST.mix,d.mix);if(d.q&&!ST.out)Object.assign(ST.q,d.q);if(typeof d.titulo==='string'&&!ST.out)ST.titulo=d.titulo;ST.pastores=Array.isArray(d.pastores)?d.pastores.slice(0,40):[];if(Array.isArray(d.fx)){ST.fx=d.fx.slice(0,30);stFxGuarda()}
  if(!stCena(ST.prog))ST.prog=ST.cenas[0].id;if(!stCena(ST.prev))ST.prev=ST.cenas[0].id;ST.sel='';ST.TR=null;stSetProg(ST.prog);
  const ids={};ST.cenas.forEach(c=>c.camadas.forEach(l=>ids[l.id]=l.tipo));Object.keys(ST.srcs).forEach(k=>{if(!(ids[k]==='camera'||ids[k]==='tela'))delete ST.srcs[k]});
  ST.mvRun={};ST.tz={};ST.lg={};ST.mvCena='';try{stMixAplica()}catch(e){}stSalva();stRenderUI()}
@@ -5013,7 +5095,7 @@ window.addEventListener('beforeunload',e=>{if(ST.out){e.preventDefault();e.retur
 ST.sair={};ST.titulo='';
 function estudioHTML(){if(!ST.ini){ST.ini=true;stCarrega();stDevs();stCfg().then(()=>{if(R.r==='multimidia'&&MM.sub==='estudio')stRenderUI()})}
  if(!navigator.mediaDevices||!window.MediaRecorder)return '<div class="card flat"><h3>Navegador sem suporte</h3><p class="muted">O Estúdio precisa de um navegador de computador atualizado (Chrome, Edge ou Firefox).</p></div>';
- if(!ST.cv){ST.cv=document.createElement('canvas');ST.cv.className='st-cv';ST.pv=document.createElement('canvas');ST.pv.className='st-cv st-pv';['pointerdown','pointermove','pointerup'].forEach(e=>ST.pv.addEventListener(e,stPtr));ST.tvc=document.createElement('canvas');ST.tvc.className='st-cv'}
+ if(!ST.cv){ST.cv=document.createElement('canvas');ST.cv.className='st-cv';ST.pv=document.createElement('canvas');ST.pv.className='st-cv st-pv';['pointerdown','pointermove','pointerup'].forEach(e=>ST.pv.addEventListener(e,stPtr));ST.pv.addEventListener('contextmenu',stMenuPv);ST.tvc=document.createElement('canvas');ST.tvc.className='st-cv'}
  setTimeout(()=>{stMonta();stLayAplica();stRenderUI();if(!ST.raf){ST.raf=requestAnimationFrame(stRender)}stTelaoTick()},0);
  return `<div class="stu ${ST.full?'st-full':''}" id="stu"><div id="st_barra" class="st-barra"></div>
  <div class="st-top"><div class="st-mon"><div class="st-mh"><span class="st-tag prev">PRÉ-VISUALIZAÇÃO</span><span class="muted sm" id="st_einfo"></span></div><div id="st_pv" class="st-fr"></div></div>
@@ -5026,7 +5108,7 @@ function estudioHTML(){if(!ST.ini){ST.ini=true;stCarrega();stDevs();stCfg().then
   <section class="st-pn" data-p="fontes" aria-label="Fontes" ondragover="event.preventDefault()" ondrop="stDrop(event,'fontes')"><div class="st-pnh" draggable="true" ondragstart="stDragIni(event,'fontes')" title="Arraste o título para trocar o bloco de lugar">Fontes <span class="muted sm" id="st_fnome"></span></div><div class="st-pnb" id="st_fontes"></div><div class="st-pnf" id="st_fontesf"></div></section>
   <section class="st-pn" data-p="audio" aria-label="Mixer de áudio" ondragover="event.preventDefault()" ondrop="stDrop(event,'audio')"><div class="st-pnh" draggable="true" ondragstart="stDragIni(event,'audio')" title="Arraste o título para trocar o bloco de lugar">Mixer de áudio</div><div class="st-pnb" id="st_audio"></div></section>
   <section class="st-pn" data-p="ctl" aria-label="Controles" ondragover="event.preventDefault()" ondrop="stDrop(event,'ctl')"><div class="st-pnh" draggable="true" ondragstart="stDragIni(event,'ctl')" title="Arraste o título para trocar o bloco de lugar">Controles</div><div class="st-pnb" id="st_ctl"></div></section></div>
- <div class="st-fl" id="st_fl" aria-live="polite"></div><div class="st-ml" id="st_ml"></div><div class="st-ml" id="st_dlg"></div></div>`}
+ <div class="st-fl" id="st_fl" aria-live="polite"></div><div class="st-ml" id="st_ml"></div><div class="st-ml" id="st_dlg"></div><div class="st-ml" id="st_ctx"></div></div>`}
 function stMonta(){const a=$('#st_pv'),b=$('#st_pg'),c=$('#st_tv');if(a&&ST.pv.parentNode!==a)a.appendChild(ST.pv);if(b&&ST.cv.parentNode!==b)b.appendChild(ST.cv);if(c&&ST.tvc.parentNode!==c)c.appendChild(ST.tvc)}
 function stRenderUI(){if(R.r!=='multimidia'||MM.sub!=='estudio')return;stMonta();stBarra();stCenasUI();stTransUI();stFontesUI();stAudioUI();stSrcBar();stComUI();const pi=$('#st_pinfo');if(pi){const c=stCena(ST.prog);pi.textContent=c?c.nome:''}const ei=$('#st_einfo');if(ei){const c=stCena(ST.prev);ei.textContent=c?c.nome:''}}
 function stTvInfo(){const t=ST.tm,i=$('#st_tvi');if(i)i.textContent=t.unit?`${t.unit.titulo}${t.slides&&t.slides.length>1?' · slide '+(t.i+1)+'/'+t.slides.length:''}${t.pausado?' · logo na tela':''}`:'Nada no telão agora.'}
@@ -5043,11 +5125,11 @@ function stCenasUI(){const e=$('#st_cenas');if(!e)return;e.innerHTML=ST.cenas.ma
  const f=$('#st_cenasf');if(f)f.innerHTML=`<button class="ib sm" onclick="stNovaCena()" title="Nova cena" aria-label="Nova cena">${ic('plus',15)}</button><button class="ib sm" onclick="stApagaCena(ST.prev)" title="Apagar cena" aria-label="Apagar cena">${ic('trash',15)}</button><button class="ib sm" onclick="stRenomeia(ST.prev)" title="Renomear cena" aria-label="Renomear cena">${ic('pen',15)}</button><button class="ib sm" onclick="stDuplica(ST.prev)" title="Duplicar cena" aria-label="Duplicar cena">${ic('copy',15)}</button><span class="sp"></span><button class="ib sm" onclick="stMoveCena(-1)" title="Subir cena" aria-label="Subir cena">${ic('up',15)}</button><button class="ib sm" onclick="stMoveCena(1)" title="Descer cena" aria-label="Descer cena">${ic('down',15)}</button>`}
 function stMoveCena(d){const i=ST.cenas.findIndex(c=>c.id===ST.prev),j=i+d;if(i<0||j<0||j>=ST.cenas.length)return;const [c]=ST.cenas.splice(i,1);ST.cenas.splice(j,0,c);stSalva();stRenderUI()}
 function stFontesUI(){const e=$('#st_fontes'),c=stEdit();if(!e)return;const fn=$('#st_fnome');if(fn)fn.textContent=c?'· '+c.nome:'';
- e.innerHTML=c&&c.camadas.length?c.camadas.slice().reverse().map(l=>{const ico=(FONTES_SRC.find(f=>f[0]===l.tipo)||[0,0,'layers'])[2];return `<div class="st-it ${ST.sel===l.id?'sel':''} ${l.vis?'':'off'}" role="button" tabindex="0" onclick="stSelCamada('${l.id}')" ondblclick="stProps('${l.id}')" title="Duplo clique: propriedades"><span class="st-ci">${ic(ico,15)}</span><span class="ell">${esc(l.nome)}</span><button class="ib sm" onclick="event.stopPropagation();stCamadaAcao('${l.id}','vis')" aria-label="${l.vis?'Ocultar':'Mostrar'}" title="${l.vis?'Ocultar':'Mostrar'}">${ic(l.vis?'eye':'eyeoff',15)}</button><button class="ib sm ${l.lock?'':'dim'}" onclick="event.stopPropagation();stTrava('${l.id}')" aria-label="${l.lock?'Destravar':'Travar'}" title="${l.lock?'Destravar':'Travar'}">${ic('lock',15)}</button></div>`}).join(''):'<p class="muted sm" style="margin:6px">Sem fontes. Toque no + para adicionar câmera, tela, imagem, vídeo, texto e mais.</p>';
+ e.innerHTML=c&&c.camadas.length?c.camadas.slice().reverse().map(l=>{const ico=(FONTES_SRC.find(f=>f[0]===l.tipo)||[0,0,'layers'])[2];return `<div class="st-it ${ST.sel===l.id?'sel':''} ${l.vis?'':'off'}" role="button" tabindex="0" onclick="stSelCamada('${l.id}')" ondblclick="stProps('${l.id}')" draggable="true" ondragstart="stLDrag(event,'${l.id}')" ondragover="event.preventDefault()" ondrop="stLDrop(event,'${l.id}')" oncontextmenu="stMenuL(event,'${l.id}')" title="Arraste para mudar a camada · botão direito: opções · duplo clique: propriedades"><span class="st-ci">${ic(ico,15)}</span><span class="ell">${esc(l.nome)}</span><button class="ib sm" onclick="event.stopPropagation();stCamadaAcao('${l.id}','vis')" aria-label="${l.vis?'Ocultar':'Mostrar'}" title="${l.vis?'Ocultar':'Mostrar'}">${ic(l.vis?'eye':'eyeoff',15)}</button><button class="ib sm ${l.lock?'':'dim'}" onclick="event.stopPropagation();stTrava('${l.id}')" aria-label="${l.lock?'Destravar':'Travar'}" title="${l.lock?'Destravar':'Travar'}">${ic('lock',15)}</button></div>`}).join(''):'<p class="muted sm" style="margin:6px">Sem fontes. Toque no + para adicionar câmera, tela, imagem, vídeo, texto e mais.</p>';
  const f=$('#st_fontesf');if(f)f.innerHTML=`<button class="ib sm" onclick="stAddMenu()" title="Adicionar fonte" aria-label="Adicionar fonte">${ic('plus',15)}</button><button class="ib sm" onclick="ST.sel&&stCamadaAcao(ST.sel,'del')" title="Remover fonte" aria-label="Remover fonte">${ic('trash',15)}</button><button class="ib sm" onclick="ST.sel&&stProps(ST.sel)" title="Propriedades" aria-label="Propriedades">${ic('cog',15)}</button><button class="ib sm" onclick="ST.sel&&stCamadaAcao(ST.sel,'dup')" title="Duplicar fonte" aria-label="Duplicar fonte">${ic('copy',15)}</button><span class="sp"></span><button class="ib sm" onclick="ST.sel&&stCamadaAcao(ST.sel,'up')" title="Para frente" aria-label="Para frente">${ic('up',15)}</button><button class="ib sm" onclick="ST.sel&&stCamadaAcao(ST.sel,'down')" title="Para trás" aria-label="Para trás">${ic('down',15)}</button>`}
 function stTrava(id){const l=stAchaCamada(id);if(!l)return;l.lock=!l.lock;stSalva();stFontesUI()}
 function stSrcBar(){const e=$('#st_srcbar');if(!e)return;const c=stEdit(),l=c&&c.camadas.find(x=>x.id===ST.sel);
- e.innerHTML=l?`<span class="st-ci">${ic((FONTES_SRC.find(f=>f[0]===l.tipo)||[0,0,'layers'])[2],16)}</span><b>${esc(l.nome)}</b><span class="muted sm">${esc((FONTES_SRC.find(f=>f[0]===l.tipo)||['','',''])[1])}</span><span class="sp"></span><button class="btn sm ghost" onclick="stProps('${l.id}')">${ic('cog',14)} Propriedades</button>${[['cheio','Tela cheia'],['esq','Esquerda'],['dir','Direita'],['pip','Canto']].map(([a,t])=>`<button class="chip" onclick="stCamadaAcao('${l.id}','${a}')">${t}</button>`).join('')}`:`<span class="muted sm">Nenhuma fonte selecionada. Escolha uma na lista de Fontes ou toque nela na pré-visualização para mover e redimensionar.</span>`}
+ e.innerHTML=l?`<span class="st-ci">${ic((FONTES_SRC.find(f=>f[0]===l.tipo)||[0,0,'layers'])[2],16)}</span><b>${esc(l.nome)}</b><span class="muted sm">${esc((FONTES_SRC.find(f=>f[0]===l.tipo)||['','',''])[1])}</span><span class="sp"></span><button class="btn sm ghost" onclick="stProps('${l.id}')">${ic('cog',14)} Propriedades</button>${MEDIA_AR.includes(l.tipo)?`<button class="chip ${stArLock(l)?'on':''}" onclick="stArToggle('${l.id}')" title="Travar ou liberar a proporção ao redimensionar">${ic('lock',12)} Proporção ${stArLock(l)?'travada':'livre'}</button>`:''}${[['cheio','Tela cheia'],['esq','Esquerda'],['dir','Direita'],['pip','Canto']].map(([a,t])=>`<button class="chip" onclick="stCamadaAcao('${l.id}','${a}')">${t}</button>`).join('')}`:`<span class="muted sm">Nenhuma fonte selecionada. Escolha uma na lista de Fontes ou toque nela na pré-visualização para mover e redimensionar.</span>`}
 function stAudioUI(){const e=$('#st_audio');if(!e)return;if(ST.audRend&&document.activeElement&&e.contains(document.activeElement)&&['INPUT','SELECT'].includes(document.activeElement.tagName))return;ST.audRend=1;e.innerHTML=stAudioHTML()}
 function stCtlUI(){const e=$('#st_ctl');if(!e)return;const o=ST.out,s=ST.stats,total=(ST.site.esp||0)+Object.values(ST.plat).reduce((n,x)=>n+(x.espectadores||0),0);
  e.innerHTML=`<div class="st-cbt">${o?`<button class="btn red" onclick="stParaLive()">${ic('stop',16)} Encerrar transmissão</button>`:`<button class="btn st-go" onclick="stIniciaLive()" ${ST.busy?'disabled':''}>${ic('broadcast',16)} Iniciar transmissão</button>`}<button class="btn ghost" onclick="stPlat()">${ic('link',16)} Gerenciar transmissão</button><button class="btn ghost" onclick="stGrava()">${ic('rec',16)} ${ST.rec?'Parar gravação '+stHora(Date.now()-ST.rec.t0).slice(3):'Iniciar gravação'}</button><button class="btn ghost" onclick="stSetups()">${ic('layers',16)} Setups</button><button class="btn ghost" onclick="ytOn()?stConfig():ytConecta()">${ic('broadcast',16)} ${ytOn()?'YouTube: '+esc(YT.canal):'Conectar YouTube'}</button><button class="btn ghost" onclick="stConfig()">${ic('cog',16)} Configurações</button><button class="btn ghost" onclick="stBalaoTeste()">${ic('chat',16)} Testar balão de comentário</button></div>
@@ -5065,10 +5147,10 @@ document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement
 function stBalao(c){const f=$('#st_fl');if(!f)return;const [bg,gl,nome]=stRede(c.rede);const d=document.createElement('div');d.className='st-bl';d.innerHTML=`<span class="st-rd" style="background:${bg}" title="${esc(nome)}" aria-label="${esc(nome)}">${gl}</span><div><b>${esc(c.autor||nome)}</b><div>${esc(c.texto)}</div></div>`;f.appendChild(d);while(f.children.length>5)f.firstChild.remove();setTimeout(()=>{d.classList.add('out');setTimeout(()=>d.remove(),500)},14000)}
 function stBalaoTeste(){const r=['youtube','facebook','instagram','tiktok','site'][Math.floor(Math.random()*5)];ST.com.push({rede:r,de:stRede(r)[2],autor:'Maria',texto:'Glória a Deus! Que culto abençoado 🙏'});stComUI()}
 function stComUI(){ST.com.filter(c=>!c.v).forEach(c=>{c.v=1;stBalao(c)})}
-function stTransUI(){const e=$('#st_trans');if(!e)return;const t=ST.trans;e.innerHTML=`<button class="btn ghost" onclick="stCorte()" title="Troca imediata, sem efeito">${ic('cut',16)} Cortar</button><button class="btn st-tbtn" onclick="stTransita()" ${ST.TR?'disabled':''} title="Leva a pré-visualização, como está agora, para o Programa">${ic('swap',16)} Transição</button>
+function stTransUI(){const e=$('#st_trans');if(!e)return;const t=ST.trans;e.innerHTML=`<div class="st-tbt"><button class="btn ghost" onclick="stCorte()" title="Troca imediata, sem efeito">${ic('cut',16)} Cortar</button><button class="btn st-tbtn" onclick="stTransita()" ${ST.TR?'disabled':''} title="Leva a pré-visualização, como está agora, para o Programa">${ic('swap',16)} Transição</button></div>
  <label class="f st-f">Efeito<select onchange="stSetTrans('tipo',this.value)">${TRANS.map(([v,l])=>`<option value="${v}" ${t.tipo===v?'selected':''}>${l}</option>`).join('')}</select></label>
  <label class="f st-f">Duração: <b>${t.dur} ms</b><input type="range" min="100" max="2500" step="50" value="${t.dur}" oninput="ST.trans.dur=+this.value;this.parentNode.querySelector('b').textContent=this.value+' ms'" onchange="stSetTrans('dur',+this.value)"></label>
- ${t.tipo==='desfoque'?`<label class="f st-f">Desfoque: <b>${t.desf} px</b><input type="range" min="2" max="60" value="${t.desf}" onchange="stSetTrans('desf',+this.value)"></label>`:''}`}
+ ${t.tipo==='desfoque'?`<label class="f st-f">Desfoque: <b>${t.desf} px</b><input type="range" min="2" max="60" value="${t.desf}" onchange="stSetTrans('desf',+this.value)"></label>`:''}${stFxHTML()}`}
 function stPainelUI(){stFontesUI();stAudioUI()}
 function stPropsHTML(l,o){const P=l.p,pos=`<div class="st-pos">${[['cheio','Tela cheia'],['esq','Metade esq.'],['dir','Metade dir.'],['pip','Canto (PiP)']].map(([a,t])=>`<button class="chip" onclick="stCamadaAcao('${l.id}','${a}')">${t}</button>`).join('')}</div>`;let f='';
  if(l.tipo==='camera')f=`<label class="f">Câmera<select onchange="stCamadaProp('${l.id}','dev',this.value)"><option value="">Padrão</option>${((ST.devs||{}).cam||[]).map((d,i)=>`<option value="${esc(d.deviceId)}" ${P.dev===d.deviceId?'selected':''}>${esc(d.label||'Câmera '+(i+1))}</option>`).join('')}</select></label>${o&&o.erro?`<p class="st-erro">${esc(o.erro)}</p>`:''}`;
@@ -5083,7 +5165,7 @@ function stPropsHTML(l,o){const P=l.p,pos=`<div class="st-pos">${[['cheio','Tela
  else if(l.tipo==='cena')f=`<label class="f">Cena exibida<select onchange="stCamadaProp('${l.id}','cena',this.value)">${ST.cenas.filter(c=>c.id!==ST.prev).map(c=>`<option value="${c.id}" ${P.cena===c.id?'selected':''}>${esc(c.nome)}</option>`).join('')}</select></label>`;
  else if(l.tipo==='cor')f=`<div class="st-r2"><label class="f">Cor 1<input type="color" value="${esc(P.cor||'#000000')}" oninput="stCamadaProp('${l.id}','cor',this.value)"></label><label class="f">Cor 2<input type="color" value="${esc(P.cor2||'#000000')}" oninput="stCamadaProp('${l.id}','cor2',this.value)"></label></div>`;
  else f=stPropsNovos(l);
- return `<div class="st-props"><label class="f">Nome<input value="${esc(l.nome)}" maxlength="40" oninput="stCamadaProp('${l.id}','nome',this.value,1);stFontesUI()"></label>${f}<label class="f">Opacidade: <b>${Math.round((l.op==null?1:l.op)*100)}%</b><input type="range" min="5" max="100" value="${Math.round((l.op==null?1:l.op)*100)}" oninput="stCamadaProp('${l.id}','op',this.value/100,1);this.parentNode.querySelector('b').textContent=this.value+'%'"></label>${stPosNum(l)}${pos}${stMovHTML(l)}</div>`}
+ return `<div class="st-props"><label class="f">Nome<input value="${esc(l.nome)}" maxlength="40" oninput="stCamadaProp('${l.id}','nome',this.value,1);stFontesUI()"></label>${f}<label class="f">Opacidade: <b>${Math.round((l.op==null?1:l.op)*100)}%</b><input type="range" min="5" max="100" value="${Math.round((l.op==null?1:l.op)*100)}" oninput="stCamadaProp('${l.id}','op',this.value/100,1);this.parentNode.querySelector('b').textContent=this.value+'%'"></label>${stAjusteHTML(l)}${stPosNum(l)}${pos}${stMovHTML(l)}</div>`}
 function stTxtCfg(l){const P=l.p;return `<div class="st-r2"><label class="f">Cor<input type="color" value="${esc(P.cor||'#ffffff')}" oninput="stCamadaProp('${l.id}','cor',this.value)"></label><label class="f">Tamanho<input type="range" min="2" max="20" value="${P.tam||8}" oninput="stCamadaProp('${l.id}','tam',+this.value)"></label></div><label class="chk"><input type="checkbox" ${P.fundo?'checked':''} onchange="stCamadaProp('${l.id}','fundo',this.checked?'rgba(0,0,0,.45)':'')"> Faixa escura atrás</label>`}
 function stSlidesMais(id){const l=stAchaCamada(id);if(!l)return;const i=document.createElement('input');i.type='file';i.accept='image/*';i.multiple=true;i.onchange=()=>{l.p.imgs=[];stSlidesArq(i.files,l,stEdit())};i.click()}
 function stVideoDe(id){const l=stAchaCamada(id);if(!l)return;const i=document.createElement('input');i.type='file';i.accept='video/*';i.onchange=()=>{const f=i.files[0];if(!f)return;ST.vids[id]=URL.createObjectURL(f);l.p.arq=f.name;delete ST.srcs[id];stSalva();stRenderUI()};i.click()}

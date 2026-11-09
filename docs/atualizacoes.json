@@ -1,5 +1,17 @@
 [
   {
+    "titulo": "Zoe Live Studio: redimensionar livre, réguas, camadas e atalhos de efeito",
+    "melhorias": [
+      "Redimensione qualquer fonte pelas 8 alças (cantos e lados) na pré-visualização. O cursor muda para mostrar o que você está fazendo: seta de redimensionar nas alças, mover dentro do objeto.",
+      "Réguas e guias ao arrastar: régua em % nas bordas da pré-visualização, linhas de encaixe no centro, nos terços e nas bordas de outras fontes, e uma etiqueta com posição e tamanho em pixels. Segure Alt para soltar o encaixe.",
+      "Proporção travada ou livre por fonte (botão na barra da fonte e nas Propriedades; Shift inverte na hora). Em Propriedades, “Ajuste na caixa”: caber, preencher ou esticar.",
+      "Camadas: botão direito na pré-visualização ou na lista de Fontes abre o menu (trazer para a frente, subir, descer, enviar para trás, duplicar, ocultar, travar, propriedades, remover e escolher entre as camadas sobrepostas no ponto). Também dá para arrastar as fontes para cima e para baixo na lista.",
+      "Atalhos de efeito abaixo de “Efeito”: efeitos prontos e os que você salvar. Tocar no nome mostra o efeito na pré-visualização; o botão de play coloca no ar com aquele efeito. Os efeitos salvos entram nos setups."
+    ],
+    "v": "1.167",
+    "data": "09/11/2026"
+  },
+  {
     "titulo": "Zoe Live Studio: movimento de câmera, PiP, legendas e tarjas",
     "melhorias": [
       "Movimento de câmera: dê zoom numa fonte (câmera, tela, imagem ou vídeo) e defina pontos A, B, C… no quadro. A imagem anda de ponto a ponto, com modelos prontos (panorâmica, aproximar, afastar, diagonal e quadro fixo), duração, repetição e começo automático quando a cena entra no ar.",

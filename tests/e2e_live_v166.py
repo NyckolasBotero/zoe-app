@@ -48,7 +48,7 @@ with sync_playwright() as p:
     pg.evaluate("stCena('vz')||ST.cenas.push({id:'vz',nome:'Teste',camadas:[]})"); pg.evaluate("ST.prev='vz';stAddCamada('texto')")
     lid=pg.evaluate("stCena('vz').camadas[0].id"); pg.evaluate("stProgDireto('vz');ST.prev='vz'"); x0=pg.evaluate(f"stProgLayer('{lid}').x")
     pg.evaluate(f"stAchaCamada('{lid}').x=.5"); assert pg.evaluate(f"stProgLayer('{lid}').x")==x0,'programa mudou sozinho'
-    pg.evaluate("ST.trans.tipo='corte'"); pg.click('#st_trans button:has-text("Transição")'); pg.wait_for_timeout(300); assert pg.evaluate(f"stProgLayer('{lid}').x")==.5,'transição não aplicou'
+    pg.evaluate("ST.trans.tipo='corte'"); pg.eval_on_selector('#st_trans .st-tbtn','e=>e.click()'); pg.wait_for_timeout(300); assert pg.evaluate(f"stProgLayer('{lid}').x")==.5,'transição não aplicou'
     # plataformas dentro do estúdio, sem sair
     pg.click('#st_ctl button:has-text("Gerenciar transmissão")'); pg.wait_for_selector('#st_ml .st-plat'); pg.wait_for_timeout(900); assert 'Servidor de retransmissão' in pg.inner_text('#st_ml'); assert pg.evaluate("MM.sub")=='estudio'; pg.click('#st_ml button:has-text("Fechar")')
     # divisórias e blocos arrastáveis
