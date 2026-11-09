@@ -359,7 +359,7 @@ function me_(d, u) {
   const nivelCel = !cel ? '' : (full || (cel.LiderID === u.membroId) ? 'lider' : cel.SupervisorID === u.membroId ? 'supervisor' : cel.TreinamentoID === u.membroId ? 'treinamento' : 'membro');
   const tef = tipoEf_(u), abas = abasPorTipo_()[tef] || {}, cp = cel ? (full ? allCelPerm_() : celPermMap_(u, cel)) : null;
   const urow = table_('Usuarios').rows.filter(function (r) { return String(r.Email).toLowerCase() === u.email; })[0] || {};
-  return { multimidia: multiOk_(u), studio: studioAreas_(u), studioChat: studioChatLista_().indexOf(u.membroId) >= 0, acompanha: acompanha_(u), artes: { cria: artesCria_(u), aprova: artesAprova_(u) }, xp: xpResumo_(u.membroId), guiaVisto: urow.GuiaVisto !== '0', usuario: { email: u.email, papel: u.papel, tipo: tef }, abas: abas, permCelula: cp, membro: memberFull_(mm), celula: cel ? cellOut_(cel, nivelCel !== 'membro') : null, nivelCelula: nivelCel, cargos: cg, minhasCelulas: minhas, permissoes: permMatrix_()[tef], config: publicConfig_(), interesses: interessesDe_(u.membroId), membresia: membresiaDe_(u.membroId) };
+  return { multimidia: multiOk_(u), studio: studioAreas_(u), studioChat: studioChatLista_().indexOf(u.membroId) >= 0, studioGestor: studioGestor_(u), acompanha: acompanha_(u), artes: { cria: artesCria_(u), aprova: artesAprova_(u) }, xp: xpResumo_(u.membroId), guiaVisto: urow.GuiaVisto !== '0', usuario: { email: u.email, papel: u.papel, tipo: tef }, abas: abas, permCelula: cp, membro: memberFull_(mm), celula: cel ? cellOut_(cel, nivelCel !== 'membro') : null, nivelCelula: nivelCel, cargos: cg, minhasCelulas: minhas, permissoes: permMatrix_()[tef], config: publicConfig_(), interesses: interessesDe_(u.membroId), membresia: membresiaDe_(u.membroId) };
 }
 function saveMember_(d, u) {
   return withLock_(function () {
@@ -1137,7 +1137,7 @@ function aprovItens_(u) {
     const m = mem[i.MembroID] || {}, mn = minRows[i.MinisterioID] || {}, dc = minDec_(mn, i.MembroID, mem, cel), sou = dc.decisores.indexOf(u.membroId) >= 0;
     if (!(min || sou)) return;
     const resp = minResp_(mn).map(nm).filter(String).join(', ');
-    add({ tipo: 'interesse', id: i.InteresseID, pessoaId: i.MembroID, titulo: nm(i.MembroID) + ' quer participar do ministério ' + (mi[i.MinisterioID] || '?'), detalhe: (m.Telefone ? 'Telefone ' + m.Telefone : 'Sem telefone cadastrado') + (resp ? ' · Responsável: ' + resp : ''), status: stN_(i.Status), data: i.Data, solicitante: nm(i.MembroID), decididoPorId: i.DecididoPor, decididoPor: nm(i.DecididoPor), dataDecisao: i.DataDecisao, pode: true, admOk: min, ctx: { ministerio: mi[i.MinisterioID] || '' } });
+    add({ tipo: 'interesse', id: i.InteresseID, pessoaId: i.MembroID, titulo: nm(i.MembroID) + ' quer participar do ministério ' + (mi[i.MinisterioID] || '?'), detalhe: (m.Telefone ? 'Telefone ' + m.Telefone : 'Sem telefone cadastrado') + (resp ? ' · Responsável: ' + resp : ''), status: stN_(i.Status), data: i.Data, solicitante: nm(i.MembroID), decididoPorId: i.DecididoPor, decididoPor: nm(i.DecididoPor), dataDecisao: i.DataDecisao, pode: true, admOk: min, ctx: { ministerio: mi[i.MinisterioID] || '', midia: ministerioMidia_(mn), studio: ministerioMidia_(mn) ? { areas: stN_(i.Status) === 'autorizado' ? studioAreasPara_(i.MembroID, studioCfg_()) : studioPadrao_(i.MembroID, studioCfg_() === null, ministerioSocial_(mn) ? 2 : 1), chat: studioChatLista_().indexOf(i.MembroID) >= 0 } : null } });
   });
   table_('Membresias').rows.forEach(function (b) {
     if (!(adm || meu(cel[b.CelulaID]))) return; const m = mem[b.MembroID] || {};
@@ -1214,6 +1214,7 @@ function decideInterest_(d, u) {
     const mn = table_('Ministerios').rows.filter(function (x) { return x.MinisterioID === r.MinisterioID; })[0] || {}, dc = minDec_(mn, r.MembroID);
     if (!(can_(u, 'min') || dc.decisores.indexOf(u.membroId) >= 0)) throw new ApiError('FORBIDDEN', 'Só o supervisor da pessoa ou o responsável com autonomia decide este pedido.');
     const st = d.decisao === 'autorizado' ? 'autorizado' : 'negado'; writeRow_(t, r._row, { Status: st, DecididoPor: u.membroId, DataDecisao: now_() }); audit_(u.email, 'INTERESSE_' + st.toUpperCase(), r.InteresseID, 'OK');
+    if (st === 'autorizado' && ministerioMidia_(mn) && d.studio && typeof d.studio === 'object') { try { studioAplica_([{ membroId: r.MembroID, areas: Array.isArray(d.studio.areas) ? d.studio.areas : [], chat: !!d.studio.chat }], u, r.MembroID); } catch (e) { /* o acesso pode ser ajustado depois em Configurações */ } }
     if (st === 'autorizado') { try { const nm = nomes_(); minResp_(mn).forEach(function (rid) { if (rid !== u.membroId && rid !== r.MembroID) notify_(rid, 'ministerio', 'Novo integrante em ' + mn.Nome, (nm[r.MembroID] || 'Uma pessoa') + ' entrou no ministério (aprovado por ' + (nm[u.membroId] || 'a liderança') + ').', 'min:' + mn.MinisterioID); }); } catch (e) { /* a decisão já foi gravada */ } }
     return { status: st };
   });
@@ -2861,11 +2862,7 @@ function saveMySod_(d, u) {
   return withLock_(function () { const t = ensureCols_('Membros', ['SodOff']), m = t.rows.filter(function (x) { return x.MembroID === u.membroId; })[0]; if (!m) throw new ApiError('NOT_FOUND', 'Cadastro não encontrado.'); const off = d.on === false || d.on === 0 || d.on === '0'; writeRow_(t, m._row, { SodOff: off ? '1' : '' }); audit_(u.email, off ? 'SOD_OFF' : 'SOD_ON', u.membroId, 'OK'); return { on: !off }; });
 }
 // ===== Canva Zoe: artes da equipe de Social Mídia, com aprovação do pastor líder =====
-function artesCria_(u) {
-  if (podeCurar_(u)) return true;
-  const mins = table_('Ministerios').rows.filter(function (m) { const n = norm_(m.Nome); return m.Ativo !== '0' && (n === 'midia' || n.indexOf('social') >= 0 || n.indexOf('redes') >= 0); }).map(function (m) { return m.MinisterioID; });
-  return table_('Interesses').rows.some(function (i) { return i.MembroID === u.membroId && stN_(i.Status) === 'autorizado' && mins.indexOf(i.MinisterioID) >= 0; });
-}
+function artesCria_(u) { if (podeCurar_(u)) return true; return studioAreas_(u).indexOf('social') >= 0; }
 function artesAprovadores_() { const a = jparse_(cfgMap_().ArtesAprovadores, []); return Array.isArray(a) ? a.map(String) : []; }
 function artesAprova_(u) { return u.papel === 'admin' || u.papel === 'pastor' || can_(u, 'config') || artesAprovadores_().indexOf(String(u.membroId)) >= 0; }
 function arteExige_(u) { if (!artesCria_(u) && !artesAprova_(u)) throw new ApiError('FORBIDDEN', 'O Canva Zoe é da equipe de Social Mídia.'); }
@@ -4418,47 +4415,77 @@ function mmLayout_(l) {
   ['cores', 'luzesCores'].forEach(function (k) { if (Array.isArray(l[k])) { const a = l[k].filter(function (c) { return /^#[0-9a-fA-F]{6}$/.test(String(c)); }).slice(0, k === 'cores' ? 3 : 5); if (a.length >= (k === 'cores' ? 2 : 1)) o[k] = a; } });
   return o;
 }
-// Studio Zoe por área e por pessoa: Config.StudioAcessos = { membroId: ['live','proj','cfg'] }. Administração vê tudo.
-// Enquanto a administração nunca configurou, vale a regra antiga (liderança e ministério Som), para ninguém ficar sem acesso de uma hora para outra.
-const STUDIO_AREAS_ = ['live', 'proj', 'cfg'];
+// Studio Zoe: só quem foi aprovado no ministério de Mídia. Áreas: live (Zoe Live Studio), proj (Projeção), social (Social Mídia), cfg (Configurações).
+// O chat pastoral é guardado à parte (Config.StudioChat). Config.StudioAcessos = { membroId: [áreas] } (lista vazia = nenhuma área). Administração vê tudo.
+// Quem está aprovado na Mídia e ainda não tem linha na lista usa o padrão: Social Mídia (e, enquanto a lista nunca foi configurada, as áreas antigas do ministério Som).
+const STUDIO_AREAS_ = ['live', 'proj', 'social', 'cfg'];
+const STUDIO_FERR_ = ['live', 'proj', 'cfg'];
 function studioCfg_() { const v = cfgMap_().StudioAcessos; return v === undefined || v === '' ? null : jparse_(v, {}); }
-function multiLegado_(u) {
-  if (podeCurar_(u)) return true;
+function ministerioMidia_(m) { const n = norm_(m && m.Nome || ''); return !!m && m.Ativo !== '0' && (n.indexOf('midia') >= 0 || n === 'som' || n.indexOf('social') >= 0 || n.indexOf('redes') >= 0); }
+function ministerioSocial_(m) { const n = norm_(m && m.Nome || ''); return !!m && m.Ativo !== '0' && (n.indexOf('midia') >= 0 || n.indexOf('social') >= 0 || n.indexOf('redes') >= 0); }
+function midiaMembros_() {
+  const mm = {}, ms = {}; table_('Ministerios').rows.forEach(function (m) { if (ministerioMidia_(m)) mm[m.MinisterioID] = ministerioSocial_(m) ? 2 : 1; });
+  const out = {}; table_('Interesses').rows.forEach(function (i) { if (mm[i.MinisterioID] && stN_(i.Status) === 'autorizado') { out[i.MembroID] = Math.max(out[i.MembroID] || 0, mm[i.MinisterioID]); } });
+  return out; // membroId -> 2 (Mídia/Social) ou 1 (só Som)
+}
+function emMidia_(membroId, soSocial) { const v = midiaMembros_()[membroId]; return soSocial ? v === 2 : !!v; }
+function somMembro_(membroId) {
   const som = table_('Ministerios').rows.filter(function (m) { return norm_(m.Nome) === 'som' && m.Ativo !== '0'; }).map(function (m) { return m.MinisterioID; });
-  return table_('Interesses').rows.some(function (i) { return i.MembroID === u.membroId && stN_(i.Status) === 'autorizado' && som.indexOf(i.MinisterioID) >= 0; });
+  return table_('Interesses').rows.some(function (i) { return i.MembroID === membroId && stN_(i.Status) === 'autorizado' && som.indexOf(i.MinisterioID) >= 0; });
+}
+function studioPadrao_(membroId, semCfg, nivel) {
+  const a = []; if (semCfg && somMembro_(membroId)) a.push('live', 'proj', 'cfg'); if (nivel === 2) a.push('social'); return STUDIO_AREAS_.filter(function (x) { return a.indexOf(x) >= 0; });
+}
+function studioAreasPara_(membroId, cfg, mids) {
+  const nivel = (mids || midiaMembros_())[membroId]; if (!nivel) return [];
+  const e = cfg ? cfg[membroId] : null; if (Array.isArray(e)) return e.filter(function (a) { return STUDIO_AREAS_.indexOf(a) >= 0; });
+  return studioPadrao_(membroId, !cfg, nivel);
 }
 function studioAreas_(u) {
   if (u.papel === 'admin' || can_(u, 'config')) return STUDIO_AREAS_.slice();
-  const cfg = studioCfg_(); if (!cfg) return multiLegado_(u) ? STUDIO_AREAS_.slice() : [];
-  return (cfg[u.membroId] || []).filter(function (a) { return STUDIO_AREAS_.indexOf(a) >= 0; });
+  return u.membroId ? studioAreasPara_(u.membroId, studioCfg_()) : [];
 }
-function multiOk_(u) { return studioAreas_(u).length > 0; }
+function multiOk_(u) { const as = studioAreas_(u); return STUDIO_FERR_.some(function (a) { return as.indexOf(a) >= 0; }); }
 function multiExige_(u, area) {
-  const as = studioAreas_(u), qs = [].concat(area || STUDIO_AREAS_);
-  if (!qs.some(function (a) { return as.indexOf(a) >= 0; })) throw new ApiError('FORBIDDEN', 'Você não tem acesso a esta área do Studio Zoe. Peça à administração.');
+  const as = studioAreas_(u), qs = [].concat(area || STUDIO_FERR_);
+  if (!qs.some(function (a) { return as.indexOf(a) >= 0; })) throw new ApiError('FORBIDDEN', 'Você não tem acesso a esta área do Studio Zoe. Peça ao responsável pela Mídia.');
+}
+function studioGestor_(u) {
+  if (u.papel === 'admin' || can_(u, 'config') || can_(u, 'min')) return true;
+  return table_('Ministerios').rows.some(function (m) { return ministerioMidia_(m) && minResp_(m).indexOf(u.membroId) >= 0; });
 }
 // ----- Chat pastoral do Studio Zoe: pessoas liberadas falam direto com quem está transmitindo ou projetando -----
 function studioChatLista_() { return jparse_(cfgMap_().StudioChat, []).filter(String); }
-function studioChatOk_(u) { return studioChatLista_().indexOf(u.membroId) >= 0 || studioAreas_(u).length > 0; }
+function studioChatOk_(u) { return studioChatLista_().indexOf(u.membroId) >= 0 || multiOk_(u); }
 function studioAcessosLista_(d, u) {
-  if (!(u.papel === 'admin' || can_(u, 'config'))) throw new ApiError('FORBIDDEN', 'Só a administração vê os acessos do Studio Zoe.');
-  const cfg = studioCfg_() || {}, chat = studioChatLista_(), nm = nomes_(), ids = {}; Object.keys(cfg).forEach(function (k) { ids[k] = 1; }); chat.forEach(function (k) { ids[k] = 1; });
-  const q = norm_(clip_(d.q, 60)), cand = q.length < 2 ? [] : table_('Membros').rows.filter(function (m) { return m.Status !== 'Inativo' && norm_(m.Nome + ' ' + (m.Apelido || '')).indexOf(q) >= 0; }).slice(0, 12).map(function (m) { return { id: m.MembroID, nome: m.Nome }; });
-  return { configurado: studioAcessos_(), itens: Object.keys(ids).map(function (k) { return { id: k, nome: nm[k] || '—', areas: cfg[k] || [], chat: chat.indexOf(k) >= 0 }; }), candidatos: cand };
+  if (!studioGestor_(u)) throw new ApiError('FORBIDDEN', 'Só a administração e os responsáveis pela Mídia veem os acessos do Studio Zoe.');
+  const cfg = studioCfg_(), chat = studioChatLista_(), nm = nomes_(), mids = midiaMembros_(), ids = {}, adm = u.papel === 'admin' || can_(u, 'config');
+  Object.keys(mids).forEach(function (k) { ids[k] = 1; }); chat.forEach(function (k) { ids[k] = 1; });
+  const q = norm_(clip_(d.q, 60)), cand = !adm || q.length < 2 ? [] : table_('Membros').rows.filter(function (m) { return m.Status !== 'Inativo' && !ids[m.MembroID] && norm_(m.Nome + ' ' + (m.Apelido || '')).indexOf(q) >= 0; }).slice(0, 12).map(function (m) { return { id: m.MembroID, nome: m.Nome }; });
+  const itens = Object.keys(ids).map(function (k) { return { id: k, nome: nm[k] || '—', midia: !!mids[k], areas: studioAreasPara_(k, cfg, mids), padrao: !!mids[k] && !(cfg && Array.isArray(cfg[k])), chat: chat.indexOf(k) >= 0 }; }).sort(function (a, b) { return a.nome < b.nome ? -1 : 1; });
+  return { configurado: cfg !== null, adm: adm, itens: itens, candidatos: cand };
 }
 function studioAcessos_() { return studioCfg_() !== null; }
-function saveStudioAcesso_(d, u) {
-  if (!(u.papel === 'admin' || can_(u, 'config'))) throw new ApiError('FORBIDDEN', 'Só a administração define os acessos do Studio Zoe.');
-  return withLock_(function () {
-    const mid = clip_(d.membroId, 30); if (!table_('Membros').rows.some(function (m) { return m.MembroID === mid; })) throw new ApiError('NOT_FOUND', 'Pessoa não encontrada.');
-    const t = table_('Config'), set = function (k, v) { const r0 = t.rows.filter(function (x) { return x.Chave === k; })[0]; if (r0) writeRow_(t, r0._row, { Valor: v }); else appendRow_(t, { Chave: k, Valor: v }); };
-    let cfg = studioCfg_(); if (!cfg) { cfg = {}; table_('Membros'); /* ao configurar pela 1ª vez, quem já tinha acesso pelo ministério Som é mantido */ table_('Usuarios').rows.forEach(function (x) { if (x.MembroID && x.MembroID !== mid) { try { const uu = { membroId: x.MembroID, papel: x.Papel, supervisiona: cargos_(x.MembroID).supervisiona, permissoes: {} }; if (!podeCurar_(uu) && multiLegado_(uu)) cfg[x.MembroID] = ['proj']; } catch (e) { /* ignora */ } } }); }
-    const areas = (Array.isArray(d.areas) ? d.areas : []).filter(function (a) { return STUDIO_AREAS_.indexOf(a) >= 0; }); if (areas.length) cfg[mid] = areas; else delete cfg[mid];
-    set('StudioAcessos', JSON.stringify(cfg));
-    if (d.chat !== undefined) { let ch = studioChatLista_().filter(function (x) { return x !== mid; }); if (d.chat) ch.push(mid); set('StudioChat', JSON.stringify(ch)); }
-    audit_(u.email, 'STUDIO_ACESSO', mid + ' ' + areas.join(','), 'OK'); return studioAcessosLista_({}, u);
+// grava (sem travar: quem chama já está dentro de withLock_). itens: [{ membroId, areas?, chat? }]
+function studioAplica_(itens, u, forcaMidia) {
+  const t = table_('Config'), set = function (k, v) { const r0 = t.rows.filter(function (x) { return x.Chave === k; })[0]; if (r0) writeRow_(t, r0._row, { Valor: v }); else appendRow_(t, { Chave: k, Valor: v }); };
+  const adm = u.papel === 'admin' || can_(u, 'config'), mids = midiaMembros_(); let cfg = studioCfg_(), ch = studioChatLista_(), mudouCfg = false, mudouChat = false;
+  if (!cfg && itens.some(function (it) { return Array.isArray(it.areas); })) { cfg = {}; Object.keys(mids).forEach(function (k) { cfg[k] = studioPadrao_(k, true, mids[k]); }); } /* ao configurar pela 1ª vez, o que cada um já tinha é mantido */
+  itens.forEach(function (it) {
+    const mid = clip_(it.membroId, 30); if (!mid) return; const ehMidia = !!mids[mid] || forcaMidia === mid;
+    if (Array.isArray(it.areas) && ehMidia) { cfg = cfg || {}; cfg[mid] = it.areas.filter(function (a) { return STUDIO_AREAS_.indexOf(a) >= 0; }).filter(function (a, i, arr) { return arr.indexOf(a) === i; }); mudouCfg = true; }
+    if (it.chat !== undefined && it.chat !== null && (adm || ehMidia)) { ch = ch.filter(function (x) { return x !== mid; }); if (it.chat) ch.push(mid); mudouChat = true; }
+    audit_(u.email, 'STUDIO_ACESSO', mid + ' ' + (Array.isArray(it.areas) ? it.areas.join(',') : '-') + (it.chat ? ' +chat' : ''), 'OK');
   });
+  if (mudouCfg) set('StudioAcessos', JSON.stringify(cfg)); if (mudouChat) set('StudioChat', JSON.stringify(ch));
 }
+function saveStudioAcessos_(d, u) {
+  if (!studioGestor_(u)) throw new ApiError('FORBIDDEN', 'Só a administração e os responsáveis pela Mídia definem os acessos do Studio Zoe.');
+  const itens = (Array.isArray(d.itens) ? d.itens : []).slice(0, 200).map(function (x) { return { membroId: x && x.membroId, areas: x && Array.isArray(x.areas) ? x.areas : undefined, chat: x && x.chat !== undefined ? !!x.chat : undefined }; });
+  if (!itens.length) throw new ApiError('VALIDATION', 'Nada para salvar.');
+  return withLock_(function () { studioAplica_(itens, u); return studioAcessosLista_({}, u); });
+}
+function saveStudioAcesso_(d, u) { return saveStudioAcessos_({ itens: [{ membroId: d.membroId, areas: d.areas, chat: d.chat }] }, u); }
 // quem está operando agora: a tela de transmissão/projeção avisa a cada ~30 s (vale 90 s)
 function studioPresenca_(d, u) {
   const area = String(d.area || ''); if (['live', 'proj'].indexOf(area) < 0) throw new ApiError('VALIDATION', 'Área inválida.'); multiExige_(u, area);
@@ -4833,7 +4860,7 @@ const ROUTES = {
   listSongs: { auth: 'any', fn: listSongs_ }, saveSong: { auth: 'any', write: 1, fn: saveSong_ }, deleteSong: { auth: 'any', write: 1, fn: deleteSong_ }, saveSongDefault: { auth: 'any', write: 1, fn: saveSongDefault_ }, searchLyrics: { auth: 'any', fn: searchLyrics_ }, importLyrics: { auth: 'any', fn: importLyrics_ },
   boot: { auth: 'any', fn: boot_ },
   zoePergunta: { auth: 'any', fn: zoePergunta_ }, devocional: { auth: 'any', fn: devocional_ }, cuidadoLider: { auth: 'any', fn: cuidadoLider_ }, cuidadoMsg: { auth: 'any', fn: cuidadoMsg_ },
-  studioAcessos: { auth: 'any', fn: studioAcessosLista_ }, saveStudioAcesso: { auth: 'any', write: 1, fn: saveStudioAcesso_ }, studioPresenca: { auth: 'any', fn: studioPresenca_ },
+  studioAcessos: { auth: 'any', fn: studioAcessosLista_ }, saveStudioAcesso: { auth: 'any', write: 1, fn: saveStudioAcesso_ }, saveStudioAcessos: { auth: 'any', write: 1, fn: saveStudioAcessos_ }, studioPresenca: { auth: 'any', fn: studioPresenca_ },
   getLessonPdf: { auth: 'any', fn: getLessonPdf_ }, saveLessonText: { auth: 'any', write: 1, fn: saveLessonText_ }, getLessonText: { auth: 'any', fn: getLessonText_ },
   supCelulas: { auth: 'any', fn: supCelulas2_ }, supCelulaDetalhe: { auth: 'any', fn: supCelulaDetalhe_ }, supCelulaFotos: { auth: 'any', fn: supCelulaFotos_ }, supCelulaExtras: { auth: 'any', fn: supCelulaExtras_ },
   getKinPerson: { auth: 'any', fn: getKinPerson_ }, editKinPerson: { auth: 'any', write: 1, fn: editKinPerson_ }, changeKinRel: { auth: 'any', write: 1, fn: changeKinRel_ }, saveKinRelDef: { auth: 'config', write: 1, fn: saveKinRelDef_ },

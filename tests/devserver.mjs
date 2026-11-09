@@ -11,6 +11,11 @@ if (process.env.SEED_MAPAS === '1') { // dados de teste para o e2e dos mapas
   e.run(`(function(){const t=table_('Presencas');for(var i=0;i<3;i++){appendRow_(t,{ReuniaoID:'r'+i,CelulaID:'${c1}',Data:'2026-10-0'+(i+1),MembroID:'${d}'})}})()`);
   e.call('saveMapaCfg', { sedeLat: -23.55, sedeLng: -46.63 }, adm);
 }
+if (process.env.SEED_MIDIA === '1') { // dados de teste para o e2e dos acessos do Studio Zoe
+  const adm = e.call('login', { email: 'admin@zoe.com', senha: 'SenhaForte123' }).data.token, mk = (n) => e.call('createUser', { email: n + '@zoe.com', nome: n[0].toUpperCase() + n.slice(1) + ' Teste', senha: 'Temp12345', papel: 'membro' }, adm).data.membroId;
+  const leo = mk('leo'), bia = mk('bia'), novo = mk('novo'), fora = mk('fora');
+  e.run(`appendRow_(table_('Ministerios'), { MinisterioID: 'MMID', Nome: 'Mídia', Ativo: '1' }); appendRow_(table_('Interesses'), { InteresseID: 'IN1', MinisterioID: 'MMID', MembroID: '${leo}', Data: now_(), Status: 'autorizado' }); appendRow_(table_('Interesses'), { InteresseID: 'IN2', MinisterioID: 'MMID', MembroID: '${bia}', Data: now_(), Status: 'autorizado' }); appendRow_(table_('Interesses'), { InteresseID: 'IN3', MinisterioID: 'MMID', MembroID: '${novo}', Data: now_(), Status: 'pendente' })`);
+}
 const PORT = Number(process.env.PORT || 8799); const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json', '.css': 'text/css', '.png': 'image/png', '.txt': 'text/plain; charset=utf-8' };
 http.createServer((req, res) => {
   const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*' };

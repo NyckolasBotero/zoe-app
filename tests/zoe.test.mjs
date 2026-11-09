@@ -1018,7 +1018,7 @@ test('escalas: lote semanal, lembretes 7/3/1, confirmar, re-escalar, troca, pedi
   // remover série
   const serie = gi.itens.find(x => x.serie).serie; assert.ok(e.call('deleteScale', { serie }, adm).data.removidas >= 7);
 });
-test('multimídia: só ministério Som; músicas com layout; layout padrão; busca de letras', () => {
+test('multimídia: só ministério Mídia (ou Som); músicas com layout; layout padrão; busca de letras', () => {
   const { e, adm, tok, mk } = boot();
   const a = mk('som@zoe.com', 'membro'), b = mk('outro@zoe.com', 'membro'); const ta = tok('som@zoe.com', 'Temp12345'), tb = tok('outro@zoe.com', 'Temp12345');
   assert.equal(e.call('listSongs', {}, ta).error.code, 'FORBIDDEN'); assert.equal(e.call('me', {}, ta).data.multimidia, false);
@@ -1324,7 +1324,8 @@ test('Sod por usuário: cada pessoa liga e desliga o próprio', () => {
 });
 
 test('Canva Zoe: arte da social mídia vai para aprovação e depois aparece no telão', () => {
-  const { e, tok, mk } = boot(); mk('p@zoe.com', 'pastor'); mk('m@zoe.com', 'membro'); mk('b@zoe.com', 'membro');
+  const { e, adm, tok, mk } = boot(); const pId = mk('p@zoe.com', 'pastor'); mk('m@zoe.com', 'membro'); mk('b@zoe.com', 'membro');
+  e.run(`appendRow_(table_('Ministerios'), { MinisterioID: 'MMID', Nome: 'Mídia', Ativo: '1' }); appendRow_(table_('Interesses'), { InteresseID: 'IN1', MinisterioID: 'MMID', MembroID: '${pId}', Data: now_(), Status: 'autorizado' })`); assert.ok(e.call('saveStudioAcessos', { itens: [{ membroId: pId, areas: ['proj', 'social'] }] }, adm).ok);
   const P = tok('p@zoe.com', 'Temp12345'), M = tok('m@zoe.com', 'Temp12345'), B = tok('b@zoe.com', 'Temp12345');
   const img = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ', arte = { titulo: 'Culto', formato: 'Story 9:16', w: 1080, h: 1920, projeto: '{"els":[]}', foto: img, mini: img };
   assert.equal(e.call('listArtes', {}, M).error.code, 'FORBIDDEN');
