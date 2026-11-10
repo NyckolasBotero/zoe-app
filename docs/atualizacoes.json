@@ -1,5 +1,14 @@
 [
  {
+  "titulo": "Login: ver a senha e aviso de Caps Lock",
+  "melhorias": [
+   "Na tela de entrada, o olho dentro do campo Senha mostra ou oculta o que você digitou, para conferir antes de entrar.",
+   "Quando o Caps Lock está ligado, aparece o aviso abaixo do campo Senha."
+  ],
+  "v": "1.169",
+  "data": "09/11/2026"
+ },
+ {
   "titulo": "Studio Zoe: quem acessa o quê",
   "melhorias": [
    "Só entra no Studio Zoe quem foi aprovado no ministério de Mídia (e a administração). Quem não é da Mídia deixa de ver as áreas, a não ser que receba só o Chat Pastoral.",
